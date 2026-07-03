@@ -69,8 +69,8 @@ export async function getChannelHealthScore() {
 
     const publishedDates = videos
       .map((video: any) => new Date(video.snippet?.publishedAt))
-      .filter((date) => !Number.isNaN(date.getTime()))
-      .sort((a, b) => a.getTime() - b.getTime());
+      .filter((date: Date) => !Number.isNaN(date.getTime()))
+      .sort((a: Date, b: Date) => a.getTime() - b.getTime());
 
     const intervals: number[] = [];
 
