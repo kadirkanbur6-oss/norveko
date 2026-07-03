@@ -1,36 +1,44 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import { Eye, MessageCircle, ThumbsUp } from "lucide-react";
 import Image from "next/image";
 import { getRecentVideos } from "../lib/youtube";
-
-const CHANNEL_ID = "UCs4hJrYzjQ-nNRbS7jVUMiA";
+import { getUserChannelId } from "../../lib/supabase-server";
 
 function formatNumber(value: string | undefined) {
   return Number(value ?? 0).toLocaleString("tr-TR");
 }
 
-export default function RecentVideos() {
-  const [videos, setVideos] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+export default async function RecentVideos() {
+  const channelId = await getUserChannelId();
+  let videos: any[] = [];
+  let error = false;
 
-  useEffect(() => {
-    async function loadVideos() {
-      try {
-        const data = await getRecentVideos(CHANNEL_ID);
-        setVideos(data ?? []);
-      } catch (error) {
-        console.error("Recent videos error:", error);
-        setError(true);
-      } finally {
-        setLoading(false);
-      }
-    }
+  if (!channelId) {
+    return (
+      <section className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-white">Recent Videos</h2>
+            <p className="mt-1 text-sm text-gray-400">
+              Live performance from your latest YouTube uploads.
+            </p>
+          </div>
 
-    loadVideos();
-  }, []);
+          <span className="rounded-full border border-blue-400/30 bg-blue-500/10 px-4 py-2 text-sm text-blue-200">
+            YouTube Live
+          </span>
+        </div>
+
+        <p className="text-gray-300">You have not connected a YouTube channel yet.</p>
+      </section>
+    );
+  }
+
+  try {
+    videos = (await getRecentVideos(channelId)) ?? [];
+  } catch (err) {
+    console.error("Recent videos error:", err);
+    error = true;
+  }
 
   return (
     <section className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-6">
@@ -47,11 +55,9 @@ export default function RecentVideos() {
         </span>
       </div>
 
-      {loading ? (
-        <p className="text-gray-400">Loading videos...</p>
-      ) : error ? (
+      {error ? (
         <p className="text-gray-300">
-          Veriler şu anda yüklenemedi, lütfen daha sonra tekrar deneyin.
+          Unable to load data right now, please try again later.
         </p>
       ) : (
         <div className="space-y-4">

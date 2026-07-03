@@ -1,7 +1,7 @@
 import { getRecentVideos } from "./youtube";
 import { getChannelGrowth } from "./channelGrowth";
 
-const CHANNEL_ID = "UCs4hJrYzjQ-nNRbS7jVUMiA";
+const DEFAULT_CHANNEL_ID = "UCs4hJrYzjQ-nNRbS7jVUMiA";
 
 function round(value: number, decimals = 1) {
   const factor = 10 ** decimals;
@@ -36,12 +36,12 @@ function getGrowthScore(growth: {
   return 10;
 }
 
-export async function getChannelHealthScore() {
+export async function getChannelHealthScore(channelId = DEFAULT_CHANNEL_ID) {
   try {
     let videos = null;
 
     try {
-      videos = await getRecentVideos(CHANNEL_ID);
+      videos = await getRecentVideos(channelId);
     } catch (error) {
       console.error("getChannelHealthScore getRecentVideos error:", error);
       return {
@@ -101,7 +101,7 @@ export async function getChannelHealthScore() {
     let insufficientGrowthData = false;
 
     try {
-      const growthResult = await getChannelGrowth();
+      const growthResult = await getChannelGrowth(channelId);
       if (
         growthResult?.success &&
         !growthResult?.insufficient_data &&

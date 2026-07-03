@@ -1,10 +1,23 @@
 import { getChannelHealthScore } from "../lib/channelHealth";
+import { getUserChannelId } from "../../lib/supabase-server";
 
 export default async function ChannelHealth() {
+  const channelId = await getUserChannelId();
   let health;
 
+  if (!channelId) {
+    return (
+      <section className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-white">Channel Health</h2>
+        </div>
+        <p className="mt-4 text-gray-300">You have not connected a YouTube channel yet.</p>
+      </section>
+    );
+  }
+
   try {
-    health = await getChannelHealthScore();
+    health = await getChannelHealthScore(channelId);
   } catch (error) {
     console.error("ChannelHealth error:", error);
     health = {
@@ -22,10 +35,10 @@ export default async function ChannelHealth() {
     return (
       <section className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-white">Kanal Sağlığı</h2>
+          <h2 className="text-2xl font-bold text-white">Channel Health</h2>
         </div>
         <p className="mt-4 text-gray-300">
-          Henüz yeterli veri yok.
+          Not enough data yet.
         </p>
       </section>
     );
@@ -35,14 +48,14 @@ export default async function ChannelHealth() {
     <section className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-6">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Kanal Sağlığı</h2>
+          <h2 className="text-2xl font-bold text-white">Channel Health</h2>
           <p className="mt-1 text-sm text-gray-400">
-            Kanalınızın toplam sağlık skorunu izleyin.
+            Track your channel's overall health score.
           </p>
         </div>
         <div className="text-right">
           <div className="text-3xl font-black text-white">{health.score}%</div>
-          <div className="text-sm text-gray-400">0-100 Sağlık Puanı</div>
+          <div className="text-sm text-gray-400">0-100 health score</div>
         </div>
       </div>
 
@@ -58,15 +71,15 @@ export default async function ChannelHealth() {
 
       <div className="space-y-3">
         <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-          <p className="text-sm text-gray-400">Yayın Tutarlılığı</p>
+          <p className="text-sm text-gray-400">Publishing Consistency</p>
           <p className="mt-1 text-xl font-semibold text-white">{health.breakdown.consistency}</p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-          <p className="text-sm text-gray-400">Etkileşim Oranı</p>
+          <p className="text-sm text-gray-400">Engagement Rate</p>
           <p className="mt-1 text-xl font-semibold text-white">{health.breakdown.engagement}</p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-          <p className="text-sm text-gray-400">Büyüme Trendi</p>
+          <p className="text-sm text-gray-400">Growth Trend</p>
           <p className="mt-1 text-xl font-semibold text-white">{health.breakdown.growth}</p>
         </div>
       </div>

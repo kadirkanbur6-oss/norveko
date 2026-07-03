@@ -19,7 +19,7 @@ export default function TestSupabase() {
 
   return (
     <div className="p-6 text-white">
-      Supabase bağlantısı test ediliyor...
+      Testing Supabase connection...
     </div>
   );
 }

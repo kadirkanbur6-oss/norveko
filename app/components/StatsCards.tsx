@@ -1,8 +1,7 @@
 import { Clock, Eye, MousePointerClick, Rocket } from "lucide-react";
 import { getChannelStats } from "../lib/youtube";
 import { getChannelGrowth } from "../lib/channelGrowth";
-
-const CHANNEL_ID = "UCs4hJrYzjQ-nNRbS7jVUMiA";
+import { getUserChannelId } from "../../lib/supabase-server";
 
 function formatNumber(value: string) {
   return Number(value).toLocaleString("tr-TR");
@@ -19,8 +18,18 @@ export default async function StatsCards() {
   let insufficientData = true;
   let statsError = false;
 
+  const channelId = await getUserChannelId();
+
+  if (!channelId) {
+    return (
+      <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6 text-gray-300">
+        You have not connected a YouTube channel yet.
+      </div>
+    );
+  }
+
   try {
-    stats = await getChannelStats(CHANNEL_ID);
+    stats = await getChannelStats(channelId);
   } catch (error) {
     console.error("StatsCards getChannelStats error:", error);
     statsError = true;
@@ -28,7 +37,7 @@ export default async function StatsCards() {
 
   if (!statsError) {
     try {
-      const growthPayload = await getChannelGrowth();
+      const growthPayload = await getChannelGrowth(channelId);
       insufficientData = growthPayload?.insufficient_data === true;
       growth = growthPayload?.success ? growthPayload.growth : null;
     } catch (error) {
@@ -42,7 +51,7 @@ export default async function StatsCards() {
     return (
       <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6">
         <p className="text-gray-300">
-          Veriler şu anda yüklenemedi, lütfen daha sonra tekrar deneyin.
+          Unable to load data right now, please try again later.
         </p>
       </div>
     );
@@ -94,7 +103,7 @@ export default async function StatsCards() {
               <div>
                 {showNote ? (
                   <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-400">
-                    henüz yeterli veri yok
+                    Not enough data yet
                   </span>
                 ) : (
                   <span
