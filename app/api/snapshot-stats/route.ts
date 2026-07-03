@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { getChannelStats } from "../../lib/youtube";
+import { getChannelStats, getRecentVideos } from "../../lib/youtube";
 
 const CHANNEL_ID = "UCs4hJrYzjQ-nNRbS7jVUMiA";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -23,26 +23,45 @@ export async function GET(request: Request) {
 
   try {
     const stats = await getChannelStats(CHANNEL_ID);
+    const videos = await getRecentVideos(CHANNEL_ID);
 
-    const { data, error } = await supabaseService
-      .from("channel_stats_snapshots")
-      .insert([
+    const statsInsert = supabaseService.from("channel_stats_snapshots").insert([
+      {
+        channel_id: CHANNEL_ID,
+        subscriber_count: stats.subscriberCount,
+        view_count: stats.viewCount,
+        video_count: stats.videoCount,
+      },
+    ]);
+
+    const videosUpsert = supabaseService.from("channel_videos_cache").upsert(
+      [
         {
+          user_id: null,
           channel_id: CHANNEL_ID,
-          subscriber_count: stats.subscriberCount,
-          view_count: stats.viewCount,
-          video_count: stats.videoCount,
+          videos: videos,
         },
-      ]);
+      ],
+      {
+        onConflict: "user_id,channel_id",
+        ignoreDuplicates: false,
+      }
+    );
 
-    if (error) {
+    const [{ error: statsError }, { error: videoError }] = await Promise.all([
+      statsInsert,
+      videosUpsert,
+    ]);
+
+    if (statsError || videoError) {
+      const message = statsError?.message || videoError?.message || "Cache write failed.";
       return NextResponse.json(
-        { success: false, error: error.message },
+        { success: false, error: message },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ success: false, error: message }, { status: 500 });

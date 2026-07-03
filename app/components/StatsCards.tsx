@@ -1,5 +1,5 @@
 import { Clock, Eye, MousePointerClick, Rocket } from "lucide-react";
-import { getChannelStats } from "../lib/youtube";
+import { getCachedChannelStats } from "../../lib/dashboardData";
 import { getChannelGrowth } from "../lib/channelGrowth";
 import { getUserChannelId } from "../../lib/supabase-server";
 
@@ -29,9 +29,9 @@ export default async function StatsCards() {
   }
 
   try {
-    stats = await getChannelStats(channelId);
+    stats = await getCachedChannelStats(channelId);
   } catch (error) {
-    console.error("StatsCards getChannelStats error:", error);
+    console.error("StatsCards getCachedChannelStats error:", error);
     statsError = true;
   }
 
@@ -51,7 +51,7 @@ export default async function StatsCards() {
     return (
       <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6">
         <p className="text-gray-300">
-          Unable to load data right now, please try again later.
+          Cached dashboard data is not available yet. Please wait for the daily snapshot.
         </p>
       </div>
     );

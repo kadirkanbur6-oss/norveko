@@ -1,4 +1,4 @@
-import { getRecentVideos } from "./youtube";
+import { getCachedVideos } from "../../lib/dashboardData";
 import { getChannelGrowth } from "./channelGrowth";
 
 const DEFAULT_CHANNEL_ID = "UCs4hJrYzjQ-nNRbS7jVUMiA";
@@ -41,9 +41,9 @@ export async function getChannelHealthScore(channelId = DEFAULT_CHANNEL_ID) {
     let videos = null;
 
     try {
-      videos = await getRecentVideos(channelId);
+      videos = await getCachedVideos(channelId);
     } catch (error) {
-      console.error("getChannelHealthScore getRecentVideos error:", error);
+      console.error("getChannelHealthScore getCachedVideos error:", error);
       return {
         score: 0,
         breakdown: {

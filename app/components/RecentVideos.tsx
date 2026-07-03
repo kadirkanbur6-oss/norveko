@@ -1,6 +1,6 @@
 import { Eye, MessageCircle, ThumbsUp } from "lucide-react";
 import Image from "next/image";
-import { getRecentVideos } from "../lib/youtube";
+import { getCachedVideos } from "../../lib/dashboardData";
 import { getUserChannelId } from "../../lib/supabase-server";
 
 function formatNumber(value: string | undefined) {
@@ -34,7 +34,7 @@ export default async function RecentVideos() {
   }
 
   try {
-    videos = (await getRecentVideos(channelId)) ?? [];
+    videos = await getCachedVideos(channelId);
   } catch (err) {
     console.error("Recent videos error:", err);
     error = true;
@@ -46,12 +46,12 @@ export default async function RecentVideos() {
         <div>
           <h2 className="text-2xl font-bold text-white">Recent Videos</h2>
           <p className="mt-1 text-sm text-gray-400">
-            Live performance from your latest YouTube uploads.
+            Daily cached performance from your latest YouTube uploads.
           </p>
         </div>
 
         <span className="rounded-full border border-blue-400/30 bg-blue-500/10 px-4 py-2 text-sm text-blue-200">
-          YouTube Live
+          Daily Cache
         </span>
       </div>
 

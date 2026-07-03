@@ -7,15 +7,16 @@ const AUTH_PAGES = ["/login", "/signup", "/connect-channel"];
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
+  const pathname = request.nextUrl.pathname;
+
+  if (PUBLIC_FILE.test(pathname) || pathname.startsWith("/_next") || pathname.startsWith("/api")) {
+    return response;
+  }
+
   const supabase = createMiddlewareSupabaseClient(request, response);
 
   const { data, error } = await supabase.auth.getSession();
   const session = data?.session ?? null;
-  const pathname = request.nextUrl.pathname;
-
-  if (PUBLIC_FILE.test(pathname) || pathname.startsWith("/_next")) {
-    return response;
-  }
 
   if (!session) {
     if (!AUTH_PAGES.includes(pathname)) {
@@ -51,5 +52,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api).*)"],
 };

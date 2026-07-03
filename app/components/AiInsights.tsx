@@ -1,29 +1,47 @@
-import { Lightbulb, Sparkles, TrendingUp, Zap } from "lucide-react";
+'use client';
 
-const insights = [
-  {
-    title: "Best posting window",
-    text: "Your strongest engagement window is between 19:00 and 21:00.",
-    icon: Zap,
-  },
-  {
-    title: "Shorts outperforming",
-    text: "Short-form content is performing 28% better than long-form this month.",
-    icon: TrendingUp,
-  },
-  {
-    title: "Improve hooks",
-    text: "Videos with a stronger first 3 seconds may increase retention by 12%.",
-    icon: Sparkles,
-  },
-  {
-    title: "Topic opportunity",
-    text: "Mystery and historical stories are showing the highest repeat watch rate.",
-    icon: Lightbulb,
-  },
-];
+import { Lightbulb, Sparkles, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+
+interface AiInsightsResponse {
+  success: boolean;
+  insights?: string[];
+  error?: string;
+}
 
 export default function AiInsights() {
+  const [insights, setInsights] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadInsights() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch("/api/ai-insights");
+        const data: AiInsightsResponse = await response.json();
+
+        if (!response.ok || !data.success) {
+          setError(data.error || "Unable to load AI insights.");
+          setInsights([]);
+          return;
+        }
+
+        setInsights(data.insights ?? []);
+      } catch (err) {
+        console.error("AiInsights fetch error:", err);
+        setError("Unable to load AI insights.");
+        setInsights([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadInsights();
+  }, []);
+
   return (
     <section className="mt-8 rounded-[28px] border border-white/10 bg-white/[0.04] p-6">
       <div className="flex items-center justify-between">
@@ -34,30 +52,42 @@ export default function AiInsights() {
           </p>
         </div>
 
-        <Sparkles className="text-blue-300" size={28} />
+        {loading ? (
+          <Loader2 className="text-blue-300 animate-spin" size={28} />
+        ) : (
+          <Sparkles className="text-blue-300" size={28} />
+        )}
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {insights.map((item) => {
-          const Icon = item.icon;
+      <div className="mt-6">
+        {loading ? (
+          <div className="rounded-3xl border border-white/10 bg-black/25 p-6 text-center text-sm text-gray-400">
+            Loading AI insights...
+          </div>
+        ) : error ? (
+          <div className="rounded-3xl border border-white/10 bg-black/25 p-6 text-sm text-red-200">
+            {error}
+          </div>
+        ) : insights.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
+            {insights.map((insight, index) => (
+              <div
+                key={`${insight}-${index}`}
+                className="rounded-3xl border border-white/10 bg-black/25 p-5 hover:border-blue-400/40"
+              >
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-300">
+                  <Lightbulb size={22} />
+                </div>
 
-          return (
-            <div
-              key={item.title}
-              className="rounded-3xl border border-white/10 bg-black/25 p-5 hover:border-blue-400/40"
-            >
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-300">
-                <Icon size={22} />
+                <p className="mt-4 text-sm leading-6 text-gray-300">{insight}</p>
               </div>
-
-              <h3 className="mt-4 text-lg font-bold">{item.title}</h3>
-
-              <p className="mt-2 text-sm leading-6 text-gray-400">
-                {item.text}
-              </p>
-            </div>
-          );
-        })}
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-3xl border border-white/10 bg-black/25 p-6 text-sm text-gray-400">
+            No AI insights available yet. Connect a channel and try again.
+          </div>
+        )}
       </div>
     </section>
   );
