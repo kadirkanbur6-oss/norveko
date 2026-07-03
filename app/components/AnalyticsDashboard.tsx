@@ -2,6 +2,7 @@ import RevenueChart from "./RevenueChart";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import StatsCards from "./StatsCards";
+import ChannelHealth from "./ChannelHealth";
 import AiInsights from "./AiInsights";
 import RecentVideos from "./RecentVideos";
 import PlatformAnalytics from "./PlatformAnalytics";
@@ -24,6 +25,7 @@ export default function AnalyticsDashboard() {
 <div className="mt-10">
   <StatsCards />
 </div>
+<ChannelHealth />
 <RevenueChart />
 <AiInsights />
 <RecentVideos />
