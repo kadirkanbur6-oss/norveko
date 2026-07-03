@@ -24,7 +24,7 @@ export function createServerSupabaseClient() {
   });
 }
 
-export async function getUserChannelId() {
+export async function getUserChannelContext() {
   const supabase = createServerSupabaseClient();
   const {
     data: { session },
@@ -32,7 +32,7 @@ export async function getUserChannelId() {
   } = await supabase.auth.getSession();
 
   if (sessionError || !session?.user?.id) {
-    return null;
+    return { userId: null, channelId: null };
   }
 
   const { data, error } = await supabase
@@ -42,9 +42,14 @@ export async function getUserChannelId() {
     .maybeSingle();
 
   if (error) {
-    console.error("getUserChannelId error:", error);
-    return null;
+    console.error("getUserChannelContext error:", error);
+    return { userId: session.user.id, channelId: null };
   }
 
-  return data?.channel_id ?? null;
+  return { userId: session.user.id, channelId: data?.channel_id ?? null };
+}
+
+export async function getUserChannelId() {
+  const { channelId } = await getUserChannelContext();
+  return channelId;
 }

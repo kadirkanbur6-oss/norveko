@@ -49,9 +49,9 @@ export async function GET() {
 
     const channelId = channelData.channel_id;
 
-    const stats = await getCachedChannelStats(channelId);
-    const videos = await getCachedVideos(channelId);
-    const growthResult = await getChannelGrowth(channelId);
+    const stats = await getCachedChannelStats(channelId, session.user.id);
+    const videos = await getCachedVideos(channelId, session.user.id);
+    const growthResult = await getChannelGrowth(channelId, session.user.id);
 
     if (!stats) {
       return NextResponse.json(

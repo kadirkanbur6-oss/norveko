@@ -36,12 +36,12 @@ function getGrowthScore(growth: {
   return 10;
 }
 
-export async function getChannelHealthScore(channelId = DEFAULT_CHANNEL_ID) {
+export async function getChannelHealthScore(channelId = DEFAULT_CHANNEL_ID, userId?: string | null) {
   try {
     let videos = null;
 
     try {
-      videos = await getCachedVideos(channelId);
+      videos = await getCachedVideos(channelId, userId ?? "");
     } catch (error) {
       console.error("getChannelHealthScore getCachedVideos error:", error);
       return {
@@ -101,7 +101,7 @@ export async function getChannelHealthScore(channelId = DEFAULT_CHANNEL_ID) {
     let insufficientGrowthData = false;
 
     try {
-      const growthResult = await getChannelGrowth(channelId);
+      const growthResult = await getChannelGrowth(channelId, userId);
       if (
         growthResult?.success &&
         !growthResult?.insufficient_data &&

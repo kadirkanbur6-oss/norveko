@@ -1,11 +1,11 @@
 import { getChannelHealthScore } from "../lib/channelHealth";
-import { getUserChannelId } from "../../lib/supabase-server";
+import { getUserChannelContext } from "../../lib/supabase-server";
 
 export default async function ChannelHealth() {
-  const channelId = await getUserChannelId();
+  const { channelId, userId } = await getUserChannelContext();
   let health;
 
-  if (!channelId) {
+  if (!channelId || !userId) {
     return (
       <section className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-6">
         <div className="flex items-center justify-between">
@@ -17,7 +17,7 @@ export default async function ChannelHealth() {
   }
 
   try {
-    health = await getChannelHealthScore(channelId);
+    health = await getChannelHealthScore(channelId, userId);
   } catch (error) {
     console.error("ChannelHealth error:", error);
     health = {

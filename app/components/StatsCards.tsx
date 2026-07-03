@@ -1,7 +1,7 @@
 import { Clock, Eye, MousePointerClick, Rocket } from "lucide-react";
 import { getCachedChannelStats } from "../../lib/dashboardData";
 import { getChannelGrowth } from "../lib/channelGrowth";
-import { getUserChannelId } from "../../lib/supabase-server";
+import { getUserChannelContext } from "../../lib/supabase-server";
 
 function formatNumber(value: string) {
   return Number(value).toLocaleString("tr-TR");
@@ -18,9 +18,9 @@ export default async function StatsCards() {
   let insufficientData = true;
   let statsError = false;
 
-  const channelId = await getUserChannelId();
+  const { channelId, userId } = await getUserChannelContext();
 
-  if (!channelId) {
+  if (!channelId || !userId) {
     return (
       <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6 text-gray-300">
         You have not connected a YouTube channel yet.
@@ -29,7 +29,7 @@ export default async function StatsCards() {
   }
 
   try {
-    stats = await getCachedChannelStats(channelId);
+    stats = await getCachedChannelStats(channelId, userId);
   } catch (error) {
     console.error("StatsCards getCachedChannelStats error:", error);
     statsError = true;
@@ -37,7 +37,7 @@ export default async function StatsCards() {
 
   if (!statsError) {
     try {
-      const growthPayload = await getChannelGrowth(channelId);
+      const growthPayload = await getChannelGrowth(channelId, userId);
       insufficientData = growthPayload?.insufficient_data === true;
       growth = growthPayload?.success ? growthPayload.growth : null;
     } catch (error) {

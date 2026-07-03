@@ -25,31 +25,56 @@ export async function GET(request: Request) {
     const stats = await getChannelStats(CHANNEL_ID);
     const videos = await getRecentVideos(CHANNEL_ID);
 
-    const statsInsert = supabaseService.from("channel_stats_snapshots").insert([
-      {
-        channel_id: CHANNEL_ID,
-        subscriber_count: stats.subscriberCount,
-        view_count: stats.viewCount,
-        video_count: stats.videoCount,
-      },
-    ]);
+    const { data: connectedUsers, error: connectedUsersError } = await supabaseService
+      .from("user_channels")
+      .select("user_id")
+      .eq("channel_id", CHANNEL_ID);
 
-    const videosUpsert = supabaseService.from("channel_videos_cache").upsert(
-      [
-        {
-          user_id: null,
-          channel_id: CHANNEL_ID,
-          videos: videos,
-        },
-      ],
-      {
+    if (connectedUsersError) {
+      return NextResponse.json(
+        { success: false, error: connectedUsersError.message },
+        { status: 500 }
+      );
+    }
+
+    const targetUserIds = Array.from(
+      new Set((connectedUsers ?? []).map((row) => row.user_id).filter(Boolean))
+    ) as string[];
+
+    if (targetUserIds.length === 0) {
+      return NextResponse.json({ success: true, skipped: true });
+    }
+
+    const statsRows = targetUserIds.map((userId) => ({
+      user_id: userId,
+      channel_id: CHANNEL_ID,
+      subscriber_count: stats.subscriberCount,
+      view_count: stats.viewCount,
+      video_count: stats.videoCount,
+    }));
+
+    const videosRows = targetUserIds.map((userId) => ({
+      user_id: userId,
+      channel_id: CHANNEL_ID,
+      videos,
+    }));
+
+    const statsUpsert = supabaseService
+      .from("channel_stats_snapshots")
+      .upsert(statsRows, {
         onConflict: "user_id,channel_id",
         ignoreDuplicates: false,
-      }
-    );
+      });
+
+    const videosUpsert = supabaseService
+      .from("channel_videos_cache")
+      .upsert(videosRows, {
+        onConflict: "user_id,channel_id",
+        ignoreDuplicates: false,
+      });
 
     const [{ error: statsError }, { error: videoError }] = await Promise.all([
-      statsInsert,
+      statsUpsert,
       videosUpsert,
     ]);
 

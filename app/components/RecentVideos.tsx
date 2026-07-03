@@ -1,18 +1,18 @@
 import { Eye, MessageCircle, ThumbsUp } from "lucide-react";
 import Image from "next/image";
 import { getCachedVideos } from "../../lib/dashboardData";
-import { getUserChannelId } from "../../lib/supabase-server";
+import { getUserChannelContext } from "../../lib/supabase-server";
 
 function formatNumber(value: string | undefined) {
   return Number(value ?? 0).toLocaleString("tr-TR");
 }
 
 export default async function RecentVideos() {
-  const channelId = await getUserChannelId();
+  const { channelId, userId } = await getUserChannelContext();
   let videos: any[] = [];
   let error = false;
 
-  if (!channelId) {
+  if (!channelId || !userId) {
     return (
       <section className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-6">
         <div className="mb-6 flex items-center justify-between">
@@ -34,7 +34,7 @@ export default async function RecentVideos() {
   }
 
   try {
-    videos = await getCachedVideos(channelId);
+    videos = await getCachedVideos(channelId, userId);
   } catch (err) {
     console.error("Recent videos error:", err);
     error = true;

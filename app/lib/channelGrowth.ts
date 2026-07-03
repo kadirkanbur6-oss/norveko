@@ -24,7 +24,7 @@ function computeGrowth(
   return roundPercent(((currentValue - previousValue) / previousValue) * 100);
 }
 
-export async function getChannelGrowth(channelId = DEFAULT_CHANNEL_ID) {
+export async function getChannelGrowth(channelId = DEFAULT_CHANNEL_ID, userId?: string | null) {
   let latestQuery = supabaseService
     .from("channel_stats_snapshots")
     .select("subscriber_count, view_count, video_count, created_at")
@@ -33,6 +33,10 @@ export async function getChannelGrowth(channelId = DEFAULT_CHANNEL_ID) {
 
   if (channelId) {
     latestQuery = latestQuery.eq("channel_id", channelId);
+  }
+
+  if (userId) {
+    latestQuery = latestQuery.eq("user_id", userId);
   }
 
   const { data: latestData, error: latestError } = await latestQuery.maybeSingle();
@@ -60,6 +64,10 @@ export async function getChannelGrowth(channelId = DEFAULT_CHANNEL_ID) {
 
   if (channelId) {
     oldQuery = oldQuery.eq("channel_id", channelId);
+  }
+
+  if (userId) {
+    oldQuery = oldQuery.eq("user_id", userId);
   }
 
   const { data: oldData, error: oldError } = await oldQuery.maybeSingle();
