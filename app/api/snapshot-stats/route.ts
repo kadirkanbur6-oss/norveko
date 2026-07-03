@@ -8,12 +8,13 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const SNAPSHOT_SECRET = process.env.SNAPSHOT_SECRET!;
 
 const supabaseService = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const CRON_SECRET = process.env.CRON_SECRET!;
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization") || "";
   const token = authHeader.replace(/^Bearer\s+/i, "");
 
-  if (!token || token !== SNAPSHOT_SECRET) {
+  if (!token || (token !== SNAPSHOT_SECRET && token !== CRON_SECRET)) {
     return NextResponse.json(
       { success: false, error: "Unauthorized" },
       { status: 401 }
