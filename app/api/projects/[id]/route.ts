@@ -69,6 +69,57 @@ export async function GET(
   }
 }
 
+// Projeyi güncelle
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const { supabase, session } = await getSupabaseWithSession();
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const { title, content } = body;
+
+    const updates: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (typeof title === "string" && title.trim().length > 0) {
+      updates.title = title.trim();
+    }
+
+    if (content && typeof content === "object") {
+      updates.content = content;
+    }
+
+    const { error } = await supabase
+      .from("projects")
+      .update(updates)
+      .eq("id", id)
+      .eq("user_id", session.user.id);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json(
+      { success: false, error: message },
+      { status: 500 }
+    );
+  }
+}
+
 // Projeyi sil
 export async function DELETE(
   request: Request,

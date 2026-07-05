@@ -9,7 +9,10 @@ import {
   Copy,
   FolderOpen,
   Loader2,
+  Pencil,
+  Save,
   Trash2,
+  X,
 } from "lucide-react";
 import Sidebar from "../../components/Sidebar";
 
@@ -65,6 +68,13 @@ export default function ProjectDetailPage() {
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Düzenleme durumları
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState<VideoContent | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
+
   useEffect(() => {
     async function loadProject() {
       try {
@@ -85,6 +95,59 @@ export default function ProjectDetailPage() {
 
     loadProject();
   }, [projectId]);
+
+  function startEditing() {
+    if (!project?.content) return;
+    setEditTitle(project.title);
+    // İçeriğin kopyasını al (orijinali bozulmasın)
+    setEditContent(JSON.parse(JSON.stringify(project.content)));
+    setEditing(true);
+    setSaveMessage("");
+  }
+
+  function cancelEditing() {
+    setEditing(false);
+    setEditContent(null);
+    setSaveMessage("");
+  }
+
+  async function handleSave() {
+    if (!editContent) return;
+
+    setSaving(true);
+    setSaveMessage("");
+
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editTitle,
+          content: editContent,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        throw new Error(data.error || "Kaydetme başarısız oldu.");
+      }
+
+      // Yerel veriyi güncelle
+      setProject((prev) =>
+        prev ? { ...prev, title: editTitle.trim(), content: editContent } : prev
+      );
+      setEditing(false);
+      setSaveMessage("Değişiklikler kaydedildi ✓");
+      setTimeout(() => setSaveMessage(""), 3000);
+    } catch (err) {
+      setSaveMessage(
+        err instanceof Error ? err.message : "Bilinmeyen hata oluştu."
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
 
   function getTabText(tab: TabId): string {
     const content = project?.content;
@@ -150,6 +213,185 @@ export default function ProjectDetailPage() {
     });
   }
 
+  const inputClass =
+    "w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-sm text-white outline-none focus:border-blue-400/50";
+  const labelClass = "mb-1 block text-xs uppercase tracking-wider text-gray-500";
+
+  function renderEditForm() {
+    if (!editContent) return null;
+
+    return (
+      <div className="mt-8 space-y-6 rounded-2xl border border-blue-400/30 bg-white/[0.03] p-6">
+        <div>
+          <label className={labelClass}>Proje Başlığı</label>
+          <input
+            type="text"
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <label className={labelClass}>Hook</label>
+          <textarea
+            value={editContent.hook}
+            onChange={(e) =>
+              setEditContent({ ...editContent, hook: e.target.value })
+            }
+            rows={2}
+            className={`${inputClass} resize-none`}
+          />
+        </div>
+
+        <div>
+          <label className={labelClass}>Senaryo (Voice-over)</label>
+          <textarea
+            value={editContent.script}
+            onChange={(e) =>
+              setEditContent({ ...editContent, script: e.target.value })
+            }
+            rows={8}
+            className={`${inputClass} resize-y`}
+          />
+        </div>
+
+        <div>
+          <label className={labelClass}>Sahneler</label>
+          <div className="space-y-4">
+            {editContent.scenes.map((scene, index) => (
+              <div
+                key={index}
+                className="rounded-xl border border-white/10 bg-[#0d0d16] p-4"
+              >
+                <p className="mb-2 text-xs font-semibold text-blue-300">
+                  Sahne {scene.sceneNumber}
+                </p>
+                <label className={labelClass}>Açıklama (Türkçe)</label>
+                <textarea
+                  value={scene.description}
+                  onChange={(e) => {
+                    const scenes = [...editContent.scenes];
+                    scenes[index] = {
+                      ...scenes[index],
+                      description: e.target.value,
+                    };
+                    setEditContent({ ...editContent, scenes });
+                  }}
+                  rows={2}
+                  className={`${inputClass} mb-3 resize-none`}
+                />
+                <label className={labelClass}>Video Prompt (İngilizce)</label>
+                <textarea
+                  value={scene.videoPrompt}
+                  onChange={(e) => {
+                    const scenes = [...editContent.scenes];
+                    scenes[index] = {
+                      ...scenes[index],
+                      videoPrompt: e.target.value,
+                    };
+                    setEditContent({ ...editContent, scenes });
+                  }}
+                  rows={3}
+                  className={`${inputClass} resize-none`}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className={labelClass}>
+            Başlık Önerileri (her satıra bir başlık)
+          </label>
+          <textarea
+            value={editContent.titles.join("\n")}
+            onChange={(e) =>
+              setEditContent({
+                ...editContent,
+                titles: e.target.value.split("\n"),
+              })
+            }
+            rows={3}
+            className={`${inputClass} resize-none`}
+          />
+        </div>
+
+        <div>
+          <label className={labelClass}>Açıklama</label>
+          <textarea
+            value={editContent.description}
+            onChange={(e) =>
+              setEditContent({ ...editContent, description: e.target.value })
+            }
+            rows={4}
+            className={`${inputClass} resize-y`}
+          />
+        </div>
+
+        <div>
+          <label className={labelClass}>Etiketler (virgülle ayır)</label>
+          <textarea
+            value={editContent.tags.join(", ")}
+            onChange={(e) =>
+              setEditContent({
+                ...editContent,
+                tags: e.target.value
+                  .split(",")
+                  .map((t) => t.trim())
+                  .filter((t) => t.length > 0),
+              })
+            }
+            rows={2}
+            className={`${inputClass} resize-none`}
+          />
+        </div>
+
+        <div>
+          <label className={labelClass}>Thumbnail Fikri</label>
+          <textarea
+            value={editContent.thumbnailIdea}
+            onChange={(e) =>
+              setEditContent({ ...editContent, thumbnailIdea: e.target.value })
+            }
+            rows={3}
+            className={`${inputClass} resize-none`}
+          />
+        </div>
+
+        {/* Kaydet / Vazgeç */}
+        <div className="flex gap-3">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 py-3 font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+          >
+            {saving ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Save size={18} />
+            )}
+            {saving ? "Kaydediliyor..." : "Kaydet"}
+          </button>
+          <button
+            onClick={cancelEditing}
+            disabled={saving}
+            className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-6 py-3 text-gray-300 transition hover:text-white disabled:opacity-50"
+          >
+            <X size={18} />
+            Vazgeç
+          </button>
+        </div>
+
+        {saveMessage && (
+          <p className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center text-sm text-gray-300">
+            {saveMessage}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-[#0a0a12] text-white">
       <Sidebar />
@@ -191,18 +433,29 @@ export default function ProjectDetailPage() {
                   </div>
                 </div>
 
-                <button
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="flex shrink-0 items-center gap-2 rounded-xl border border-red-400/20 bg-red-500/5 px-3 py-2 text-sm text-red-300 transition hover:bg-red-500/15 disabled:opacity-50"
-                >
-                  {deleting ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
-                    <Trash2 size={16} />
+                <div className="flex shrink-0 gap-2">
+                  {!editing && project.content && (
+                    <button
+                      onClick={startEditing}
+                      className="flex items-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-200 transition hover:bg-blue-500/20"
+                    >
+                      <Pencil size={16} />
+                      Düzenle
+                    </button>
                   )}
-                  Sil
-                </button>
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="flex items-center gap-2 rounded-xl border border-red-400/20 bg-red-500/5 px-3 py-2 text-sm text-red-300 transition hover:bg-red-500/15 disabled:opacity-50"
+                  >
+                    {deleting ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Trash2 size={16} />
+                    )}
+                    Sil
+                  </button>
+                </div>
               </div>
 
               {/* Etiketler */}
@@ -227,8 +480,16 @@ export default function ProjectDetailPage() {
                 </span>
               </div>
 
-              {/* İçerik */}
-              {project.content ? (
+              {saveMessage && !editing && (
+                <p className="mt-4 rounded-xl border border-green-400/30 bg-green-500/10 p-3 text-sm text-green-300">
+                  {saveMessage}
+                </p>
+              )}
+
+              {/* İçerik: Düzenleme modu veya görüntüleme modu */}
+              {editing ? (
+                renderEditForm()
+              ) : project.content ? (
                 <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
                   {/* Sekmeler */}
                   <div className="flex flex-wrap gap-2">
