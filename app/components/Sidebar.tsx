@@ -1,9 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
+  Coins,
+  CreditCard,
   FileText,
   FolderOpen,
   Layers,
@@ -18,6 +21,7 @@ const navItems = [
   { label: "Dashboard", icon: BarChart3, href: "/dashboard" },
   { label: "AI Workspace", icon: Wand2, href: "/chat" },
   { label: "Projects", icon: FolderOpen, href: "/projects" },
+  { label: "Billing", icon: CreditCard, href: "/billing" },
   { label: "Settings", icon: Settings, href: "/settings" },
   { label: "AI Insights", icon: Sparkles, href: null },
   { label: "Content", icon: FileText, href: null },
@@ -27,9 +31,26 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const [credits, setCredits] = useState<number | null>(null);
+
+  useEffect(() => {
+    async function loadCredits() {
+      try {
+        const res = await fetch("/api/credits");
+        const data = await res.json();
+        if (data.success) {
+          setCredits(data.credits);
+        }
+      } catch {
+        // Silently ignore — balance just won't show
+      }
+    }
+
+    loadCredits();
+  }, [pathname]);
 
   return (
-    <aside className="w-72 border-r border-white/10 bg-white/[0.03] p-6">
+    <aside className="flex w-72 flex-col border-r border-white/10 bg-white/[0.03] p-6">
       <div className="flex items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-white/10">
           <Layers className="text-blue-300" />
@@ -41,7 +62,7 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <div className="mt-10">
+      <div className="mt-10 flex-1">
         <p className="mb-4 text-sm uppercase tracking-[4px] text-gray-500">
           Menu
         </p>
@@ -89,6 +110,22 @@ export default function Sidebar() {
           })}
         </div>
       </div>
+
+      {/* Credit balance — links to Billing */}
+      <Link
+        href="/billing"
+        className="mt-6 block rounded-2xl border border-yellow-400/20 bg-yellow-500/5 px-4 py-4 transition hover:border-yellow-400/40 hover:bg-yellow-500/10"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Coins size={18} className="text-yellow-400" />
+            <span className="text-sm text-gray-300">Credits</span>
+          </div>
+          <span className="text-lg font-bold text-yellow-300">
+            {credits === null ? "—" : credits}
+          </span>
+        </div>
+      </Link>
     </aside>
   );
 }
