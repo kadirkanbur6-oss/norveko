@@ -1,5 +1,9 @@
 @AGENTS.md
 
+## ÇÖZÜLEN KRİTİK HATALAR
+
+- GÜVENLİK DÜZELTMESİ: Cache tablolarına (channel_stats_snapshots, channel_videos_cache) erişen sorgular önceden çoğunlukla channel_id bazlıydı, ama RLS koruması user_id bazlıydı. Bu uyumsuzluk, teorik olarak bir kullanıcının başka bir kullanıcının (herkese açık) Channel ID'sini bilmesi durumunda o kullanıcının cache verisine erişebilmesi riskini taşıyordu. Düzeltme: tüm sorgular artık asıl güvenlik sınırı olarak user_id kullanıyor (channel_id sadece ikincil filtre). Etkilenen dosyalar: dashboardData.ts, tüm route.ts dosyaları, StatsCards.tsx, RecentVideos.tsx, ChannelHealth.tsx, channelGrowth.ts, channelHealth.ts, supabase-server.ts. Snapshot yazma akışı da kullanıcı bazlı hale getirildi (cron artık her bağlı kullanıcı için ayrı satır yazıyor).
+
 ## PROJECT STATUS (Son güncelleme: 2026-07-03)
 
 1. TAMAMLANAN FAZLAR:
