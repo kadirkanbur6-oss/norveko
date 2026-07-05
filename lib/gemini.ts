@@ -8,7 +8,7 @@ if (!GEMINI_API_KEY) {
 }
 
 // ==========================================
-// ORTAK YARDIMCILAR (Gemini native endpoint)
+// SHARED HELPERS (Gemini native endpoint)
 // ==========================================
 
 async function callGemini(
@@ -76,66 +76,28 @@ function extractResponseText(result: any): string | null {
 }
 
 function extractJson(rawText: string): any {
-  const cleaned = normalizeJsonText(rawText);
+  // Strip markdown code fences first
+  const cleaned = rawText
+    .replace(/```json/gi, "")
+    .replace(/```/g, "")
+    .trim();
 
+  // Try direct parse
   try {
     return JSON.parse(cleaned);
   } catch {
-    const candidate = extractBalancedJson(cleaned);
-    if (candidate) {
-      return JSON.parse(candidate);
+    // Fall back to extracting the first { ... last } block
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start !== -1 && end !== -1 && end > start) {
+      return JSON.parse(cleaned.slice(start, end + 1));
     }
-    throw new Error("JSON bulunamadı");
+    throw new Error("No JSON found in response");
   }
-}
-
-function normalizeJsonText(rawText: string): string {
-  return rawText
-    .replace(/```json/gi, "")
-    .replace(/```/g, "")
-    .replace(/^\s*json\s*/i, "")
-    .trim();
-}
-
-function extractBalancedJson(text: string): string | null {
-  const start = text.indexOf("{");
-  if (start === -1) return null;
-
-  let depth = 0;
-  let inString = false;
-  let escaped = false;
-
-  for (let i = start; i < text.length; i += 1) {
-    const char = text[i];
-
-    if (inString) {
-      if (escaped) {
-        escaped = false;
-      } else if (char === "\\") {
-        escaped = true;
-      } else if (char === '"') {
-        inString = false;
-      }
-      continue;
-    }
-
-    if (char === '"') {
-      inString = true;
-    } else if (char === "{") {
-      depth += 1;
-    } else if (char === "}") {
-      depth -= 1;
-      if (depth === 0) {
-        return text.slice(start, i + 1).trim();
-      }
-    }
-  }
-
-  return null;
 }
 
 // ==========================================
-// KANAL ANALİZİ (AI INSIGHTS)
+// CHANNEL ANALYSIS (AI INSIGHTS)
 // ==========================================
 
 export interface RecentVideoSummary {
@@ -193,7 +155,7 @@ Provide the suggestions as short, clear bullets or numbered items. If growth dat
 }
 
 // ==========================================
-// AI WORKSPACE - VIDEO İÇERİK ÜRETİMİ
+// AI WORKSPACE - VIDEO CONTENT GENERATION
 // ==========================================
 
 export interface VideoContentInput {
@@ -201,6 +163,7 @@ export interface VideoContentInput {
   platform: string;
   style: string;
   duration: string;
+  language?: string;
 }
 
 export interface VideoScene {
@@ -237,40 +200,44 @@ export async function generateVideoContent(
       thumbnailIdea: parsed.thumbnailIdea ?? "",
     };
   } catch {
-    throw new Error("AI çıktısı çözümlenemedi. Lütfen tekrar deneyin.");
+    throw new Error("Could not parse the AI output. Please try again.");
   }
 }
 
 function buildVideoContentPrompt(input: VideoContentInput) {
-  return `Sen profesyonel bir video içerik üreticisi asistanısın. Aşağıdaki video fikri için eksiksiz bir üretim paketi hazırla.
+  const lang = input.language || "English";
 
-Video fikri: ${input.idea}
+  return `You are a professional video content production assistant. Create a complete production package for the video idea below.
+
+Video idea: ${input.idea}
 Platform: ${input.platform}
-Stil: ${input.style}
-Hedef süre: ${input.duration}
+Style: ${input.style}
+Target duration: ${input.duration}
+Output language: ${lang}
 
-Kurallar:
-- Tüm metinler Türkçe olsun (videoPrompt alanları hariç, onlar İngilizce olsun çünkü AI video araçlarında kullanılacak).
-- Senaryo, seçilen süreye uygun uzunlukta olsun.
-- Sahne sayısı süreye uygun olsun (30-60 saniye için 4-6 sahne, 3 dakika için 8-10 sahne, 8 dakika için 12-15 sahne).
-- videoPrompt alanları Kling/Runway gibi AI video araçlarına direkt yapıştırılabilecek, sinematik, detaylı İngilizce promptlar olsun.
-- Başlıklar tıklama isteği uyandırsın ama clickbait yalanı olmasın.
+Rules:
+- Write ALL text content (hook, script, scene descriptions, titles, description, tags, thumbnail idea) in ${lang}.
+- EXCEPTION: videoPrompt fields must ALWAYS be in English, because they will be pasted into AI video tools like Kling or Runway.
+- The script length must match the target duration.
+- Scene count must match the duration (4-6 scenes for 30-60 seconds, 8-10 for 3 minutes, 12-15 for 8 minutes).
+- videoPrompt fields must be detailed, cinematic English prompts ready to paste into AI video generators.
+- Titles should drive clicks without being dishonest clickbait.
 
-SADECE aşağıdaki JSON formatında cevap ver:
+Respond ONLY in the following JSON format:
 
 {
-  "hook": "Videonun ilk 3 saniyesinde söylenecek dikkat çekici açılış cümlesi",
-  "script": "Videonun tam seslendirme metni (voice-over). Akıcı, konuşma dilinde.",
+  "hook": "Attention-grabbing opening line for the first 3 seconds",
+  "script": "Full voice-over script. Natural, spoken language.",
   "scenes": [
     {
       "sceneNumber": 1,
-      "description": "Bu sahnede ne oluyor (Türkçe kısa açıklama)",
+      "description": "What happens in this scene (short description in ${lang})",
       "videoPrompt": "Detailed cinematic English prompt for AI video generation"
     }
   ],
-  "titles": ["Başlık önerisi 1", "Başlık önerisi 2", "Başlık önerisi 3"],
-  "description": "YouTube/platform açıklaması. İlk 2 satır dikkat çekici olsun.",
-  "tags": ["etiket1", "etiket2", "etiket3"],
-  "thumbnailIdea": "Thumbnail için detaylı görsel fikir açıklaması"
+  "titles": ["Title option 1", "Title option 2", "Title option 3"],
+  "description": "Platform description. First 2 lines must hook the reader.",
+  "tags": ["tag1", "tag2", "tag3"],
+  "thumbnailIdea": "Detailed visual concept for the thumbnail"
 }`;
 }

@@ -34,13 +34,13 @@ export default function SettingsPage() {
         const data = await res.json();
 
         if (!data.success) {
-          throw new Error(data.error || "Ayarlar yüklenemedi.");
+          throw new Error(data.error || "Failed to load settings.");
         }
 
         setSettings(data.settings);
         setChannelInput(data.settings.channelId ?? "");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Bilinmeyen hata");
+        setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         setLoading(false);
       }
@@ -64,19 +64,19 @@ export default function SettingsPage() {
       const data = await res.json();
 
       if (!data.success) {
-        throw new Error(data.error || "Kaydetme başarısız oldu.");
+        throw new Error(data.error || "Failed to save.");
       }
 
       setChannelSaved(true);
       setChannelMessage(
-        "Kanal güncellendi ✓ Yeni istatistikler bir sonraki veri toplamada gelecek."
+        "Channel updated ✓ New stats will appear after the next data snapshot."
       );
       setSettings((prev) =>
         prev ? { ...prev, channelId: channelInput.trim() } : prev
       );
     } catch (err) {
       setChannelMessage(
-        err instanceof Error ? err.message : "Bilinmeyen hata oluştu."
+        err instanceof Error ? err.message : "An unknown error occurred."
       );
     } finally {
       setSavingChannel(false);
@@ -85,7 +85,7 @@ export default function SettingsPage() {
 
   function formatDate(dateStr: string | null) {
     if (!dateStr) return "-";
-    return new Date(dateStr).toLocaleDateString("tr-TR", {
+    return new Date(dateStr).toLocaleDateString("en-US", {
       day: "numeric",
       month: "long",
       year: "numeric",
@@ -98,15 +98,15 @@ export default function SettingsPage() {
 
       <main className="flex-1 p-8">
         <div className="mx-auto max-w-3xl">
-          {/* Başlık */}
+          {/* Header */}
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-400/30 bg-blue-500/10">
               <SettingsIcon className="text-blue-300" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Ayarlar</h1>
+              <h1 className="text-2xl font-bold">Settings</h1>
               <p className="text-sm text-gray-400">
-                Hesap ve kanal yönetimi
+                Account and channel management
               </p>
             </div>
           </div>
@@ -121,41 +121,41 @@ export default function SettingsPage() {
             </p>
           ) : settings ? (
             <div className="mt-8 space-y-6">
-              {/* Profil kartı */}
+              {/* Profile card */}
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
                 <div className="flex items-center gap-2">
                   <Mail size={18} className="text-blue-300" />
-                  <h2 className="font-semibold">Profil</h2>
+                  <h2 className="font-semibold">Profile</h2>
                 </div>
 
                 <div className="mt-4 space-y-3 text-sm">
                   <div className="flex items-center justify-between rounded-xl border border-white/10 bg-[#0d0d16] p-4">
-                    <span className="text-gray-400">E-posta</span>
+                    <span className="text-gray-400">Email</span>
                     <span>{settings.email}</span>
                   </div>
                   <div className="flex items-center justify-between rounded-xl border border-white/10 bg-[#0d0d16] p-4">
-                    <span className="text-gray-400">Üyelik tarihi</span>
+                    <span className="text-gray-400">Member since</span>
                     <span>{formatDate(settings.createdAt)}</span>
                   </div>
                 </div>
               </div>
 
-              {/* YouTube kanal kartı */}
+              {/* YouTube channel card */}
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
                 <div className="flex items-center gap-2">
                   <Video size={18} className="text-red-400" />
-                  <h2 className="font-semibold">YouTube Kanalı</h2>
+                  <h2 className="font-semibold">YouTube Channel</h2>
                 </div>
 
                 <p className="mt-2 text-sm text-gray-400">
-                  Dashboard istatistikleri bu kanaldan çekilir. Kanal ID
-                  &quot;UC&quot; ile başlar — YouTube Studio → Ayarlar → Kanal →
-                  Gelişmiş ayarlar bölümünde bulabilirsin.
+                  Dashboard stats are pulled from this channel. Channel IDs
+                  start with &quot;UC&quot; — find yours in YouTube Studio →
+                  Settings → Channel → Advanced settings.
                 </p>
 
                 <div className="mt-4">
                   <label className="mb-1 block text-xs uppercase tracking-wider text-gray-500">
-                    Kanal ID
+                    Channel ID
                   </label>
                   <input
                     type="text"
@@ -186,10 +186,10 @@ export default function SettingsPage() {
                     <Save size={16} />
                   )}
                   {savingChannel
-                    ? "Kaydediliyor..."
+                    ? "Saving..."
                     : channelSaved
-                    ? "Kaydedildi"
-                    : "Kanalı Güncelle"}
+                    ? "Saved"
+                    : "Update Channel"}
                 </button>
 
                 {channelMessage && (

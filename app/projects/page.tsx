@@ -37,22 +37,22 @@ export default function ProjectsPage() {
       const data = await res.json();
 
       if (!data.success) {
-        throw new Error(data.error || "Projeler yüklenemedi.");
+        throw new Error(data.error || "Failed to load projects.");
       }
 
       setProjects(data.projects);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Bilinmeyen hata");
+      setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
     }
   }
 
   async function handleDelete(e: React.MouseEvent, id: string) {
-    e.stopPropagation(); // Karta tıklama olayını engelle
+    e.stopPropagation(); // Prevent card click
 
     const confirmed = window.confirm(
-      "Bu projeyi silmek istediğine emin misin? Bu işlem geri alınamaz."
+      "Are you sure you want to delete this project? This cannot be undone."
     );
     if (!confirmed) return;
 
@@ -63,19 +63,19 @@ export default function ProjectsPage() {
       const data = await res.json();
 
       if (!data.success) {
-        throw new Error(data.error || "Silme başarısız oldu.");
+        throw new Error(data.error || "Failed to delete.");
       }
 
       setProjects((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Bilinmeyen hata");
+      setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setDeletingId(null);
     }
   }
 
   function formatDate(dateStr: string) {
-    return new Date(dateStr).toLocaleDateString("tr-TR", {
+    return new Date(dateStr).toLocaleDateString("en-US", {
       day: "numeric",
       month: "long",
       year: "numeric",
@@ -88,15 +88,15 @@ export default function ProjectsPage() {
 
       <main className="flex-1 p-8">
         <div className="mx-auto max-w-4xl">
-          {/* Başlık */}
+          {/* Header */}
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-400/30 bg-blue-500/10">
               <FolderOpen className="text-blue-300" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Projeler</h1>
+              <h1 className="text-2xl font-bold">Projects</h1>
               <p className="text-sm text-gray-400">
-                Kaydettiğin video projeleri
+                Your saved video projects
               </p>
             </div>
           </div>
@@ -114,13 +114,13 @@ export default function ProjectsPage() {
           ) : projects.length === 0 ? (
             <div className="mt-16 rounded-2xl border border-white/10 bg-white/[0.03] p-12 text-center">
               <FolderOpen size={40} className="mx-auto text-gray-500" />
-              <p className="mt-4 text-gray-400">Henüz kayıtlı projen yok.</p>
+              <p className="mt-4 text-gray-400">No saved projects yet.</p>
               <Link
                 href="/chat"
                 className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-3 font-semibold text-white transition hover:opacity-90"
               >
                 <Wand2 size={18} />
-                İlk Projeni Üret
+                Generate Your First Project
               </Link>
             </div>
           ) : (
@@ -173,7 +173,7 @@ export default function ProjectsPage() {
                       ) : (
                         <Trash2 size={16} />
                       )}
-                      Sil
+                      Delete
                     </button>
                   </div>
                 </div>

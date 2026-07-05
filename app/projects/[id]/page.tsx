@@ -45,12 +45,12 @@ interface Project {
 }
 
 const TABS = [
-  { id: "script", label: "Senaryo" },
-  { id: "scenes", label: "Sahne Planı" },
-  { id: "prompts", label: "Video Promptları" },
-  { id: "titles", label: "Başlıklar" },
-  { id: "description", label: "Açıklama" },
-  { id: "tags", label: "Etiketler" },
+  { id: "script", label: "Script" },
+  { id: "scenes", label: "Scene Plan" },
+  { id: "prompts", label: "Video Prompts" },
+  { id: "titles", label: "Titles" },
+  { id: "description", label: "Description" },
+  { id: "tags", label: "Tags" },
   { id: "thumbnail", label: "Thumbnail" },
 ] as const;
 
@@ -68,7 +68,7 @@ export default function ProjectDetailPage() {
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // Düzenleme durumları
+  // Editing state
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState<VideoContent | null>(null);
@@ -82,12 +82,12 @@ export default function ProjectDetailPage() {
         const data = await res.json();
 
         if (!data.success) {
-          throw new Error(data.error || "Proje yüklenemedi.");
+          throw new Error(data.error || "Failed to load project.");
         }
 
         setProject(data.project);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Bilinmeyen hata");
+        setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         setLoading(false);
       }
@@ -99,7 +99,7 @@ export default function ProjectDetailPage() {
   function startEditing() {
     if (!project?.content) return;
     setEditTitle(project.title);
-    // İçeriğin kopyasını al (orijinali bozulmasın)
+    // Deep copy so the original stays intact
     setEditContent(JSON.parse(JSON.stringify(project.content)));
     setEditing(true);
     setSaveMessage("");
@@ -130,19 +130,19 @@ export default function ProjectDetailPage() {
       const data = await res.json();
 
       if (!data.success) {
-        throw new Error(data.error || "Kaydetme başarısız oldu.");
+        throw new Error(data.error || "Failed to save.");
       }
 
-      // Yerel veriyi güncelle
+      // Update local state
       setProject((prev) =>
         prev ? { ...prev, title: editTitle.trim(), content: editContent } : prev
       );
       setEditing(false);
-      setSaveMessage("Değişiklikler kaydedildi ✓");
+      setSaveMessage("Changes saved ✓");
       setTimeout(() => setSaveMessage(""), 3000);
     } catch (err) {
       setSaveMessage(
-        err instanceof Error ? err.message : "Bilinmeyen hata oluştu."
+        err instanceof Error ? err.message : "An unknown error occurred."
       );
     } finally {
       setSaving(false);
@@ -154,14 +154,14 @@ export default function ProjectDetailPage() {
     if (!content) return "";
     switch (tab) {
       case "script":
-        return `HOOK:\n${content.hook}\n\nSENARYO:\n${content.script}`;
+        return `HOOK:\n${content.hook}\n\nSCRIPT:\n${content.script}`;
       case "scenes":
         return (content.scenes ?? [])
-          .map((s) => `Sahne ${s.sceneNumber}: ${s.description}`)
+          .map((s) => `Scene ${s.sceneNumber}: ${s.description}`)
           .join("\n\n");
       case "prompts":
         return (content.scenes ?? [])
-          .map((s) => `Sahne ${s.sceneNumber}:\n${s.videoPrompt}`)
+          .map((s) => `Scene ${s.sceneNumber}:\n${s.videoPrompt}`)
           .join("\n\n");
       case "titles":
         return (content.titles ?? []).join("\n");
@@ -182,7 +182,7 @@ export default function ProjectDetailPage() {
 
   async function handleDelete() {
     const confirmed = window.confirm(
-      "Bu projeyi silmek istediğine emin misin? Bu işlem geri alınamaz."
+      "Are you sure you want to delete this project? This cannot be undone."
     );
     if (!confirmed) return;
 
@@ -195,18 +195,18 @@ export default function ProjectDetailPage() {
       const data = await res.json();
 
       if (!data.success) {
-        throw new Error(data.error || "Silme başarısız oldu.");
+        throw new Error(data.error || "Failed to delete.");
       }
 
       router.push("/projects");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Bilinmeyen hata");
+      setError(err instanceof Error ? err.message : "Unknown error");
       setDeleting(false);
     }
   }
 
   function formatDate(dateStr: string) {
-    return new Date(dateStr).toLocaleDateString("tr-TR", {
+    return new Date(dateStr).toLocaleDateString("en-US", {
       day: "numeric",
       month: "long",
       year: "numeric",
@@ -223,7 +223,7 @@ export default function ProjectDetailPage() {
     return (
       <div className="mt-8 space-y-6 rounded-2xl border border-blue-400/30 bg-white/[0.03] p-6">
         <div>
-          <label className={labelClass}>Proje Başlığı</label>
+          <label className={labelClass}>Project Title</label>
           <input
             type="text"
             value={editTitle}
@@ -245,7 +245,7 @@ export default function ProjectDetailPage() {
         </div>
 
         <div>
-          <label className={labelClass}>Senaryo (Voice-over)</label>
+          <label className={labelClass}>Script (Voice-over)</label>
           <textarea
             value={editContent.script}
             onChange={(e) =>
@@ -257,7 +257,7 @@ export default function ProjectDetailPage() {
         </div>
 
         <div>
-          <label className={labelClass}>Sahneler</label>
+          <label className={labelClass}>Scenes</label>
           <div className="space-y-4">
             {editContent.scenes.map((scene, index) => (
               <div
@@ -265,9 +265,9 @@ export default function ProjectDetailPage() {
                 className="rounded-xl border border-white/10 bg-[#0d0d16] p-4"
               >
                 <p className="mb-2 text-xs font-semibold text-blue-300">
-                  Sahne {scene.sceneNumber}
+                  Scene {scene.sceneNumber}
                 </p>
-                <label className={labelClass}>Açıklama (Türkçe)</label>
+                <label className={labelClass}>Description</label>
                 <textarea
                   value={scene.description}
                   onChange={(e) => {
@@ -281,7 +281,7 @@ export default function ProjectDetailPage() {
                   rows={2}
                   className={`${inputClass} mb-3 resize-none`}
                 />
-                <label className={labelClass}>Video Prompt (İngilizce)</label>
+                <label className={labelClass}>Video Prompt (English)</label>
                 <textarea
                   value={scene.videoPrompt}
                   onChange={(e) => {
@@ -302,7 +302,7 @@ export default function ProjectDetailPage() {
 
         <div>
           <label className={labelClass}>
-            Başlık Önerileri (her satıra bir başlık)
+            Title Options (one per line)
           </label>
           <textarea
             value={editContent.titles.join("\n")}
@@ -318,7 +318,7 @@ export default function ProjectDetailPage() {
         </div>
 
         <div>
-          <label className={labelClass}>Açıklama</label>
+          <label className={labelClass}>Description</label>
           <textarea
             value={editContent.description}
             onChange={(e) =>
@@ -330,7 +330,7 @@ export default function ProjectDetailPage() {
         </div>
 
         <div>
-          <label className={labelClass}>Etiketler (virgülle ayır)</label>
+          <label className={labelClass}>Tags (comma separated)</label>
           <textarea
             value={editContent.tags.join(", ")}
             onChange={(e) =>
@@ -348,7 +348,7 @@ export default function ProjectDetailPage() {
         </div>
 
         <div>
-          <label className={labelClass}>Thumbnail Fikri</label>
+          <label className={labelClass}>Thumbnail Idea</label>
           <textarea
             value={editContent.thumbnailIdea}
             onChange={(e) =>
@@ -359,7 +359,7 @@ export default function ProjectDetailPage() {
           />
         </div>
 
-        {/* Kaydet / Vazgeç */}
+        {/* Save / Cancel */}
         <div className="flex gap-3">
           <button
             onClick={handleSave}
@@ -371,7 +371,7 @@ export default function ProjectDetailPage() {
             ) : (
               <Save size={18} />
             )}
-            {saving ? "Kaydediliyor..." : "Kaydet"}
+            {saving ? "Saving..." : "Save"}
           </button>
           <button
             onClick={cancelEditing}
@@ -379,7 +379,7 @@ export default function ProjectDetailPage() {
             className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-6 py-3 text-gray-300 transition hover:text-white disabled:opacity-50"
           >
             <X size={18} />
-            Vazgeç
+            Cancel
           </button>
         </div>
 
@@ -398,13 +398,13 @@ export default function ProjectDetailPage() {
 
       <main className="flex-1 p-8">
         <div className="mx-auto max-w-4xl">
-          {/* Geri dön */}
+          {/* Back link */}
           <Link
             href="/projects"
             className="inline-flex items-center gap-2 text-sm text-gray-400 transition hover:text-white"
           >
             <ArrowLeft size={16} />
-            Projelere Dön
+            Back to Projects
           </Link>
 
           {loading ? (
@@ -417,7 +417,7 @@ export default function ProjectDetailPage() {
             </p>
           ) : project ? (
             <>
-              {/* Başlık */}
+              {/* Header */}
               <div className="mt-6 flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-400/30 bg-blue-500/10">
@@ -440,7 +440,7 @@ export default function ProjectDetailPage() {
                       className="flex items-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-200 transition hover:bg-blue-500/20"
                     >
                       <Pencil size={16} />
-                      Düzenle
+                      Edit
                     </button>
                   )}
                   <button
@@ -453,12 +453,12 @@ export default function ProjectDetailPage() {
                     ) : (
                       <Trash2 size={16} />
                     )}
-                    Sil
+                    Delete
                   </button>
                 </div>
               </div>
 
-              {/* Etiketler */}
+              {/* Meta tags */}
               <div className="mt-4 flex flex-wrap gap-2 text-xs">
                 {project.platform && (
                   <span className="rounded-lg border border-blue-400/30 bg-blue-500/10 px-2 py-1 text-blue-200">
@@ -486,12 +486,12 @@ export default function ProjectDetailPage() {
                 </p>
               )}
 
-              {/* İçerik: Düzenleme modu veya görüntüleme modu */}
+              {/* Content: edit mode or view mode */}
               {editing ? (
                 renderEditForm()
               ) : project.content ? (
                 <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-                  {/* Sekmeler */}
+                  {/* Tabs */}
                   <div className="flex flex-wrap gap-2">
                     {TABS.map((tab) => (
                       <button
@@ -508,7 +508,7 @@ export default function ProjectDetailPage() {
                     ))}
                   </div>
 
-                  {/* Kopyala */}
+                  {/* Copy */}
                   <div className="mt-4 flex justify-end">
                     <button
                       onClick={handleCopy}
@@ -519,7 +519,7 @@ export default function ProjectDetailPage() {
                       ) : (
                         <Copy size={16} />
                       )}
-                      {copied ? "Kopyalandı" : "Kopyala"}
+                      {copied ? "Copied" : "Copy"}
                     </button>
                   </div>
 
@@ -529,7 +529,7 @@ export default function ProjectDetailPage() {
                 </div>
               ) : (
                 <p className="mt-8 rounded-xl border border-white/10 bg-white/[0.03] p-6 text-sm text-gray-400">
-                  Bu projede kayıtlı içerik bulunamadı.
+                  No content found in this project.
                 </p>
               )}
             </>

@@ -15,10 +15,10 @@ import {
 } from "lucide-react";
 
 const navItems = [
-  { label: "Dashboard", icon: BarChart3, href: "/" },
+  { label: "Dashboard", icon: BarChart3, href: "/dashboard" },
   { label: "AI Workspace", icon: Wand2, href: "/chat" },
-  { label: "Projeler", icon: FolderOpen, href: "/projects" },
-  { label: "Ayarlar", icon: Settings, href: "/settings" },
+  { label: "Projects", icon: FolderOpen, href: "/projects" },
+  { label: "Settings", icon: Settings, href: "/settings" },
   { label: "AI Insights", icon: Sparkles, href: null },
   { label: "Content", icon: FileText, href: null },
   { label: "Audience", icon: Users, href: null },
@@ -43,7 +43,7 @@ export default function Sidebar() {
 
       <div className="mt-10">
         <p className="mb-4 text-sm uppercase tracking-[4px] text-gray-500">
-          Menü
+          Menu
         </p>
 
         <div className="space-y-3">
@@ -63,7 +63,7 @@ export default function Sidebar() {
                       {item.label}
                     </div>
                     <span className="text-[10px] uppercase tracking-wider text-gray-600">
-                      Yakında
+                      Soon
                     </span>
                   </div>
                 </div>

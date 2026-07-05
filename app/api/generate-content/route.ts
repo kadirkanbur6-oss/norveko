@@ -33,11 +33,11 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { idea, platform, style, duration } = body;
+    const { idea, platform, style, duration, language } = body;
 
     if (!idea || typeof idea !== "string" || idea.trim().length < 5) {
       return NextResponse.json(
-        { success: false, error: "Lütfen geçerli bir video fikri girin." },
+        { success: false, error: "Please enter a valid video idea." },
         { status: 400 }
       );
     }
@@ -45,8 +45,9 @@ export async function POST(request: Request) {
     const content = await generateVideoContent({
       idea: idea.trim(),
       platform: platform || "YouTube",
-      style: style || "Genel",
-      duration: duration || "60 saniye",
+      style: style || "General",
+      duration: duration || "60 seconds",
+      language: language || "English",
     });
 
     return NextResponse.json({ success: true, content });

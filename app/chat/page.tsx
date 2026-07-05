@@ -4,9 +4,10 @@ import { useState } from "react";
 import { Check, Copy, FolderPlus, Loader2, Sparkles, Wand2 } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 
-const PLATFORMS = ["YouTube Shorts", "TikTok", "Instagram Reels", "YouTube Uzun Video"];
-const STYLES = ["Gizem", "Belgesel", "Korku", "Eğitici", "Reklam", "Sinematik"];
-const DURATIONS = ["30 saniye", "60 saniye", "3 dakika", "8 dakika"];
+const PLATFORMS = ["YouTube Shorts", "TikTok", "Instagram Reels", "YouTube Long-form"];
+const STYLES = ["Mystery", "Documentary", "Horror", "Educational", "Ad / Promo", "Cinematic"];
+const DURATIONS = ["30 seconds", "60 seconds", "3 minutes", "8 minutes"];
+const LANGUAGES = ["English", "Türkçe", "Español", "Deutsch", "Français", "Português"];
 
 interface VideoScene {
   sceneNumber: number;
@@ -25,12 +26,12 @@ interface VideoContent {
 }
 
 const TABS = [
-  { id: "script", label: "Senaryo" },
-  { id: "scenes", label: "Sahne Planı" },
-  { id: "prompts", label: "Video Promptları" },
-  { id: "titles", label: "Başlıklar" },
-  { id: "description", label: "Açıklama" },
-  { id: "tags", label: "Etiketler" },
+  { id: "script", label: "Script" },
+  { id: "scenes", label: "Scene Plan" },
+  { id: "prompts", label: "Video Prompts" },
+  { id: "titles", label: "Titles" },
+  { id: "description", label: "Description" },
+  { id: "tags", label: "Tags" },
   { id: "thumbnail", label: "Thumbnail" },
 ] as const;
 
@@ -41,6 +42,7 @@ export default function ChatPage() {
   const [platform, setPlatform] = useState(PLATFORMS[0]);
   const [style, setStyle] = useState(STYLES[0]);
   const [duration, setDuration] = useState(DURATIONS[1]);
+  const [language, setLanguage] = useState(LANGUAGES[0]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [content, setContent] = useState<VideoContent | null>(null);
@@ -52,7 +54,7 @@ export default function ChatPage() {
 
   async function handleGenerate() {
     if (idea.trim().length < 5) {
-      setError("Lütfen video fikrini biraz daha detaylı yaz.");
+      setError("Please describe your video idea in a bit more detail.");
       return;
     }
 
@@ -66,19 +68,19 @@ export default function ChatPage() {
       const res = await fetch("/api/generate-content", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idea, platform, style, duration }),
+        body: JSON.stringify({ idea, platform, style, duration, language }),
       });
 
       const data = await res.json();
 
       if (!data.success) {
-        throw new Error(data.error || "Üretim başarısız oldu.");
+        throw new Error(data.error || "Generation failed.");
       }
 
       setContent(data.content);
       setActiveTab("script");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Bilinmeyen hata");
+      setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
     }
@@ -110,12 +112,12 @@ export default function ChatPage() {
       const data = await res.json();
 
       if (!data.success) {
-        throw new Error(data.error || "Kaydetme başarısız oldu.");
+        throw new Error(data.error || "Failed to save.");
       }
 
       setSaved(true);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Bilinmeyen hata");
+      setSaveError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setSaving(false);
     }
@@ -125,14 +127,14 @@ export default function ChatPage() {
     if (!content) return "";
     switch (tab) {
       case "script":
-        return `HOOK:\n${content.hook}\n\nSENARYO:\n${content.script}`;
+        return `HOOK:\n${content.hook}\n\nSCRIPT:\n${content.script}`;
       case "scenes":
         return content.scenes
-          .map((s) => `Sahne ${s.sceneNumber}: ${s.description}`)
+          .map((s) => `Scene ${s.sceneNumber}: ${s.description}`)
           .join("\n\n");
       case "prompts":
         return content.scenes
-          .map((s) => `Sahne ${s.sceneNumber}:\n${s.videoPrompt}`)
+          .map((s) => `Scene ${s.sceneNumber}:\n${s.videoPrompt}`)
           .join("\n\n");
       case "titles":
         return content.titles.join("\n");
@@ -151,13 +153,16 @@ export default function ChatPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  const selectClass =
+    "mt-2 w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-white outline-none focus:border-blue-400/50";
+
   return (
     <div className="flex min-h-screen bg-[#0a0a12] text-white">
       <Sidebar />
 
       <main className="flex-1 p-8">
         <div className="mx-auto max-w-4xl">
-          {/* Başlık */}
+          {/* Header */}
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-400/30 bg-blue-500/10">
               <Wand2 className="text-blue-300" />
@@ -165,29 +170,29 @@ export default function ChatPage() {
             <div>
               <h1 className="text-2xl font-bold">AI Workspace</h1>
               <p className="text-sm text-gray-400">
-                Fikrini yaz, üretim paketini al
+                Drop your idea, get a full production package
               </p>
             </div>
           </div>
 
           {/* Form */}
           <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-            <label className="text-sm text-gray-400">Video Fikri</label>
+            <label className="text-sm text-gray-400">Video Idea</label>
             <textarea
               value={idea}
               onChange={(e) => setIdea(e.target.value)}
-              placeholder="Örn: Bermuda Şeytan Üçgeni'nde kaybolan uçakların gizemi..."
+              placeholder="e.g. The mystery of planes lost in the Bermuda Triangle..."
               rows={3}
               className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] p-4 text-white placeholder-gray-500 outline-none focus:border-blue-400/50"
             />
 
-            <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <label className="text-sm text-gray-400">Platform</label>
                 <select
                   value={platform}
                   onChange={(e) => setPlatform(e.target.value)}
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-white outline-none focus:border-blue-400/50"
+                  className={selectClass}
                 >
                   {PLATFORMS.map((p) => (
                     <option key={p} value={p}>{p}</option>
@@ -196,11 +201,11 @@ export default function ChatPage() {
               </div>
 
               <div>
-                <label className="text-sm text-gray-400">Stil</label>
+                <label className="text-sm text-gray-400">Style</label>
                 <select
                   value={style}
                   onChange={(e) => setStyle(e.target.value)}
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-white outline-none focus:border-blue-400/50"
+                  className={selectClass}
                 >
                   {STYLES.map((s) => (
                     <option key={s} value={s}>{s}</option>
@@ -209,14 +214,27 @@ export default function ChatPage() {
               </div>
 
               <div>
-                <label className="text-sm text-gray-400">Süre</label>
+                <label className="text-sm text-gray-400">Duration</label>
                 <select
                   value={duration}
                   onChange={(e) => setDuration(e.target.value)}
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-white outline-none focus:border-blue-400/50"
+                  className={selectClass}
                 >
                   {DURATIONS.map((d) => (
                     <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400">Output Language</label>
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className={selectClass}
+                >
+                  {LANGUAGES.map((l) => (
+                    <option key={l} value={l}>{l}</option>
                   ))}
                 </select>
               </div>
@@ -230,12 +248,12 @@ export default function ChatPage() {
               {loading ? (
                 <>
                   <Loader2 size={18} className="animate-spin" />
-                  Üretiliyor... (30-60 saniye sürebilir)
+                  Generating... (may take 30-60 seconds)
                 </>
               ) : (
                 <>
                   <Sparkles size={18} />
-                  Üret
+                  Generate
                 </>
               )}
             </button>
@@ -247,10 +265,10 @@ export default function ChatPage() {
             )}
           </div>
 
-          {/* Sonuçlar */}
+          {/* Results */}
           {content && (
             <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-              {/* Sekmeler */}
+              {/* Tabs */}
               <div className="flex flex-wrap gap-2">
                 {TABS.map((tab) => (
                   <button
@@ -267,7 +285,7 @@ export default function ChatPage() {
                 ))}
               </div>
 
-              {/* Aksiyon butonları */}
+              {/* Action buttons */}
               <div className="mt-4 flex justify-end gap-2">
                 <button
                   onClick={handleSave}
@@ -281,7 +299,7 @@ export default function ChatPage() {
                   ) : (
                     <FolderPlus size={16} />
                   )}
-                  {saving ? "Kaydediliyor..." : saved ? "Kaydedildi" : "Projeye Kaydet"}
+                  {saving ? "Saving..." : saved ? "Saved" : "Save to Projects"}
                 </button>
 
                 <button
@@ -289,7 +307,7 @@ export default function ChatPage() {
                   className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-gray-300 transition hover:text-white"
                 >
                   {copied ? <Check size={16} className="text-green-400" /> : <Copy size={16} />}
-                  {copied ? "Kopyalandı" : "Kopyala"}
+                  {copied ? "Copied" : "Copy"}
                 </button>
               </div>
 
@@ -299,7 +317,7 @@ export default function ChatPage() {
                 </p>
               )}
 
-              {/* İçerik */}
+              {/* Content */}
               <div className="mt-4 whitespace-pre-wrap rounded-xl border border-white/10 bg-[#0d0d16] p-6 text-sm leading-relaxed text-gray-200">
                 {getTabText(activeTab)}
               </div>
