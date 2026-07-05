@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FolderOpen, Loader2, Trash2, Wand2 } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 
@@ -17,6 +18,7 @@ interface Project {
 }
 
 export default function ProjectsPage() {
+  const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -46,7 +48,9 @@ export default function ProjectsPage() {
     }
   }
 
-  async function handleDelete(id: string) {
+  async function handleDelete(e: React.MouseEvent, id: string) {
+    e.stopPropagation(); // Karta tıklama olayını engelle
+
     const confirmed = window.confirm(
       "Bu projeyi silmek istediğine emin misin? Bu işlem geri alınamaz."
     );
@@ -124,7 +128,8 @@ export default function ProjectsPage() {
               {projects.map((project) => (
                 <div
                   key={project.id}
-                  className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-white/20"
+                  onClick={() => router.push(`/projects/${project.id}`)}
+                  className="cursor-pointer rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-blue-400/40 hover:bg-white/[0.05]"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
@@ -159,7 +164,7 @@ export default function ProjectsPage() {
                     </div>
 
                     <button
-                      onClick={() => handleDelete(project.id)}
+                      onClick={(e) => handleDelete(e, project.id)}
                       disabled={deletingId === project.id}
                       className="flex shrink-0 items-center gap-2 rounded-xl border border-red-400/20 bg-red-500/5 px-3 py-2 text-sm text-red-300 transition hover:bg-red-500/15 disabled:opacity-50"
                     >
