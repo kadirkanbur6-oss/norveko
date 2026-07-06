@@ -6,14 +6,7 @@ export default async function ChannelHealth() {
   let health;
 
   if (!channelId || !userId) {
-    return (
-      <section className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-white">Channel Health</h2>
-        </div>
-        <p className="mt-4 text-gray-300">You have not connected a YouTube channel yet.</p>
-      </section>
-    );
+    return null;
   }
 
   try {

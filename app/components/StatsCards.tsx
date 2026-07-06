@@ -21,11 +21,7 @@ export default async function StatsCards() {
   const { channelId, userId } = await getUserChannelContext();
 
   if (!channelId || !userId) {
-    return (
-      <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6 text-gray-300">
-        You have not connected a YouTube channel yet.
-      </div>
-    );
+    return null;
   }
 
   try {

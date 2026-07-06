@@ -13,24 +13,7 @@ export default async function RecentVideos() {
   let error = false;
 
   if (!channelId || !userId) {
-    return (
-      <section className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-6">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-white">Recent Videos</h2>
-            <p className="mt-1 text-sm text-gray-400">
-              Daily cached performance from your latest YouTube uploads.
-            </p>
-          </div>
-
-          <span className="rounded-full border border-blue-400/30 bg-blue-500/10 px-4 py-2 text-sm text-blue-200">
-            Daily Cache
-          </span>
-        </div>
-
-        <p className="text-gray-300">You have not connected a YouTube channel yet.</p>
-      </section>
-    );
+    return null;
   }
 
   try {
