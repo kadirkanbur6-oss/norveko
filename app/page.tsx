@@ -1,30 +1,29 @@
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { createServerClient } from "@supabase/ssr";
+import { redirect } from "next/navigation";
 import LandingPage from "./components/LandingPage";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
-
 export default async function Home() {
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll: async () => {
-        const requestCookies = await cookies();
-        return requestCookies.getAll().map((cookie) => ({
-          name: cookie.name,
-          value: cookie.value,
-        }));
+  const cookieStore = await cookies();
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll() {},
       },
-    },
-  });
+    }
+  );
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // Giriş yapmış kullanıcı direkt dashboard'a
-  if (session?.user?.id) {
+  if (user) {
     redirect("/dashboard");
   }
 

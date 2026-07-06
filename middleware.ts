@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { createMiddlewareSupabaseClient } from "./lib/supabase-middleware";
 
 const PUBLIC_FILE = /(.*)\.(.*)$/;
-const AUTH_PAGES = ["/login", "/signup", "/connect-channel"];
+const PUBLIC_PAGES = ["/", "/login", "/signup"];
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
@@ -19,7 +19,7 @@ export async function middleware(request: NextRequest) {
   const session = data?.session ?? null;
 
   if (!session) {
-    if (!AUTH_PAGES.includes(pathname)) {
+    if (!PUBLIC_PAGES.includes(pathname)) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/login";
       return NextResponse.redirect(redirectUrl);
@@ -28,9 +28,9 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  if (AUTH_PAGES.includes(pathname) && pathname !== "/connect-channel") {
+  if (pathname === "/login" || pathname === "/signup") {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/";
+    redirectUrl.pathname = "/dashboard";
     return NextResponse.redirect(redirectUrl);
   }
 
