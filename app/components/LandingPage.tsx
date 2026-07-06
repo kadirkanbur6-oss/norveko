@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import HeroDemo from "./HeroDemo";
 import {
   ArrowRight,
   Check,
@@ -195,7 +196,7 @@ export default function LandingPage() {
       <section className="relative overflow-hidden">
         <div className="pointer-events-none absolute -top-40 left-1/2 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-gradient-to-r from-blue-600/20 to-purple-600/20 blur-3xl" />
 
-        <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-12 lg:grid-cols-2">
+        <div className="mx-auto grid max-w-6xl items-start gap-10 px-6 py-12 lg:grid-cols-2">
           <Reveal>
             <div>
               <span className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-4 py-1.5 text-xs text-blue-200">
@@ -241,46 +242,7 @@ export default function LandingPage() {
           <Reveal delay={150}>
             <div className="relative">
               <div className="absolute -inset-4 rounded-3xl bg-gradient-to-r from-blue-600/20 to-purple-600/20 blur-2xl" />
-              <GlassCard className="relative p-5">
-                <div className="mb-3 flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full bg-red-400/60" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-yellow-400/60" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-green-400/60" />
-                  <span className="ml-3 text-xs text-gray-500">norveko.app/chat</span>
-                </div>
-
-                <div className="rounded-xl border border-white/10 bg-[#0d0d16] p-3.5 text-sm">
-                  <p className="text-gray-500">Your idea</p>
-                  <p className="mt-1 text-gray-200">
-                    "5 morning habits that changed my life"
-                  </p>
-                </div>
-
-                <div className="mt-2.5 space-y-2">
-                  {[
-                    ["Hook", "You're wasting the first hour of your day..."],
-                    ["Scene 1 · Prompt", "Cinematic sunrise over a quiet bedroom, slow dolly-in..."],
-                    ["SEO Title", "5 Morning Habits That Actually Changed My Life"],
-                  ].map(([label, text]) => (
-                    <div
-                      key={label}
-                      className="rounded-xl border border-white/10 bg-white/[0.03] p-3"
-                    >
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-300">
-                        {label}
-                      </p>
-                      <p className="mt-0.5 truncate text-xs text-gray-300">{text}</p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-3 flex items-center justify-between rounded-xl bg-gradient-to-r from-blue-500/15 to-purple-600/15 p-3 text-xs">
-                  <span className="text-gray-300">Full package generated</span>
-                  <span className="flex items-center gap-1 text-green-300">
-                    <Check size={14} /> 2.4s
-                  </span>
-                </div>
-              </GlassCard>
+              <HeroDemo />
             </div>
           </Reveal>
         </div>
