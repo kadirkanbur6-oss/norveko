@@ -82,7 +82,7 @@ export default function Header() {
               <button
                 type="button"
                 onClick={() => {
-                  router.push("/connect-channel");
+                  router.push("/settings");
                   setMenuOpen(false);
                 }}
                 className="flex w-full items-center gap-2 rounded-3xl px-4 py-3 text-sm text-white transition hover:bg-white/5"

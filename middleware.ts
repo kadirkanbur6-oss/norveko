@@ -34,20 +34,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  const { data: channelData, error: channelError } = await supabase
-    .from("user_channels")
-    .select("channel_id")
-    .eq("user_id", session.user.id)
-    .maybeSingle();
-
-  const hasChannel = !!channelData?.channel_id;
-
-  if (!hasChannel && pathname !== "/connect-channel") {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/connect-channel";
-    return NextResponse.redirect(redirectUrl);
-  }
-
   return response;
 }
 
