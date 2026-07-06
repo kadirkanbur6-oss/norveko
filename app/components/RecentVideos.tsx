@@ -4,7 +4,7 @@ import { getCachedVideos } from "../../lib/dashboardData";
 import { getUserChannelContext } from "../../lib/supabase-server";
 
 function formatNumber(value: string | undefined) {
-  return Number(value ?? 0).toLocaleString("tr-TR");
+  return Number(value ?? 0).toLocaleString("en-US");
 }
 
 export default async function RecentVideos() {
@@ -19,12 +19,12 @@ export default async function RecentVideos() {
           <div>
             <h2 className="text-2xl font-bold text-white">Recent Videos</h2>
             <p className="mt-1 text-sm text-gray-400">
-              Live performance from your latest YouTube uploads.
+              Daily cached performance from your latest YouTube uploads.
             </p>
           </div>
 
           <span className="rounded-full border border-blue-400/30 bg-blue-500/10 px-4 py-2 text-sm text-blue-200">
-            YouTube Live
+            Daily Cache
           </span>
         </div>
 
@@ -34,7 +34,7 @@ export default async function RecentVideos() {
   }
 
   try {
-    videos = await getCachedVideos(channelId, userId);
+    videos = (await getCachedVideos(channelId, userId)) ?? [];
   } catch (err) {
     console.error("Recent videos error:", err);
     error = true;
@@ -58,6 +58,11 @@ export default async function RecentVideos() {
       {error ? (
         <p className="text-gray-300">
           Unable to load data right now, please try again later.
+        </p>
+      ) : videos.length === 0 ? (
+        <p className="text-gray-300">
+          No cached videos yet. Your latest uploads will appear here after the
+          next daily snapshot.
         </p>
       ) : (
         <div className="space-y-4">
@@ -86,7 +91,7 @@ export default async function RecentVideos() {
                   </h3>
 
                   <p className="mt-1 text-sm text-gray-400">
-                    {new Date(video.snippet.publishedAt).toLocaleDateString("tr-TR")}
+                    {new Date(video.snippet.publishedAt).toLocaleDateString("en-US")}
                   </p>
                 </div>
 

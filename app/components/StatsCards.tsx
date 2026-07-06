@@ -1,10 +1,10 @@
-import { Clock, Eye, MousePointerClick, Rocket } from "lucide-react";
+import { Eye, Film, Users } from "lucide-react";
 import { getCachedChannelStats } from "../../lib/dashboardData";
 import { getChannelGrowth } from "../lib/channelGrowth";
 import { getUserChannelContext } from "../../lib/supabase-server";
 
 function formatNumber(value: string) {
-  return Number(value).toLocaleString("tr-TR");
+  return Number(value).toLocaleString("en-US");
 }
 
 function formatPercent(value: number) {
@@ -67,25 +67,19 @@ export default async function StatsCards() {
     {
       title: "Subscribers",
       value: formatNumber(stats.subscriberCount ?? "0"),
-      icon: Clock,
+      icon: Users,
       metric: "subscribers",
     },
     {
       title: "Videos",
       value: formatNumber(stats.videoCount),
-      icon: MousePointerClick,
-      metric: "videos",
-    },
-    {
-      title: "Published Assets",
-      value: formatNumber(stats.videoCount),
-      icon: Rocket,
+      icon: Film,
       metric: "videos",
     },
   ];
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-6 md:grid-cols-3">
       {cards.map((item) => {
         const Icon = item.icon;
         const changeValue = growth?.[item.metric as keyof typeof growth];
