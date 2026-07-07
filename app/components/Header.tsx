@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, ChevronDown, LogOut, Search } from "lucide-react";
+import { Bell, ChevronDown, LogOut, Search, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
@@ -28,16 +28,16 @@ export default function Header() {
 
   async function handleSignOut() {
     await supabase.auth.signOut();
-    router.push("/login");
+    router.push("/");
   }
 
   return (
     <header className="flex items-center justify-between mb-10">
       <div>
-        <h1 className="text-5xl font-bold">Analytics Dashboard</h1>
+        <h1 className="text-5xl font-bold">Dashboard</h1>
 
         <p className="mt-2 text-gray-400">
-          Monitor your AI creator business in one place.
+          Manage your AI content workflow in one place.
         </p>
       </div>
 
@@ -63,15 +63,12 @@ export default function Header() {
             onClick={() => setMenuOpen((current) => !current)}
             className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2 transition hover:border-violet-300/30"
           >
-            <img
-              src="https://i.pravatar.cc/100"
-              className="h-10 w-10 rounded-xl"
-              alt="User avatar"
-            />
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-gray-300">
+              <User size={18} />
+            </div>
 
             <div className="text-left">
               <p className="font-semibold text-white">{displayName}</p>
-              <p className="text-xs text-gray-400">Premium</p>
             </div>
 
             <ChevronDown size={18} className="text-gray-400" />

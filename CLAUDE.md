@@ -95,3 +95,121 @@ göre hareket etme.
 - Tüm açıklamalar **Türkçe** yapılır (kod ve UI İngilizce).
 - Kod bloklarında her zaman Copy butonu kullanılır (elle seçim uzun blokları kesebilir).
 - Kadir beginner-intermediate seviyededir: adım adım açıklama beklenir.
+# CLAUDE.md — Norveko Project Context
+
+> Bu dosya, yeni bir Claude oturumu başladığında proje bağlamını geri yüklemek içindir.
+> Her büyük milestone sonrası güncellenmelidir. Son güncelleme: 2026-07-07
+
+## 1. Proje Nedir?
+
+**Norveko** — AI destekli video içerik üretim SaaS'ı. Hedef kitle: YouTube ve
+kısa video (Shorts/Reels/TikTok) üreticileri, global pazar. UI dili: **İngilizce**.
+
+**ÖNEMLİ — Kapsam geçmişi:** Proje başlangıçta bir YouTube analytics aracıydı
+(snapshot, büyüme, sağlık skoru). Daha sonra tam bir AI içerik üretim SaaS'ına
+genişletildi. Analytics altyapısı hâlâ kod tabanında durur ve çalışır, ancak
+artık ana ürün AI Workspace + kredi sistemidir. Eski analytics odaklı planlara
+göre hareket etme.
+
+- Canlı: https://norveko.app (Vercel, GitHub push → otomatik deploy)
+- MVP durumu: ~%85–90
+
+## 2. Tech Stack
+
+- Next.js App Router + TypeScript + TailwindCSS
+- Supabase: database + auth (RLS her tabloda aktif)
+- Vercel: hosting + Cron Jobs
+- YouTube Data API v3 (analytics tarafı)
+- Gemini API: `gemini-2.5-flash`, native Google endpoint,
+  `x-goog-api-key` header, `thinkingBudget: 0`,
+  `responseMimeType: "application/json"` + `extractJson` fallback
+
+## 3. Tamamlanan Modüller
+
+### AI Ürün (güncel odak)
+- **AI Workspace (`/chat`)**: Gemini destekli üretim endpoint'i. Çıktı:
+  hook, voice-over script, scene plan (sinematik İngilizce video promptları),
+  title options, description, tags, thumbnail concept.
+  Çok dilli çıktı: EN, TR, ES, DE, FR, PT.
+- **Projects**: Supabase `projects` tablosu (RLS), tam CRUD API route'ları,
+  `/projects` liste sayfası, `/projects/[id]` detay sayfası
+  (görüntüleme, bölüm bazlı kopyalama, başlık düzenleme PATCH, onaylı silme DELETE).
+  → Ayrı bir "Editor" modülüne gerek kalmadı, bu detay sayfası düzenleme ihtiyacını karşılıyor.
+- **Kredi sistemi**: `user_credits` + `credit_transactions` tabloları,
+  signup'ta 50 hoş geldin kredisi (trigger), üretim başına 5 kredi kesintisi,
+  hata durumunda otomatik iade. `deduct_credits` / `add_credits` RPC
+  (anon/authenticated execute yetkisi kaldırıldı — sadece service role).
+  Server-side işlemler için `SUPABASE_SERVICE_ROLE_KEY` ile admin client.
+- **Billing sayfası**: 3 paket ($9 / $29 / $59 → 500 / 2000 / 5000 kredi) — şu an "Coming soon".
+  Gerçek satın almaya çevirme işi Paddle ile yapılacak (bkz. Bölüm 5 → Ödeme Entegrasyonu).
+- **Dashboard**: `DashboardHighlights` — gerçek kredi bakiyesi, son projeler,
+  hızlı aksiyonlar. Fake/hardcoded veri YOK.
+  (Not: Sayfada hâlâ eski analytics kalıntıları var — bkz. Bölüm 7 bekleyen düzeltmeler.)
+- **Landing page (`/`)**: server-side session kontrolü.
+  Girişli kullanıcı için ARTIK `/dashboard`'a redirect YOK — landing görünür,
+  sağ üstte "Dashboard" butonu çıkar. Girişsizse Log in + Start Free.
+- **Sidebar**: gerçek Next.js `Link` navigasyonu, `usePathname` ile aktif
+  route vurgusu, "Soon" rozetleri. Sol üst marka bloğu `/` adresine linklendi
+  (ama şu an tıklama çalışmıyor — bkz. Bölüm 7).
+- **Settings**: profil görüntüleme + YouTube kanal ID yönetimi
+  (`UC` prefix validasyonu).
+
+### Analytics Altyapısı (eski faz — çalışır durumda, korunuyor)
+- `channel_stats_snapshots` tablosu (RLS), YouTube Data API v3 entegrasyonu
+  (kesin kural: fake veri YASAK).
+- `/api/snapshot-stats` endpoint'i (`SNAPSHOT_SECRET`/`CRON_SECRET` korumalı),
+  Vercel Cron günlük UTC 03:00.
+- `lib/channelGrowth.ts` (gerçek büyüme %), `lib/channelHealth.ts` (sağlık skoru).
+- `user_channels` tablosu + `/connect-channel` (kullanıcı-kanal eşleme, opsiyonel).
+- `channel_videos_cache` + `lib/dashboardData.ts` — dashboard SADECE
+  Supabase cache'ten okur, asla canlı YouTube API çağırmaz.
+- Auth: Supabase email/password + zorunlu doğrulama + Google OAuth,
+  `middleware.ts` route koruması (`/` public).
+
+### Düzeltilen Kritik Buglar (tekrarlama!)
+1. Middleware tüm `/api/` route'larını yakalıyordu → düzeltildi.
+2. Dashboard component'leri her yüklemede canlı YouTube API çağırıyordu → cache'e geçildi.
+3. Cache sorguları `channel_id` ile filtreliyordu → `user_id` merkezli yapıldı.
+
+## 4. Teknik Kurallar / Kalıplar
+
+- Tüm Supabase server client'ları: `@supabase/ssr` + `createServerClient` +
+  cookie forwarding.
+- Next.js route params tipi: `Promise<{ id: string }>` — mutlaka `await` edilir.
+- Stale build hatası çözümü: `Remove-Item -Recurse -Force .next` + `npm run dev`.
+- Kredi kesintileri SADECE server-side, admin client üzerinden.
+- Fake/hardcoded veri kesinlikle yasak — her metrik gerçek kaynaktan gelir.
+- UI dili İngilizce (global hedef kitle).
+
+## 5. Ödeme Entegrasyonu — KARAR (2026-07-07)
+
+**Stripe DEĞİL, Paddle kullanılacak.**
+- Sebep: Türkiye'de mukim şahıs/limited şirketle Stripe (ve PayPal) ödeme
+  kabulü doğrudan çalışmıyor. Paddle bir **Merchant of Record (MoR)**:
+  vergiyi (VAT/GST/sales tax) hesaplar + tahsil eder + beyan eder + öder.
+  Ücret: %5 + $0.50/işlem (vergi uyumu dahil).
+- Kredi paketleri **tek seferlik (one-time)** satın alma. Paketler:
+  $9/500, $29/2000, $59/5000. (Paket isimleri netleştirilecek — CLAUDE.md'de
+  eskiden "Starter/Creator/Pro", son `packages.ts` taslağında "Starter/Pro/Business".)
+- Akış: Paddle.js **overlay checkout** → webhook (`transaction.completed` /
+  `transaction.paid`) → kredileri **idempotent** ekle.
+- Webhook tuzakları: raw body `await req.text()` ile alınmalı (`req.json()`
+  imzayı bozar). Aynı event birden çok kez gelir → idempotency ŞART.
+
+**Hazır kod (taslak, henüz repoda commit edilmedi):**
+- `lib/packages.ts` — Paddle Price ID + `getPackageByPriceId` (webhook ödenen
+  fiyattan paketi bulur, istemciye güvenmez).
+- `lib/paddle.ts` — `@paddle/paddle-node-sdk` server client (sandbox/production env).
+- `credit_purchases` tablosu — `paddle_transaction_id` UNIQUE = idempotency + RLS.
+- Env: `NEXT_PUBLIC_PADDLE_ENV`, `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`,
+  `PADDLE_API_KEY`, `PADDLE_WEBHOOK_SECRET`.
+- npm: `@paddle/paddle-js`, `@paddle/paddle-node-sdk`.
+
+**Bekleyen (Kadir tarafı, kod dışı):**
+- Yasal şirket kurulumu — mali müşavir. Şahıs vs limited kararı VERİLMEDİ.
+- Paddle **sandbox** hesabı (`sandbox-vendors.paddle.com/signup` — doğrulama
+  gerektirmez, geliştirme burada yapılır). Canlı hesap şirket + site incelemesi ister.
+- Sandbox'ta: API key + client-side token + 3 ürün/fiyat (one-time) → `pri_...` ID'leri.
+
+**Devam noktası:** Sandbox kimlik bilgileri + 3 `pri_...` gelince Faz 2'ye geçilir
+(Paddle.js checkout bileşeni + Billing

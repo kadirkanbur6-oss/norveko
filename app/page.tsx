@@ -1,6 +1,5 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { redirect } from "next/navigation";
 import LandingPage from "./components/LandingPage";
 
 export default async function Home() {
@@ -23,9 +22,7 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (user) {
-    redirect("/dashboard");
-  }
+  const isLoggedIn = Boolean(user);
 
-  return <LandingPage />;
+  return <LandingPage isLoggedIn={isLoggedIn} />;
 }

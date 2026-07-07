@@ -3,7 +3,6 @@ import { Settings } from "lucide-react";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import StatsCards from "./StatsCards";
-import ChannelHealth from "./ChannelHealth";
 import AiInsights from "./AiInsights";
 import RecentVideos from "./RecentVideos";
 import DashboardHighlights from "./DashboardHighlights";
@@ -28,7 +27,6 @@ export default async function AnalyticsDashboard() {
             <div className="mt-10">
               <StatsCards />
             </div>
-            <ChannelHealth />
             <AiInsights />
             <RecentVideos />
           </>

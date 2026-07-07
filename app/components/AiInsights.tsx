@@ -42,6 +42,10 @@ export default function AiInsights() {
     loadInsights();
   }, []);
 
+  if (!loading && (error || insights.length === 0)) {
+    return null;
+  }
+
   return (
     <section className="mt-8 rounded-[28px] border border-white/10 bg-white/[0.04] p-6">
       <div className="flex items-center justify-between">
@@ -64,11 +68,7 @@ export default function AiInsights() {
           <div className="rounded-3xl border border-white/10 bg-black/25 p-6 text-center text-sm text-gray-400">
             Loading AI insights...
           </div>
-        ) : error ? (
-          <div className="rounded-3xl border border-white/10 bg-black/25 p-6 text-sm text-red-200">
-            {error}
-          </div>
-        ) : insights.length > 0 ? (
+        ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
             {insights.map((insight, index) => (
               <div
@@ -82,10 +82,6 @@ export default function AiInsights() {
                 <p className="mt-4 text-sm leading-6 text-gray-300">{insight}</p>
               </div>
             ))}
-          </div>
-        ) : (
-          <div className="rounded-3xl border border-white/10 bg-black/25 p-6 text-sm text-gray-400">
-            No AI insights available yet. Connect a channel and try again.
           </div>
         )}
       </div>

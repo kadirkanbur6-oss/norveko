@@ -51,7 +51,7 @@ export default function Sidebar() {
 
   return (
     <aside className="flex w-72 flex-col border-r border-white/10 bg-white/[0.03] p-6">
-      <div className="flex items-center gap-3">
+      <Link href="/" className="flex items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-white/10">
           <Layers className="text-blue-300" />
         </div>
@@ -60,7 +60,7 @@ export default function Sidebar() {
           <h1 className="text-2xl font-bold">NORVEKO</h1>
           <p className="text-xs text-gray-400">Creator Studio</p>
         </div>
-      </div>
+      </Link>
 
       <div className="mt-10 flex-1">
         <p className="mb-4 text-sm uppercase tracking-[4px] text-gray-500">

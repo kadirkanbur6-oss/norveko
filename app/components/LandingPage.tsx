@@ -153,7 +153,7 @@ const FAQS = [
 
 /* ---------- Page ---------- */
 
-export default function LandingPage() {
+export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   return (
@@ -176,18 +176,29 @@ export default function LandingPage() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="rounded-xl px-4 py-2 text-sm text-gray-300 transition hover:text-white"
-            >
-              Log in
-            </Link>
-            <Link
-              href="/signup"
-              className="rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-4 py-2 text-sm font-semibold transition hover:opacity-90"
-            >
-              Start Free
-            </Link>
+            {isLoggedIn ? (
+              <Link
+                href="/dashboard"
+                className="rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-4 py-2 text-sm font-semibold transition hover:opacity-90"
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="rounded-xl px-4 py-2 text-sm text-gray-300 transition hover:text-white"
+                >
+                  Log in
+                </Link>
+                <Link
+                  href="/signup"
+                  className="rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-4 py-2 text-sm font-semibold transition hover:opacity-90"
+                >
+                  Start Free
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>

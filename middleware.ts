@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { createMiddlewareSupabaseClient } from "./lib/supabase-middleware";
 
 const PUBLIC_FILE = /(.*)\.(.*)$/;
-const PUBLIC_PAGES = ["/", "/login", "/signup"];
+const PUBLIC_PAGES = ["/", "/login", "/signup", "/auth/callback"];
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next();

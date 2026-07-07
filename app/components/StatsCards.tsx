@@ -44,13 +44,7 @@ export default async function StatsCards() {
   }
 
   if (statsError || !stats) {
-    return (
-      <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6">
-        <p className="text-gray-300">
-          Cached dashboard data is not available yet. Please wait for the daily snapshot.
-        </p>
-      </div>
-    );
+    return null;
   }
 
   const cards = [
