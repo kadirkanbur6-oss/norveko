@@ -12,6 +12,9 @@ import {
   Sparkles,
 } from "lucide-react";
 import Sidebar from "../components/Sidebar";
+import { CREDIT_PACKAGES } from "@/lib/packages";
+import { usePaddle } from "@/lib/usePaddle";
+import { supabase } from "../lib/supabase";
 
 interface Transaction {
   id: string;
@@ -21,35 +24,28 @@ interface Transaction {
   created_at: string;
 }
 
-const PACKAGES = [
-  {
-    name: "Starter",
-    credits: 500,
-    price: "$9",
+const PACKAGE_DETAILS = {
+  starter: {
     description: "For creators just getting started.",
     highlight: false,
   },
-  {
-    name: "Creator",
-    credits: 2000,
-    price: "$29",
+  pro: {
     description: "For channels publishing every week.",
     highlight: true,
   },
-  {
-    name: "Pro",
-    credits: 5000,
-    price: "$59",
+  business: {
     description: "For teams and daily publishers.",
     highlight: false,
   },
-];
+};
 
 export default function BillingPage() {
   const [credits, setCredits] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
+  const paddle = usePaddle();
 
   useEffect(() => {
     async function loadCredits() {
@@ -72,6 +68,24 @@ export default function BillingPage() {
 
     loadCredits();
   }, []);
+
+  useEffect(() => {
+    async function loadUser() {
+      const { data } = await supabase.auth.getUser();
+      setUserId(data.user?.id ?? null);
+    }
+
+    loadUser();
+  }, []);
+
+  function handlePurchase(priceId: string) {
+    if (!paddle || !userId) return;
+
+    paddle.Checkout.open({
+      items: [{ priceId, quantity: 1 }],
+      customData: { userId },
+    });
+  }
 
   function transactionIcon(type: string) {
     switch (type) {
@@ -152,22 +166,18 @@ export default function BillingPage() {
 
               {/* Packages */}
               <h2 className="mt-12 text-xl font-bold">Credit packages</h2>
-              <p className="mt-1 text-sm text-gray-400">
-                Online payments are coming soon — packages will be purchasable
-                right here.
-              </p>
 
               <div className="mt-6 grid gap-6 sm:grid-cols-3">
-                {PACKAGES.map((pkg) => (
+                {CREDIT_PACKAGES.map((pkg) => (
                   <div
-                    key={pkg.name}
+                    key={pkg.id}
                     className={`relative rounded-2xl border p-6 ${
-                      pkg.highlight
+                      PACKAGE_DETAILS[pkg.id].highlight
                         ? "border-blue-400/50 bg-blue-500/10"
                         : "border-white/10 bg-white/[0.03]"
                     }`}
                   >
-                    {pkg.highlight && (
+                    {PACKAGE_DETAILS[pkg.id].highlight && (
                       <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 px-3 py-1 text-xs font-semibold">
                         Most popular
                       </span>
@@ -175,11 +185,11 @@ export default function BillingPage() {
 
                     <h3 className="text-lg font-semibold">{pkg.name}</h3>
                     <p className="mt-1 text-sm text-gray-400">
-                      {pkg.description}
+                      {PACKAGE_DETAILS[pkg.id].description}
                     </p>
 
                     <div className="mt-4 flex items-baseline gap-2">
-                      <span className="text-3xl font-bold">{pkg.price}</span>
+                      <span className="text-3xl font-bold">${pkg.priceUsd}</span>
                       <span className="text-sm text-gray-400">one-time</span>
                     </div>
 
@@ -193,16 +203,17 @@ export default function BillingPage() {
                     </p>
 
                     <button
-                      disabled
-                      className={`mt-6 w-full cursor-not-allowed rounded-xl py-3 text-sm font-semibold opacity-60 ${
-                        pkg.highlight
+                      onClick={() => handlePurchase(pkg.paddlePriceId)}
+                      disabled={!paddle || !userId}
+                      className={`mt-6 w-full rounded-xl py-3 text-sm font-semibold disabled:opacity-60 ${
+                        PACKAGE_DETAILS[pkg.id].highlight
                           ? "bg-gradient-to-r from-blue-500 to-purple-600"
                           : "border border-white/10 bg-white/[0.03] text-gray-300"
                       }`}
                     >
                       <span className="flex items-center justify-center gap-2">
                         <Sparkles size={16} />
-                        Coming soon
+                        Purchase
                       </span>
                     </button>
                   </div>
