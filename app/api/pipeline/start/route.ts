@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
 
     const cost = totalPipelineCredits();
 
-    // 3) Krediyi düş — projedeki gerçek RPC imzasıyla:
+    // 3) Krediyi düş — generate-content ile aynı RPC deseni
     // deduct_credits(p_user_id, p_amount, p_reason)
     const { data: deducted, error: deductError } = await supabaseAdmin.rpc(
       "deduct_credits",
@@ -74,6 +74,13 @@ export async function POST(req: NextRequest) {
         p_reason: "AI pipeline generation (script + thumbnail)",
       }
     );
+
+    console.error("[pipeline] deduct result:", {
+      deducted,
+      deductError,
+      userId: user.id,
+      cost,
+    });
 
     if (deductError) {
       throw new Error(deductError.message);
@@ -191,10 +198,11 @@ export async function POST(req: NextRequest) {
       });
 
       return NextResponse.json({ success: true, jobId: job.id });
-      // Not: success:true dönüyoruz çünkü job oluştu; hata detayını UI job durumundan okuyor.
+      // Not: success:true dönüyoruz çünkü job oluştu; hata detayını UI job durumundan okuyacak.
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("[pipeline] fatal:", err);
     return NextResponse.json(
       { success: false, error: message },
       { status: 500 }
