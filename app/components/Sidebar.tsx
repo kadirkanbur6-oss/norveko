@@ -7,13 +7,9 @@ import {
   BarChart3,
   Coins,
   CreditCard,
-  FileText,
   FolderOpen,
   Layers,
   Settings,
-  Sparkles,
-  TrendingUp,
-  Users,
   Wand2,
 } from "lucide-react";
 
@@ -23,10 +19,6 @@ const navItems = [
   { label: "Projects", icon: FolderOpen, href: "/projects" },
   { label: "Billing", icon: CreditCard, href: "/billing" },
   { label: "Settings", icon: Settings, href: "/settings" },
-  { label: "AI Insights", icon: Sparkles, href: null },
-  { label: "Content", icon: FileText, href: null },
-  { label: "Audience", icon: Users, href: null },
-  { label: "Growth", icon: TrendingUp, href: null },
 ];
 
 export default function Sidebar() {
@@ -70,26 +62,7 @@ export default function Sidebar() {
         <div className="space-y-3">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = item.href !== null && pathname === item.href;
-
-            if (item.href === null) {
-              return (
-                <div
-                  key={item.label}
-                  className="w-full cursor-not-allowed rounded-2xl border border-white/5 bg-white/[0.02] px-4 py-4 text-left text-gray-600"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Icon size={18} />
-                      {item.label}
-                    </div>
-                    <span className="text-[10px] uppercase tracking-wider text-gray-600">
-                      Soon
-                    </span>
-                  </div>
-                </div>
-              );
-            }
+            const isActive = pathname === item.href;
 
             return (
               <Link
