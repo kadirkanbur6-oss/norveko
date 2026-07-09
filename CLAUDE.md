@@ -213,3 +213,8 @@ göre hareket etme.
 
 **Devam noktası:** Sandbox kimlik bilgileri + 3 `pri_...` gelince Faz 2'ye geçilir
 (Paddle.js checkout bileşeni + Billing
+
+## 6. Faz B — Optional Voiceover (2026-07-09)
+- Pipeline artık opsiyonel ElevenLabs voiceover destekliyor: base 15 kredi, voiceover açıkken toplam 30 kredi.
+- Voice listesi server-side `GET /api/voices` ile geliyor; MP3 çıktıları public `voiceovers` bucket'ına yazılıyor.
+- `ELEVENLABS_API_KEY` client'a hiç açılmamalı; voiceover hatasında mevcut refund akışı kullanılmalı.

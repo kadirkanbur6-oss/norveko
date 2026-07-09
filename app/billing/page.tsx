@@ -156,9 +156,9 @@ export default function BillingPage() {
                     </div>
                   </div>
                   <div className="text-right text-sm text-gray-400">
-                    <p>Each AI generation costs</p>
+                    <p>Content package: 5 credits</p>
                     <p className="mt-1 text-lg font-semibold text-white">
-                      5 credits
+                      Full AI pipeline: 15 credits
                     </p>
                   </div>
                 </div>

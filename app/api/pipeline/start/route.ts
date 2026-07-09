@@ -6,12 +6,13 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import {
-  PIPELINE_STEPS,
+  buildPipelineSteps,
   totalPipelineCredits,
   initialStepsState,
 } from "@/lib/pipeline/steps";
 import { generateScript } from "@/lib/pipeline/openai";
 import { generateThumbnail } from "@/lib/pipeline/gemini-image";
+import { generateSpeech, listVoices } from "@/lib/pipeline/elevenlabs";
 
 // Adımlar toplamda ~30 sn sürebilir; varsayılan limiti yükselt
 export const maxDuration = 60;
@@ -53,7 +54,15 @@ export async function POST(req: NextRequest) {
 
     // 2) Girdiyi al ve doğrula
     const body = await req.json();
-    const { idea, platform, style, duration, outputLanguage } = body ?? {};
+    const {
+      idea,
+      platform,
+      style,
+      duration,
+      outputLanguage,
+      includeVoiceover,
+      voiceId,
+    } = body ?? {};
 
     if (!idea || typeof idea !== "string" || idea.trim().length < 3) {
       return NextResponse.json(
@@ -62,7 +71,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const cost = totalPipelineCredits();
+    const voiceoverEnabled = includeVoiceover === true;
+    const pipelineSteps = buildPipelineSteps(voiceoverEnabled);
+
+    if (voiceoverEnabled && (typeof voiceId !== "string" || !voiceId.trim())) {
+      return NextResponse.json(
+        { success: false, error: "Please select a voice for the voiceover." },
+        { status: 400 }
+      );
+    }
+
+    if (voiceoverEnabled) {
+      const voices = await listVoices();
+      const isValidVoice = voices.some((voice) => voice.voice_id === voiceId);
+
+      if (!isValidVoice) {
+        return NextResponse.json(
+          { success: false, error: "Selected voice is not available." },
+          { status: 400 }
+        );
+      }
+    }
+
+    const cost = totalPipelineCredits(voiceoverEnabled);
 
     // 3) Krediyi düş — generate-content ile aynı RPC deseni
     // deduct_credits(p_user_id, p_amount, p_reason)
@@ -71,7 +102,7 @@ export async function POST(req: NextRequest) {
       {
         p_user_id: user.id,
         p_amount: cost,
-        p_reason: "AI pipeline generation (script + thumbnail)",
+        p_reason: `AI pipeline generation (script + thumbnail${voiceoverEnabled ? " + voiceover" : ""})`,
       }
     );
 
@@ -107,8 +138,8 @@ export async function POST(req: NextRequest) {
         duration: duration ?? null,
         output_language: outputLanguage ?? "EN",
         status: "running",
-        current_step: PIPELINE_STEPS[0].id,
-        steps: initialStepsState(),
+        current_step: pipelineSteps[0].id,
+        steps: initialStepsState(voiceoverEnabled),
         credits_charged: cost,
       })
       .select()
@@ -133,7 +164,7 @@ export async function POST(req: NextRequest) {
       // --- ADIM 1: SCRIPT ---
       await updateStep(job.id, "script", { status: "running" });
 
-      const scriptDef = PIPELINE_STEPS.find((s) => s.id === "script")!;
+      const scriptDef = pipelineSteps.find((s) => s.id === "script")!;
       const scriptModel = scriptDef.provider.split(":")[1] ?? "gpt-5-mini";
 
       const scriptResult = await generateScript({
@@ -151,6 +182,58 @@ export async function POST(req: NextRequest) {
         script: scriptResult.script,
         thumbnailPrompt: scriptResult.thumbnailPrompt,
       });
+
+      if (voiceoverEnabled) {
+        await supabaseAdmin
+          .from("pipeline_jobs")
+          .update({ current_step: "voiceover" })
+          .eq("id", job.id);
+
+        await updateStep(job.id, "voiceover", { status: "running" });
+
+        try {
+          const speechBuffer = await generateSpeech(
+            scriptResult.script,
+            voiceId.trim()
+          );
+          const storagePath = `${user.id}/${job.id}.mp3`;
+
+          const { error: uploadError } = await supabaseAdmin.storage
+            .from("voiceovers")
+            .upload(storagePath, speechBuffer, {
+              contentType: "audio/mpeg",
+              upsert: true,
+            });
+
+          if (uploadError) {
+            throw new Error(
+              `Voiceover upload failed: ${uploadError.message}`
+            );
+          }
+
+          const { data: urlData } = supabaseAdmin.storage
+            .from("voiceovers")
+            .getPublicUrl(storagePath);
+
+          await updateStep(job.id, "voiceover", {
+            status: "completed",
+            audio_url: urlData.publicUrl,
+            voice_id: voiceId.trim(),
+            storage_path: storagePath,
+          });
+        } catch (voiceError) {
+          const message =
+            voiceError instanceof Error ? voiceError.message : "Unknown error";
+
+          await updateStep(job.id, "voiceover", {
+            status: "failed",
+            error: message,
+          });
+
+          throw voiceError;
+        }
+      }
+
       await supabaseAdmin
         .from("pipeline_jobs")
         .update({ current_step: "thumbnail" })

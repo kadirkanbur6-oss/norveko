@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { CheckCircle2, Circle, Loader2, XCircle, Copy } from "lucide-react";
+import { PIPELINE_STEP_ORDER } from "@/lib/pipeline/steps";
 
 interface StepInfo {
   status: "pending" | "running" | "completed" | "failed";
@@ -12,6 +13,9 @@ interface StepInfo {
   hook?: string;
   script?: string;
   image_url?: string;
+  audio_url?: string;
+  voice_id?: string;
+  storage_path?: string;
 }
 
 interface JobData {
@@ -22,10 +26,7 @@ interface JobData {
   error: string | null;
 }
 
-const STEP_ORDER: { id: string; label: string }[] = [
-  { id: "script", label: "Script & Hook" },
-  { id: "thumbnail", label: "Thumbnail" },
-];
+const STEP_ORDER = PIPELINE_STEP_ORDER.map(({ id, label }) => ({ id, label }));
 
 export default function PipelineProgress({ jobId }: { jobId: string }) {
   const [job, setJob] = useState<JobData | null>(null);
@@ -82,6 +83,7 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
       <div className="flex flex-col gap-3">
         {STEP_ORDER.map(({ id, label }) => {
           const step = job.steps?.[id];
+          if (!step) return null;
           const status = step?.status ?? "pending";
           return (
             <div key={id} className="flex items-center gap-3">
@@ -153,6 +155,26 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
               {scriptStep.script}
             </p>
           </div>
+        </div>
+      )}
+
+      {job.steps?.voiceover?.status === "completed" && job.steps.voiceover.audio_url && (
+        <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+          <div className="flex items-center justify-between gap-3">
+            <h4 className="text-sm font-semibold text-gray-300">Voiceover</h4>
+            <a
+              href={job.steps.voiceover.audio_url}
+              download
+              className="text-xs text-blue-300 transition hover:text-blue-200"
+            >
+              Download MP3
+            </a>
+          </div>
+          <audio
+            controls
+            src={job.steps.voiceover.audio_url}
+            className="mt-3 w-full"
+          />
         </div>
       )}
 

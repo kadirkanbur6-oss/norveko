@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, Sparkles, FlaskConical } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import PipelineProgress from "../components/PipelineProgress";
@@ -14,19 +14,139 @@ const STYLES = ["Mystery", "Documentary", "Horror", "Educational", "Ad / Promo",
 const DURATIONS = ["30 seconds", "60 seconds", "3 minutes", "8 minutes"];
 const LANGUAGES = ["English", "Türkçe", "Español", "Deutsch", "Français", "Português"];
 
+interface VoiceOption {
+  voice_id: string;
+  name: string;
+  labels: Record<string, string>;
+  preview_url: string | null;
+}
+
 export default function PipelineTestPage() {
   const [idea, setIdea] = useState("");
   const [platform, setPlatform] = useState(PLATFORMS[0]);
   const [style, setStyle] = useState(STYLES[0]);
   const [duration, setDuration] = useState(DURATIONS[1]);
   const [language, setLanguage] = useState(LANGUAGES[0]);
+  const [includeVoiceover, setIncludeVoiceover] = useState(false);
+  const [voiceId, setVoiceId] = useState("");
+  const [voices, setVoices] = useState<VoiceOption[]>([]);
+  const [voicesLoading, setVoicesLoading] = useState(false);
+  const [voicesError, setVoicesError] = useState("");
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
   const [jobId, setJobId] = useState<string | null>(null);
+  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const totalCost = includeVoiceover ? 30 : 15;
+
+  useEffect(() => {
+    if (!includeVoiceover || voices.length > 0) {
+      return;
+    }
+
+    let active = true;
+
+    async function loadVoices() {
+      setVoicesLoading(true);
+      setVoicesError("");
+
+      try {
+        const res = await fetch("/api/voices");
+        const data = await res.json();
+
+        if (!data.success) {
+          throw new Error(data.error || "Failed to load voices.");
+        }
+
+        if (active) {
+          const loadedVoices: VoiceOption[] = data.voices ?? [];
+          setVoices(loadedVoices);
+          setVoiceId((current) => current || loadedVoices[0]?.voice_id || "");
+        }
+      } catch (err) {
+        if (active) {
+          setVoicesError(err instanceof Error ? err.message : "Unknown error");
+        }
+      } finally {
+        if (active) {
+          setVoicesLoading(false);
+        }
+      }
+    }
+
+    loadVoices();
+
+    return () => {
+      active = false;
+    };
+  }, [includeVoiceover, voices.length]);
+
+  useEffect(() => {
+    if (!includeVoiceover) {
+      const audio = audioRef.current;
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.removeAttribute("src");
+        audio.load();
+      }
+      setPlayingVoiceId(null);
+    }
+  }, [includeVoiceover]);
+
+  useEffect(() => {
+    if (!includeVoiceover || !voices.length || voiceId) {
+      return;
+    }
+
+    setVoiceId(voices[0].voice_id);
+  }, [includeVoiceover, voiceId, voices]);
+
+  function stopPreview() {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.pause();
+    audio.currentTime = 0;
+    audio.removeAttribute("src");
+    audio.load();
+    setPlayingVoiceId(null);
+  }
+
+  function handlePreviewVoice(voice: VoiceOption) {
+    if (!voice.preview_url) return;
+
+    if (playingVoiceId === voice.voice_id) {
+      stopPreview();
+      return;
+    }
+
+    stopPreview();
+
+    const audio = audioRef.current ?? new Audio();
+    audioRef.current = audio;
+    audio.onended = () => setPlayingVoiceId(null);
+    audio.src = voice.preview_url;
+    audio
+      .play()
+      .then(() => setPlayingVoiceId(voice.voice_id))
+      .catch(() => setPlayingVoiceId(null));
+  }
+
+  function formatVoiceLabels(labels: Record<string, string>) {
+    const values = Object.values(labels).filter(Boolean);
+    return values.length > 0 ? values.join(" · ") : "No labels";
+  }
 
   async function handleGenerate() {
     if (idea.trim().length < 5) {
       setError("Please describe your video idea in a bit more detail.");
+      return;
+    }
+
+    if (includeVoiceover && !voiceId) {
+      setError("Please select a voice for the voiceover.");
       return;
     }
 
@@ -44,6 +164,8 @@ export default function PipelineTestPage() {
           style,
           duration,
           outputLanguage: language,
+            includeVoiceover,
+            voiceId: includeVoiceover ? voiceId : null,
         }),
       });
 
@@ -132,9 +254,107 @@ export default function PipelineTestPage() {
               </div>
             </div>
 
+            <div className="mt-4 rounded-2xl border border-white/10 bg-[#0d0d16] p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <label className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={includeVoiceover}
+                    onChange={(e) => setIncludeVoiceover(e.target.checked)}
+                    className="h-4 w-4 rounded border-white/20 bg-transparent text-blue-500 focus:ring-0"
+                  />
+                  <span className="text-sm font-semibold text-white">
+                    Generate voiceover (+15 credits)
+                  </span>
+                </label>
+
+                <span className="text-sm text-gray-400">
+                  Total cost: {totalCost} credits
+                </span>
+              </div>
+
+              {includeVoiceover && (
+                <div className="mt-4 space-y-4">
+                  <div>
+                    <label className="text-sm text-gray-400">Voice</label>
+                    <select
+                      value={voiceId}
+                      onChange={(e) => setVoiceId(e.target.value)}
+                      className={selectClass}
+                      disabled={voicesLoading}
+                    >
+                      <option value="">Select a voice</option>
+                      {voices.map((voice) => (
+                        <option key={voice.voice_id} value={voice.voice_id}>
+                          {voice.name}
+                        </option>
+                      ))}
+                    </select>
+                    {voicesLoading && (
+                      <p className="mt-2 text-xs text-gray-500">Loading voices...</p>
+                    )}
+                    {voicesError && (
+                      <p className="mt-2 text-xs text-red-300">{voicesError}</p>
+                    )}
+                  </div>
+
+                  {voices.length > 0 && (
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {voices.map((voice) => {
+                        const isSelected = voiceId === voice.voice_id;
+                        const isPlaying = playingVoiceId === voice.voice_id;
+
+                        return (
+                          <div
+                            key={voice.voice_id}
+                            className={`flex items-center justify-between gap-3 rounded-xl border p-3 ${
+                              isSelected
+                                ? "border-blue-400/40 bg-blue-500/10"
+                                : "border-white/10 bg-white/[0.02]"
+                            }`}
+                          >
+                            <div>
+                              <p className="text-sm font-semibold text-white">
+                                {voice.name}
+                              </p>
+                              <p className="mt-1 text-xs text-gray-500">
+                                {formatVoiceLabels(voice.labels)}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handlePreviewVoice(voice)}
+                                disabled={!voice.preview_url}
+                                className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-gray-300 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                {isPlaying ? "Stop" : "Play"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setVoiceId(voice.voice_id)}
+                                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                                  isSelected
+                                    ? "bg-blue-500/20 text-blue-200"
+                                    : "border border-white/10 bg-white/[0.03] text-gray-300 hover:text-white"
+                                }`}
+                              >
+                                {isSelected ? "Selected" : "Use"}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <button
               onClick={handleGenerate}
-              disabled={starting || (jobId !== null && !error)}
+              disabled={starting || (jobId !== null && !error) || (includeVoiceover && (!voiceId || voicesLoading))}
               className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-blue-600 py-4 font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
             >
               {starting ? (
@@ -145,7 +365,7 @@ export default function PipelineTestPage() {
               ) : (
                 <>
                   <Sparkles size={18} />
-                  Generate (Pipeline)
+                  Generate (Pipeline) — {totalCost} credits
                 </>
               )}
             </button>

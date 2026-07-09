@@ -30,6 +30,16 @@ interface VideoContent {
   description: string;
   tags: string[];
   thumbnailIdea: string;
+  voiceoverUrl?: string;
+  audio_url?: string;
+  voiceover?: {
+    url?: string;
+    publicUrl?: string;
+    downloadUrl?: string;
+    audio_url?: string;
+    storagePath?: string;
+    fileName?: string;
+  };
 }
 
 interface Project {
@@ -216,6 +226,15 @@ export default function ProjectDetailPage() {
   const inputClass =
     "w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-sm text-white outline-none focus:border-blue-400/50";
   const labelClass = "mb-1 block text-xs uppercase tracking-wider text-gray-500";
+
+  const voiceoverUrl =
+    project?.content?.voiceoverUrl ??
+    project?.content?.audio_url ??
+    project?.content?.voiceover?.url ??
+    project?.content?.voiceover?.publicUrl ??
+    project?.content?.voiceover?.downloadUrl ??
+    project?.content?.voiceover?.audio_url ??
+    null;
 
   function renderEditForm() {
     if (!editContent) return null;
@@ -526,6 +545,24 @@ export default function ProjectDetailPage() {
                   <div className="mt-4 whitespace-pre-wrap rounded-xl border border-white/10 bg-[#0d0d16] p-6 text-sm leading-relaxed text-gray-200">
                     {getTabText(activeTab)}
                   </div>
+
+                  {voiceoverUrl && (
+                    <div className="mt-4 rounded-xl border border-white/10 bg-[#0d0d16] p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <h4 className="text-sm font-semibold text-gray-300">
+                          Voiceover
+                        </h4>
+                        <a
+                          href={voiceoverUrl}
+                          download
+                          className="text-xs text-blue-300 transition hover:text-blue-200"
+                        >
+                          Download MP3
+                        </a>
+                      </div>
+                      <audio controls src={voiceoverUrl} className="mt-3 w-full" />
+                    </div>
+                  )}
                 </div>
               ) : (
                 <p className="mt-8 rounded-xl border border-white/10 bg-white/[0.03] p-6 text-sm text-gray-400">

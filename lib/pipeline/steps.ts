@@ -1,8 +1,7 @@
 // lib/pipeline/steps.ts
 // Pipeline adım tanımları ve kredi maliyetleri — tek doğru kaynak.
 
-export type PipelineStepId = "script" | "thumbnail";
-// İleride: | "voiceover" | "video" | "subtitles" | "assembly"
+export type PipelineStepId = "script" | "voiceover" | "thumbnail";
 
 export type StepStatus = "pending" | "running" | "completed" | "failed";
 
@@ -10,7 +9,7 @@ export interface StepState {
   status: StepStatus;
   provider: string;
   error: string | null;
-  // Adıma özel çıktılar (script için metinler, thumbnail için image_url)
+  // Adıma özel çıktılar (script için metinler, thumbnail için image_url, voiceover için audio_url)
   [key: string]: unknown;
 }
 
@@ -21,13 +20,18 @@ export interface StepDefinition {
   provider: string; // varsayılan sağlayıcı (ileride fallback için alan açık)
 }
 
-// Adım sırası önemli: pipeline bu dizide yukarıdan aşağı ilerler.
-export const PIPELINE_STEPS: StepDefinition[] = [
+export const PIPELINE_STEP_ORDER: StepDefinition[] = [
   {
     id: "script",
     label: "Script & Hook",
     credits: 5,
     provider: "openai:gpt-5-mini",
+  },
+  {
+    id: "voiceover",
+    label: "Voiceover",
+    credits: 15,
+    provider: "elevenlabs:eleven_multilingual_v2",
   },
   {
     id: "thumbnail",
@@ -37,22 +41,42 @@ export const PIPELINE_STEPS: StepDefinition[] = [
   },
 ];
 
+export function buildPipelineSteps(includeVoiceover = false): StepDefinition[] {
+  return includeVoiceover
+    ? PIPELINE_STEP_ORDER
+    : PIPELINE_STEP_ORDER.filter((step) => step.id !== "voiceover");
+}
+
+export function getPipelineStepDefinition(stepId: PipelineStepId): StepDefinition {
+  const step = PIPELINE_STEP_ORDER.find((definition) => definition.id === stepId);
+  if (!step) {
+    throw new Error(`Unknown pipeline step: ${stepId}`);
+  }
+  return step;
+}
+
 // Bir job'ın toplam kredi maliyeti
-export function totalPipelineCredits(): number {
-  return PIPELINE_STEPS.reduce((sum, s) => sum + s.credits, 0);
+export function totalPipelineCredits(includeVoiceover = false): number {
+  return buildPipelineSteps(includeVoiceover).reduce((sum, step) => sum + step.credits, 0);
 }
 
 // Verilen adımdan SONRAKİ adımı döndürür (yoksa null → pipeline bitti)
-export function nextStep(current: PipelineStepId): StepDefinition | null {
-  const idx = PIPELINE_STEPS.findIndex((s) => s.id === current);
-  if (idx === -1 || idx === PIPELINE_STEPS.length - 1) return null;
-  return PIPELINE_STEPS[idx + 1];
+export function nextStep(
+  current: PipelineStepId,
+  includeVoiceover = false
+): StepDefinition | null {
+  const steps = buildPipelineSteps(includeVoiceover);
+  const idx = steps.findIndex((step) => step.id === current);
+  if (idx === -1 || idx === steps.length - 1) return null;
+  return steps[idx + 1];
 }
 
 // Job başlarken steps JSON'unun başlangıç hali
-export function initialStepsState(): Record<string, StepState> {
+export function initialStepsState(
+  includeVoiceover = false
+): Record<string, StepState> {
   const state: Record<string, StepState> = {};
-  for (const step of PIPELINE_STEPS) {
+  for (const step of buildPipelineSteps(includeVoiceover)) {
     state[step.id] = { status: "pending", provider: step.provider, error: null };
   }
   return state;
