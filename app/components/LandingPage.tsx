@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import HeroDemo from "./HeroDemo";
+import { CREDIT_PACKAGES } from "@/lib/packages";
 import {
   ArrowRight,
   Check,
@@ -125,12 +126,16 @@ const FORMATS = [
 
 const LANGUAGES = ["English", "Türkçe", "Español", "Deutsch", "Français", "Português"];
 
-const PRICING = [
-  { name: "Starter", desc: "For creators trying things out." },
-  { name: "Creator", desc: "For consistent weekly publishing.", featured: true },
-  { name: "Pro", desc: "For high-volume channels." },
-  { name: "Enterprise", desc: "For teams and agencies." },
-];
+const PRICING = CREDIT_PACKAGES.map((pack) => ({
+  ...pack,
+  desc:
+    pack.id === "starter"
+      ? "A simple credit pack for creators getting started."
+      : pack.id === "pro"
+        ? "Our most popular pack for steady publishing workflows."
+        : "The best value pack for teams and high-volume creators.",
+  featured: pack.id === "pro",
+}));
 
 const FAQS = [
   {
@@ -147,7 +152,7 @@ const FAQS = [
   },
   {
     q: "How does the credit system work?",
-    a: "You get 50 free credits when you sign up. Each full content generation costs 5 credits. If a generation fails, your credits are automatically refunded.",
+    a: "You get 50 free credits on signup. A standard content package generation costs 5 credits, the full AI pipeline (script + thumbnail image) costs 15 credits, and failed generations are automatically refunded.",
   },
 ];
 
@@ -514,13 +519,39 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                   plan.featured ? "border-blue-400/40 bg-blue-500/[0.06]" : ""
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold">{plan.name}</h3>
-                  <span className="rounded-full border border-purple-400/30 bg-purple-500/10 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-purple-200">
-                    Coming soon
-                  </span>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="font-bold">{plan.name}</h3>
+                    <p className="mt-1 text-sm text-gray-400">{plan.desc}</p>
+                  </div>
+                  {plan.featured && (
+                    <span className="rounded-full border border-blue-400/30 bg-blue-500/10 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-blue-200">
+                      Popular
+                    </span>
+                  )}
                 </div>
-                <p className="mt-2 flex-1 text-sm text-gray-400">{plan.desc}</p>
+
+                <div className="mt-4 flex items-end gap-2">
+                  <span className="text-3xl font-black tracking-tight text-white">
+                    ${plan.priceUsd}
+                  </span>
+                  <span className="pb-1 text-sm text-gray-500">one-time</span>
+                </div>
+
+                <p className="mt-2 text-sm font-medium text-gray-300">
+                  {plan.credits.toLocaleString()} credits
+                </p>
+
+                <Link
+                  href="/signup"
+                  className={`mt-5 inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold transition hover:opacity-90 ${
+                    plan.featured
+                      ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white"
+                      : "border border-white/10 bg-white/[0.03] text-gray-200 hover:border-white/20 hover:text-white"
+                  }`}
+                >
+                  Get started
+                </Link>
               </GlassCard>
             </Reveal>
           ))}
@@ -592,10 +623,13 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             </div>
             <span className="font-bold">NORVEKO</span>
           </div>
-          <nav className="flex gap-6 text-sm text-gray-500">
+          <nav className="flex flex-wrap justify-center gap-6 gap-y-2 text-sm text-gray-500">
             <a href="#workflow" className="transition hover:text-gray-300">Workflow</a>
             <a href="#pricing" className="transition hover:text-gray-300">Pricing</a>
             <a href="#faq" className="transition hover:text-gray-300">FAQ</a>
+            <Link href="/terms" className="transition hover:text-gray-300">Terms</Link>
+            <Link href="/privacy" className="transition hover:text-gray-300">Privacy</Link>
+            <Link href="/refund" className="transition hover:text-gray-300">Refunds</Link>
             <Link href="/login" className="transition hover:text-gray-300">Log in</Link>
           </nav>
           <p className="text-xs text-gray-600">
