@@ -13,6 +13,15 @@ interface StepInfo {
   error?: string | null;
   hook?: string;
   script?: string;
+  scenes?: Array<{
+    sceneNumber: number;
+    description: string;
+    videoPrompt: string;
+  }>;
+  titles?: string[];
+  description?: string;
+  tags?: string[];
+  thumbnailIdea?: string;
   image_url?: string;
   audio_url?: string;
   voice_id?: string;
@@ -178,6 +187,64 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
               {scriptStep.script}
             </p>
           </div>
+
+          {Array.isArray(scriptStep.scenes) && scriptStep.scenes.length > 0 && (
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+              <h4 className="text-sm font-semibold text-gray-300">Scene Plan</h4>
+              <div className="mt-3 space-y-3">
+                {scriptStep.scenes.map((scene) => (
+                  <div
+                    key={`${scene.sceneNumber}-${scene.description.slice(0, 12)}`}
+                    className="rounded-lg border border-white/10 bg-[#0d0d16] p-3"
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-300">
+                      Scene {scene.sceneNumber}
+                    </p>
+                    <p className="mt-1 text-sm text-gray-200">{scene.description}</p>
+                    <p className="mt-2 whitespace-pre-wrap text-xs text-gray-400">
+                      {scene.videoPrompt}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {Array.isArray(scriptStep.titles) && scriptStep.titles.length > 0 && (
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+              <h4 className="text-sm font-semibold text-gray-300">Titles</h4>
+              <ul className="mt-3 space-y-1 text-sm text-gray-200">
+                {scriptStep.titles.map((title) => (
+                  <li key={title}>• {title}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {scriptStep.description && (
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+              <h4 className="text-sm font-semibold text-gray-300">Description</h4>
+              <p className="mt-2 whitespace-pre-wrap text-sm text-gray-200">
+                {scriptStep.description}
+              </p>
+            </div>
+          )}
+
+          {Array.isArray(scriptStep.tags) && scriptStep.tags.length > 0 && (
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+              <h4 className="text-sm font-semibold text-gray-300">Tags</h4>
+              <p className="mt-2 text-sm text-gray-200">{scriptStep.tags.join(", ")}</p>
+            </div>
+          )}
+
+          {scriptStep.thumbnailIdea && (
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+              <h4 className="text-sm font-semibold text-gray-300">Thumbnail Idea</h4>
+              <p className="mt-2 whitespace-pre-wrap text-sm text-gray-200">
+                {scriptStep.thumbnailIdea}
+              </p>
+            </div>
+          )}
         </div>
       )}
 

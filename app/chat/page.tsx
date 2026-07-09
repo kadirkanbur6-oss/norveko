@@ -1,41 +1,40 @@
 "use client";
 
-import { useState } from "react";
-import { Check, Copy, FolderPlus, Loader2, Sparkles, Wand2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Loader2, Sparkles, Wand2 } from "lucide-react";
 import Sidebar from "../components/Sidebar";
+import PipelineProgress from "../components/PipelineProgress";
 
-const PLATFORMS = ["YouTube Shorts", "TikTok", "Instagram Reels", "YouTube Long-form"];
-const STYLES = ["Mystery", "Documentary", "Horror", "Educational", "Ad / Promo", "Cinematic"];
+const PLATFORMS = [
+  "YouTube Shorts",
+  "TikTok",
+  "Instagram Reels",
+  "YouTube Long-form",
+];
+const STYLES = [
+  "Mystery",
+  "Documentary",
+  "Horror",
+  "Educational",
+  "Ad / Promo",
+  "Cinematic",
+];
 const DURATIONS = ["30 seconds", "60 seconds", "3 minutes", "8 minutes"];
-const LANGUAGES = ["English", "Türkçe", "Español", "Deutsch", "Français", "Português"];
+const LANGUAGES = [
+  "English",
+  "Türkçe",
+  "Español",
+  "Deutsch",
+  "Français",
+  "Português",
+];
 
-interface VideoScene {
-  sceneNumber: number;
-  description: string;
-  videoPrompt: string;
+interface VoiceOption {
+  voice_id: string;
+  name: string;
+  labels: Record<string, string>;
+  preview_url: string | null;
 }
-
-interface VideoContent {
-  hook: string;
-  script: string;
-  scenes: VideoScene[];
-  titles: string[];
-  description: string;
-  tags: string[];
-  thumbnailIdea: string;
-}
-
-const TABS = [
-  { id: "script", label: "Script" },
-  { id: "scenes", label: "Scene Plan" },
-  { id: "prompts", label: "Video Prompts" },
-  { id: "titles", label: "Titles" },
-  { id: "description", label: "Description" },
-  { id: "tags", label: "Tags" },
-  { id: "thumbnail", label: "Thumbnail" },
-] as const;
-
-type TabId = (typeof TABS)[number]["id"];
 
 export default function ChatPage() {
   const [idea, setIdea] = useState("");
@@ -43,14 +42,117 @@ export default function ChatPage() {
   const [style, setStyle] = useState(STYLES[0]);
   const [duration, setDuration] = useState(DURATIONS[1]);
   const [language, setLanguage] = useState(LANGUAGES[0]);
-  const [loading, setLoading] = useState(false);
+  const [includeVoiceover, setIncludeVoiceover] = useState(false);
+  const [voiceId, setVoiceId] = useState("");
+  const [voices, setVoices] = useState<VoiceOption[]>([]);
+  const [voicesLoading, setVoicesLoading] = useState(false);
+  const [voicesError, setVoicesError] = useState("");
+  const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
-  const [content, setContent] = useState<VideoContent | null>(null);
-  const [activeTab, setActiveTab] = useState<TabId>("script");
-  const [copied, setCopied] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [saveError, setSaveError] = useState("");
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const totalCost = includeVoiceover ? 30 : 15;
+
+  useEffect(() => {
+    if (!includeVoiceover || voices.length > 0) {
+      return;
+    }
+
+    let active = true;
+
+    async function loadVoices() {
+      setVoicesLoading(true);
+      setVoicesError("");
+
+      try {
+        const res = await fetch("/api/voices");
+        const data = await res.json();
+
+        if (!data.success) {
+          throw new Error(data.error || "Failed to load voices.");
+        }
+
+        if (active) {
+          const loadedVoices: VoiceOption[] = data.voices ?? [];
+          setVoices(loadedVoices);
+          setVoiceId((current) => current || loadedVoices[0]?.voice_id || "");
+        }
+      } catch (err) {
+        if (active) {
+          setVoicesError(err instanceof Error ? err.message : "Unknown error");
+        }
+      } finally {
+        if (active) {
+          setVoicesLoading(false);
+        }
+      }
+    }
+
+    loadVoices();
+
+    return () => {
+      active = false;
+    };
+  }, [includeVoiceover, voices.length]);
+
+  useEffect(() => {
+    if (!includeVoiceover) {
+      const audio = audioRef.current;
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.removeAttribute("src");
+        audio.load();
+      }
+      setPlayingVoiceId(null);
+    }
+  }, [includeVoiceover]);
+
+  useEffect(() => {
+    if (!includeVoiceover || !voices.length || voiceId) {
+      return;
+    }
+
+    setVoiceId(voices[0].voice_id);
+  }, [includeVoiceover, voiceId, voices]);
+
+  function stopPreview() {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.pause();
+    audio.currentTime = 0;
+    audio.removeAttribute("src");
+    audio.load();
+    setPlayingVoiceId(null);
+  }
+
+  function handlePreviewVoice(voice: VoiceOption) {
+    if (!voice.preview_url) return;
+
+    if (playingVoiceId === voice.voice_id) {
+      stopPreview();
+      return;
+    }
+
+    stopPreview();
+
+    const audio = audioRef.current ?? new Audio();
+    audioRef.current = audio;
+    audio.onended = () => setPlayingVoiceId(null);
+    audio.src = voice.preview_url;
+    audio
+      .play()
+      .then(() => setPlayingVoiceId(voice.voice_id))
+      .catch(() => setPlayingVoiceId(null));
+  }
+
+  function formatVoiceLabels(labels: Record<string, string>) {
+    const values = Object.values(labels).filter(Boolean);
+    return values.length > 0 ? values.join(" · ") : "No labels";
+  }
 
   async function handleGenerate() {
     if (idea.trim().length < 5) {
@@ -58,99 +160,42 @@ export default function ChatPage() {
       return;
     }
 
-    setLoading(true);
-    setError("");
-    setContent(null);
-    setSaved(false);
-    setSaveError("");
-
-    try {
-      const res = await fetch("/api/generate-content", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idea, platform, style, duration, language }),
-      });
-
-      const data = await res.json();
-
-      if (!data.success) {
-        throw new Error(data.error || "Generation failed.");
-      }
-
-      setContent(data.content);
-      setActiveTab("script");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
+    if (includeVoiceover && !voiceId) {
+      setError("Please select a voice for the voiceover.");
+      return;
     }
-  }
 
-  async function handleSave() {
-    if (!content) return;
-
-    setSaving(true);
-    setSaveError("");
+    setStarting(true);
+    setError("");
+    setJobId(null);
 
     try {
-      const projectTitle =
-        content.titles?.[0]?.trim() || idea.trim().slice(0, 80);
-
-      const res = await fetch("/api/projects", {
+      const res = await fetch("/api/pipeline/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: projectTitle,
+          idea,
           platform,
           style,
           duration,
-          idea,
-          content,
+          outputLanguage: language,
+          includeVoiceover,
+          voiceId: includeVoiceover ? voiceId : null,
         }),
       });
 
       const data = await res.json();
 
       if (!data.success) {
-        throw new Error(data.error || "Failed to save.");
+        throw new Error(data.error || "Pipeline could not start.");
       }
 
-      setSaved(true);
+      setJobId(data.jobId);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Unknown error");
+      setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
-      setSaving(false);
+      setStarting(false);
     }
-  }
-
-  function getTabText(tab: TabId): string {
-    if (!content) return "";
-    switch (tab) {
-      case "script":
-        return `HOOK:\n${content.hook}\n\nSCRIPT:\n${content.script}`;
-      case "scenes":
-        return content.scenes
-          .map((s) => `Scene ${s.sceneNumber}: ${s.description}`)
-          .join("\n\n");
-      case "prompts":
-        return content.scenes
-          .map((s) => `Scene ${s.sceneNumber}:\n${s.videoPrompt}`)
-          .join("\n\n");
-      case "titles":
-        return content.titles.join("\n");
-      case "description":
-        return content.description;
-      case "tags":
-        return content.tags.join(", ");
-      case "thumbnail":
-        return content.thumbnailIdea;
-    }
-  }
-
-  async function handleCopy() {
-    await navigator.clipboard.writeText(getTabText(activeTab));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   }
 
   const selectClass =
@@ -162,7 +207,6 @@ export default function ChatPage() {
 
       <main className="flex-1 p-8">
         <div className="mx-auto max-w-4xl">
-          {/* Header */}
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-400/30 bg-blue-500/10">
               <Wand2 className="text-blue-300" />
@@ -170,12 +214,11 @@ export default function ChatPage() {
             <div>
               <h1 className="text-2xl font-bold">AI Workspace</h1>
               <p className="text-sm text-gray-400">
-                Drop your idea, get a full production package
+                Generate a full content package with thumbnail and optional voiceover
               </p>
             </div>
           </div>
 
-          {/* Form */}
           <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
             <label className="text-sm text-gray-400">Video Idea</label>
             <textarea
@@ -195,7 +238,9 @@ export default function ChatPage() {
                   className={selectClass}
                 >
                   {PLATFORMS.map((p) => (
-                    <option key={p} value={p}>{p}</option>
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -208,7 +253,9 @@ export default function ChatPage() {
                   className={selectClass}
                 >
                   {STYLES.map((s) => (
-                    <option key={s} value={s}>{s}</option>
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -221,7 +268,9 @@ export default function ChatPage() {
                   className={selectClass}
                 >
                   {DURATIONS.map((d) => (
-                    <option key={d} value={d}>{d}</option>
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -234,26 +283,130 @@ export default function ChatPage() {
                   className={selectClass}
                 >
                   {LANGUAGES.map((l) => (
-                    <option key={l} value={l}>{l}</option>
+                    <option key={l} value={l}>
+                      {l}
+                    </option>
                   ))}
                 </select>
               </div>
             </div>
 
+            <div className="mt-4 rounded-2xl border border-white/10 bg-[#0d0d16] p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <label className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={includeVoiceover}
+                    onChange={(e) => setIncludeVoiceover(e.target.checked)}
+                    className="h-4 w-4 rounded border-white/20 bg-transparent text-blue-500 focus:ring-0"
+                  />
+                  <span className="text-sm font-semibold text-white">
+                    Generate voiceover (+15 credits)
+                  </span>
+                </label>
+
+                <span className="text-sm text-gray-400">
+                  Total cost: {totalCost} credits
+                </span>
+              </div>
+
+              {includeVoiceover && (
+                <div className="mt-4 space-y-4">
+                  <div>
+                    <label className="text-sm text-gray-400">Voice</label>
+                    <select
+                      value={voiceId}
+                      onChange={(e) => setVoiceId(e.target.value)}
+                      className={selectClass}
+                      disabled={voicesLoading}
+                    >
+                      <option value="">Select a voice</option>
+                      {voices.map((voice) => (
+                        <option key={voice.voice_id} value={voice.voice_id}>
+                          {voice.name}
+                        </option>
+                      ))}
+                    </select>
+                    {voicesLoading && (
+                      <p className="mt-2 text-xs text-gray-500">Loading voices...</p>
+                    )}
+                    {voicesError && (
+                      <p className="mt-2 text-xs text-red-300">{voicesError}</p>
+                    )}
+                  </div>
+
+                  {voices.length > 0 && (
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {voices.map((voice) => {
+                        const isSelected = voiceId === voice.voice_id;
+                        const isPlaying = playingVoiceId === voice.voice_id;
+
+                        return (
+                          <div
+                            key={voice.voice_id}
+                            className={`flex items-center justify-between gap-3 rounded-xl border p-3 ${
+                              isSelected
+                                ? "border-blue-400/40 bg-blue-500/10"
+                                : "border-white/10 bg-white/[0.02]"
+                            }`}
+                          >
+                            <div>
+                              <p className="text-sm font-semibold text-white">
+                                {voice.name}
+                              </p>
+                              <p className="mt-1 text-xs text-gray-500">
+                                {formatVoiceLabels(voice.labels)}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handlePreviewVoice(voice)}
+                                disabled={!voice.preview_url}
+                                className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-gray-300 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                {isPlaying ? "Stop" : "Play"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setVoiceId(voice.voice_id)}
+                                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                                  isSelected
+                                    ? "bg-blue-500/20 text-blue-200"
+                                    : "border border-white/10 bg-white/[0.03] text-gray-300 hover:text-white"
+                                }`}
+                              >
+                                {isSelected ? "Selected" : "Use"}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <button
               onClick={handleGenerate}
-              disabled={loading}
+              disabled={
+                starting ||
+                (jobId !== null && !error) ||
+                (includeVoiceover && (!voiceId || voicesLoading))
+              }
               className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 py-4 font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
             >
-              {loading ? (
+              {starting ? (
                 <>
                   <Loader2 size={18} className="animate-spin" />
-                  Generating... (may take 30-60 seconds)
+                  Starting pipeline...
                 </>
               ) : (
                 <>
                   <Sparkles size={18} />
-                  Generate
+                  Generate (Pipeline) — {totalCost} credits
                 </>
               )}
             </button>
@@ -265,63 +418,18 @@ export default function ChatPage() {
             )}
           </div>
 
-          {/* Results */}
-          {content && (
-            <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-              {/* Tabs */}
-              <div className="flex flex-wrap gap-2">
-                {TABS.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`rounded-xl border px-4 py-2 text-sm transition ${
-                      activeTab === tab.id
-                        ? "border-blue-400/40 bg-blue-500/10 text-white"
-                        : "border-white/10 bg-white/[0.03] text-gray-400 hover:text-white"
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
+          {jobId && <PipelineProgress jobId={jobId} />}
 
-              {/* Action buttons */}
-              <div className="mt-4 flex justify-end gap-2">
-                <button
-                  onClick={handleSave}
-                  disabled={saving || saved}
-                  className="flex items-center gap-2 rounded-xl border border-blue-400/30 bg-blue-500/10 px-4 py-2 text-sm text-blue-200 transition hover:bg-blue-500/20 disabled:opacity-60"
-                >
-                  {saving ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : saved ? (
-                    <Check size={16} className="text-green-400" />
-                  ) : (
-                    <FolderPlus size={16} />
-                  )}
-                  {saving ? "Saving..." : saved ? "Saved" : "Save to Projects"}
-                </button>
-
-                <button
-                  onClick={handleCopy}
-                  className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-gray-300 transition hover:text-white"
-                >
-                  {copied ? <Check size={16} className="text-green-400" /> : <Copy size={16} />}
-                  {copied ? "Copied" : "Copy"}
-                </button>
-              </div>
-
-              {saveError && (
-                <p className="mt-3 rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-300">
-                  {saveError}
-                </p>
-              )}
-
-              {/* Content */}
-              <div className="mt-4 whitespace-pre-wrap rounded-xl border border-white/10 bg-[#0d0d16] p-6 text-sm leading-relaxed text-gray-200">
-                {getTabText(activeTab)}
-              </div>
-            </div>
+          {jobId && (
+            <button
+              onClick={() => {
+                setJobId(null);
+                setIdea("");
+              }}
+              className="mt-4 text-sm text-gray-500 transition hover:text-white"
+            >
+              Start a new generation
+            </button>
           )}
         </div>
       </main>

@@ -23,7 +23,7 @@ export interface StepDefinition {
 export const PIPELINE_STEP_ORDER: StepDefinition[] = [
   {
     id: "script",
-    label: "Script & Hook",
+    label: "Content Package",
     credits: 5,
     provider: "openai:gpt-5-mini",
   },

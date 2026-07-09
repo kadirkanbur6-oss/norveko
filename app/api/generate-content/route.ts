@@ -6,7 +6,7 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import {
-  PIPELINE_STEPS,
+  buildPipelineSteps,
   totalPipelineCredits,
   initialStepsState,
 } from "@/lib/pipeline/steps";
@@ -62,7 +62,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const cost = totalPipelineCredits();
+    const pipelineSteps = buildPipelineSteps(false);
+    const cost = totalPipelineCredits(false);
 
     // 3) Krediyi düş — projedeki gerçek RPC imzasıyla:
     // deduct_credits(p_user_id, p_amount, p_reason)
@@ -100,8 +101,8 @@ export async function POST(req: NextRequest) {
         duration: duration ?? null,
         output_language: outputLanguage ?? "EN",
         status: "running",
-        current_step: PIPELINE_STEPS[0].id,
-        steps: initialStepsState(),
+        current_step: pipelineSteps[0].id,
+        steps: initialStepsState(false),
         credits_charged: cost,
       })
       .select()
@@ -126,7 +127,7 @@ export async function POST(req: NextRequest) {
       // --- ADIM 1: SCRIPT ---
       await updateStep(job.id, "script", { status: "running" });
 
-      const scriptDef = PIPELINE_STEPS.find((s) => s.id === "script")!;
+      const scriptDef = pipelineSteps.find((s) => s.id === "script")!;
       const scriptModel = scriptDef.provider.split(":")[1] ?? "gpt-5-mini";
 
       const scriptResult = await generateScript({

@@ -1,5 +1,5 @@
 // app/pipeline-test/page.tsx
-// Faz A test sayfası: yeni AI pipeline'ı uçtan uca dener.
+// Pipeline test sayfası: unified AI pipeline'ı uçtan uca dener.
 // /chat'e dokunmadan pipeline'ı doğrulamak için — ileride birleştirilecek.
 
 "use client";
@@ -200,7 +200,7 @@ export default function PipelineTestPage() {
             <div>
               <h1 className="text-2xl font-bold">Pipeline Test</h1>
               <p className="text-sm text-gray-400">
-                Internal test page for the new AI pipeline (script + thumbnail)
+                Internal test page for the AI pipeline (full content package + thumbnail)
               </p>
             </div>
           </div>

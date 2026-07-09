@@ -223,3 +223,8 @@ göre hareket etme.
 - Başarılı pipeline job tamamlanınca sonuç `projects` tablosuna da kaydediliyor (title/idea + content JSON).
 - Project kaydı başarısız olursa pipeline yine `completed` kalır; hata sadece server log'a düşer.
 - `steps.result.project_id` üzerinden PipelineProgress kartında "View project" linki gösterilir.
+
+## 8. Unified Content Flow (2026-07-09)
+- Pipeline script adımı artık full content package üretiyor: hook, script, scenes, titles, description, tags, thumbnailIdea.
+- `/chat` artık `/api/pipeline/start` kullanıyor; ilerleme/çıktı PipelineProgress üzerinden poll ediliyor.
+- `/pipeline-test` internal test sayfası olarak aynı pipeline akışını doğrulamak için korunuyor.

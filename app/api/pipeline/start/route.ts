@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
       {
         p_user_id: user.id,
         p_amount: cost,
-        p_reason: `AI pipeline generation (script + thumbnail${voiceoverEnabled ? " + voiceover" : ""})`,
+        p_reason: `AI pipeline generation (content package + thumbnail${voiceoverEnabled ? " + voiceover" : ""})`,
       }
     );
 
@@ -180,6 +180,11 @@ export async function POST(req: NextRequest) {
         status: "completed",
         hook: scriptResult.hook,
         script: scriptResult.script,
+        scenes: scriptResult.scenes,
+        titles: scriptResult.titles,
+        description: scriptResult.description,
+        tags: scriptResult.tags,
+        thumbnailIdea: scriptResult.thumbnailIdea,
         thumbnailPrompt: scriptResult.thumbnailPrompt,
       });
 
@@ -243,7 +248,7 @@ export async function POST(req: NextRequest) {
       await updateStep(job.id, "thumbnail", { status: "running" });
 
       const thumbResult = await generateThumbnail(
-        scriptResult.thumbnailPrompt,
+        scriptResult.thumbnailIdea,
         job.id
       );
 
@@ -255,24 +260,10 @@ export async function POST(req: NextRequest) {
       // Pipeline sonucu projeye kaydet (chat ile aynı tablo/kolon düzeni).
       // Proje kaydı başarısız olsa bile pipeline başarılı kalmalı.
       try {
-        const scriptStep = await getStep(job.id, "script");
         const voiceoverStep = voiceoverEnabled
           ? await getStep(job.id, "voiceover")
           : null;
-        const thumbnailStep = await getStep(job.id, "thumbnail");
 
-        const hook =
-          typeof scriptStep?.hook === "string" ? scriptStep.hook : "";
-        const script =
-          typeof scriptStep?.script === "string" ? scriptStep.script : "";
-        const thumbnailPrompt =
-          typeof scriptStep?.thumbnailPrompt === "string"
-            ? scriptStep.thumbnailPrompt
-            : "";
-        const thumbnailUrl =
-          typeof thumbnailStep?.image_url === "string"
-            ? thumbnailStep.image_url
-            : "";
         const voiceoverUrl =
           typeof voiceoverStep?.audio_url === "string"
             ? voiceoverStep.audio_url
@@ -291,14 +282,14 @@ export async function POST(req: NextRequest) {
             idea: idea.trim(),
             status: "draft",
             content: {
-              hook,
-              script,
-              scenes: [],
-              titles: [],
-              description: "",
-              tags: [],
-              thumbnailIdea: thumbnailPrompt,
-              thumbnailUrl,
+              hook: scriptResult.hook,
+              script: scriptResult.script,
+              scenes: scriptResult.scenes,
+              titles: scriptResult.titles,
+              description: scriptResult.description,
+              tags: scriptResult.tags,
+              thumbnailIdea: scriptResult.thumbnailIdea,
+              thumbnailUrl: thumbResult.imageUrl,
               voiceoverUrl: voiceoverUrl || undefined,
               audio_url: voiceoverUrl || undefined,
             },
