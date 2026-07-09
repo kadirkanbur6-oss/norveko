@@ -23,6 +23,27 @@ interface VideoScene {
 }
 
 interface VideoContent {
+  hook?: string;
+  script?: string;
+  scenes?: VideoScene[];
+  titles?: string[];
+  description?: string;
+  tags?: string[];
+  thumbnailIdea?: string;
+  thumbnailUrl?: string;
+  voiceoverUrl?: string;
+  audio_url?: string;
+  voiceover?: {
+    url?: string;
+    publicUrl?: string;
+    downloadUrl?: string;
+    audio_url?: string;
+    storagePath?: string;
+    fileName?: string;
+  };
+}
+
+interface NormalizedVideoContent {
   hook: string;
   script: string;
   scenes: VideoScene[];
@@ -30,6 +51,7 @@ interface VideoContent {
   description: string;
   tags: string[];
   thumbnailIdea: string;
+  thumbnailUrl?: string;
   voiceoverUrl?: string;
   audio_url?: string;
   voiceover?: {
@@ -66,6 +88,33 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
+function normalizeContent(
+  content: VideoContent | null | undefined
+): NormalizedVideoContent {
+  if (!content) {
+    return {
+      hook: "",
+      script: "",
+      scenes: [],
+      titles: [],
+      description: "",
+      tags: [],
+      thumbnailIdea: "",
+    };
+  }
+
+  return {
+    ...content,
+    hook: content.hook ?? "",
+    script: content.script ?? "",
+    scenes: Array.isArray(content.scenes) ? content.scenes : [],
+    titles: Array.isArray(content.titles) ? content.titles : [],
+    description: content.description ?? "",
+    tags: Array.isArray(content.tags) ? content.tags : [],
+    thumbnailIdea: content.thumbnailIdea ?? "",
+  };
+}
+
 export default function ProjectDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -81,7 +130,7 @@ export default function ProjectDetailPage() {
   // Editing state
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
-  const [editContent, setEditContent] = useState<VideoContent | null>(null);
+  const [editContent, setEditContent] = useState<NormalizedVideoContent | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
 
@@ -95,7 +144,12 @@ export default function ProjectDetailPage() {
           throw new Error(data.error || "Failed to load project.");
         }
 
-        setProject(data.project);
+        setProject({
+          ...data.project,
+          content: data.project?.content
+            ? normalizeContent(data.project.content as VideoContent)
+            : null,
+        });
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
@@ -110,7 +164,7 @@ export default function ProjectDetailPage() {
     if (!project?.content) return;
     setEditTitle(project.title);
     // Deep copy so the original stays intact
-    setEditContent(JSON.parse(JSON.stringify(project.content)));
+    setEditContent(JSON.parse(JSON.stringify(normalizeContent(project.content))));
     setEditing(true);
     setSaveMessage("");
   }
@@ -160,27 +214,27 @@ export default function ProjectDetailPage() {
   }
 
   function getTabText(tab: TabId): string {
-    const content = project?.content;
+    const content = project?.content ? normalizeContent(project.content) : null;
     if (!content) return "";
     switch (tab) {
       case "script":
         return `HOOK:\n${content.hook}\n\nSCRIPT:\n${content.script}`;
       case "scenes":
-        return (content.scenes ?? [])
+        return content.scenes
           .map((s) => `Scene ${s.sceneNumber}: ${s.description}`)
           .join("\n\n");
       case "prompts":
-        return (content.scenes ?? [])
+        return content.scenes
           .map((s) => `Scene ${s.sceneNumber}:\n${s.videoPrompt}`)
           .join("\n\n");
       case "titles":
-        return (content.titles ?? []).join("\n");
+        return content.titles.join("\n");
       case "description":
-        return content.description ?? "";
+        return content.description;
       case "tags":
-        return (content.tags ?? []).join(", ");
+        return content.tags.join(", ");
       case "thumbnail":
-        return content.thumbnailIdea ?? "";
+        return content.thumbnailIdea;
     }
   }
 
@@ -227,13 +281,17 @@ export default function ProjectDetailPage() {
     "w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-sm text-white outline-none focus:border-blue-400/50";
   const labelClass = "mb-1 block text-xs uppercase tracking-wider text-gray-500";
 
+  const normalizedProjectContent = project?.content
+    ? normalizeContent(project.content)
+    : null;
+
   const voiceoverUrl =
-    project?.content?.voiceoverUrl ??
-    project?.content?.audio_url ??
-    project?.content?.voiceover?.url ??
-    project?.content?.voiceover?.publicUrl ??
-    project?.content?.voiceover?.downloadUrl ??
-    project?.content?.voiceover?.audio_url ??
+    normalizedProjectContent?.voiceoverUrl ??
+    normalizedProjectContent?.audio_url ??
+    normalizedProjectContent?.voiceover?.url ??
+    normalizedProjectContent?.voiceover?.publicUrl ??
+    normalizedProjectContent?.voiceover?.downloadUrl ??
+    normalizedProjectContent?.voiceover?.audio_url ??
     null;
 
   function renderEditForm() {

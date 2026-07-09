@@ -218,3 +218,8 @@ göre hareket etme.
 - Pipeline artık opsiyonel ElevenLabs voiceover destekliyor: base 15 kredi, voiceover açıkken toplam 30 kredi.
 - Voice listesi server-side `GET /api/voices` ile geliyor; MP3 çıktıları public `voiceovers` bucket'ına yazılıyor.
 - `ELEVENLABS_API_KEY` client'a hiç açılmamalı; voiceover hatasında mevcut refund akışı kullanılmalı.
+
+## 7. Faz C — Pipeline to Projects (2026-07-09)
+- Başarılı pipeline job tamamlanınca sonuç `projects` tablosuna da kaydediliyor (title/idea + content JSON).
+- Project kaydı başarısız olursa pipeline yine `completed` kalır; hata sadece server log'a düşer.
+- `steps.result.project_id` üzerinden PipelineProgress kartında "View project" linki gösterilir.

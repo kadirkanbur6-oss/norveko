@@ -4,6 +4,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { CheckCircle2, Circle, Loader2, XCircle, Copy } from "lucide-react";
 import { PIPELINE_STEP_ORDER } from "@/lib/pipeline/steps";
 
@@ -24,6 +25,11 @@ interface JobData {
   current_step: string | null;
   steps: Record<string, StepInfo>;
   error: string | null;
+}
+
+interface PipelineResultStep {
+  status?: string;
+  project_id?: string;
 }
 
 const STEP_ORDER = PIPELINE_STEP_ORDER.map(({ id, label }) => ({ id, label }));
@@ -76,6 +82,11 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
 
   const scriptStep = job.steps?.script;
   const thumbStep = job.steps?.thumbnail;
+  const resultStep = job.steps?.result as unknown as PipelineResultStep | undefined;
+  const projectId =
+    (resultStep?.project_id && resultStep.project_id.length > 0
+      ? resultStep.project_id
+      : null) ?? null;
 
   return (
     <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
@@ -120,6 +131,18 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
         <div className="mt-4 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-300">
           Something went wrong: {job.error ?? "Unknown error"}. Your credits
           have been refunded.
+        </div>
+      )}
+
+      {job.status === "completed" && projectId && (
+        <div className="mt-4 rounded-xl border border-green-400/20 bg-green-500/10 p-4 text-sm text-green-200">
+          Pipeline completed successfully.
+          <Link
+            href={`/projects/${projectId}`}
+            className="ml-2 font-semibold text-green-100 underline transition hover:text-white"
+          >
+            View project
+          </Link>
         </div>
       )}
 

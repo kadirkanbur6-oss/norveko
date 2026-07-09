@@ -252,6 +252,83 @@ export async function POST(req: NextRequest) {
         image_url: thumbResult.imageUrl,
       });
 
+      // Pipeline sonucu projeye kaydet (chat ile aynı tablo/kolon düzeni).
+      // Proje kaydı başarısız olsa bile pipeline başarılı kalmalı.
+      try {
+        const scriptStep = await getStep(job.id, "script");
+        const voiceoverStep = voiceoverEnabled
+          ? await getStep(job.id, "voiceover")
+          : null;
+        const thumbnailStep = await getStep(job.id, "thumbnail");
+
+        const hook =
+          typeof scriptStep?.hook === "string" ? scriptStep.hook : "";
+        const script =
+          typeof scriptStep?.script === "string" ? scriptStep.script : "";
+        const thumbnailPrompt =
+          typeof scriptStep?.thumbnailPrompt === "string"
+            ? scriptStep.thumbnailPrompt
+            : "";
+        const thumbnailUrl =
+          typeof thumbnailStep?.image_url === "string"
+            ? thumbnailStep.image_url
+            : "";
+        const voiceoverUrl =
+          typeof voiceoverStep?.audio_url === "string"
+            ? voiceoverStep.audio_url
+            : "";
+
+        const projectTitle = idea.trim().slice(0, 90);
+
+        const { data: insertedProject, error: projectInsertError } = await supabaseAdmin
+          .from("projects")
+          .insert({
+            user_id: user.id,
+            title: projectTitle,
+            platform: platform ?? "youtube",
+            style: style ?? null,
+            duration: duration ?? null,
+            idea: idea.trim(),
+            status: "draft",
+            content: {
+              hook,
+              script,
+              scenes: [],
+              titles: [],
+              description: "",
+              tags: [],
+              thumbnailIdea: thumbnailPrompt,
+              thumbnailUrl,
+              voiceoverUrl: voiceoverUrl || undefined,
+              audio_url: voiceoverUrl || undefined,
+            },
+          })
+          .select("id")
+          .single();
+
+        if (projectInsertError) {
+          console.error("[pipeline] project insert failed:", {
+            jobId: job.id,
+            userId: user.id,
+            error: projectInsertError.message,
+          });
+        } else if (insertedProject?.id) {
+          await updateStep(job.id, "result", {
+            status: "completed",
+            project_id: insertedProject.id,
+          });
+        }
+      } catch (projectSaveError) {
+        console.error("[pipeline] project save exception:", {
+          jobId: job.id,
+          userId: user.id,
+          error:
+            projectSaveError instanceof Error
+              ? projectSaveError.message
+              : "Unknown error",
+        });
+      }
+
       // --- PIPELINE TAMAM ---
       await supabaseAdmin
         .from("pipeline_jobs")
@@ -312,4 +389,20 @@ async function updateStep(
     .from("pipeline_jobs")
     .update({ steps })
     .eq("id", jobId);
+}
+
+async function getStep(jobId: string, stepId: string): Promise<Record<string, unknown> | null> {
+  const { data: current } = await supabaseAdmin
+    .from("pipeline_jobs")
+    .select("steps")
+    .eq("id", jobId)
+    .single();
+
+  const steps = (current?.steps as Record<string, unknown>) ?? {};
+  const step = steps[stepId];
+  if (!step || typeof step !== "object") {
+    return null;
+  }
+
+  return step as Record<string, unknown>;
 }
