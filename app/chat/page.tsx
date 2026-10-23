@@ -29,6 +29,8 @@ export default function ChatPage() {
   const [includeVoiceover, setIncludeVoiceover] = useState(false);
   const [includeVideo, setIncludeVideo] = useState(false);
   const [videoAvailable, setVideoAvailable] = useState(false);
+  const [generationAvailable, setGenerationAvailable] = useState(true);
+  const [launchLockMessage, setLaunchLockMessage] = useState<string | null>(null);
   const [voiceId, setVoiceId] = useState("");
   const [voices, setVoices] = useState<VoiceOption[]>([]);
   const [voicesLoading, setVoicesLoading] = useState(false);
@@ -51,7 +53,11 @@ export default function ChatPage() {
     fetch("/api/features", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
-        if (active && data?.success) setVideoAvailable(Boolean(data.features?.videoGeneration));
+        if (active && data?.success) {
+          setVideoAvailable(Boolean(data.features?.videoGeneration));
+          setGenerationAvailable(data.features?.generation !== false);
+          setLaunchLockMessage(data.launchLockMessage ?? null);
+        }
       })
       .catch(() => {
         // Feature stays unavailable
@@ -429,10 +435,17 @@ export default function ChatPage() {
               </div>
             </div>
 
+            {!generationAvailable && (
+              <p className="mt-6 rounded-xl border border-yellow-400/30 bg-yellow-500/10 p-4 text-sm text-yellow-100">
+                {launchLockMessage ?? "Content generation is temporarily closed."}
+              </p>
+            )}
+
             <button
               onClick={handleGenerate}
               disabled={
                 starting ||
+                !generationAvailable ||
                 (jobId !== null && !error) ||
                 (includeVoiceover && (!voiceId || voicesLoading))
               }

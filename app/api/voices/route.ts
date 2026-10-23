@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { listVoices } from "@/lib/pipeline/elevenlabs";
+import { isGenerationEnabled, LAUNCH_LOCK_MESSAGE } from "@/lib/pipeline/features";
 
 export async function GET() {
   try {
@@ -27,6 +28,13 @@ export async function GET() {
       return NextResponse.json(
         { success: false, error: "Not authenticated" },
         { status: 401 }
+      );
+    }
+
+    if (!isGenerationEnabled(user.id)) {
+      return NextResponse.json(
+        { success: false, error: LAUNCH_LOCK_MESSAGE },
+        { status: 403 }
       );
     }
 

@@ -13,7 +13,11 @@ import {
   initialStepsState,
 } from "@/lib/pipeline/steps";
 import { kickJob } from "@/lib/pipeline/runner";
-import { isVideoGenerationEnabled } from "@/lib/pipeline/features";
+import {
+  isGenerationEnabled,
+  isVideoGenerationEnabled,
+  LAUNCH_LOCK_MESSAGE,
+} from "@/lib/pipeline/features";
 import { DURATIONS, LANGUAGES, PLATFORMS, STYLES, isOneOf } from "@/lib/pipeline/options";
 
 export const runtime = "nodejs";
@@ -53,6 +57,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { success: false, error: "Not authenticated" },
         { status: 401 }
+      );
+    }
+
+    // Launch lock: reject before reading the body or touching credits.
+    if (!isGenerationEnabled(user.id)) {
+      return NextResponse.json(
+        { success: false, error: LAUNCH_LOCK_MESSAGE },
+        { status: 403 }
       );
     }
 

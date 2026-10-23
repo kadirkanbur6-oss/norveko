@@ -4,7 +4,11 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { isVideoGenerationEnabled } from "@/lib/pipeline/features";
+import {
+  isGenerationEnabled,
+  isVideoGenerationEnabled,
+  LAUNCH_LOCK_MESSAGE,
+} from "@/lib/pipeline/features";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +34,9 @@ export async function GET() {
   return NextResponse.json({
     success: true,
     features: {
+      generation: isGenerationEnabled(user?.id),
       videoGeneration: isVideoGenerationEnabled(user?.id),
     },
+    launchLockMessage: isGenerationEnabled(user?.id) ? null : LAUNCH_LOCK_MESSAGE,
   });
 }
