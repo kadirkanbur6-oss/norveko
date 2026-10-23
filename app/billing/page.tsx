@@ -115,7 +115,7 @@ export default function BillingPage() {
     <div className="flex min-h-screen bg-[#0a0a12] text-white">
       <Sidebar />
 
-      <main className="flex-1 p-8">
+      <main className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
         <div className="mx-auto max-w-4xl">
           {/* Header */}
           <div className="flex items-center gap-3">
@@ -143,8 +143,8 @@ export default function BillingPage() {
           ) : (
             <>
               {/* Balance card */}
-              <div className="mt-8 rounded-2xl border border-yellow-400/20 bg-gradient-to-br from-yellow-500/10 to-orange-500/5 p-8">
-                <div className="flex items-center justify-between">
+              <div className="mt-8 rounded-2xl border border-yellow-400/20 bg-gradient-to-br from-yellow-500/10 to-orange-500/5 p-6 sm:p-8">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm text-gray-400">Current balance</p>
                     <div className="mt-2 flex items-center gap-3">
@@ -155,7 +155,7 @@ export default function BillingPage() {
                       <span className="text-gray-400">credits</span>
                     </div>
                   </div>
-                  <div className="text-right text-sm text-gray-400">
+                  <div className="text-sm text-gray-400 sm:text-right">
                     <p>Content package: 5 credits</p>
                     <p className="mt-1 text-lg font-semibold text-white">
                       Full AI pipeline: 15 credits
@@ -167,7 +167,7 @@ export default function BillingPage() {
               {/* Packages */}
               <h2 className="mt-12 text-xl font-bold">Credit packages</h2>
 
-              <div className="mt-6 grid gap-6 sm:grid-cols-3">
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {CREDIT_PACKAGES.map((pkg) => (
                   <div
                     key={pkg.id}
@@ -232,16 +232,16 @@ export default function BillingPage() {
                   {transactions.map((tx, index) => (
                     <div
                       key={tx.id}
-                      className={`flex items-center justify-between px-6 py-4 ${
+                      className={`flex items-center justify-between gap-3 px-4 py-4 sm:px-6 ${
                         index !== transactions.length - 1
                           ? "border-b border-white/5"
                           : ""
                       }`}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
                         {transactionIcon(tx.type)}
-                        <div>
-                          <p className="text-sm">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm">
                             {tx.reason || tx.type}
                           </p>
                           <p className="text-xs text-gray-500">
@@ -250,7 +250,7 @@ export default function BillingPage() {
                         </div>
                       </div>
                       <span
-                        className={`text-sm font-semibold ${
+                        className={`shrink-0 text-sm font-semibold ${
                           tx.amount > 0 ? "text-green-400" : "text-red-300"
                         }`}
                       >

@@ -48,7 +48,7 @@ export default function AiInsights() {
 
   return (
     <section className="mt-8 rounded-[28px] border border-white/10 bg-white/[0.04] p-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold">AI Insights</h2>
           <p className="mt-1 text-sm text-gray-400">

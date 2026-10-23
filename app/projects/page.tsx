@@ -86,7 +86,7 @@ export default function ProjectsPage() {
     <div className="flex min-h-screen bg-[#0a0a12] text-white">
       <Sidebar />
 
-      <main className="flex-1 p-8">
+      <main className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
         <div className="mx-auto max-w-4xl">
           {/* Header */}
           <div className="flex items-center gap-3">
@@ -112,7 +112,7 @@ export default function ProjectsPage() {
               <Loader2 size={32} className="animate-spin text-blue-300" />
             </div>
           ) : projects.length === 0 ? (
-            <div className="mt-16 rounded-2xl border border-white/10 bg-white/[0.03] p-12 text-center">
+            <div className="mt-16 rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center sm:p-12">
               <FolderOpen size={40} className="mx-auto text-gray-500" />
               <p className="mt-4 text-gray-400">No saved projects yet.</p>
               <Link

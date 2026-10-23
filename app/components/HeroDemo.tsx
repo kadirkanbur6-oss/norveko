@@ -44,7 +44,7 @@ export default function HeroDemo() {
   const isDone = step === 6;
 
   return (
-    <div className="relative h-[560px] w-full max-w-[560px] rounded-3xl border border-white/10 bg-[#181527] p-6 shadow-2xl">
+    <div className="relative min-h-[480px] w-full max-w-[560px] overflow-hidden rounded-3xl border border-white/10 bg-[#181527] p-4 shadow-2xl sm:h-[560px] sm:p-6">
       <div className="mb-6 flex items-center gap-2">
         <div className="h-3 w-3 rounded-full bg-red-400" />
         <div className="h-3 w-3 rounded-full bg-yellow-400" />

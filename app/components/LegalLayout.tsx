@@ -11,7 +11,7 @@ export default function LegalLayout({ title, children }: LegalLayoutProps) {
   return (
     <div className="min-h-screen bg-[#0a0a12] text-gray-300">
       <header className="border-b border-white/10">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-5">
+        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-5">
           <Link href="/" className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/10">
               <Layers size={20} className="text-blue-300" />
@@ -19,7 +19,7 @@ export default function LegalLayout({ title, children }: LegalLayoutProps) {
             <span className="text-lg font-bold text-white">NORVEKO</span>
           </Link>
 
-          <nav className="flex gap-5 text-sm text-gray-400">
+          <nav className="flex flex-wrap gap-4 text-sm text-gray-400 sm:gap-5">
             <Link href="/terms" className="transition hover:text-white">
               Terms
             </Link>
@@ -33,7 +33,7 @@ export default function LegalLayout({ title, children }: LegalLayoutProps) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-6 py-12">
+      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
         <h1 className="text-3xl font-bold text-white">{title}</h1>
         <p className="mt-2 text-sm text-gray-500">
           Last updated: {LEGAL_LAST_UPDATED}

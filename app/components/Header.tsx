@@ -32,22 +32,22 @@ export default function Header() {
   }
 
   return (
-    <header className="flex items-center justify-between mb-10">
+    <header className="mb-8 flex flex-col gap-5 lg:mb-10 lg:flex-row lg:items-center lg:justify-between">
       <div>
-        <h1 className="text-5xl font-bold">Dashboard</h1>
+        <h1 className="text-3xl font-bold sm:text-4xl lg:text-5xl">Dashboard</h1>
 
         <p className="mt-2 text-gray-400">
           Manage your AI content workflow in one place.
         </p>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+      <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+        <div className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 sm:flex-none">
           <Search size={18} className="text-gray-400" />
 
           <input
             placeholder="Search..."
-            className="bg-transparent outline-none text-sm w-52"
+            className="w-full min-w-0 bg-transparent text-sm outline-none sm:w-52"
           />
         </div>
 
@@ -67,8 +67,8 @@ export default function Header() {
               <User size={18} />
             </div>
 
-            <div className="text-left">
-              <p className="font-semibold text-white">{displayName}</p>
+            <div className="hidden text-left sm:block">
+              <p className="max-w-[10rem] truncate font-semibold text-white">{displayName}</p>
             </div>
 
             <ChevronDown size={18} className="text-gray-400" />

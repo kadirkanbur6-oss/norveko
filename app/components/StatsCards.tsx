@@ -69,7 +69,7 @@ export default async function StatsCards() {
   ];
 
   return (
-    <div className="grid gap-6 md:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
       {cards.map((item) => {
         const Icon = item.icon;
         const changeValue = growth?.[item.metric as keyof typeof growth];
@@ -107,7 +107,7 @@ export default async function StatsCards() {
               {item.title}
             </p>
 
-            <h3 className="mt-2 text-4xl font-black">{item.value}</h3>
+            <h3 className="mt-2 text-3xl font-black sm:text-4xl">{item.value}</h3>
           </div>
         );
       })}

@@ -14,10 +14,12 @@ import {
   Image as ImageIcon,
   Layers,
   Lightbulb,
+  Menu,
   MessageSquare,
   Search,
   Sparkles,
   Wand2,
+  X,
   Zap,
 } from "lucide-react";
 
@@ -160,12 +162,13 @@ const FAQS = [
 
 export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#0a0a12] text-white antialiased">
       {/* NAVBAR */}
       <header className="sticky top-0 z-50 border-b border-white/5 bg-[#0a0a12]/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
           <div className="flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-600">
               <Sparkles size={18} />
@@ -180,7 +183,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             <a href="#faq" className="transition hover:text-white">FAQ</a>
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {isLoggedIn ? (
               <Link
                 href="/dashboard"
@@ -192,7 +195,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
               <>
                 <Link
                   href="/login"
-                  className="rounded-xl px-4 py-2 text-sm text-gray-300 transition hover:text-white"
+                  className="hidden rounded-xl px-4 py-2 text-sm text-gray-300 transition hover:text-white sm:inline-block"
                 >
                   Log in
                 </Link>
@@ -204,15 +207,55 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                 </Link>
               </>
             )}
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={menuOpen}
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-gray-300 transition hover:text-white md:hidden"
+            >
+              {menuOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile nav */}
+        {menuOpen && (
+          <nav className="border-t border-white/5 bg-[#0a0a12]/95 px-4 py-3 md:hidden">
+            <div className="flex flex-col gap-1 text-sm text-gray-300">
+              {[
+                ["#workflow", "Workflow"],
+                ["#workspace", "AI Workspace"],
+                ["#pricing", "Pricing"],
+                ["#faq", "FAQ"],
+              ].map(([href, label]) => (
+                <a
+                  key={href}
+                  href={href}
+                  onClick={() => setMenuOpen(false)}
+                  className="rounded-lg px-3 py-2.5 transition hover:bg-white/5 hover:text-white"
+                >
+                  {label}
+                </a>
+              ))}
+              {!isLoggedIn && (
+                <Link
+                  href="/login"
+                  className="rounded-lg px-3 py-2.5 transition hover:bg-white/5 hover:text-white sm:hidden"
+                >
+                  Log in
+                </Link>
+              )}
+            </div>
+          </nav>
+        )}
       </header>
 
       {/* 1. HERO */}
       <section className="relative overflow-hidden">
-        <div className="pointer-events-none absolute -top-40 left-1/2 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-gradient-to-r from-blue-600/20 to-purple-600/20 blur-3xl" />
+        <div className="pointer-events-none absolute -top-40 left-1/2 h-[500px] w-[min(800px,120vw)] -translate-x-1/2 rounded-full bg-gradient-to-r from-blue-600/20 to-purple-600/20 blur-3xl" />
 
-        <div className="mx-auto grid max-w-6xl items-start gap-10 px-6 py-12 lg:grid-cols-2">
+        <div className="mx-auto grid max-w-6xl items-start gap-10 px-4 py-10 sm:px-6 sm:py-12 lg:grid-cols-2">
           <Reveal>
             <div>
               <span className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-4 py-1.5 text-xs text-blue-200">
@@ -220,30 +263,30 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                 One Prompt → Complete Content Package
               </span>
 
-              <h1 className="mt-5 text-4xl font-black leading-tight tracking-tight sm:text-5xl">
+              <h1 className="mt-5 text-3xl font-black leading-tight tracking-tight sm:text-4xl lg:text-5xl">
                 Your entire content pipeline.{" "}
                 <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                   One AI.
                 </span>
               </h1>
 
-              <p className="mt-4 max-w-lg text-lg text-gray-400">
+              <p className="mt-4 max-w-lg text-base text-gray-400 sm:text-lg">
                 Describe your video idea once. Norveko writes the script, plans
                 every scene, generates cinematic video prompts, designs your
                 thumbnail concept and handles SEO — in seconds.
               </p>
 
-              <div className="mt-6 flex flex-wrap gap-4">
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
                 <Link
                   href="/signup"
-                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-3.5 font-semibold transition hover:opacity-90"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-3.5 font-semibold transition hover:opacity-90"
                 >
                   Start Free — 50 credits
                   <ArrowRight size={18} />
                 </Link>
                 <a
                   href="#workflow"
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-6 py-3.5 font-semibold text-gray-300 transition hover:border-white/20 hover:text-white"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-6 py-3.5 font-semibold text-gray-300 transition hover:border-white/20 hover:text-white"
                 >
                   See how it works
                 </a>
@@ -256,7 +299,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           </Reveal>
 
           <Reveal delay={150}>
-            <div className="relative">
+            <div className="relative mx-auto w-full max-w-[560px]">
               <div className="absolute -inset-4 rounded-3xl bg-gradient-to-r from-blue-600/20 to-purple-600/20 blur-2xl" />
               <HeroDemo />
             </div>
@@ -267,7 +310,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
       {/* 2. PLATFORMS */}
       <section className="border-y border-white/5 py-6">
         <Reveal>
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-8 gap-y-3 px-6">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-8 gap-y-3 px-4 sm:px-6">
             <span className="text-xs uppercase tracking-[3px] text-gray-500">
               Built for creators on
             </span>
@@ -284,7 +327,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
       </section>
 
       {/* 3. PROBLEM */}
-      <section className="mx-auto max-w-6xl scroll-mt-20 px-6 py-12">
+      <section className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6">
         <Reveal>
           <SectionTitle
             eyebrow="The Problem"
@@ -345,7 +388,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
       </section>
 
       {/* 4. WORKFLOW */}
-      <section id="workflow" className="mx-auto max-w-6xl scroll-mt-20 px-6 py-12">
+      <section id="workflow" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6">
         <Reveal>
           <SectionTitle
             eyebrow="Workflow"
@@ -373,9 +416,9 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
 
       {/* 5. AI WORKSPACE */}
       <section id="workspace" className="relative scroll-mt-20 overflow-hidden py-12">
-        <div className="pointer-events-none absolute left-1/2 top-1/2 h-[400px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-purple-600/10 blur-3xl" />
+        <div className="pointer-events-none absolute left-1/2 top-1/2 h-[400px] w-[min(700px,120vw)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-purple-600/10 blur-3xl" />
 
-        <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 lg:grid-cols-2">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2">
           <Reveal>
             <div>
               <SectionTitle eyebrow="AI Workspace" title="Your creator command center." />
@@ -437,7 +480,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
       </section>
 
       {/* 6. HOW IT WORKS */}
-      <section className="mx-auto max-w-6xl scroll-mt-20 px-6 py-12">
+      <section className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6">
         <Reveal>
           <SectionTitle eyebrow="How it works" title="Three steps. That's it." />
         </Reveal>
@@ -464,7 +507,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
       </section>
 
       {/* 7. FORMATS */}
-      <section className="mx-auto max-w-6xl scroll-mt-20 px-6 py-12">
+      <section className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6">
         <Reveal>
           <SectionTitle eyebrow="Formats" title="Every format. Every platform." />
         </Reveal>
@@ -483,7 +526,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
       {/* 8. LANGUAGES (compact strip) */}
       <section className="border-y border-white/5 py-6">
         <Reveal>
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-3 px-6">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-3 px-4 sm:px-6">
             <span className="flex items-center gap-2 text-sm font-semibold text-gray-300">
               <Globe size={16} className="text-blue-300" />
               Create in 6 languages:
@@ -502,7 +545,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
       </section>
 
       {/* 9. PRICING */}
-      <section id="pricing" className="mx-auto max-w-6xl scroll-mt-20 px-6 py-12">
+      <section id="pricing" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6">
         <Reveal>
           <SectionTitle
             eyebrow="Pricing"
@@ -559,7 +602,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
       </section>
 
       {/* 10. FAQ */}
-      <section id="faq" className="mx-auto max-w-3xl scroll-mt-20 px-6 py-12">
+      <section id="faq" className="mx-auto max-w-3xl scroll-mt-20 px-4 py-12 sm:px-6">
         <Reveal>
           <SectionTitle eyebrow="FAQ" title="Questions, answered." />
         </Reveal>
@@ -593,10 +636,10 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
 
       {/* 11. FINAL CTA */}
       <section className="relative overflow-hidden py-16">
-        <div className="pointer-events-none absolute left-1/2 top-1/2 h-[300px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-blue-600/25 to-purple-600/25 blur-3xl" />
+        <div className="pointer-events-none absolute left-1/2 top-1/2 h-[300px] w-[min(600px,120vw)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-blue-600/25 to-purple-600/25 blur-3xl" />
         <Reveal>
-          <div className="relative mx-auto max-w-3xl px-6 text-center">
-            <h2 className="text-4xl font-black sm:text-5xl">
+          <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
+            <h2 className="text-3xl font-black sm:text-4xl lg:text-5xl">
               Ready to replace all your AI tools?
             </h2>
             <p className="mt-3 text-lg text-gray-400">
@@ -604,7 +647,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             </p>
             <Link
               href="/signup"
-              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-8 py-4 text-lg font-bold transition hover:opacity-90"
+              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-3.5 text-base font-bold sm:px-8 sm:py-4 sm:text-lg transition hover:opacity-90"
             >
               Start Free — 50 credits
               <ArrowRight size={20} />
@@ -616,7 +659,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
 
       {/* 12. FOOTER */}
       <footer className="border-t border-white/5 py-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-purple-600">
               <Sparkles size={15} />

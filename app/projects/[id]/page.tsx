@@ -437,7 +437,7 @@ export default function ProjectDetailPage() {
         </div>
 
         {/* Save / Cancel */}
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
           <button
             onClick={handleSave}
             disabled={saving}
@@ -473,7 +473,7 @@ export default function ProjectDetailPage() {
     <div className="flex min-h-screen bg-[#0a0a12] text-white">
       <Sidebar />
 
-      <main className="flex-1 p-8">
+      <main className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
         <div className="mx-auto max-w-4xl">
           {/* Back link */}
           <Link
@@ -495,13 +495,13 @@ export default function ProjectDetailPage() {
           ) : project ? (
             <>
               {/* Header */}
-              <div className="mt-6 flex items-start justify-between gap-4">
-                <div className="flex items-center gap-3">
+              <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex min-w-0 items-center gap-3">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-400/30 bg-blue-500/10">
                     <FolderOpen className="text-blue-300" />
                   </div>
-                  <div>
-                    <h1 className="text-2xl font-bold">{project.title}</h1>
+                  <div className="min-w-0">
+                    <h1 className="break-words text-xl font-bold sm:text-2xl">{project.title}</h1>
                     {project.idea && (
                       <p className="mt-1 text-sm text-gray-400">
                         {project.idea}
@@ -510,7 +510,7 @@ export default function ProjectDetailPage() {
                   </div>
                 </div>
 
-                <div className="flex shrink-0 gap-2">
+                <div className="flex shrink-0 flex-wrap gap-2">
                   {!editing && project.content && (
                     <button
                       onClick={startEditing}
@@ -600,7 +600,7 @@ export default function ProjectDetailPage() {
                     </button>
                   </div>
 
-                  <div className="mt-4 whitespace-pre-wrap rounded-xl border border-white/10 bg-[#0d0d16] p-6 text-sm leading-relaxed text-gray-200">
+                  <div className="mt-4 whitespace-pre-wrap break-words rounded-xl border border-white/10 bg-[#0d0d16] p-4 text-sm leading-relaxed text-gray-200 sm:p-6">
                     {getTabText(activeTab)}
                   </div>
 

@@ -58,7 +58,7 @@ function LoginContent() {
 
   return (
     <div className="min-h-screen bg-[#090b16] px-4 py-12 text-white">
-      <div className="mx-auto w-full max-w-md rounded-[32px] border border-white/10 bg-white/5 p-10 shadow-[0_25px_100px_rgba(0,0,0,0.25)] backdrop-blur-xl">
+      <div className="mx-auto w-full max-w-md rounded-[32px] border border-white/10 bg-white/5 p-6 sm:p-10 shadow-[0_25px_100px_rgba(0,0,0,0.25)] backdrop-blur-xl">
         <div className="mb-8 space-y-3">
           <p className="text-sm uppercase tracking-[0.24em] text-violet-300/80">
             Welcome

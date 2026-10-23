@@ -96,7 +96,7 @@ export default function SettingsPage() {
     <div className="flex min-h-screen bg-[#0a0a12] text-white">
       <Sidebar />
 
-      <main className="flex-1 p-8">
+      <main className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
         <div className="mx-auto max-w-3xl">
           {/* Header */}
           <div className="flex items-center gap-3">
@@ -129,11 +129,11 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="mt-4 space-y-3 text-sm">
-                  <div className="flex items-center justify-between rounded-xl border border-white/10 bg-[#0d0d16] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#0d0d16] p-4">
                     <span className="text-gray-400">Email</span>
                     <span>{settings.email}</span>
                   </div>
-                  <div className="flex items-center justify-between rounded-xl border border-white/10 bg-[#0d0d16] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#0d0d16] p-4">
                     <span className="text-gray-400">Member since</span>
                     <span>{formatDate(settings.createdAt)}</span>
                   </div>

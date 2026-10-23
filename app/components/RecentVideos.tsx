@@ -25,7 +25,7 @@ export default async function RecentVideos() {
 
   return (
     <section className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-6">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold text-white">Recent Videos</h2>
           <p className="mt-1 text-sm text-gray-400">
@@ -57,9 +57,9 @@ export default async function RecentVideos() {
             return (
               <div
                 key={video.id}
-                className="flex items-center gap-4 rounded-2xl border border-white/10 bg-black/20 p-4"
+                className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-black/20 p-4 sm:flex-row sm:items-center"
               >
-                <div className="relative h-20 w-32 overflow-hidden rounded-xl bg-white/5">
+                <div className="relative aspect-video w-full shrink-0 overflow-hidden rounded-xl bg-white/5 sm:h-20 sm:w-32">
                   <Image
                     src={thumbnail}
                     alt={video.snippet.title}
@@ -68,8 +68,8 @@ export default async function RecentVideos() {
                   />
                 </div>
 
-                <div className="flex-1">
-                  <h3 className="line-clamp-1 font-bold text-white">
+                <div className="min-w-0 flex-1">
+                  <h3 className="line-clamp-2 sm:line-clamp-1 font-bold text-white">
                     {video.snippet.title}
                   </h3>
 
@@ -78,7 +78,7 @@ export default async function RecentVideos() {
                   </p>
                 </div>
 
-                <div className="flex gap-6 text-sm text-blue-200">
+                <div className="flex flex-wrap gap-4 text-sm text-blue-200 sm:gap-6">
                   <span className="flex items-center gap-2">
                     <Eye size={16} />
                     {formatNumber(video.statistics.viewCount)}
