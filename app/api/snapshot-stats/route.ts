@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getChannelStats, getRecentVideos } from "../../lib/youtube";
 
-const CHANNEL_ID = "UCs4hJrYzjQ-nNRbS7jVUMiA";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const SNAPSHOT_SECRET = process.env.SNAPSHOT_SECRET!;
@@ -22,71 +21,72 @@ export async function GET(request: Request) {
   }
 
   try {
-    const stats = await getChannelStats(CHANNEL_ID);
-    const videos = await getRecentVideos(CHANNEL_ID);
-
-    const { data: connectedUsers, error: connectedUsersError } = await supabaseService
+    // Every channel any user has connected — no hardcoded channel.
+    const { data: links, error: linksError } = await supabaseService
       .from("user_channels")
-      .select("user_id")
-      .eq("channel_id", CHANNEL_ID);
+      .select("user_id, channel_id");
 
-    if (connectedUsersError) {
+    if (linksError) {
       return NextResponse.json(
-        { success: false, error: connectedUsersError.message },
+        { success: false, error: linksError.message },
         { status: 500 }
       );
     }
 
-    const targetUserIds = Array.from(
-      new Set((connectedUsers ?? []).map((row) => row.user_id).filter(Boolean))
-    ) as string[];
-
-    if (targetUserIds.length === 0) {
-      return NextResponse.json({ success: true, skipped: true });
+    const byChannel = new Map<string, string[]>();
+    for (const row of links ?? []) {
+      if (!row.channel_id || !row.user_id) continue;
+      const users = byChannel.get(row.channel_id) ?? [];
+      if (!users.includes(row.user_id)) users.push(row.user_id);
+      byChannel.set(row.channel_id, users);
     }
 
-    const statsRows = targetUserIds.map((userId) => ({
-      user_id: userId,
-      channel_id: CHANNEL_ID,
-      subscriber_count: stats.subscriberCount,
-      view_count: stats.viewCount,
-      video_count: stats.videoCount,
-    }));
-
-    const videosRows = targetUserIds.map((userId) => ({
-      user_id: userId,
-      channel_id: CHANNEL_ID,
-      videos,
-    }));
-
-    const statsUpsert = supabaseService
-      .from("channel_stats_snapshots")
-      .upsert(statsRows, {
-        onConflict: "user_id,channel_id",
-        ignoreDuplicates: false,
-      });
-
-    const videosUpsert = supabaseService
-      .from("channel_videos_cache")
-      .upsert(videosRows, {
-        onConflict: "user_id,channel_id",
-        ignoreDuplicates: false,
-      });
-
-    const [{ error: statsError }, { error: videoError }] = await Promise.all([
-      statsUpsert,
-      videosUpsert,
-    ]);
-
-    if (statsError || videoError) {
-      const message = statsError?.message || videoError?.message || "Cache write failed.";
-      return NextResponse.json(
-        { success: false, error: message },
-        { status: 500 }
-      );
+    if (byChannel.size === 0) {
+      return NextResponse.json({ success: true, skipped: true, channels: 0 });
     }
 
-    return NextResponse.json({ success: true });
+    const results: Array<{ channel_id: string; users: number; error?: string }> = [];
+
+    for (const [channelId, userIds] of byChannel) {
+      try {
+        const stats = await getChannelStats(channelId);
+        const videos = await getRecentVideos(channelId);
+
+        const statsRows = userIds.map((userId) => ({
+          user_id: userId,
+          channel_id: channelId,
+          subscriber_count: stats.subscriberCount,
+          view_count: stats.viewCount,
+          video_count: stats.videoCount,
+        }));
+        const videosRows = userIds.map((userId) => ({
+          user_id: userId,
+          channel_id: channelId,
+          videos,
+        }));
+
+        const [{ error: statsError }, { error: videoError }] = await Promise.all([
+          supabaseService
+            .from("channel_stats_snapshots")
+            .upsert(statsRows, { onConflict: "user_id,channel_id", ignoreDuplicates: false }),
+          supabaseService
+            .from("channel_videos_cache")
+            .upsert(videosRows, { onConflict: "user_id,channel_id", ignoreDuplicates: false }),
+        ]);
+
+        const message = statsError?.message || videoError?.message;
+        results.push({ channel_id: channelId, users: userIds.length, ...(message ? { error: message } : {}) });
+      } catch (err) {
+        results.push({
+          channel_id: channelId,
+          users: userIds.length,
+          error: err instanceof Error ? err.message : "Unknown error",
+        });
+      }
+    }
+
+    const failed = results.filter((r) => r.error).length;
+    return NextResponse.json({ success: failed === 0, channels: results.length, failed, results });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ success: false, error: message }, { status: 500 });

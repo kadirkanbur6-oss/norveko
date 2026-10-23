@@ -1,5 +1,6 @@
 import { Eye, MessageCircle, ThumbsUp } from "lucide-react";
 import Image from "next/image";
+import type { YouTubeVideo } from "@/lib/youtube-types";
 import { getCachedVideos } from "../../lib/dashboardData";
 import { getUserChannelContext } from "../../lib/supabase-server";
 
@@ -9,7 +10,7 @@ function formatNumber(value: string | undefined) {
 
 export default async function RecentVideos() {
   const { channelId, userId } = await getUserChannelContext();
-  let videos: any[] = [];
+  let videos: YouTubeVideo[] = [];
   let error = false;
 
   if (!channelId || !userId) {
@@ -52,7 +53,8 @@ export default async function RecentVideos() {
           {videos.map((video) => {
             const thumbnail =
               video.snippet.thumbnails?.medium?.url ||
-              video.snippet.thumbnails?.default?.url;
+              video.snippet.thumbnails?.default?.url ||
+              "";
 
             return (
               <div
@@ -60,12 +62,14 @@ export default async function RecentVideos() {
                 className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-black/20 p-4 sm:flex-row sm:items-center"
               >
                 <div className="relative aspect-video w-full shrink-0 overflow-hidden rounded-xl bg-white/5 sm:h-20 sm:w-32">
-                  <Image
-                    src={thumbnail}
-                    alt={video.snippet.title}
-                    fill
-                    className="object-cover"
-                  />
+                  {thumbnail ? (
+                    <Image
+                      src={thumbnail}
+                      alt={video.snippet.title}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : null}
                 </div>
 
                 <div className="min-w-0 flex-1">

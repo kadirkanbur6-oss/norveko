@@ -4,6 +4,18 @@ import { createServerClient } from "@supabase/ssr";
 import { listVoices } from "@/lib/pipeline/elevenlabs";
 import { isGenerationEnabled, LAUNCH_LOCK_MESSAGE } from "@/lib/pipeline/features";
 
+// ElevenLabs voice list changes rarely; cache per server instance to avoid
+// hitting the provider on every page open.
+const VOICES_TTL_MS = 10 * 60 * 1000;
+let voicesCache: { at: number; voices: Awaited<ReturnType<typeof listVoices>> } | null = null;
+
+async function getVoicesCached() {
+  if (voicesCache && Date.now() - voicesCache.at < VOICES_TTL_MS) return voicesCache.voices;
+  const voices = await listVoices();
+  voicesCache = { at: Date.now(), voices };
+  return voices;
+}
+
 export async function GET() {
   try {
     const cookieStore = await cookies();
@@ -38,7 +50,7 @@ export async function GET() {
       );
     }
 
-    const voices = await listVoices();
+    const voices = await getVoicesCached();
 
     return NextResponse.json({
       success: true,

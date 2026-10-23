@@ -31,6 +31,7 @@ const supabaseAdmin = createClient(
 );
 
 const MAX_IDEA_LENGTH = 1000;
+const MAX_JOBS_PER_HOUR = 10;
 
 export async function POST(req: NextRequest) {
   try {
@@ -152,6 +153,24 @@ export async function POST(req: NextRequest) {
         {
           success: false,
           error: "You already have generations in progress. Please wait for them to finish.",
+        },
+        { status: 429 }
+      );
+    }
+
+    // Per-user throughput cap: at most MAX_JOBS_PER_HOUR generations per rolling hour.
+    const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count: recent } = await supabaseAdmin
+      .from("pipeline_jobs")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .gte("created_at", hourAgo);
+
+    if ((recent ?? 0) >= MAX_JOBS_PER_HOUR) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `You've reached the limit of ${MAX_JOBS_PER_HOUR} generations per hour. Please try again a little later.`,
         },
         { status: 429 }
       );

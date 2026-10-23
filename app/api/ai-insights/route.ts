@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { YouTubeVideo } from "@/lib/youtube-types";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { getCachedChannelStats, getCachedVideos } from "../../../lib/dashboardData";
@@ -65,7 +66,7 @@ export async function GET() {
 
     const recentVideos = (videos ?? [])
       .slice(0, 4)
-      .map((video: any) => ({
+      .map((video: YouTubeVideo) => ({
         title: video.snippet?.title ?? "Untitled",
         viewCount: video.statistics?.viewCount ?? "0",
         likeCount: video.statistics?.likeCount ?? "0",

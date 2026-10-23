@@ -109,26 +109,8 @@ export default function ChatPage() {
     };
   }, [includeVoiceover, voices.length]);
 
-  useEffect(() => {
-    if (!includeVoiceover) {
-      const audio = audioRef.current;
-      if (audio) {
-        audio.pause();
-        audio.currentTime = 0;
-        audio.removeAttribute("src");
-        audio.load();
-      }
-      setPlayingVoiceId(null);
-    }
-  }, [includeVoiceover]);
-
-  useEffect(() => {
-    if (!includeVoiceover || !voices.length || voiceId) {
-      return;
-    }
-
-    setVoiceId(voices[0].voice_id);
-  }, [includeVoiceover, voiceId, voices]);
+  // Fall back to the first voice whenever none is selected.
+  const effectiveVoiceId = voiceId || voices[0]?.voice_id || "";
 
   function stopPreview() {
     const audio = audioRef.current;
@@ -172,7 +154,7 @@ export default function ChatPage() {
       return;
     }
 
-    if (includeVoiceover && !voiceId) {
+    if (includeVoiceover && !effectiveVoiceId) {
       setError("Please select a voice for the voiceover.");
       return;
     }
@@ -192,7 +174,7 @@ export default function ChatPage() {
           duration,
           outputLanguage: language,
           includeVoiceover,
-          voiceId: includeVoiceover ? voiceId : null,
+          voiceId: includeVoiceover ? effectiveVoiceId : null,
           includeVideo: includeVideo && videoAvailable,
         }),
       });
@@ -310,7 +292,10 @@ export default function ChatPage() {
                   <input
                     type="checkbox"
                     checked={includeVoiceover}
-                    onChange={(e) => setIncludeVoiceover(e.target.checked)}
+                    onChange={(e) => {
+                      setIncludeVoiceover(e.target.checked);
+                      if (!e.target.checked) stopPreview();
+                    }}
                     className="h-4 w-4 rounded border-white/20 bg-transparent text-blue-500 focus:ring-0"
                   />
                   <span className="text-sm font-semibold text-white">
@@ -328,7 +313,7 @@ export default function ChatPage() {
                   <div>
                     <label className="text-sm text-gray-400">Voice</label>
                     <select
-                      value={voiceId}
+                      value={effectiveVoiceId}
                       onChange={(e) => setVoiceId(e.target.value)}
                       className={selectClass}
                       disabled={voicesLoading}
@@ -351,7 +336,7 @@ export default function ChatPage() {
                   {voices.length > 0 && (
                     <div className="grid gap-3 md:grid-cols-2">
                       {voices.map((voice) => {
-                        const isSelected = voiceId === voice.voice_id;
+                        const isSelected = effectiveVoiceId === voice.voice_id;
                         const isPlaying = playingVoiceId === voice.voice_id;
 
                         return (
@@ -447,7 +432,7 @@ export default function ChatPage() {
                 starting ||
                 !generationAvailable ||
                 (jobId !== null && !error) ||
-                (includeVoiceover && (!voiceId || voicesLoading))
+                (includeVoiceover && (!effectiveVoiceId || voicesLoading))
               }
               className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 py-4 font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
             >

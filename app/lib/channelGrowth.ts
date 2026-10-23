@@ -2,7 +2,6 @@ import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const DEFAULT_CHANNEL_ID = "UCs4hJrYzjQ-nNRbS7jVUMiA";
 
 const supabaseService = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -24,7 +23,7 @@ function computeGrowth(
   return roundPercent(((currentValue - previousValue) / previousValue) * 100);
 }
 
-export async function getChannelGrowth(channelId = DEFAULT_CHANNEL_ID, userId?: string | null) {
+export async function getChannelGrowth(channelId: string | null | undefined, userId?: string | null) {
   let latestQuery = supabaseService
     .from("channel_stats_snapshots")
     .select("subscriber_count, view_count, video_count, created_at")

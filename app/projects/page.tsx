@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FolderOpen, Loader2, Trash2, Wand2 } from "lucide-react";
@@ -24,11 +24,7 @@ export default function ProjectsPage() {
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadProjects();
-  }, []);
-
-  async function loadProjects() {
+  const loadProjects = useCallback(async () => {
     setLoading(true);
     setError("");
 
@@ -46,7 +42,14 @@ export default function ProjectsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    const id = setTimeout(() => {
+      void loadProjects();
+    }, 0);
+    return () => clearTimeout(id);
+  }, [loadProjects]);
 
   async function handleDelete(e: React.MouseEvent, id: string) {
     e.stopPropagation(); // Prevent card click

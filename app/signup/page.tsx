@@ -1,11 +1,10 @@
 'use client';
 
 import { FormEvent, useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
 function SignupContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -15,9 +14,9 @@ function SignupContent() {
 
   useEffect(() => {
     const error = searchParams.get("error");
-    if (error) {
-      setErrorMessage(decodeURIComponent(error));
-    }
+    if (!error) return;
+    const id = setTimeout(() => setErrorMessage(decodeURIComponent(error)), 0);
+    return () => clearTimeout(id);
   }, [searchParams]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {

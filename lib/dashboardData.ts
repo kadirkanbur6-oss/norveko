@@ -1,3 +1,4 @@
+import type { YouTubeVideo } from "@/lib/youtube-types";
 import { createServerSupabaseClient } from "./supabase-server";
 
 export async function getCachedChannelStats(channelId: string, userId: string) {
@@ -56,5 +57,5 @@ export async function getCachedVideos(channelId: string, userId: string) {
     return [];
   }
 
-  return data.videos as any[];
+  return data.videos as YouTubeVideo[];
 }

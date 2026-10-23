@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Norveko
 
-## Getting Started
+AI content production workspace for video creators. One idea in → script, scene
+plan, video prompts, thumbnail, SEO metadata, optional voiceover and (soon)
+AI-generated clips out.
 
-First, run the development server:
+Live: https://norveko.app · Stack: Next.js (App Router) · Supabase · Vercel ·
+OpenAI · ElevenLabs · Gemini · Kling · Paddle
+
+## Run locally
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # fill in the keys you have
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Checks before pushing:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npx tsc --noEmit        # types
+npm run lint            # eslint
+npm run test:pipeline   # pipeline runner tests (no network needed)
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Pushing to `main` deploys to production on Vercel.
 
-## Learn More
+## How a generation runs
 
-To learn more about Next.js, take a look at the following resources:
+1. `POST /api/pipeline/start` validates the request, checks the feature gates,
+   charges credits and inserts a `pipeline_jobs` row. It returns immediately.
+2. `POST /api/pipeline/run` (internal, secret-protected) executes **one step**
+   per invocation — `script` → `voiceover`? → `thumbnail` → `video`? — and
+   kicks itself for the next one, so no step is bound by another's timeout.
+3. The UI polls `GET /api/pipeline/[id]`; that endpoint also heals the job
+   (times out dead steps with a refund, re-kicks steps nobody picked up, polls
+   in-flight video tasks). `GET /api/pipeline/reap` does the same for every
+   running job from a daily cron.
+4. On completion the package is saved as a project.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Credit costs live in one place: `lib/pipeline/steps.ts`. The runner logic is in
+`lib/pipeline/runner.ts` and is covered by `lib/pipeline/runner.test.ts`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Feature gates (env)
 
-## Deploy on Vercel
+| Variable | Effect |
+| --- | --- |
+| `GENERATION_ENABLED=false` | Launch lock: nobody can generate except `BETA_USER_IDS`. Rejected before any credit is charged. |
+| `VIDEO_GENERATION_ENABLED=true` | Opens Kling video clips to everyone; otherwise only `VIDEO_BETA_USER_IDS`. |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Payments
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Paddle overlay checkout (`app/billing`) → webhook (`app/api/webhooks/paddle`)
+grants credits idempotently; approved refunds revoke them. See
+`supabase/README.md` for the database assumptions and which Paddle events to
+subscribe to. Set `LEGAL_NAME` in `app/lib/legal.ts` before applying for a
+Paddle live account.
+
+## Project layout
+
+```
+app/                 pages and API routes (App Router)
+app/components/      UI components (Sidebar, Header, PipelineProgress, …)
+lib/pipeline/        step definitions, providers (openai, elevenlabs,
+                     gemini-image, kling), runner, feature gates, tests
+lib/packages.ts      credit packages + Paddle price IDs
+middleware.ts        route protection (public pages listed at the top)
+supabase/README.md   DB/storage assumptions
+```
+
+All environment variables are documented in `.env.example`.

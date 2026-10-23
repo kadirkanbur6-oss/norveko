@@ -60,22 +60,26 @@ async function callGemini(
   return rawText;
 }
 
-function extractResponseText(result: any): string | null {
-  const candidate = result?.candidates?.[0];
+function extractResponseText(result: unknown): string | null {
+  const r = result as { candidates?: Array<{ content?: { parts?: unknown } }> } | null;
+  const candidate = r?.candidates?.[0];
   if (!candidate) return null;
 
   const parts = candidate?.content?.parts;
   if (!Array.isArray(parts)) return null;
 
   const text = parts
-    .map((part: any) => (typeof part?.text === "string" ? part.text : ""))
+    .map((part: unknown) => {
+      const p = part as { text?: unknown } | null;
+      return typeof p?.text === "string" ? p.text : "";
+    })
     .filter(Boolean)
     .join("\n");
 
   return text.length > 0 ? text : null;
 }
 
-function extractJson(rawText: string): any {
+function extractJson(rawText: string): unknown {
   // Strip markdown code fences first
   const cleaned = rawText
     .replace(/```json/gi, "")
@@ -189,7 +193,7 @@ export async function generateVideoContent(
   const rawText = await callGemini(prompt, 8192, true);
 
   try {
-    const parsed = extractJson(rawText);
+    const parsed = extractJson(rawText) as Partial<VideoContentOutput>;
     return {
       hook: parsed.hook ?? "",
       script: parsed.script ?? "",
