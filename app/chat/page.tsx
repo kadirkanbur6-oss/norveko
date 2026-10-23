@@ -5,29 +5,8 @@ import { Loader2, Sparkles, Wand2 } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import PipelineProgress from "../components/PipelineProgress";
 
-const PLATFORMS = [
-  "YouTube Shorts",
-  "TikTok",
-  "Instagram Reels",
-  "YouTube Long-form",
-];
-const STYLES = [
-  "Mystery",
-  "Documentary",
-  "Horror",
-  "Educational",
-  "Ad / Promo",
-  "Cinematic",
-];
-const DURATIONS = ["30 seconds", "60 seconds", "3 minutes", "8 minutes"];
-const LANGUAGES = [
-  "English",
-  "Türkçe",
-  "Español",
-  "Deutsch",
-  "Français",
-  "Português",
-];
+import { DURATIONS, LANGUAGES, PLATFORMS, STYLES } from "@/lib/pipeline/options";
+import { totalPipelineCredits } from "@/lib/pipeline/steps";
 
 interface VoiceOption {
   voice_id: string;
@@ -38,10 +17,10 @@ interface VoiceOption {
 
 export default function ChatPage() {
   const [idea, setIdea] = useState("");
-  const [platform, setPlatform] = useState(PLATFORMS[0]);
-  const [style, setStyle] = useState(STYLES[0]);
-  const [duration, setDuration] = useState(DURATIONS[1]);
-  const [language, setLanguage] = useState(LANGUAGES[0]);
+  const [platform, setPlatform] = useState<string>(PLATFORMS[0]);
+  const [style, setStyle] = useState<string>(STYLES[0]);
+  const [duration, setDuration] = useState<string>(DURATIONS[1]);
+  const [language, setLanguage] = useState<string>(LANGUAGES[0]);
   const [includeVoiceover, setIncludeVoiceover] = useState(false);
   const [voiceId, setVoiceId] = useState("");
   const [voices, setVoices] = useState<VoiceOption[]>([]);
@@ -53,7 +32,7 @@ export default function ChatPage() {
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const totalCost = includeVoiceover ? 30 : 15;
+  const totalCost = totalPipelineCredits(includeVoiceover);
 
   useEffect(() => {
     if (!includeVoiceover || voices.length > 0) {

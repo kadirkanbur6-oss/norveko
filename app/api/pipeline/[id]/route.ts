@@ -4,6 +4,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { reconcileJob } from "@/lib/pipeline/runner";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(
   req: NextRequest,
@@ -36,11 +39,12 @@ export async function GET(
     );
   }
 
-  // RLS devrede: kullanıcı sadece kendi job'ını görebilir
+  // RLS applies too, but filter by user_id explicitly.
   const { data: job, error } = await supabase
     .from("pipeline_jobs")
     .select("id, status, current_step, steps, error, created_at")
     .eq("id", id)
+    .eq("user_id", user.id)
     .single();
 
   if (error || !job) {
@@ -48,6 +52,20 @@ export async function GET(
       { success: false, error: "Job not found" },
       { status: 404 }
     );
+  }
+
+  // Self-healing: while the job is polled, time out dead steps (refunding
+  // credits) or re-kick a step the worker never picked up.
+  if (job.status === "running") {
+    const action = await reconcileJob(job);
+    if (action === "failed") {
+      const { data: refreshed } = await supabase
+        .from("pipeline_jobs")
+        .select("id, status, current_step, steps, error, created_at")
+        .eq("id", id)
+        .single();
+      return NextResponse.json({ success: true, job: refreshed ?? job });
+    }
   }
 
   return NextResponse.json({ success: true, job });

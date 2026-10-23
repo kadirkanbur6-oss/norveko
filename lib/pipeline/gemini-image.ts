@@ -63,7 +63,9 @@ export async function generateThumbnail(
 
   // 2) Yanıttaki base64 görseli bul.
   // Görsel, parts dizisinde inlineData (bazı sürümlerde inline_data) olarak gelir.
-  const parts: any[] = data?.candidates?.[0]?.content?.parts ?? [];
+  type InlinePart = { data?: string; mimeType?: string; mime_type?: string };
+  const parts: Array<{ inlineData?: InlinePart; inline_data?: InlinePart }> =
+    data?.candidates?.[0]?.content?.parts ?? [];
   let base64: string | null = null;
   let mimeType = "image/png";
 

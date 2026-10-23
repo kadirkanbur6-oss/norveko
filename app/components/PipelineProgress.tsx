@@ -43,35 +43,46 @@ interface PipelineResultStep {
 
 const STEP_ORDER = PIPELINE_STEP_ORDER.map(({ id, label }) => ({ id, label }));
 
+// Stop polling after this long; the server reaper will settle the job.
+const POLL_TIMEOUT_MS = 15 * 60 * 1000;
+
 export default function PipelineProgress({ jobId }: { jobId: string }) {
   const [job, setJob] = useState<JobData | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
     let active = true;
+    const startedAt = Date.now();
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
     async function poll() {
       try {
-        const res = await fetch(`/api/pipeline/${jobId}`);
+        const res = await fetch(`/api/pipeline/${jobId}`, { cache: "no-store" });
         const data = await res.json();
         if (active && data.success) {
           setJob(data.job);
-          // Bitti veya hata → poll'u durdur
           if (data.job.status === "completed" || data.job.status === "failed") {
             return;
           }
         }
       } catch {
-        // Geçici ağ hatası — sonraki poll'da tekrar dener
+        // Transient network error — retried on the next poll
       }
-      if (active) {
-        setTimeout(poll, 2000);
+      if (!active) return;
+      if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
+        setTimedOut(true);
+        return;
       }
+      // Back off a little as the job gets older.
+      const elapsed = Date.now() - startedAt;
+      timer = setTimeout(poll, elapsed > 60_000 ? 5000 : 2000);
     }
 
-    poll();
+    timer = setTimeout(poll, 0);
     return () => {
       active = false;
+      if (timer) clearTimeout(timer);
     };
   }, [jobId]);
 
@@ -135,7 +146,15 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
         })}
       </div>
 
-      {/* Hata durumu */}
+      {timedOut && job.status === "running" && (
+        <div className="mt-4 rounded-xl border border-yellow-400/30 bg-yellow-500/10 p-4 text-sm text-yellow-200">
+          This is taking longer than expected. We&apos;ve stopped checking
+          automatically — your result will appear under Projects when it
+          finishes, and credits are refunded automatically if it fails.
+        </div>
+      )}
+
+      {/* Error state */}
       {job.status === "failed" && (
         <div className="mt-4 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-300">
           Something went wrong: {job.error ?? "Unknown error"}. Your credits
