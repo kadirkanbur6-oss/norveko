@@ -60,7 +60,7 @@ export default function DashboardHighlights() {
   return (
     <div className="mt-8 grid gap-6 lg:grid-cols-3">
       {/* Quick action */}
-      <div className="rounded-2xl border border-blue-400/30 bg-gradient-to-br from-blue-500/10 to-purple-600/10 p-6">
+      <div className="min-w-0 rounded-2xl border border-blue-400/30 bg-gradient-to-br from-blue-500/10 to-purple-600/10 p-6">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-blue-400/30 bg-blue-500/10">
           <Wand2 size={18} className="text-blue-300" />
         </div>
@@ -78,7 +78,7 @@ export default function DashboardHighlights() {
       </div>
 
       {/* Credits */}
-      <div className="rounded-2xl border border-yellow-400/20 bg-yellow-500/5 p-6">
+      <div className="min-w-0 rounded-2xl border border-yellow-400/20 bg-yellow-500/5 p-6">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-yellow-400/30 bg-yellow-500/10">
           <Coins size={18} className="text-yellow-400" />
         </div>
@@ -100,7 +100,7 @@ export default function DashboardHighlights() {
       </div>
 
       {/* Recent projects */}
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+      <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.05]">
           <FolderOpen size={18} className="text-blue-300" />
         </div>
@@ -113,7 +113,7 @@ export default function DashboardHighlights() {
             No projects yet — generate your first one.
           </p>
         ) : (
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 min-w-0 space-y-2">
             {projects.map((project) => (
               <Link
                 key={project.id}

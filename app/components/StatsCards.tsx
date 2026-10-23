@@ -78,7 +78,7 @@ export default async function StatsCards() {
         return (
           <div
             key={item.title}
-            className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6"
+            className="min-w-0 rounded-[28px] border border-white/10 bg-white/[0.04] p-6"
           >
             <div className="flex items-center justify-between gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-300">
