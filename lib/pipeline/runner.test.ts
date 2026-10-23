@@ -112,10 +112,14 @@ function makeDb() {
   return { db: db as any, rows, rpc, seedJob };
 }
 
-function makeRunner(opts: { failAt?: string; now?: () => number } = {}) {
+function makeRunner(
+  opts: { failAt?: string; now?: () => number; klingStatuses?: Record<string, "processing" | "succeed" | "failed"> } = {}
+) {
   const { db, rows, rpc, seedJob } = makeDb();
   const kicked: string[] = [];
   const calls: string[] = [];
+  const klingStatuses = opts.klingStatuses ?? {};
+  let taskSeq = 0;
   const runner = createPipelineRunner({
     db,
     providers: {
@@ -123,7 +127,9 @@ function makeRunner(opts: { failAt?: string; now?: () => number } = {}) {
         calls.push("script");
         if (opts.failAt === "script") throw new Error("openai down");
         return {
-          hook: "h", script: "s", scenes: [], titles: [], description: "d", tags: [],
+          hook: "h", script: "s",
+          scenes: [1, 2, 3].map((n) => ({ sceneNumber: n, description: `d${n}`, videoPrompt: `prompt ${n}` })),
+          titles: [], description: "d", tags: [],
           thumbnailIdea: "idea", thumbnailPrompt: "p",
         };
       },
@@ -137,13 +143,41 @@ function makeRunner(opts: { failAt?: string; now?: () => number } = {}) {
         if (opts.failAt === "thumbnail") throw new Error("gemini down");
         return { imageUrl: "https://cdn/t.png", storagePath: "t.png" };
       },
+      submitTextToVideo: async ({ prompt }) => {
+        calls.push(`submit:${prompt}`);
+        if (opts.failAt === "video-submit") throw new Error("kling submit down");
+        return `task_${++taskSeq}`;
+      },
+      getTextToVideoTask: async (taskId) => {
+        calls.push(`poll:${taskId}`);
+        const status = klingStatuses[taskId] ?? "processing";
+        return {
+          taskId,
+          status,
+          videoUrl: status === "succeed" ? `https://kling/${taskId}.mp4` : undefined,
+          durationSeconds: 5,
+          statusMessage: status === "failed" ? "nsfw" : undefined,
+        };
+      },
+      downloadVideo: async () => Buffer.from("mp4"),
     },
     kick: async (id) => {
       kicked.push(id);
     },
     now: opts.now ?? Date.now,
   });
-  return { runner, rows, rpc, seedJob, kicked, calls };
+  return { runner, rows, rpc, seedJob, kicked, calls, klingStatuses };
+}
+
+function seedVideoJob(seedJob: ReturnType<typeof makeDb>["seedJob"]) {
+  return seedJob(false, {
+    steps: {
+      script: { status: "pending", provider: "openai", error: null, queued_at: new Date(0).toISOString() },
+      thumbnail: { status: "pending", provider: "gemini", error: null },
+      video: { status: "pending", provider: "kling", error: null },
+    },
+    credits_charged: 15 + 12 * 5,
+  });
 }
 
 test("runs steps in order, one per invocation, then finalizes into a project", async () => {
@@ -237,4 +271,72 @@ test("reconcile: times out a dead step with refund, re-kicks a forgotten pending
   const summary = await runner.reapStuckJobs();
   assert.equal(summary.checked, 2);
   assert.equal(summary.failed, 0);
+});
+
+test("video step: submits one task per scene, refunds unused clips, polls until stored, merges into project", async () => {
+  const { runner, rows, rpc, seedJob, calls, klingStatuses } = makeRunner();
+  const id = seedVideoJob(seedJob);
+
+  assert.equal(await runner.runNextStep(id), "advanced"); // script
+  assert.equal(await runner.runNextStep(id), "advanced"); // thumbnail
+  assert.equal(await runner.runNextStep(id), "advanced"); // video: submit only
+  assert.deepEqual(calls.filter((c) => c.startsWith("submit:")), ["submit:prompt 1", "submit:prompt 2", "submit:prompt 3"]);
+
+  let job = rows.get(id)!;
+  assert.equal(job.steps.video.status, "running");
+  assert.equal(job.steps.video.clips.length, 3);
+  // 5 clips charged, 3 scenes -> 2 clips refunded right away
+  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [24]);
+
+  // Still processing: polling is a noop
+  assert.equal(await runner.runNextStep(id), "noop");
+  assert.equal(rows.get(id)!.status, "running");
+
+  // Two succeed, one fails -> settled, one more clip refunded, pipeline completes
+  klingStatuses.task_1 = "succeed";
+  klingStatuses.task_2 = "failed";
+  klingStatuses.task_3 = "succeed";
+  assert.equal(await runner.runNextStep(id), "completed");
+
+  job = rows.get(id)!;
+  assert.equal(job.status, "completed");
+  assert.equal(job.steps.video.status, "completed");
+  assert.deepEqual(job.steps.video.clips.map((c: any) => c.status), ["succeed", "failed", "succeed"]);
+  assert.match(job.steps.video.clips[0].video_url, /^https:\/\/cdn\//);
+  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [24, 12]);
+  assert.equal(job.steps.result.project_id.startsWith("proj_"), true);
+});
+
+test("video step: every submit failing fails the job with a full refund", async () => {
+  const { runner, rows, rpc, seedJob } = makeRunner({ failAt: "video-submit" });
+  const id = seedVideoJob(seedJob);
+  assert.equal(await runner.runNextStep(id), "advanced");
+  assert.equal(await runner.runNextStep(id), "advanced");
+  assert.equal(await runner.runNextStep(id), "failed");
+  const job = rows.get(id)!;
+  assert.equal(job.status, "failed");
+  assert.equal(job.credits_refunded, 75);
+  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [75]);
+});
+
+test("reconcile: an in-flight video step is re-kicked for polling, not timed out at 8 minutes", async () => {
+  let clock = 1_000_000;
+  const { runner, rows, seedJob, kicked, klingStatuses } = makeRunner({ now: () => clock });
+  const id = seedVideoJob(seedJob);
+  klingStatuses.task_1 = "processing";
+  await runner.runNextStep(id);
+  await runner.runNextStep(id);
+  await runner.runNextStep(id); // submitted at clock
+
+  clock += 10 * 60 * 1000; // 10 min later: would kill a sync step
+  assert.equal(await runner.reconcileJob(rows.get(id)! as JobRow), "kicked");
+  assert.deepEqual(kicked, [id]);
+  assert.equal(rows.get(id)!.status, "running");
+
+  clock += 5 * 1000; // throttled: polled 5s ago
+  assert.equal(await runner.reconcileJob(rows.get(id)! as JobRow), "ok");
+
+  clock += 45 * 60 * 1000; // way past the async timeout
+  assert.equal(await runner.reconcileJob(rows.get(id)! as JobRow), "failed");
+  assert.equal(rows.get(id)!.status, "failed");
 });

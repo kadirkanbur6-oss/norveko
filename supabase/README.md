@@ -33,3 +33,12 @@ destination at `https://norveko.app/api/webhooks/paddle` and subscribe to:
 - `transaction.completed`
 - `adjustment.created`
 - `adjustment.updated`
+
+## Video clips (Kling) — `lib/pipeline/kling.ts`
+
+- Create a **public** Storage bucket named `videos`. Clips are written to
+  `videos/<user_id>/<job_id>/scene-<n>.mp4` by the service role.
+- No schema change is needed: clip state lives in `pipeline_jobs.steps.video`
+  and finished URLs are merged into `projects.content.scenes[].videoUrl`.
+- The feature is off until `VIDEO_GENERATION_ENABLED=true` (or the user id is
+  in `VIDEO_BETA_USER_IDS`); the API rejects video requests before charging.

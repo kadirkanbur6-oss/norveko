@@ -20,6 +20,8 @@ interface VideoScene {
   sceneNumber: number;
   description: string;
   videoPrompt: string;
+  videoUrl?: string;
+  videoDuration?: number;
 }
 
 interface VideoContent {
@@ -293,6 +295,11 @@ export default function ProjectDetailPage() {
     normalizedProjectContent?.voiceover?.downloadUrl ??
     normalizedProjectContent?.voiceover?.audio_url ??
     null;
+
+  const thumbnailUrl = normalizedProjectContent?.thumbnailUrl ?? null;
+  const sceneClips = (normalizedProjectContent?.scenes ?? []).filter(
+    (scene) => typeof scene.videoUrl === "string" && scene.videoUrl
+  );
 
   function renderEditForm() {
     if (!editContent) return null;
@@ -603,6 +610,56 @@ export default function ProjectDetailPage() {
                   <div className="mt-4 whitespace-pre-wrap break-words rounded-xl border border-white/10 bg-[#0d0d16] p-4 text-sm leading-relaxed text-gray-200 sm:p-6">
                     {getTabText(activeTab)}
                   </div>
+
+                  {activeTab === "thumbnail" && thumbnailUrl && (
+                    <div className="mt-4 rounded-xl border border-white/10 bg-[#0d0d16] p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <h4 className="text-sm font-semibold text-gray-300">Generated thumbnail</h4>
+                        <a
+                          href={thumbnailUrl}
+                          download
+                          className="text-xs text-blue-300 transition hover:text-blue-200"
+                        >
+                          Download
+                        </a>
+                      </div>
+                      {/* eslint-disable-next-line @next/next/no-img-element -- Supabase public URL, no optimisation needed */}
+                      <img
+                        src={thumbnailUrl}
+                        alt="Generated thumbnail"
+                        className="mt-3 w-full max-w-xl rounded-lg border border-white/10"
+                      />
+                    </div>
+                  )}
+
+                  {sceneClips.length > 0 && (activeTab === "scenes" || activeTab === "prompts") && (
+                    <div className="mt-4 rounded-xl border border-white/10 bg-[#0d0d16] p-4">
+                      <h4 className="text-sm font-semibold text-gray-300">Video clips</h4>
+                      <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                        {sceneClips.map((scene) => (
+                          <div key={scene.sceneNumber} className="min-w-0">
+                            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-blue-300">
+                              Scene {scene.sceneNumber}
+                              {scene.videoDuration ? ` · ${scene.videoDuration}s` : ""}
+                            </p>
+                            <video
+                              controls
+                              preload="metadata"
+                              src={scene.videoUrl}
+                              className="w-full rounded-lg border border-white/10 bg-black"
+                            />
+                            <a
+                              href={scene.videoUrl}
+                              download
+                              className="mt-2 inline-block text-xs text-blue-300 transition hover:text-blue-200"
+                            >
+                              Download MP4
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {voiceoverUrl && (
                     <div className="mt-4 rounded-xl border border-white/10 bg-[#0d0d16] p-4">

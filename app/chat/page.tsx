@@ -1,12 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Sparkles, Wand2 } from "lucide-react";
+import { Clapperboard, Loader2, Sparkles, Wand2 } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import PipelineProgress from "../components/PipelineProgress";
 
 import { DURATIONS, LANGUAGES, PLATFORMS, STYLES } from "@/lib/pipeline/options";
-import { totalPipelineCredits } from "@/lib/pipeline/steps";
+import {
+  totalPipelineCredits,
+  VIDEO_CLIP_CREDITS,
+  VIDEO_CLIP_SECONDS,
+  VIDEO_MAX_CLIPS,
+} from "@/lib/pipeline/steps";
 
 interface VoiceOption {
   voice_id: string;
@@ -22,6 +27,8 @@ export default function ChatPage() {
   const [duration, setDuration] = useState<string>(DURATIONS[1]);
   const [language, setLanguage] = useState<string>(LANGUAGES[0]);
   const [includeVoiceover, setIncludeVoiceover] = useState(false);
+  const [includeVideo, setIncludeVideo] = useState(false);
+  const [videoAvailable, setVideoAvailable] = useState(false);
   const [voiceId, setVoiceId] = useState("");
   const [voices, setVoices] = useState<VoiceOption[]>([]);
   const [voicesLoading, setVoicesLoading] = useState(false);
@@ -32,7 +39,27 @@ export default function ChatPage() {
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const totalCost = totalPipelineCredits(includeVoiceover);
+  const totalCost = totalPipelineCredits({
+    voiceover: includeVoiceover,
+    video: includeVideo && videoAvailable,
+  });
+  const videoCost = VIDEO_CLIP_CREDITS * VIDEO_MAX_CLIPS;
+
+  // Which optional features this account may use (video is gated server-side).
+  useEffect(() => {
+    let active = true;
+    fetch("/api/features", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (active && data?.success) setVideoAvailable(Boolean(data.features?.videoGeneration));
+      })
+      .catch(() => {
+        // Feature stays unavailable
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!includeVoiceover || voices.length > 0) {
@@ -160,6 +187,7 @@ export default function ChatPage() {
           outputLanguage: language,
           includeVoiceover,
           voiceId: includeVoiceover ? voiceId : null,
+          includeVideo: includeVideo && videoAvailable,
         }),
       });
 
@@ -366,6 +394,39 @@ export default function ChatPage() {
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Video clips (Kling) — gated until launch */}
+            <div
+              className={`mt-4 rounded-2xl border p-4 ${
+                videoAvailable
+                  ? "border-white/10 bg-[#0d0d16]"
+                  : "border-white/5 bg-white/[0.02] opacity-70"
+              }`}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <label className={`flex items-center gap-3 ${videoAvailable ? "" : "cursor-not-allowed"}`}>
+                  <input
+                    type="checkbox"
+                    checked={includeVideo && videoAvailable}
+                    disabled={!videoAvailable}
+                    onChange={(e) => setIncludeVideo(e.target.checked)}
+                    className="h-4 w-4 rounded border-white/20 bg-transparent text-blue-500 focus:ring-0 disabled:opacity-50"
+                  />
+                  <span className="flex items-center gap-2 text-sm font-semibold text-white">
+                    <Clapperboard size={16} className="text-purple-300" />
+                    Generate video clips (+{videoCost} credits)
+                  </span>
+                  {!videoAvailable && (
+                    <span className="rounded-full border border-purple-400/30 bg-purple-500/10 px-2.5 py-0.5 text-xs text-purple-200">
+                      Coming soon
+                    </span>
+                  )}
+                </label>
+                <span className="text-xs text-gray-500">
+                  Up to {VIDEO_MAX_CLIPS} × {VIDEO_CLIP_SECONDS}s AI clips, one per scene. Unused clips are refunded.
+                </span>
+              </div>
             </div>
 
             <button

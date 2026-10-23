@@ -25,13 +25,33 @@ import {
   buildPipelineSteps,
   getPipelineStepDefinition,
   nextStep,
+  optionsFromSteps,
+  VIDEO_CLIP_CREDITS,
+  VIDEO_CLIP_SECONDS,
+  VIDEO_MAX_CLIPS,
   type PipelineStepId,
 } from "@/lib/pipeline/steps";
+import type { KlingTaskResult } from "@/lib/pipeline/kling";
 
 /** A step that has been running longer than this is considered dead. */
 export const STEP_TIMEOUT_MS = 8 * 60 * 1000;
+/** Async (provider-side) steps may legitimately take much longer. */
+export const ASYNC_STEP_TIMEOUT_MS = 40 * 60 * 1000;
 /** A pending step that nobody picked up for this long gets re-kicked. */
 export const KICK_RETRY_MS = 90 * 1000;
+/** How often an async step is polled while it is in flight. */
+export const ASYNC_POLL_INTERVAL_MS = 20 * 1000;
+
+export interface VideoClipState {
+  sceneNumber: number;
+  prompt: string;
+  taskId?: string;
+  status: "pending" | "processing" | "succeed" | "failed";
+  error?: string;
+  video_url?: string;
+  storage_path?: string;
+  duration?: number;
+}
 
 type StepRecord = Record<string, unknown> & {
   status?: "pending" | "running" | "completed" | "failed";
@@ -67,6 +87,9 @@ export interface RunnerDeps {
     generateScript: typeof import("@/lib/pipeline/openai").generateScript;
     generateSpeech: typeof import("@/lib/pipeline/elevenlabs").generateSpeech;
     generateThumbnail: typeof import("@/lib/pipeline/gemini-image").generateThumbnail;
+    submitTextToVideo: typeof import("@/lib/pipeline/kling").submitTextToVideo;
+    getTextToVideoTask: typeof import("@/lib/pipeline/kling").getTextToVideoTask;
+    downloadVideo: typeof import("@/lib/pipeline/kling").downloadVideo;
   };
   kick: (jobId: string) => Promise<void>;
   now: () => number;
@@ -214,7 +237,133 @@ export function createPipelineRunner(deps: RunnerDeps) {
   }
 
   function stepOrder(job: Pick<JobRow, "steps">): PipelineStepId[] {
-    return buildPipelineSteps(Boolean(job.steps?.voiceover)).map((s) => s.id);
+    return buildPipelineSteps(optionsFromSteps(job.steps)).map((s) => s.id);
+  }
+
+  /** Give back credits for clips that were charged but never generated. */
+  async function refundUnusedClips(job: JobRow, unusedClips: number): Promise<void> {
+    if (unusedClips <= 0) return;
+    const amount = unusedClips * VIDEO_CLIP_CREDITS;
+    const { error } = await db.rpc("add_credits", {
+      p_user_id: job.user_id,
+      p_amount: amount,
+      p_type: "refund",
+      p_reason: `Refund: ${unusedClips} unused video clip${unusedClips === 1 ? "" : "s"}`,
+    });
+    if (error) {
+      console.error(`[pipeline] ${job.id} clip refund failed:`, error);
+    }
+  }
+
+  /* ---------------- Video (async) step ---------------- */
+
+  /** First run of the video step: submit one task per scene. */
+  async function submitVideoTasks(job: JobRow): Promise<void> {
+    const { aspectRatioForPlatform } = await import("@/lib/pipeline/kling");
+    const scenes = Array.isArray(job.steps?.script?.scenes)
+      ? (job.steps.script.scenes as Array<{ sceneNumber?: number; videoPrompt?: string; description?: string }>)
+      : [];
+    const usable = scenes
+      .filter((s) => typeof s.videoPrompt === "string" && s.videoPrompt.trim())
+      .slice(0, VIDEO_MAX_CLIPS);
+    if (usable.length === 0) {
+      throw new Error("No scene prompts available for video generation.");
+    }
+
+    const aspectRatio = aspectRatioForPlatform(job.platform);
+    const clips: VideoClipState[] = [];
+    for (const [i, scene] of usable.entries()) {
+      const prompt = String(scene.videoPrompt).trim();
+      const clip: VideoClipState = {
+        sceneNumber: scene.sceneNumber ?? i + 1,
+        prompt,
+        status: "pending",
+      };
+      try {
+        clip.taskId = await providers.submitTextToVideo({
+          prompt,
+          duration: String(VIDEO_CLIP_SECONDS) as "5" | "10",
+          aspectRatio,
+          mode: "std",
+        });
+        clip.status = "processing";
+      } catch (err) {
+        clip.status = "failed";
+        clip.error = err instanceof Error ? err.message : "Submit failed";
+      }
+      clips.push(clip);
+    }
+
+    if (clips.every((c) => c.status === "failed")) {
+      throw new Error(`Video generation could not be started: ${clips[0].error}`);
+    }
+
+    await refundUnusedClips(job, VIDEO_MAX_CLIPS - clips.length);
+    await patchStep(job, "video", {
+      clips,
+      submitted_at: new Date(now()).toISOString(),
+      last_polled_at: new Date(now()).toISOString(),
+    });
+  }
+
+  /**
+   * Later runs of the video step: poll in-flight tasks, store finished clips.
+   * Returns true once every clip is settled.
+   */
+  async function pollVideoTasks(job: JobRow): Promise<boolean> {
+    const clips = (job.steps?.video?.clips as VideoClipState[] | undefined) ?? [];
+    let changed = false;
+
+    for (const clip of clips) {
+      if (clip.status !== "processing" || !clip.taskId) continue;
+      let result: KlingTaskResult;
+      try {
+        result = await providers.getTextToVideoTask(clip.taskId);
+      } catch (err) {
+        console.error(`[pipeline] ${job.id} poll ${clip.taskId} failed:`, err);
+        continue;
+      }
+      if (result.status === "failed") {
+        clip.status = "failed";
+        clip.error = result.statusMessage ?? "Provider reported failure";
+        changed = true;
+      } else if (result.status === "succeed" && result.videoUrl) {
+        try {
+          const buffer = await providers.downloadVideo(result.videoUrl);
+          const storagePath = `${job.user_id}/${job.id}/scene-${clip.sceneNumber}.mp4`;
+          const { error: uploadError } = await db.storage
+            .from("videos")
+            .upload(storagePath, buffer, { contentType: "video/mp4", upsert: true });
+          if (uploadError) throw new Error(uploadError.message);
+          const { data: urlData } = db.storage.from("videos").getPublicUrl(storagePath);
+          clip.video_url = urlData.publicUrl;
+          clip.storage_path = storagePath;
+          clip.duration = result.durationSeconds;
+          clip.status = "succeed";
+        } catch (err) {
+          clip.status = "failed";
+          clip.error = err instanceof Error ? err.message : "Store failed";
+        }
+        changed = true;
+      }
+    }
+
+    const settled = clips.every((c) => c.status === "succeed" || c.status === "failed");
+    const patch: Record<string, unknown> = { last_polled_at: new Date(now()).toISOString() };
+    if (changed) patch.clips = clips;
+
+    if (settled) {
+      const succeeded = clips.filter((c) => c.status === "succeed").length;
+      await refundUnusedClips(job, clips.length - succeeded);
+      if (succeeded === 0) {
+        await patchStep(job, "video", patch);
+        throw new Error(`All video clips failed: ${clips[0]?.error ?? "unknown error"}`);
+      }
+      patch.status = "completed";
+    }
+
+    await patchStep(job, "video", patch);
+    return settled;
   }
 
   async function executeStep(job: JobRow, stepId: PipelineStepId): Promise<void> {
@@ -277,6 +426,12 @@ export function createPipelineRunner(deps: RunnerDeps) {
       return;
     }
 
+    if (stepId === "video") {
+      // Async: submitting is the whole first invocation; polling happens later.
+      await submitVideoTasks(job);
+      return;
+    }
+
     if (stepId === "thumbnail") {
       const idea = job.steps?.script?.thumbnailIdea;
       if (typeof idea !== "string" || !idea) {
@@ -301,6 +456,13 @@ export function createPipelineRunner(deps: RunnerDeps) {
     const thumb = fresh.steps?.thumbnail ?? {};
     const voice = fresh.steps?.voiceover ?? {};
     const voiceoverUrl = typeof voice.audio_url === "string" ? voice.audio_url : "";
+    const clips = (fresh.steps?.video?.clips as VideoClipState[] | undefined) ?? [];
+    const scenes = Array.isArray(script.scenes)
+      ? (script.scenes as Array<Record<string, unknown> & { sceneNumber?: number }>).map((scene) => {
+          const clip = clips.find((c) => c.sceneNumber === scene.sceneNumber && c.status === "succeed");
+          return clip ? { ...scene, videoUrl: clip.video_url, videoDuration: clip.duration } : scene;
+        })
+      : script.scenes;
 
     let projectId: string | null = null;
     try {
@@ -317,7 +479,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
           content: {
             hook: script.hook,
             script: script.script,
-            scenes: script.scenes,
+            scenes,
             titles: script.titles,
             description: script.description,
             tags: script.tags,
@@ -362,6 +524,36 @@ export function createPipelineRunner(deps: RunnerDeps) {
     if (!job || job.status !== "running") return "noop";
 
     const order = stepOrder(job);
+
+    // An async step in flight: poll it instead of looking for pending work.
+    const inFlight = order.find(
+      (id) => job.steps?.[id]?.status === "running" && getPipelineStepDefinition(id).async
+    );
+    if (inFlight) {
+      try {
+        const settled = await pollVideoTasks(job);
+        if (!settled) return "noop";
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        console.error(`[pipeline] ${jobId} step ${inFlight} failed:`, message);
+        try {
+          await patchStep(job, inFlight, { status: "failed", error: message });
+        } catch {
+          // best effort
+        }
+        await failJob(jobId, message);
+        return "failed";
+      }
+      const after = nextStep(inFlight, optionsFromSteps(job.steps));
+      if (after) {
+        await patchStep(job, after.id, { queued_at: new Date(now()).toISOString() });
+        await db.from("pipeline_jobs").update({ current_step: after.id }).eq("id", jobId);
+        return "advanced";
+      }
+      await finalizeJob(job);
+      return "completed";
+    }
+
     const stepId = order.find((id) => (job.steps?.[id]?.status ?? "pending") === "pending");
 
     if (!stepId) {
@@ -395,7 +587,12 @@ export function createPipelineRunner(deps: RunnerDeps) {
       return "failed";
     }
 
-    const next = nextStep(stepId, Boolean(claimed.steps?.voiceover));
+    if (getPipelineStepDefinition(stepId).async) {
+      // Submitted; completion arrives through later polls (status endpoint / cron).
+      return "advanced";
+    }
+
+    const next = nextStep(stepId, optionsFromSteps(claimed.steps));
     if (next) {
       await patchStep(claimed, next.id, { queued_at: new Date(now()).toISOString() });
       await db
@@ -424,10 +621,23 @@ export function createPipelineRunner(deps: RunnerDeps) {
 
     const runningId = order.find((id) => steps[id]?.status === "running");
     if (runningId) {
+      const isAsync = Boolean(getPipelineStepDefinition(runningId).async);
       const started = Date.parse(steps[runningId]?.started_at ?? job.created_at);
-      if (current - started > STEP_TIMEOUT_MS) {
+      if (current - started > (isAsync ? ASYNC_STEP_TIMEOUT_MS : STEP_TIMEOUT_MS)) {
         await failJob(job.id, `Step "${runningId}" timed out.`);
         return "failed";
+      }
+      if (isAsync && steps[runningId]?.submitted_at) {
+        const lastPolled = Date.parse(String(steps[runningId]?.last_polled_at ?? 0));
+        if (current - lastPolled > ASYNC_POLL_INTERVAL_MS) {
+          const patched = {
+            ...steps,
+            [runningId]: { ...steps[runningId], last_polled_at: new Date(current).toISOString() },
+          };
+          await db.from("pipeline_jobs").update({ steps: patched }).eq("id", job.id);
+          await kick(job.id);
+          return "kicked";
+        }
       }
       return "ok";
     }
@@ -491,6 +701,12 @@ function getRunner() {
           (await import("@/lib/pipeline/elevenlabs")).generateSpeech(...args),
         generateThumbnail: async (...args) =>
           (await import("@/lib/pipeline/gemini-image")).generateThumbnail(...args),
+        submitTextToVideo: async (...args) =>
+          (await import("@/lib/pipeline/kling")).submitTextToVideo(...args),
+        getTextToVideoTask: async (...args) =>
+          (await import("@/lib/pipeline/kling")).getTextToVideoTask(...args),
+        downloadVideo: async (...args) =>
+          (await import("@/lib/pipeline/kling")).downloadVideo(...args),
       },
       kick: kickJob,
       now: Date.now,

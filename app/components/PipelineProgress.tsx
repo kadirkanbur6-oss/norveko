@@ -26,6 +26,12 @@ interface StepInfo {
   audio_url?: string;
   voice_id?: string;
   storage_path?: string;
+  clips?: Array<{
+    sceneNumber: number;
+    status: "pending" | "processing" | "succeed" | "failed";
+    video_url?: string;
+    error?: string;
+  }>;
 }
 
 interface JobData {
@@ -102,6 +108,7 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
 
   const scriptStep = job.steps?.script;
   const thumbStep = job.steps?.thumbnail;
+  const videoStep = job.steps?.video;
   const resultStep = job.steps?.result as unknown as PipelineResultStep | undefined;
   const projectId =
     (resultStep?.project_id && resultStep.project_id.length > 0
@@ -174,7 +181,52 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
         </div>
       )}
 
-      {/* Sonuçlar */}
+      {videoStep?.clips && videoStep.clips.length > 0 && (
+        <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-gray-300">Video clips</h4>
+            {videoStep.status === "running" && (
+              <span className="text-xs text-gray-500">
+                Rendering — this can take a few minutes per clip
+              </span>
+            )}
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {videoStep.clips.map((clip) => (
+              <div
+                key={clip.sceneNumber}
+                className="min-w-0 rounded-lg border border-white/10 bg-[#0d0d16] p-3"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-blue-300">
+                    Scene {clip.sceneNumber}
+                  </p>
+                  {clip.status === "succeed" && <CheckCircle2 size={14} className="text-green-400" />}
+                  {clip.status === "failed" && <XCircle size={14} className="text-red-400" />}
+                  {(clip.status === "processing" || clip.status === "pending") && (
+                    <Loader2 size={14} className="animate-spin text-blue-300" />
+                  )}
+                </div>
+                {clip.status === "succeed" && clip.video_url && (
+                  <video
+                    controls
+                    preload="metadata"
+                    src={clip.video_url}
+                    className="mt-2 w-full rounded-md border border-white/10 bg-black"
+                  />
+                )}
+                {clip.status === "failed" && (
+                  <p className="mt-2 text-xs text-red-300">
+                    {clip.error ?? "Failed"} — credits for this clip were refunded.
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Results */}
       {scriptStep?.status === "completed" && (
         <div className="mt-6 space-y-4">
           <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">

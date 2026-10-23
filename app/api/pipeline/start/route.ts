@@ -13,6 +13,7 @@ import {
   initialStepsState,
 } from "@/lib/pipeline/steps";
 import { kickJob } from "@/lib/pipeline/runner";
+import { isVideoGenerationEnabled } from "@/lib/pipeline/features";
 import { DURATIONS, LANGUAGES, PLATFORMS, STYLES, isOneOf } from "@/lib/pipeline/options";
 
 export const runtime = "nodejs";
@@ -98,6 +99,17 @@ export async function POST(req: NextRequest) {
 
     const voiceoverEnabled = body.includeVoiceover === true;
     const voiceId = typeof body.voiceId === "string" ? body.voiceId.trim() : "";
+    const videoRequested = body.includeVideo === true;
+
+    // Video generation is gated. Rejecting here means a disabled feature can
+    // never reach the credit deduction below.
+    if (videoRequested && !isVideoGenerationEnabled(user.id)) {
+      return NextResponse.json(
+        { success: false, error: "Video generation is not available yet." },
+        { status: 403 }
+      );
+    }
+    const options = { voiceover: voiceoverEnabled, video: videoRequested };
 
     if (voiceoverEnabled) {
       if (!voiceId) {
@@ -134,13 +146,13 @@ export async function POST(req: NextRequest) {
     }
 
     // 4) Charge credits
-    const cost = totalPipelineCredits(voiceoverEnabled);
+    const cost = totalPipelineCredits(options);
     const { data: deducted, error: deductError } = await supabaseAdmin.rpc(
       "deduct_credits",
       {
         p_user_id: user.id,
         p_amount: cost,
-        p_reason: `AI pipeline generation (content package + thumbnail${voiceoverEnabled ? " + voiceover" : ""})`,
+        p_reason: `AI pipeline generation (content package + thumbnail${voiceoverEnabled ? " + voiceover" : ""}${videoRequested ? " + video clips" : ""})`,
       }
     );
 
@@ -159,8 +171,8 @@ export async function POST(req: NextRequest) {
     }
 
     // 5) Insert the job with every step pending
-    const steps = initialStepsState(voiceoverEnabled) as Record<string, Record<string, unknown>>;
-    const firstStep = buildPipelineSteps(voiceoverEnabled)[0];
+    const steps = initialStepsState(options) as Record<string, Record<string, unknown>>;
+    const firstStep = buildPipelineSteps(options)[0];
     steps[firstStep.id] = { ...steps[firstStep.id], queued_at: new Date().toISOString() };
     if (voiceoverEnabled) {
       steps.voiceover = { ...steps.voiceover, voice_id: voiceId };
