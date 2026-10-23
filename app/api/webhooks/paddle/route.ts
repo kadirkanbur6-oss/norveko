@@ -1,8 +1,11 @@
 // app/api/webhooks/paddle/route.ts
 // Paddle webhook handler.
-// - Raw body ile imza doğrulama (req.text() — ASLA req.json() kullanma)
-// - transaction.completed -> kredi yükleme
-// - Idempotency: credit_purchases.paddle_transaction_id UNIQUE
+// - Signature verification on the raw body (req.text() — NEVER req.json())
+// - transaction.completed  -> grant credits (idempotent via
+//   credit_purchases.paddle_transaction_id UNIQUE)
+// - adjustment.created / adjustment.updated with action "refund" and status
+//   "approved" -> revoke the purchased credits once (idempotent via
+//   credit_purchases.status transition completed -> refunded)
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
@@ -11,14 +14,17 @@ import {
   EventName,
   Environment,
   type TransactionCompletedEvent,
+  type AdjustmentCreatedEvent,
+  type AdjustmentUpdatedEvent,
 } from "@paddle/paddle-node-sdk";
 import { getPackageByPriceId } from "@/lib/packages";
+import { getPaddleEnvironment } from "@/lib/paddle-env";
 
 export const runtime = "nodejs";
 
 const paddle = new Paddle(process.env.PADDLE_API_KEY!, {
   environment:
-    process.env.PADDLE_ENV === "production"
+    getPaddleEnvironment() === "production"
       ? Environment.production
       : Environment.sandbox,
 });
@@ -49,16 +55,38 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  if (event.eventType === EventName.TransactionCompleted) {
-    try {
-      await handleTransactionCompleted(event as TransactionCompletedEvent);
-    } catch (err) {
-      console.error("[paddle-webhook] Handler error:", err);
-      return NextResponse.json({ error: "Handler failed" }, { status: 500 });
+  try {
+    switch (event.eventType) {
+      case EventName.TransactionCompleted:
+        await handleTransactionCompleted(event as TransactionCompletedEvent);
+        break;
+      case EventName.AdjustmentCreated:
+      case EventName.AdjustmentUpdated:
+        await handleAdjustment(
+          event as AdjustmentCreatedEvent | AdjustmentUpdatedEvent
+        );
+        break;
+      default:
+        // Other events are acknowledged but ignored.
+        break;
     }
+  } catch (err) {
+    console.error(`[paddle-webhook] ${event.eventType} handler error:`, err);
+    // 500 makes Paddle retry the delivery, which is what we want for
+    // transient DB failures. Idempotency guards make retries safe.
+    return NextResponse.json({ error: "Handler failed" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });
+}
+
+/** Returns true when the id belongs to a real auth user. */
+async function userExists(userId: string): Promise<boolean> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+    return false;
+  }
+  const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+  return !error && Boolean(data?.user);
 }
 
 async function handleTransactionCompleted(event: TransactionCompletedEvent) {
@@ -69,6 +97,12 @@ async function handleTransactionCompleted(event: TransactionCompletedEvent) {
   const userId = customData?.userId;
   if (!userId) {
     console.error(`[paddle-webhook] ${txnId}: customData.userId missing`);
+    return;
+  }
+
+  // customData is set client-side at checkout, so never trust it blindly.
+  if (!(await userExists(userId))) {
+    console.error(`[paddle-webhook] ${txnId}: unknown userId ${userId}`);
     return;
   }
 
@@ -115,5 +149,62 @@ async function handleTransactionCompleted(event: TransactionCompletedEvent) {
 
   console.log(
     `[paddle-webhook] ${txnId}: +${pkg.credits} credits -> user ${userId}`
+  );
+}
+
+/**
+ * A refund in Paddle arrives as an adjustment on the original transaction.
+ * When it is approved we take the purchased credits back. The
+ * completed -> refunded status transition on credit_purchases is the
+ * idempotency guard, so repeated deliveries are harmless.
+ */
+async function handleAdjustment(
+  event: AdjustmentCreatedEvent | AdjustmentUpdatedEvent
+) {
+  const adjustment = event.data;
+  if (adjustment.action !== "refund" || adjustment.status !== "approved") {
+    return;
+  }
+
+  const txnId = adjustment.transactionId;
+
+  const { data: purchase, error: updateError } = await supabaseAdmin
+    .from("credit_purchases")
+    .update({ status: "refunded" })
+    .eq("paddle_transaction_id", txnId)
+    .eq("status", "completed")
+    .select("user_id, credits, package_id")
+    .maybeSingle();
+
+  if (updateError) throw updateError;
+
+  if (!purchase) {
+    console.log(
+      `[paddle-webhook] refund ${adjustment.id}: no completed purchase for ${txnId}, skipping`
+    );
+    return;
+  }
+
+  // Take back what was granted. The balance may go negative if the user
+  // already spent the credits; that is the intended outcome of a refund.
+  const { error: rpcError } = await supabaseAdmin.rpc("add_credits", {
+    p_user_id: purchase.user_id,
+    p_amount: -purchase.credits,
+    p_type: "refund",
+    p_reason: `Paddle refund: ${purchase.package_id} (${txnId})`,
+  });
+
+  if (rpcError) {
+    // Roll the status back so the next delivery retries the revoke.
+    await supabaseAdmin
+      .from("credit_purchases")
+      .update({ status: "completed" })
+      .eq("paddle_transaction_id", txnId)
+      .eq("status", "refunded");
+    throw rpcError;
+  }
+
+  console.log(
+    `[paddle-webhook] refund ${adjustment.id}: -${purchase.credits} credits <- user ${purchase.user_id}`
   );
 }

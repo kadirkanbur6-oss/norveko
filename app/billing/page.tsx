@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ArrowDownCircle,
   ArrowUpCircle,
@@ -14,6 +14,7 @@ import {
 import Sidebar from "../components/Sidebar";
 import { CREDIT_PACKAGES } from "@/lib/packages";
 import { usePaddle } from "@/lib/usePaddle";
+import { totalPipelineCredits } from "@/lib/pipeline/steps";
 import { supabase } from "../lib/supabase";
 
 interface Transaction {
@@ -23,6 +24,9 @@ interface Transaction {
   reason: string | null;
   created_at: string;
 }
+
+const PIPELINE_COST = totalPipelineCredits(false);
+const PIPELINE_COST_WITH_VOICEOVER = totalPipelineCredits(true);
 
 const PACKAGE_DETAILS = {
   starter: {
@@ -45,29 +49,56 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
-  const paddle = usePaddle();
+  const [purchaseNotice, setPurchaseNotice] = useState("");
+
+  const loadCredits = useCallback(async () => {
+    try {
+      const res = await fetch("/api/credits", { cache: "no-store" });
+      const data = await res.json();
+
+      if (!data.success) {
+        throw new Error(data.error || "Failed to load billing data.");
+      }
+
+      setCredits(data.credits);
+      setTransactions(data.transactions);
+      return data.credits as number;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // After a successful checkout the webhook grants credits asynchronously,
+  // so poll the balance for a short while until it changes.
+  const paddle = usePaddle((event) => {
+    if (event.name !== "checkout.completed") return;
+    setPurchaseNotice("Payment received — adding credits to your balance…");
+    const before = credits ?? 0;
+    let attempts = 0;
+    const timer = setInterval(async () => {
+      attempts += 1;
+      const latest = await loadCredits();
+      if ((latest !== null && latest > before) || attempts >= 15) {
+        clearInterval(timer);
+        setPurchaseNotice(
+          latest !== null && latest > before
+            ? "Credits added. Happy creating!"
+            : "Payment received. Credits will appear shortly — refresh in a minute."
+        );
+      }
+    }, 2000);
+  });
 
   useEffect(() => {
-    async function loadCredits() {
-      try {
-        const res = await fetch("/api/credits");
-        const data = await res.json();
-
-        if (!data.success) {
-          throw new Error(data.error || "Failed to load billing data.");
-        }
-
-        setCredits(data.credits);
-        setTransactions(data.transactions);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadCredits();
-  }, []);
+    // Deferred so the initial fetch does not set state synchronously inside the effect.
+    const id = setTimeout(() => {
+      void loadCredits();
+    }, 0);
+    return () => clearTimeout(id);
+  }, [loadCredits]);
 
   useEffect(() => {
     async function loadUser() {
@@ -156,13 +187,19 @@ export default function BillingPage() {
                     </div>
                   </div>
                   <div className="text-sm text-gray-400 sm:text-right">
-                    <p>Content package: 5 credits</p>
+                    <p>Content package + thumbnail: {PIPELINE_COST} credits</p>
                     <p className="mt-1 text-lg font-semibold text-white">
-                      Full AI pipeline: 15 credits
+                      With voiceover: {PIPELINE_COST_WITH_VOICEOVER} credits
                     </p>
                   </div>
                 </div>
               </div>
+
+              {purchaseNotice && (
+                <p className="mt-4 rounded-xl border border-green-400/20 bg-green-500/5 px-4 py-3 text-sm text-green-200">
+                  {purchaseNotice}
+                </p>
+              )}
 
               {/* Packages */}
               <h2 className="mt-12 text-xl font-bold">Credit packages</h2>
@@ -199,7 +236,7 @@ export default function BillingPage() {
                     </div>
 
                     <p className="mt-1 text-xs text-gray-500">
-                      ≈ {Math.floor(pkg.credits / 5)} AI generations
+                      ≈ {Math.floor(pkg.credits / PIPELINE_COST)} full generations
                     </p>
 
                     <button
