@@ -1,17 +1,22 @@
-const API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
+// Server-only helper. The key must never be exposed to the browser, so it is
+// read from YOUTUBE_API_KEY (the old NEXT_PUBLIC_ name is accepted as a
+// temporary fallback until the Vercel env var is renamed).
+import "server-only";
 
 function getApiKey() {
-  if (!API_KEY) {
-    throw new Error("Missing YouTube API key. Set NEXT_PUBLIC_YOUTUBE_API_KEY.");
+  const key =
+    process.env.YOUTUBE_API_KEY ?? process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
+  if (!key) {
+    throw new Error("Missing YouTube API key. Set YOUTUBE_API_KEY.");
   }
 
-  return API_KEY;
+  return key;
 }
 
 async function parseJson(response: Response) {
   try {
     return await response.json();
-  } catch (error) {
+  } catch {
     throw new Error("YouTube API returned invalid JSON.");
   }
 }
@@ -62,7 +67,7 @@ export async function getRecentVideos(channelId: string) {
   }
 
   const videoIds = playlistData?.items
-    .map((item: any) => item.snippet?.resourceId?.videoId)
+    .map((item: { snippet?: { resourceId?: { videoId?: string } } }) => item.snippet?.resourceId?.videoId)
     .filter(Boolean)
     .join(",");
 
