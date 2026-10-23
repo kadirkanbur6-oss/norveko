@@ -10,13 +10,23 @@ function LoginContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [infoMessage, setInfoMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
+
+  const ERROR_TEXT: Record<string, string> = {
+    no_code: "The sign-in link was incomplete. Please try again.",
+    callback_failed: "We couldn't complete the sign-in. Please try again.",
+  };
 
   useEffect(() => {
     const error = searchParams.get("error");
-    if (error) {
-      setErrorMessage(decodeURIComponent(error));
-    }
+    if (!error) return;
+    const decoded = decodeURIComponent(error);
+    // Deferred so the effect does not set state synchronously.
+    const id = setTimeout(() => setErrorMessage(ERROR_TEXT[decoded] ?? decoded), 0);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -32,11 +42,30 @@ function LoginContent() {
     setIsLoading(false);
 
     if (error) {
+      setNeedsVerification(/not confirmed/i.test(error.message));
       setErrorMessage(error.message);
       return;
     }
 
     router.push("/dashboard");
+  }
+
+  async function handleResendVerification() {
+    setErrorMessage("");
+    setInfoMessage("");
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: {
+        emailRedirectTo: `${typeof window !== "undefined" ? window.location.origin : ""}/auth/callback`,
+      },
+    });
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+    setNeedsVerification(false);
+    setInfoMessage("Verification email sent. Check your inbox and spam folder.");
   }
 
   async function handleGoogleSignIn() {
@@ -118,9 +147,30 @@ function LoginContent() {
             />
           </label>
 
+          <div className="-mt-2 text-right">
+            <a href="/forgot-password" className="text-xs text-violet-300 hover:text-violet-100">
+              Forgot password?
+            </a>
+          </div>
+
           {errorMessage ? (
             <div className="rounded-3xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
               {errorMessage}
+              {needsVerification && email ? (
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  className="mt-2 block font-semibold text-red-100 underline"
+                >
+                  Resend verification email
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+
+          {infoMessage ? (
+            <div className="rounded-3xl border border-green-500/30 bg-green-500/10 p-4 text-sm text-green-200">
+              {infoMessage}
             </div>
           ) : null}
 
@@ -134,7 +184,7 @@ function LoginContent() {
         </form>
 
         <p className="mt-6 text-center text-sm text-gray-400">
-          Don't have an account?{' '}
+          Don&apos;t have an account?{' '}
           <a href="/signup" className="font-semibold text-violet-300 hover:text-violet-100">
             Sign up
           </a>

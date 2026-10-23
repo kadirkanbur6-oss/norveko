@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { createMiddlewareSupabaseClient } from "./lib/supabase-middleware";
 
 const PUBLIC_FILE = /(.*)\.(.*)$/;
-const PUBLIC_PAGES = ["/", "/login", "/signup", "/auth/callback", "/terms", "/privacy", "/refund"];
+const PUBLIC_PAGES = ["/", "/login", "/signup", "/forgot-password", "/auth/callback", "/terms", "/privacy", "/refund"];
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
@@ -15,7 +15,7 @@ export async function middleware(request: NextRequest) {
 
   const supabase = createMiddlewareSupabaseClient(request, response);
 
-  const { data, error } = await supabase.auth.getSession();
+  const { data } = await supabase.auth.getSession();
   const session = data?.session ?? null;
 
   if (!session) {

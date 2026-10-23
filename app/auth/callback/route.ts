@@ -5,6 +5,9 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
+  // Optional post-login destination (same-origin paths only).
+  const nextParam = searchParams.get("next") ?? "";
+  const next = nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/dashboard";
 
   if (!code) {
     return NextResponse.redirect(new URL("/login?error=no_code", request.url));
@@ -41,9 +44,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Redirect to dashboard after successful auth
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  } catch (err) {
+    return NextResponse.redirect(new URL(next, request.url));
+  } catch {
     return NextResponse.redirect(
       new URL(`/login?error=callback_failed`, request.url)
     );
