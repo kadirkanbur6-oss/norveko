@@ -5,10 +5,10 @@
 import { createClient } from "@supabase/supabase-js";
 
 if (!process.env.GEMINI_API_KEY) {
-  throw new Error("GEMINI_API_KEY environment değişkeni tanımlı değil.");
+  throw new Error("GEMINI_API_KEY is not set.");
 }
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error("Supabase URL veya SERVICE_ROLE_KEY tanımlı değil.");
+  throw new Error("Supabase URL or SERVICE_ROLE_KEY is not set.");
 }
 
 // Storage'a yazmak için admin client (RLS'i aşar — sadece server-side!)
@@ -20,7 +20,7 @@ const supabaseAdmin = createClient(
 const GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image";
 
 interface ThumbnailResult {
-  imageUrl: string; // public URL — doğrudan <img src> ile kullanılabilir
+  imageUrl: string; // public URL — usable directly as <img src>
   storagePath: string;
 }
 
@@ -56,7 +56,7 @@ export async function generateThumbnail(
 
   if (!res.ok) {
     const errBody = await res.text();
-    throw new Error(`Gemini görsel API hatası (${res.status}): ${errBody.slice(0, 300)}`);
+    throw new Error(`Gemini image API error (${res.status}): ${errBody.slice(0, 300)}`);
   }
 
   const data = await res.json();
@@ -79,7 +79,7 @@ export async function generateThumbnail(
   }
 
   if (!base64) {
-    throw new Error("Gemini yanıtında görsel bulunamadı.");
+    throw new Error("Gemini response contained no image.");
   }
 
   // 3) Supabase Storage'a yükle
@@ -92,7 +92,7 @@ export async function generateThumbnail(
     .upload(storagePath, buffer, { contentType: mimeType, upsert: true });
 
   if (uploadError) {
-    throw new Error(`Thumbnail Storage'a yüklenemedi: ${uploadError.message}`);
+    throw new Error(`Thumbnail upload to Storage failed: ${uploadError.message}`);
   }
 
   // 4) Public URL üret

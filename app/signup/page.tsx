@@ -39,7 +39,7 @@ function SignupContent() {
     }
 
     setSuccessMessage(
-      "Email adresinize gönderilen linke tıklayarak hesabınızı doğrulayın."
+      "Check your inbox and click the verification link to activate your account."
     );
   }
 

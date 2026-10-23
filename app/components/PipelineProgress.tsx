@@ -117,7 +117,7 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
 
   return (
     <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-      {/* Adım listesi */}
+      {/* Step list */}
       <div className="flex flex-col gap-3">
         {STEP_ORDER.map(({ id, label }) => {
           const step = job.steps?.[id];

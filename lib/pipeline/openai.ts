@@ -2,7 +2,7 @@
 // OpenAI ile full content package üretimi (server-side only).
 
 if (!process.env.OPENAI_API_KEY) {
-  throw new Error("OPENAI_API_KEY environment değişkeni tanımlı değil.");
+  throw new Error("OPENAI_API_KEY is not set.");
 }
 
 export interface ScriptResult {
@@ -26,7 +26,7 @@ interface ScriptParams {
   style?: string | null;
   duration?: string | null;
   outputLanguage: string;
-  model: string; // steps.ts'ten gelir, ör. "gpt-5-mini"
+  model: string; // from steps.ts, e.g. "gpt-5-mini"
 }
 
 export async function generateScript(params: ScriptParams): Promise<ScriptResult> {
@@ -81,20 +81,20 @@ Target duration: ${duration ?? "60 seconds"}`;
 
   if (!res.ok) {
     const errBody = await res.text();
-    throw new Error(`OpenAI API hatası (${res.status}): ${errBody.slice(0, 300)}`);
+    throw new Error(`OpenAI API error (${res.status}): ${errBody.slice(0, 300)}`);
   }
 
   const data = await res.json();
   const content: string | undefined = data?.choices?.[0]?.message?.content;
   if (!content) {
-    throw new Error("OpenAI boş yanıt döndürdü.");
+    throw new Error("OpenAI returned an empty response.");
   }
 
   let parsed: ScriptResult;
   try {
     parsed = JSON.parse(content);
   } catch {
-    throw new Error("OpenAI yanıtı geçerli JSON değil.");
+    throw new Error("OpenAI response was not valid JSON.");
   }
 
   const scenes = Array.isArray(parsed.scenes) ? parsed.scenes : [];
@@ -102,11 +102,11 @@ Target duration: ${duration ?? "60 seconds"}`;
   const tags = Array.isArray(parsed.tags) ? parsed.tags : [];
 
   if (!parsed.hook || !parsed.script || !parsed.thumbnailIdea) {
-    throw new Error("OpenAI yanıtında beklenen alanlar eksik (hook/script/thumbnailIdea).");
+    throw new Error("OpenAI response is missing required fields (hook/script/thumbnailIdea).");
   }
 
   if (scenes.length === 0 || titles.length === 0) {
-    throw new Error("OpenAI yanıtında scenes veya titles alanı eksik/boş.");
+    throw new Error("OpenAI response is missing scenes or titles.");
   }
 
   const normalizedScenes = scenes
@@ -133,7 +133,7 @@ Target duration: ${duration ?? "60 seconds"}`;
     );
 
   if (normalizedScenes.length === 0) {
-    throw new Error("OpenAI scenes alanı geçerli içerik üretmedi.");
+    throw new Error("OpenAI did not return usable scenes.");
   }
 
   const normalizedTitles = titles
@@ -142,7 +142,7 @@ Target duration: ${duration ?? "60 seconds"}`;
     .slice(0, 5);
 
   if (normalizedTitles.length === 0) {
-    throw new Error("OpenAI titles alanı geçerli içerik üretmedi.");
+    throw new Error("OpenAI did not return usable titles.");
   }
 
   const normalizedTags = tags

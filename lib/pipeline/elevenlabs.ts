@@ -5,7 +5,7 @@ const ELEVENLABS_BASE_URL = "https://api.elevenlabs.io";
 const ELEVENLABS_MODEL_ID = "eleven_multilingual_v2";
 
 if (!process.env.ELEVENLABS_API_KEY) {
-  throw new Error("ELEVENLABS_API_KEY environment değişkeni tanımlı değil.");
+  throw new Error("ELEVENLABS_API_KEY is not set.");
 }
 
 export interface ElevenLabsVoiceSummary {
@@ -29,7 +29,7 @@ export async function listVoices(): Promise<ElevenLabsVoiceSummary[]> {
 
   if (!res.ok) {
     const errBody = await res.text();
-    throw new Error(`ElevenLabs voices API hatası (${res.status}): ${errBody.slice(0, 300)}`);
+    throw new Error(`ElevenLabs voices API error (${res.status}): ${errBody.slice(0, 300)}`);
   }
 
   const data = await res.json();
@@ -68,7 +68,7 @@ export async function generateSpeech(
 
   if (!res.ok) {
     const errBody = await res.text();
-    throw new Error(`ElevenLabs TTS hatası (${res.status}): ${errBody.slice(0, 300)}`);
+    throw new Error(`ElevenLabs TTS error (${res.status}): ${errBody.slice(0, 300)}`);
   }
 
   return Buffer.from(await res.arrayBuffer());

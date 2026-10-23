@@ -74,7 +74,7 @@ export async function POST(request: Request) {
 
     if (!title || typeof title !== "string") {
       return NextResponse.json(
-        { success: false, error: "Proje başlığı gerekli." },
+        { success: false, error: "Project title is required." },
         { status: 400 }
       );
     }

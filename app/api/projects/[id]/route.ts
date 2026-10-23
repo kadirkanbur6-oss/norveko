@@ -54,7 +54,7 @@ export async function GET(
 
     if (!data) {
       return NextResponse.json(
-        { success: false, error: "Proje bulunamadı." },
+        { success: false, error: "Project not found." },
         { status: 404 }
       );
     }

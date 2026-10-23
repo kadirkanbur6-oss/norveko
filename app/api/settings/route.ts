@@ -80,7 +80,7 @@ export async function PATCH(request: Request) {
         {
           success: false,
           error:
-            "Geçersiz kanal ID. YouTube kanal ID'leri 'UC' ile başlar (örn: UCxxxxxxxxxxxxxxxxxxxxxx).",
+            "Invalid channel ID. YouTube channel IDs start with 'UC' (e.g. UCxxxxxxxxxxxxxxxxxxxxxx).",
         },
         { status: 400 }
       );
