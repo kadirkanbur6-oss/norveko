@@ -57,7 +57,7 @@ function Reveal({
     <div
       ref={ref}
       style={{ transitionDelay: `${delay}ms` }}
-      className={`transition-all duration-700 ease-out ${
+      className={`min-w-0 transition-all duration-700 ease-out ${
         visible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
       } ${className}`}
     >
@@ -165,7 +165,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#0a0a12] text-white antialiased">
+    <div className="min-h-screen overflow-x-hidden bg-[#0a0a12] text-white antialiased">
       {/* NAVBAR */}
       <header className="sticky top-0 z-50 border-b border-white/5 bg-[#0a0a12]/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
@@ -255,7 +255,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
       <section className="relative overflow-hidden">
         <div className="pointer-events-none absolute -top-40 left-1/2 h-[500px] w-[min(800px,120vw)] -translate-x-1/2 rounded-full bg-gradient-to-r from-blue-600/20 to-purple-600/20 blur-3xl" />
 
-        <div className="mx-auto grid max-w-6xl items-start gap-10 px-4 py-10 sm:px-6 sm:py-12 lg:grid-cols-2">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 items-start gap-10 px-4 py-10 sm:px-6 sm:py-12 lg:grid-cols-2">
           <Reveal>
             <div>
               <span className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-4 py-1.5 text-xs text-blue-200">
@@ -418,7 +418,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
       <section id="workspace" className="relative scroll-mt-20 overflow-hidden py-12">
         <div className="pointer-events-none absolute left-1/2 top-1/2 h-[400px] w-[min(700px,120vw)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-purple-600/10 blur-3xl" />
 
-        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-4 sm:px-6 lg:grid-cols-2">
           <Reveal>
             <div>
               <SectionTitle eyebrow="AI Workspace" title="Your creator command center." />

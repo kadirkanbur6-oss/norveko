@@ -44,7 +44,7 @@ export default function HeroDemo() {
   const isDone = step === 6;
 
   return (
-    <div className="relative min-h-[480px] w-full max-w-[560px] overflow-hidden rounded-3xl border border-white/10 bg-[#181527] p-4 shadow-2xl sm:h-[560px] sm:p-6">
+    <div className="relative min-h-[480px] w-full min-w-0 max-w-[560px] overflow-hidden rounded-3xl border border-white/10 bg-[#181527] p-4 shadow-2xl sm:h-[560px] sm:p-6">
       <div className="mb-6 flex items-center gap-2">
         <div className="h-3 w-3 rounded-full bg-red-400" />
         <div className="h-3 w-3 rounded-full bg-yellow-400" />
@@ -52,9 +52,9 @@ export default function HeroDemo() {
         <span className="ml-4 text-xs text-zinc-500">norveko.app/chat</span>
       </div>
 
-      <div className="rounded-2xl bg-black/30 p-5">
+      <div className="min-w-0 rounded-2xl bg-black/30 p-5">
         <p className="mb-2 text-sm text-zinc-400">Your idea</p>
-        <p className="text-lg font-medium text-white">{demo.idea}</p>
+        <p className="break-words text-lg font-medium text-white">{demo.idea}</p>
       </div>
 
       {step === 0 && (
@@ -109,7 +109,7 @@ export default function HeroDemo() {
           ].map(([label, text]) => (
             <div
               key={label}
-              className="rounded-xl border border-white/10 bg-white/[0.03] p-3"
+              className="min-w-0 rounded-xl border border-white/10 bg-white/[0.03] p-3"
             >
               <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-300">
                 {label}
