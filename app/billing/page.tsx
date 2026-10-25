@@ -27,6 +27,7 @@ interface Transaction {
 
 const PIPELINE_COST = totalPipelineCredits(false);
 const PIPELINE_COST_WITH_VOICEOVER = totalPipelineCredits(true);
+const PIPELINE_COST_WITH_SUBTITLES = totalPipelineCredits({ voiceover: true, subtitles: true });
 
 const PACKAGE_DETAILS = {
   starter: {
@@ -193,6 +194,9 @@ export default function BillingPage() {
                     <p>Content package + thumbnail: {PIPELINE_COST} credits</p>
                     <p className="mt-1 text-lg font-semibold text-white">
                       With voiceover: {PIPELINE_COST_WITH_VOICEOVER} credits
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      + auto subtitles: {PIPELINE_COST_WITH_SUBTITLES} credits
                     </p>
                   </div>
                 </div>

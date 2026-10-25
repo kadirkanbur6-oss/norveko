@@ -16,6 +16,18 @@ import {
 } from "lucide-react";
 import Sidebar from "../../components/Sidebar";
 import ExportMenu from "../../components/ExportMenu";
+import AudioPlayer from "../../components/AudioPlayer";
+import VoiceoverDownloads from "../../components/VoiceoverDownloads";
+
+function slugify(s: string): string {
+  return (
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || "norveko-voiceover"
+  );
+}
 import ConfirmDialog from "../../components/ConfirmDialog";
 import StockFootagePicker from "../../components/StockFootagePicker";
 import { defaultOrientation } from "@/lib/pipeline/options";
@@ -728,27 +740,23 @@ export default function ProjectDetailPage() {
                   )}
 
                   {voiceoverUrl && (
-                    <div className="mt-4 rounded-xl border border-white/10 bg-[#0d0d16] p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <h4 className="text-sm font-semibold text-gray-300">
-                          Voiceover
-                        </h4>
-                        <div className="flex items-center gap-3 text-xs">
-                          {normalizedProjectContent?.captions?.length ? (
-                            <span className="text-gray-500">
-                              {normalizedProjectContent.captions.length} subtitle cues · use Export for .srt/.vtt
-                            </span>
-                          ) : null}
-                          <a
-                            href={voiceoverUrl}
-                            download
-                            className="text-blue-300 transition hover:text-blue-200"
-                          >
-                            Download MP3
-                          </a>
-                        </div>
-                      </div>
-                      <audio controls src={voiceoverUrl} className="mt-3 w-full" />
+                    <div className="mt-4">
+                      <AudioPlayer
+                        src={voiceoverUrl}
+                        title="Voiceover"
+                        subtitle={
+                          normalizedProjectContent?.captions?.length
+                            ? `${normalizedProjectContent.captions.length} subtitle cues, word-timed to the narration`
+                            : "MP3 narration of the full script"
+                        }
+                        actions={
+                          <VoiceoverDownloads
+                            audioUrl={voiceoverUrl}
+                            captions={normalizedProjectContent?.captions}
+                            baseName={slugify(project.title)}
+                          />
+                        }
+                      />
                     </div>
                   )}
                 </div>

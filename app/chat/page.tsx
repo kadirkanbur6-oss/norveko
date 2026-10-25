@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, ChevronDown, Clapperboard, Coins, LayoutTemplate, Loader2, Mic, Play, Search, Sparkles, Square, Wand2 } from "lucide-react";
+import { Captions, CheckCircle2, ChevronDown, Clapperboard, Coins, LayoutTemplate, Loader2, Mic, Play, Search, Sparkles, Square, Wand2 } from "lucide-react";
 import Link from "next/link";
 import Sidebar from "../components/Sidebar";
 import PipelineProgress from "../components/PipelineProgress";
@@ -10,6 +10,7 @@ import PipelineProgress from "../components/PipelineProgress";
 import { DURATIONS, LANGUAGE_OPTIONS, LANGUAGES, ORIENTATIONS, PLATFORMS, STYLES, defaultOrientation, languageOption, type OrientationId } from "@/lib/pipeline/options";
 import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
 import {
+  SUBTITLES_CREDITS,
   totalPipelineCredits,
   VIDEO_CLIP_CREDITS,
   VIDEO_CLIP_SECONDS,
@@ -46,6 +47,7 @@ interface Draft {
   duration: string;
   language: string;
   includeVoiceover: boolean;
+  includeSubtitles?: boolean;
   voiceId: string;
   orientation?: OrientationId;
   template?: string | null;
@@ -72,6 +74,7 @@ function ChatContent() {
   const [orientationTouched, setOrientationTouched] = useState(false);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [includeVoiceover, setIncludeVoiceover] = useState(false);
+  const [includeSubtitles, setIncludeSubtitles] = useState(true);
   const [includeVideo, setIncludeVideo] = useState(false);
   const [videoAvailable, setVideoAvailable] = useState(false);
   const [generationAvailable, setGenerationAvailable] = useState(true);
@@ -93,6 +96,7 @@ function ChatContent() {
 
   const totalCost = totalPipelineCredits({
     voiceover: includeVoiceover,
+    subtitles: includeVoiceover && includeSubtitles,
     video: includeVideo && videoAvailable,
   });
   const videoCost = VIDEO_CLIP_CREDITS * VIDEO_MAX_CLIPS;
@@ -109,6 +113,7 @@ function ChatContent() {
       if (typeof draft.duration === "string") setDuration(draft.duration);
       if (typeof draft.language === "string") setLanguage(draft.language);
       if (typeof draft.includeVoiceover === "boolean") setIncludeVoiceover(draft.includeVoiceover);
+      if (typeof draft.includeSubtitles === "boolean") setIncludeSubtitles(draft.includeSubtitles);
       if (typeof draft.voiceId === "string") setVoiceId(draft.voiceId);
       if (draft.orientation === "vertical" || draft.orientation === "horizontal") {
         setOrientation(draft.orientation);
@@ -126,12 +131,12 @@ function ChatContent() {
 
   useEffect(() => {
     try {
-      const draft: Draft = { idea, platform, style, duration, language, includeVoiceover, voiceId, orientation, template: templateId };
+      const draft: Draft = { idea, platform, style, duration, language, includeVoiceover, includeSubtitles, voiceId, orientation, template: templateId };
       sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     } catch {
       // storage unavailable
     }
-  }, [idea, platform, style, duration, language, includeVoiceover, voiceId, orientation, templateId]);
+  }, [idea, platform, style, duration, language, includeVoiceover, includeSubtitles, voiceId, orientation, templateId]);
 
   // Keep orientation in step with the platform until the user picks one explicitly.
   function choosePlatform(next: string) {
@@ -310,6 +315,7 @@ function ChatContent() {
           duration,
           outputLanguage: language,
           includeVoiceover,
+          includeSubtitles: includeVoiceover && includeSubtitles,
           voiceId: includeVoiceover ? effectiveVoiceId : null,
           voicePublicOwnerId: includeVoiceover ? selectedVoice?.public_owner_id ?? null : null,
           voiceName: includeVoiceover ? selectedVoice?.name ?? null : null,
@@ -370,6 +376,7 @@ function ChatContent() {
                 <span className="mt-1 block truncate text-xs text-gray-500">
                   {platform} · {style} · {duration} · {language} · {orientation === "vertical" ? "9:16" : "16:9"}
                   {includeVoiceover ? " · voiceover" : ""}
+                  {includeVoiceover && includeSubtitles ? " · subtitles" : ""}
                   {templateId ? ` · ${NICHE_TEMPLATES.find((t) => t.id === templateId)?.name}` : ""}
                 </span>
               </span>
@@ -767,6 +774,40 @@ function ChatContent() {
                 </div>
               )}
             </div>
+
+            {/* Subtitles — add-on to the voiceover */}
+            {includeVoiceover && (
+              <div
+                className={`mt-4 rounded-2xl border p-4 transition ${
+                  includeSubtitles ? "border-blue-400/30 bg-[#0d0d16]" : "border-white/10 bg-[#0d0d16]"
+                }`}
+              >
+                <label className="flex cursor-pointer items-center gap-3">
+                  <span className="relative inline-flex h-6 w-11 shrink-0 items-center">
+                    <input
+                      type="checkbox"
+                      checked={includeSubtitles}
+                      onChange={(e) => setIncludeSubtitles(e.target.checked)}
+                      className="peer sr-only"
+                    />
+                    <span className="absolute inset-0 rounded-full bg-white/10 transition peer-checked:bg-gradient-to-r peer-checked:from-blue-500 peer-checked:to-purple-600 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-400/60" />
+                    <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
+                  </span>
+                  <span>
+                    <span className="flex items-center gap-2 text-sm font-semibold text-white">
+                      <Captions size={15} className="text-blue-300" />
+                      Auto subtitles
+                      <span className="rounded-full border border-yellow-400/20 bg-yellow-500/5 px-2 py-0.5 text-[11px] font-medium text-yellow-300">
+                        +{SUBTITLES_CREDITS} credits
+                      </span>
+                    </span>
+                    <span className="mt-0.5 block text-xs text-gray-500">
+                      Word-timed captions synced to the narration · download as .srt or .vtt for YouTube, CapCut, Premiere
+                    </span>
+                  </span>
+                </label>
+              </div>
+            )}
 
             {/* Video clips (Kling) — gated until launch */}
             <div

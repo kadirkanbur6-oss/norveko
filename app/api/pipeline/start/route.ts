@@ -107,6 +107,7 @@ export async function POST(req: NextRequest) {
       typeof body.voicePublicOwnerId === "string" ? body.voicePublicOwnerId.trim() : "";
     const voiceName = typeof body.voiceName === "string" ? body.voiceName.trim() : "";
     const videoRequested = body.includeVideo === true;
+    const subtitlesRequested = voiceoverEnabled && body.includeSubtitles === true;
 
     // Video generation is gated. Rejecting here means a disabled feature can
     // never reach the credit deduction below.
@@ -116,7 +117,7 @@ export async function POST(req: NextRequest) {
         { status: 403 }
       );
     }
-    const options = { voiceover: voiceoverEnabled, video: videoRequested };
+    const options = { voiceover: voiceoverEnabled, subtitles: subtitlesRequested, video: videoRequested };
 
     if (voiceoverEnabled) {
       if (!voiceId) {
@@ -217,7 +218,7 @@ export async function POST(req: NextRequest) {
       {
         p_user_id: user.id,
         p_amount: cost,
-        p_reason: `AI pipeline generation (content package + thumbnail${voiceoverEnabled ? " + voiceover" : ""}${videoRequested ? " + video clips" : ""})`,
+        p_reason: `AI pipeline generation (content package + thumbnail${voiceoverEnabled ? " + voiceover" : ""}${subtitlesRequested ? " + subtitles" : ""}${videoRequested ? " + video clips" : ""})`,
       }
     );
 

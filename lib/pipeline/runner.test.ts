@@ -100,7 +100,7 @@ function makeDb() {
       script: { status: "pending", provider: "openai:gpt-5-mini", error: null, queued_at: new Date(0).toISOString() },
       thumbnail: { status: "pending", provider: "gemini", error: null },
     };
-    if (withVoice) steps.voiceover = { status: "pending", provider: "el", error: null, voice_id: "v1" };
+    if (withVoice) steps.voiceover = { status: "pending", provider: "el", error: null, voice_id: "v1", subtitles: true };
     const id = `job_${++seq}`;
     rows.set(id, {
       id,
@@ -229,7 +229,7 @@ test("runs steps in order, one per invocation, then finalizes into a project", a
   assert.deepEqual(
     job.steps.voiceover.captions,
     [{ start: 0, end: 0.9, text: "Hi there." }],
-    "voiceover step stores word-timed caption cues"
+    "voiceover step stores word-timed caption cues when the add-on is on"
   );
   assert.equal(rpc.length, 0, "no refunds on success");
 
@@ -404,4 +404,15 @@ test("a failed provider call is logged as failed with zero cost", async () => {
   assert.equal(usage[0].status, "failed");
   assert.equal(usage[0].estimatedCostUsd, 0);
   assert.match(usage[0].error ?? "", /openai down/);
+});
+
+test("subtitles add-on off: voiceover completes without caption cues", async () => {
+  const { runner, rows, seedJob } = makeRunner();
+  const id = seedJob(true);
+  rows.get(id)!.steps.voiceover.subtitles = false;
+  await runner.runNextStep(id); // script
+  await runner.runNextStep(id); // voiceover
+  const job = rows.get(id)!;
+  assert.equal(job.steps.voiceover.status, "completed");
+  assert.equal(job.steps.voiceover.captions, undefined);
 });

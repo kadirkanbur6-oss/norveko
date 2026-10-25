@@ -43,7 +43,9 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   `lib/pipeline/runner.test.ts` 8 senaryo + `captions.test.ts` 5 birim testi
   (`npm run test:pipeline`).
 - Kredi maliyetleri **tek kaynak**: `lib/pipeline/steps.ts` (script 5, voiceover
-  15, thumbnail 10, video 12×5 klip peşin; kullanılmayan/başarısız klip iade).
+  15, **altyazı eklentisi 10** (`SUBTITLES_CREDITS`, sadece voiceover ile;
+  adım değil, `steps.voiceover.subtitles=true` olarak kaydedilir), thumbnail
+  10, video 12×5 klip peşin; kullanılmayan/başarısız klip iade).
 - Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
 - Bitince sonuç `projects.content` JSONB'ye yazılır; başlık = AI'nin ilk title'ı.
 
@@ -75,14 +77,20 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   (sekmeler, tam düzenleme, **Export**: copy all / .md / .txt / .srt / .vtt,
   thumbnail görseli, klip oynatıcı, stilli silme onayı). PATCH içeriği
   `lib/project-content.ts` ile sanitize edilir (`captions` dahil).
-- **Otomatik altyazı**: voiceover adımı ElevenLabs'in `/with-timestamps` uç
-  noktasını kullanır (aynı fiyat; JSON içinde base64 ses + karakter
-  zamanlaması). `lib/pipeline/captions.ts` karakter → kelime → cue (2 satır ×
+- **Otomatik altyazı** (opsiyon, +10 kredi; UI'da voiceover açıkken "Auto
+  subtitles" toggle'ı, varsayılan açık): voiceover adımı ElevenLabs'in
+  `/with-timestamps` uç noktasını kullanır (aynı fiyat; JSON içinde base64 ses
+  + karakter zamanlaması); cue'lar yalnızca eklenti alındıysa üretilir. `lib/pipeline/captions.ts` karakter → kelime → cue (2 satır ×
   38 karakter, ≤5 sn, ≥0.8 sn, 0.6 sn duraklamada kes, cümle sonunda kes;
   `CAPTION_RULES`) ve SRT/VTT render eder. Cue'lar `steps.voiceover.captions`
   ve `projects.content.captions` olarak saklanır (karakter hizalaması
   saklanmaz). Voiceover yoksa export okuma hızından tahmin eder ve menü bunu
   söyler. İleride MP4 render'da burn-in için aynı cue'lar kullanılacak.
+- **Ses oynatıcı** `app/components/AudioPlayer.tsx`: native `<audio controls>`
+  yerine özel oynatıcı — MP3 tarayıcıda Web Audio ile decode edilip gerçek
+  dalga formu (96 çubuk) çizilir, tıkla/sürükle ile seek, hız (0.75–2×),
+  sessiz, klavye (boşluk/ok). `VoiceoverDownloads.tsx`: "Subtitles" menüsü
+  (.srt/.vtt) + "MP3" butonu; hem üretim kartında hem proje sayfasında.
 - Billing: Paddle overlay checkout, webhook (`transaction.completed` + refund
   `adjustment.*`, idempotent), ödeme sonrası bakiye yenileme, kredi metinleri
   `steps.ts`'ten.

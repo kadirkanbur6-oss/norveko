@@ -80,3 +80,13 @@ test("SRT and VTT renderers format timestamps correctly", () => {
     "WEBVTT\n\n00:00:00.000 --> 00:00:01.500\nHello\nworld\n\n00:01:01.250 --> 01:01:01.001\nLater\n"
   );
 });
+
+test("pricing: subtitles add 10 credits only together with a voiceover", async () => {
+  const { totalPipelineCredits, initialStepsState, optionsFromSteps } = await import("./steps");
+  assert.equal(totalPipelineCredits({ voiceover: true }), 30);
+  assert.equal(totalPipelineCredits({ voiceover: true, subtitles: true }), 40);
+  assert.equal(totalPipelineCredits({ voiceover: false, subtitles: true }), 15, "no voiceover → no subtitles charge");
+  const steps = initialStepsState({ voiceover: true, subtitles: true });
+  assert.equal(steps.voiceover.subtitles, true);
+  assert.deepEqual(optionsFromSteps(steps), { voiceover: true, subtitles: true, video: false });
+});

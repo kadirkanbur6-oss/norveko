@@ -28,8 +28,15 @@ export interface StepDefinition {
 /** Options that decide which optional steps a job includes. */
 export interface PipelineOptions {
   voiceover?: boolean;
+  /** Word-timed subtitles (SRT/VTT). Add-on to the voiceover step; ignored without it. */
+  subtitles?: boolean;
   video?: boolean;
 }
+
+/* ---------------- Subtitles (voiceover add-on) pricing ---------------- */
+
+/** Credits charged for word-timed subtitles on top of the voiceover. */
+export const SUBTITLES_CREDITS = 10;
 
 /* ---------------- Video (Kling) pricing ---------------- */
 
@@ -70,8 +77,18 @@ export const PIPELINE_STEP_ORDER: StepDefinition[] = [
 
 /** Accept the legacy boolean (voiceover only) or the options object. */
 function normalize(opts: boolean | PipelineOptions | undefined): Required<PipelineOptions> {
-  if (typeof opts === "boolean") return { voiceover: opts, video: false };
-  return { voiceover: Boolean(opts?.voiceover), video: Boolean(opts?.video) };
+  if (typeof opts === "boolean") return { voiceover: opts, subtitles: false, video: false };
+  const voiceover = Boolean(opts?.voiceover);
+  return {
+    voiceover,
+    subtitles: voiceover && Boolean(opts?.subtitles),
+    video: Boolean(opts?.video),
+  };
+}
+
+/** Add-ons that ride on a step instead of being steps themselves. */
+export function addonCredits(opts: boolean | PipelineOptions = false): number {
+  return normalize(opts).subtitles ? SUBTITLES_CREDITS : 0;
 }
 
 export function buildPipelineSteps(
@@ -95,7 +112,7 @@ export function getPipelineStepDefinition(stepId: PipelineStepId): StepDefinitio
 
 /** Total credit cost of a job with the given options. */
 export function totalPipelineCredits(opts: boolean | PipelineOptions = false): number {
-  return buildPipelineSteps(opts).reduce((sum, step) => sum + step.credits, 0);
+  return buildPipelineSteps(opts).reduce((sum, step) => sum + step.credits, 0) + addonCredits(opts);
 }
 
 /** The step after `current`, or null when the pipeline is finished. */
@@ -117,13 +134,18 @@ export function initialStepsState(
   for (const step of buildPipelineSteps(opts)) {
     state[step.id] = { status: "pending", provider: step.provider, error: null };
   }
+  // The subtitles add-on is recorded on the voiceover step so the worker and
+  // optionsFromSteps() can see it.
+  if (normalize(opts).subtitles && state.voiceover) state.voiceover.subtitles = true;
   return state;
 }
 
 /** Derive the options a stored job was created with from its steps JSON. */
 export function optionsFromSteps(steps: Record<string, unknown> | null | undefined): Required<PipelineOptions> {
+  const voiceover = steps?.voiceover as Record<string, unknown> | undefined;
   return {
-    voiceover: Boolean(steps?.voiceover),
+    voiceover: Boolean(voiceover),
+    subtitles: Boolean(voiceover?.subtitles),
     video: Boolean(steps?.video),
   };
 }

@@ -550,14 +550,15 @@ export function createPipelineRunner(deps: RunnerDeps) {
         .from("voiceovers")
         .getPublicUrl(storagePath);
 
-      // Word-timed subtitles from the same TTS call (no extra cost). Kept
-      // compact: cues only, not the per-character alignment.
-      const captions = speech.alignment ? alignmentToCues(speech.alignment) : [];
+      // Word-timed subtitles (paid add-on, see SUBTITLES_CREDITS) from the
+      // same TTS call. Kept compact: cues only, not the character alignment.
+      const wantsSubtitles = job.steps?.voiceover?.subtitles === true;
+      const captions = wantsSubtitles && speech.alignment ? alignmentToCues(speech.alignment) : undefined;
       await patchStep(job, "voiceover", {
         status: "completed",
         audio_url: urlData.publicUrl,
         storage_path: storagePath,
-        captions,
+        ...(captions ? { captions } : {}),
       });
       return;
     }
