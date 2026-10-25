@@ -1,6 +1,7 @@
 'use client';
 
-import { Bell, ChevronDown, Search, Settings, User } from "lucide-react";
+import { ChevronDown, Search, Settings, User } from "lucide-react";
+import NotificationsMenu from "./NotificationsMenu";
 import SignOutButton from "./SignOutButton";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -47,11 +48,7 @@ export default function Header() {
           />
         </div>
 
-        <button className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
-          <Bell size={18} />
-
-          <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-red-500"></span>
-        </button>
+        <NotificationsMenu />
 
         <div className="relative">
           <button
