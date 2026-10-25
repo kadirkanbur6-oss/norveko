@@ -345,7 +345,7 @@ function ChatContent() {
     <div className="flex min-h-screen overflow-x-hidden bg-[#0a0a12] text-white">
       <Sidebar />
 
-      <main className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
+      <main id="main-content" className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
         <div className="mx-auto max-w-4xl">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-400/30 bg-blue-500/10">
@@ -384,7 +384,7 @@ function ChatContent() {
             <div className="mb-5">
               <div className="flex items-center gap-2 text-sm text-gray-400">
                 <LayoutTemplate size={15} className="text-purple-300" />
-                Start from a template <span className="text-gray-600">(optional)</span>
+                Start from a template <span className="text-gray-500">(optional)</span>
               </div>
               <div className="mt-2 flex flex-wrap gap-2">
                 {NICHE_TEMPLATES.map((t) => {

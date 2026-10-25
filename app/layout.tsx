@@ -49,7 +49,13 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {/* Keyboard / screen-reader users can jump past the sidebar and nav. */}
+        <a href="#main-content" className="nv-skip-link">
+          Skip to main content
+        </a>
+        {children}
+      </body>
     </html>
   );
 }

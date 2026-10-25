@@ -1,7 +1,7 @@
 # CLAUDE.md — Norveko Project Context
 
 > Bu dosya, yeni bir Claude oturumu başladığında proje bağlamını geri yüklemek içindir.
-> Her büyük milestone sonrası güncellenmelidir. Son güncelleme: 2026-10-25 (akşam)
+> Her büyük milestone sonrası güncellenmelidir. Son güncelleme: 2026-10-25 (gece)
 
 ## 1. Proje Nedir?
 
@@ -82,8 +82,15 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
 - Marka: `BrandMark` (inline SVG N-monogram), `app/icon.png`, OG metadata,
   2.5 sn giriş sonrası intro (`WelcomeIntro`, oturum başına bir kez).
 - Ops: `robots.ts`, `sitemap.ts`, `not-found/error/loading.tsx`, security
-  header'lar + CSP (report-only), `/api/health`, snapshot cron tüm bağlı
-  kanallar için, saatlik üretim limiti, ESLint 0 hata.
+  header'lar + **CSP enforce modunda** (`next.config.ts`; acil durumda
+  Vercel'e `CSP_REPORT_ONLY=true` eklenince report-only'ye döner; dev'de
+  `'unsafe-eval'`, Vercel preview'da `vercel.live` otomatik eklenir),
+  `/api/health`, snapshot cron tüm bağlı kanallar için, saatlik üretim
+  limiti, ESLint 0 hata.
+- Erişilebilirlik: global `:focus-visible` halkası (globals.css, `:where()`
+  ile düşük özgüllük), "Skip to main content" linki (`app/layout.tsx` →
+  her sayfada `id="main-content"`), ikon butonlarda aria-label, dialog/menu
+  rolleri, `text-gray-600` kaldırıldı (kontrast).
 
 ### ElevenLabs sesleri (önemli)
 - `lib/pipeline/elevenlabs.ts`: `listVoices()` (hesap sesleri, `languages`
@@ -133,7 +140,6 @@ affiliate. Ertelenen: timeline editör, AI avatar, mobil app.
 
 Teknik borç: sahne düzeyinde yeniden üretim + versiyon geçmişi +
 `media_assets`/`projects.job_id` şeması; Sentry; provider maliyet logu;
-erişilebilirlik (focus stilleri, kontrast); CSP'yi enforce moduna alma;
 Supabase custom domain (Google ekranındaki supabase.co yazısı için).
 
 ## 8. Çalışma Şekli (Kadir + Claude)

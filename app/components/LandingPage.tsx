@@ -264,7 +264,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
       </header>
 
       {/* 1. HERO */}
-      <section className="relative overflow-hidden">
+      <section id="main-content" className="relative overflow-hidden">
         <div className="pointer-events-none absolute -top-40 left-1/2 h-[500px] w-[min(800px,120vw)] -translate-x-1/2 rounded-full bg-gradient-to-r from-blue-600/20 to-purple-600/20 blur-3xl" />
 
         <div className="mx-auto grid max-w-6xl grid-cols-1 items-start gap-10 px-4 py-10 sm:px-6 sm:py-12 lg:grid-cols-2">
@@ -432,7 +432,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                   <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-600/20 text-blue-300 transition group-hover:scale-110">
                     <Icon size={18} />
                   </div>
-                  <p className="mt-2 text-[10px] font-bold text-gray-600">0{i + 1}</p>
+                  <p className="mt-2 text-[10px] font-bold text-gray-500">0{i + 1}</p>
                   <h3 className="mt-0.5 text-sm font-bold">{step.label}</h3>
                 </GlassCard>
               </Reveal>
@@ -699,7 +699,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             <Link href="/refund" className="transition hover:text-gray-300">Refunds</Link>
             <Link href="/login" className="transition hover:text-gray-300">Log in</Link>
           </nav>
-          <p className="text-xs text-gray-600">
+          <p className="text-xs text-gray-500">
             © {new Date().getFullYear()} Norveko. All rights reserved.
           </p>
         </div>

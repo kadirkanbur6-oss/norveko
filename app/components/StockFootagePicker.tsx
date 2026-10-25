@@ -155,7 +155,7 @@ export default function StockFootagePicker({
       )}
 
       {clips && clips.length > 0 && (
-        <p className="mt-3 text-[10px] text-gray-600">
+        <p className="mt-3 text-[10px] text-gray-500">
           Videos provided by{" "}
           <a
             href={clips[0].provider === "pixabay" ? "https://pixabay.com/" : "https://www.pexels.com/"}

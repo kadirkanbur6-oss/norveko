@@ -25,6 +25,41 @@ body {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
+/* ---------- Accessibility ---------- */
+/* Keyboard focus ring. Only shows for keyboard navigation (:focus-visible), so
+   mouse clicks do not get an outline. `:where()` keeps specificity at zero so
+   any Tailwind `focus:`/`outline-*` utility on an element still wins. */
+:where(a, button, [role="button"], [role="menuitem"], [role="tab"], summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid #60a5fa; /* blue-400 */
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+:where(input, textarea, select):focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 1px;
+}
+
+/* "Skip to main content" link (app/layout.tsx): visually hidden until focused. */
+.nv-skip-link {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 100;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.75rem;
+  background: #2563eb;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transform: translateY(-200%);
+  transition: transform 150ms ease;
+}
+.nv-skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
 /* ---------- Post sign-in intro (app/components/WelcomeIntro.tsx) ---------- */
 /* Total 2500 ms. Each keyframe block is timed against that overall duration. */
 

@@ -15,7 +15,7 @@ export default async function AnalyticsDashboard() {
     <main className="flex min-h-screen overflow-x-hidden bg-[#0a0a12] text-white">
       <Sidebar />
 
-      <section className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-10">
+      <section id="main-content" className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-10">
         <Header />
 
         {/* Creator Studio overview: quick action, credits, recent projects */}

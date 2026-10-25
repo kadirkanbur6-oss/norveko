@@ -165,7 +165,7 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
             {status === "completed" && <CheckCircle2 size={14} className="text-green-400" />}
             {status === "running" && <Loader2 size={14} className="animate-spin text-blue-300" />}
             {status === "failed" && <XCircle size={14} className="text-red-400" />}
-            {status === "pending" && <Circle size={14} className="text-gray-600" />}
+            {status === "pending" && <Circle size={14} className="text-gray-500" />}
             {label}
           </div>
         ))}

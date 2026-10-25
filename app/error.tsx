@@ -22,7 +22,7 @@ export default function Error({
       <p className="mt-3 max-w-md text-gray-400">
         We hit an unexpected error. Your projects and credits are safe.
         {error.digest ? (
-          <span className="mt-2 block text-xs text-gray-600">Reference: {error.digest}</span>
+          <span className="mt-2 block text-xs text-gray-500">Reference: {error.digest}</span>
         ) : null}
       </p>
       <div className="mt-8 flex flex-wrap justify-center gap-3">
