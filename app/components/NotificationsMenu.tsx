@@ -131,7 +131,7 @@ export default function NotificationsMenu() {
       >
         <Bell size={18} />
         {unreadCount > 0 && (
-          <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-red-500 ring-2 ring-[#070B17]" />
+          <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-red-500 ring-2 ring-[#0a0a12]" />
         )}
       </button>
 

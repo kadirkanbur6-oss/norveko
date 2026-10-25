@@ -7,10 +7,9 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   // Optional post-login destination (same-origin paths only).
   const nextParam = searchParams.get("next") ?? "";
-  const next =
-    nextParam.startsWith("/") && !nextParam.startsWith("//")
-      ? nextParam
-      : "/dashboard?welcome=1";
+  // Same-origin relative paths only: must start with a single "/" and not
+  // with "//" or "/\" (both are parsed as protocol-relative URLs).
+  const next = /^\/(?![\/\\])/.test(nextParam) ? nextParam : "/dashboard?welcome=1";
 
   if (!code) {
     return NextResponse.redirect(new URL("/login?error=no_code", request.url));

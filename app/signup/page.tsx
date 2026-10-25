@@ -139,6 +139,13 @@ function SignupContent() {
           >
             {isLoading ? "Signing up..." : "Sign up"}
           </button>
+
+          <p className="text-center text-xs text-gray-500">
+            By signing up you agree to our{" "}
+            <a href="/terms" className="text-violet-300 hover:text-violet-100">Terms</a>
+            {" "}and{" "}
+            <a href="/privacy" className="text-violet-300 hover:text-violet-100">Privacy Policy</a>.
+          </p>
         </form>
 
         <p className="mt-6 text-center text-sm text-gray-400">

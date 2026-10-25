@@ -121,7 +121,7 @@ export default function HeroDemo() {
           <div className="mt-3 flex items-center justify-between rounded-xl bg-gradient-to-r from-blue-500/15 to-purple-600/15 p-3 text-xs">
             <span className="text-gray-300">Full package generated</span>
             <span className="flex items-center gap-1 text-green-300">
-              ✓ 2.4s
+              ✓ Ready
             </span>
           </div>
         </div>

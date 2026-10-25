@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowDownCircle,
   ArrowUpCircle,
@@ -50,6 +50,8 @@ export default function BillingPage() {
   const [error, setError] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [purchaseNotice, setPurchaseNotice] = useState("");
+  // Latest balance for the Paddle callback (which is created once).
+  const creditsRef = useRef<number | null>(null);
 
   const loadCredits = useCallback(async () => {
     try {
@@ -61,6 +63,7 @@ export default function BillingPage() {
       }
 
       setCredits(data.credits);
+      creditsRef.current = data.credits;
       setTransactions(data.transactions);
       return data.credits as number;
     } catch (err) {
@@ -76,7 +79,7 @@ export default function BillingPage() {
   const paddle = usePaddle((event) => {
     if (event.name !== "checkout.completed") return;
     setPurchaseNotice("Payment received — adding credits to your balance…");
-    const before = credits ?? 0;
+    const before = creditsRef.current ?? 0;
     let attempts = 0;
     const timer = setInterval(async () => {
       attempts += 1;

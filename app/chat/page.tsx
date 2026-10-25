@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Clapperboard, Loader2, Sparkles, Wand2 } from "lucide-react";
+import { Clapperboard, Coins, Loader2, Sparkles, Wand2 } from "lucide-react";
+import Link from "next/link";
 import Sidebar from "../components/Sidebar";
 import PipelineProgress from "../components/PipelineProgress";
 
@@ -30,6 +31,7 @@ export default function ChatPage() {
   const [includeVideo, setIncludeVideo] = useState(false);
   const [videoAvailable, setVideoAvailable] = useState(false);
   const [generationAvailable, setGenerationAvailable] = useState(true);
+  const [balance, setBalance] = useState<number | null>(null);
   const [launchLockMessage, setLaunchLockMessage] = useState<string | null>(null);
   const [voiceId, setVoiceId] = useState("");
   const [voices, setVoices] = useState<VoiceOption[]>([]);
@@ -46,6 +48,22 @@ export default function ChatPage() {
     video: includeVideo && videoAvailable,
   });
   const videoCost = VIDEO_CLIP_CREDITS * VIDEO_MAX_CLIPS;
+
+  // Current credit balance (refreshed after each generation starts).
+  useEffect(() => {
+    let active = true;
+    fetch("/api/credits", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (active && data?.success) setBalance(Number(data.credits ?? 0));
+      })
+      .catch(() => {
+        // Balance stays unknown; the server still enforces it.
+      });
+    return () => {
+      active = false;
+    };
+  }, [jobId]);
 
   // Which optional features this account may use (video is gated server-side).
   useEffect(() => {
@@ -303,8 +321,20 @@ export default function ChatPage() {
                   </span>
                 </label>
 
-                <span className="text-sm text-gray-400">
-                  Total cost: {totalCost} credits
+                <span className="flex items-center gap-2 text-sm text-gray-400">
+                  <span>Total cost: {totalCost} credits</span>
+                  {balance !== null && (
+                    <span
+                      className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${
+                        balance >= totalCost
+                          ? "border-yellow-400/20 bg-yellow-500/5 text-yellow-300"
+                          : "border-red-400/30 bg-red-500/10 text-red-300"
+                      }`}
+                    >
+                      <Coins size={12} />
+                      {balance} available
+                    </span>
+                  )}
                 </span>
               </div>
 
@@ -420,6 +450,20 @@ export default function ChatPage() {
               </div>
             </div>
 
+            {generationAvailable && balance !== null && balance < totalCost && (
+              <p className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-200">
+                <span>
+                  You need {totalCost} credits for this generation but have {balance}.
+                </span>
+                <Link
+                  href="/billing"
+                  className="rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 px-3 py-1.5 text-xs font-semibold text-white"
+                >
+                  Top up credits
+                </Link>
+              </p>
+            )}
+
             {!generationAvailable && (
               <p className="mt-6 rounded-xl border border-yellow-400/30 bg-yellow-500/10 p-4 text-sm text-yellow-100">
                 {launchLockMessage ?? "Content generation is temporarily closed."}
@@ -431,6 +475,7 @@ export default function ChatPage() {
               disabled={
                 starting ||
                 !generationAvailable ||
+                (balance !== null && balance < totalCost) ||
                 (jobId !== null && !error) ||
                 (includeVoiceover && (!effectiveVoiceId || voicesLoading))
               }

@@ -151,11 +151,11 @@ const FAQS = [
   },
   {
     q: "Does Norveko generate the video files?",
-    a: "Not yet. Today, Norveko generates everything around the video: script, scene plan, cinematic video prompts (ready to paste into AI video tools), thumbnail concept and full SEO. Native video and voice generation are on our roadmap.",
+    a: "Every generation gives you the script, scene plan, cinematic video prompts, a generated thumbnail image and full SEO metadata. AI voiceover (ElevenLabs) is available as an add-on today, and per-scene AI video clips are rolling out next.",
   },
   {
     q: "How does the credit system work?",
-    a: "You get 50 free credits on signup. A standard content package generation costs 5 credits, the full AI pipeline (script + thumbnail image) costs 15 credits, and failed generations are automatically refunded.",
+    a: "You get 50 free credits on signup. A full generation (content package + thumbnail image) costs 15 credits, adding a voiceover costs 15 more. Credits never expire, and failed generations are refunded automatically.",
   },
 ];
 
@@ -560,11 +560,11 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           <SectionTitle
             eyebrow="Pricing"
             title="Start free. Scale when you're ready."
-            subtitle="Every account starts with 50 free credits. Paid plans are launching soon."
+            subtitle="Every account starts with 50 free credits. Top up any time — credits never expire."
           />
         </Reveal>
 
-        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {PRICING.map((plan, i) => (
             <Reveal key={plan.name} delay={i * 60}>
               <GlassCard
