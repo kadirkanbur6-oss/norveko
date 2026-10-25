@@ -1,11 +1,11 @@
 // app/api/stock/route.ts
 // GET /api/stock?q=...&orientation=vertical|horizontal
-// Stock B-roll suggestions for a scene (Pexels). Signed-in users only; results
+// Stock B-roll suggestions for a scene (Pexels or Pixabay). Signed-in users only; results
 // are cached per query for an hour per instance to stay well inside rate limits.
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/supabase-server";
-import { searchStockClips, stockQueryFromPrompt, type StockClip } from "@/lib/pipeline/pexels";
+import { searchStockClips, stockProvider, stockQueryFromPrompt, type StockClip } from "@/lib/pipeline/pexels";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   if (!user) {
     return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
   }
-  if (!process.env.PEXELS_API_KEY) {
+  if (!stockProvider()) {
     return NextResponse.json({ success: false, error: "Stock footage is not configured." }, { status: 503 });
   }
 

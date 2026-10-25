@@ -7,7 +7,11 @@
 
 import { useState } from "react";
 import { ExternalLink, Film, Loader2, Search } from "lucide-react";
-import type { StockClip } from "@/lib/pipeline/pexels";
+import type { StockClip, StockProvider } from "@/lib/pipeline/pexels";
+
+function providerLabel(provider: StockProvider): string {
+  return provider === "pixabay" ? "Pixabay" : "Pexels";
+}
 
 export default function StockFootagePicker({
   prompt,
@@ -128,7 +132,7 @@ export default function StockFootagePicker({
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex min-w-0 items-center gap-1 truncate hover:text-gray-300"
-                  title={`Video by ${clip.author} on Pexels`}
+                  title={`Video by ${clip.author} on ${providerLabel(clip.provider)}`}
                 >
                   <ExternalLink size={9} className="shrink-0" />
                   <span className="truncate">{clip.author}</span>
@@ -150,7 +154,20 @@ export default function StockFootagePicker({
         </div>
       )}
 
-      <p className="mt-3 text-[10px] text-gray-600">Videos provided by Pexels.</p>
+      {clips && clips.length > 0 && (
+        <p className="mt-3 text-[10px] text-gray-600">
+          Videos provided by{" "}
+          <a
+            href={clips[0].provider === "pixabay" ? "https://pixabay.com/" : "https://www.pexels.com/"}
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-gray-400"
+          >
+            {providerLabel(clips[0].provider)}
+          </a>
+          .
+        </p>
+      )}
     </div>
   );
 }
