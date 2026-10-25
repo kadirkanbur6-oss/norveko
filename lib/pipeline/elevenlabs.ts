@@ -74,6 +74,21 @@ export async function listVoices(): Promise<ElevenLabsVoiceSummary[]> {
 }
 
 /**
+ * Subscription tier of the account behind the API key ("free", "starter",
+ * "creator", ...). Library voices can only be used via the API on paid tiers.
+ * Returns null when the key lacks the user_read permission.
+ */
+export async function getSubscriptionTier(): Promise<string | null> {
+  const res = await fetch(`${ELEVENLABS_BASE_URL}/v1/user/subscription`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+  const data = (await res.json()) as { tier?: string };
+  return typeof data.tier === "string" ? data.tier.toLowerCase() : null;
+}
+
+/**
  * Voice Library search for a language. These voices are usable for TTS only
  * after being added to the account (see addLibraryVoice); we add them lazily
  * when a user actually picks one.

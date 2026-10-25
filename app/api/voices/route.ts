@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/supabase-server";
-import { listLibraryVoices, listVoices } from "@/lib/pipeline/elevenlabs";
+import { getSubscriptionTier, listLibraryVoices, listVoices } from "@/lib/pipeline/elevenlabs";
 import { isGenerationEnabled, LAUNCH_LOCK_MESSAGE } from "@/lib/pipeline/features";
 import { LANGUAGES, isOneOf, languageCode } from "@/lib/pipeline/options";
 
@@ -24,6 +24,19 @@ async function getAccountVoices() {
   const voices = await listVoices();
   accountCache = { at: Date.now(), voices };
   return voices;
+}
+
+let tierCache: { at: number; tier: string | null } | null = null;
+async function getTier() {
+  if (tierCache && Date.now() - tierCache.at < VOICES_TTL_MS) return tierCache.tier;
+  let tier: string | null = null;
+  try {
+    tier = await getSubscriptionTier();
+  } catch {
+    tier = null;
+  }
+  tierCache = { at: Date.now(), tier };
+  return tier;
 }
 
 async function getLibraryVoices(code: string) {
@@ -55,8 +68,12 @@ export async function GET(req: NextRequest) {
 
     // Library voices in the user's language (skip for English: the account
     // defaults already cover it). Failures here must not break the picker.
+    // ElevenLabs only allows library voices over the API on paid tiers, so on
+    // a free plan we don't offer them at all (a pick would fail at TTS time).
+    const tier = await getTier();
+    const libraryAllowed = tier !== "free";
     let library: Awaited<ReturnType<typeof listLibraryVoices>> = [];
-    if (code !== "en") {
+    if (code !== "en" && libraryAllowed) {
       try {
         const inAccount = new Set(account.map((v) => v.voice_id));
         library = (await getLibraryVoices(code)).filter((v) => !inAccount.has(v.voice_id));
@@ -76,6 +93,7 @@ export async function GET(req: NextRequest) {
       language,
       languageCode: code,
       nativeMatch,
+      libraryAllowed,
       voices: voices.map((voice) => ({
         voice_id: voice.voice_id,
         name: voice.name,
