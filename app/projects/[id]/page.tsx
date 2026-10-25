@@ -15,6 +15,8 @@ import {
   X,
 } from "lucide-react";
 import Sidebar from "../../components/Sidebar";
+import ExportMenu from "../../components/ExportMenu";
+import ConfirmDialog from "../../components/ConfirmDialog";
 
 interface VideoScene {
   sceneNumber: number;
@@ -128,6 +130,7 @@ export default function ProjectDetailPage() {
   const [activeTab, setActiveTab] = useState<TabId>("script");
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   // Editing state
   const [editing, setEditing] = useState(false);
@@ -247,11 +250,6 @@ export default function ProjectDetailPage() {
   }
 
   async function handleDelete() {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this project? This cannot be undone."
-    );
-    if (!confirmed) return;
-
     setDeleting(true);
 
     try {
@@ -268,6 +266,7 @@ export default function ProjectDetailPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
       setDeleting(false);
+      setConfirmDelete(false);
     }
   }
 
@@ -518,6 +517,9 @@ export default function ProjectDetailPage() {
                 </div>
 
                 <div className="flex shrink-0 flex-wrap gap-2">
+                  {!editing && normalizedProjectContent && (
+                    <ExportMenu title={project.title} content={normalizedProjectContent} />
+                  )}
                   {!editing && project.content && (
                     <button
                       onClick={startEditing}
@@ -528,7 +530,7 @@ export default function ProjectDetailPage() {
                     </button>
                   )}
                   <button
-                    onClick={handleDelete}
+                    onClick={() => setConfirmDelete(true)}
                     disabled={deleting}
                     className="flex items-center gap-2 rounded-xl border border-red-400/20 bg-red-500/5 px-3 py-2 text-sm text-red-300 transition hover:bg-red-500/15 disabled:opacity-50"
                   >
@@ -688,6 +690,17 @@ export default function ProjectDetailPage() {
           ) : null}
         </div>
       </main>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Delete this project?"
+        message="The content package, thumbnail and any generated media links will be removed. This cannot be undone."
+        confirmLabel="Delete project"
+        danger
+        busy={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }

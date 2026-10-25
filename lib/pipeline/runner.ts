@@ -143,6 +143,12 @@ export async function kickJob(jobId: string): Promise<void> {
   }
 }
 
+/** Prefer the first AI-generated title; fall back to the idea. */
+function projectTitle(titles: unknown, idea: string): string {
+  const first = Array.isArray(titles) ? titles.find((t) => typeof t === "string" && t.trim()) : null;
+  return (typeof first === "string" ? first.trim() : idea).slice(0, 120);
+}
+
 /* ----------------------------------------------------------------------- */
 /* Runner factory                                                           */
 /* ----------------------------------------------------------------------- */
@@ -470,7 +476,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
         .from("projects")
         .insert({
           user_id: fresh.user_id,
-          title: fresh.idea.slice(0, 90),
+          title: projectTitle(script.titles, fresh.idea),
           platform: fresh.platform ?? "youtube",
           style: fresh.style,
           duration: fresh.duration,

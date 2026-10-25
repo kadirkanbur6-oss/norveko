@@ -261,7 +261,16 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
 
           {Array.isArray(scriptStep.scenes) && scriptStep.scenes.length > 0 && (
             <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-              <h4 className="text-sm font-semibold text-gray-300">Scene Plan</h4>
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-gray-300">Scene Plan</h4>
+                <button
+                  onClick={() => copyText((scriptStep.scenes ?? []).map((sc) => `Scene ${sc.sceneNumber}: ${sc.description}\n${sc.videoPrompt}`).join("\n\n"), "scenes")}
+                  className="flex items-center gap-1 text-xs text-gray-500 transition hover:text-white"
+                >
+                  <Copy size={12} />
+                  {copied === "scenes" ? "Copied!" : "Copy"}
+                </button>
+              </div>
               <div className="mt-3 space-y-3">
                 {scriptStep.scenes.map((scene) => (
                   <div
@@ -283,7 +292,16 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
 
           {Array.isArray(scriptStep.titles) && scriptStep.titles.length > 0 && (
             <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-              <h4 className="text-sm font-semibold text-gray-300">Titles</h4>
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-gray-300">Titles</h4>
+                <button
+                  onClick={() => copyText((scriptStep.titles ?? []).join("\n"), "titles")}
+                  className="flex items-center gap-1 text-xs text-gray-500 transition hover:text-white"
+                >
+                  <Copy size={12} />
+                  {copied === "titles" ? "Copied!" : "Copy"}
+                </button>
+              </div>
               <ul className="mt-3 space-y-1 text-sm text-gray-200">
                 {scriptStep.titles.map((title) => (
                   <li key={title}>• {title}</li>
@@ -294,7 +312,16 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
 
           {scriptStep.description && (
             <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-              <h4 className="text-sm font-semibold text-gray-300">Description</h4>
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-gray-300">Description</h4>
+                <button
+                  onClick={() => copyText(scriptStep.description ?? "", "description")}
+                  className="flex items-center gap-1 text-xs text-gray-500 transition hover:text-white"
+                >
+                  <Copy size={12} />
+                  {copied === "description" ? "Copied!" : "Copy"}
+                </button>
+              </div>
               <p className="mt-2 whitespace-pre-wrap text-sm text-gray-200">
                 {scriptStep.description}
               </p>
@@ -303,14 +330,32 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
 
           {Array.isArray(scriptStep.tags) && scriptStep.tags.length > 0 && (
             <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-              <h4 className="text-sm font-semibold text-gray-300">Tags</h4>
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-gray-300">Tags</h4>
+                <button
+                  onClick={() => copyText((scriptStep.tags ?? []).join(", "), "tags")}
+                  className="flex items-center gap-1 text-xs text-gray-500 transition hover:text-white"
+                >
+                  <Copy size={12} />
+                  {copied === "tags" ? "Copied!" : "Copy"}
+                </button>
+              </div>
               <p className="mt-2 text-sm text-gray-200">{scriptStep.tags.join(", ")}</p>
             </div>
           )}
 
           {scriptStep.thumbnailIdea && (
             <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-              <h4 className="text-sm font-semibold text-gray-300">Thumbnail Idea</h4>
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-gray-300">Thumbnail Idea</h4>
+                <button
+                  onClick={() => copyText(scriptStep.thumbnailIdea ?? "", "thumbnailIdea")}
+                  className="flex items-center gap-1 text-xs text-gray-500 transition hover:text-white"
+                >
+                  <Copy size={12} />
+                  {copied === "thumbnailIdea" ? "Copied!" : "Copy"}
+                </button>
+              </div>
               <p className="mt-2 whitespace-pre-wrap text-sm text-gray-200">
                 {scriptStep.thumbnailIdea}
               </p>

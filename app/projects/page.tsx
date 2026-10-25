@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FolderOpen, Loader2, Trash2, Wand2 } from "lucide-react";
+import { ArrowUpDown, FolderOpen, Loader2, Search, Trash2, Wand2, X } from "lucide-react";
 import Sidebar from "../components/Sidebar";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 interface Project {
   id: string;
@@ -17,12 +17,19 @@ interface Project {
   created_at: string;
 }
 
+const PAGE_SIZE = 24;
+
 export default function ProjectsPage() {
-  const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Project | null>(null);
+  const [query, setQuery] = useState("");
+  const [platform, setPlatform] = useState("all");
+  const [style, setStyle] = useState("all");
+  const [sort, setSort] = useState<"newest" | "oldest" | "title">("newest");
+  const [visible, setVisible] = useState(PAGE_SIZE);
 
   const loadProjects = useCallback(async () => {
     setLoading(true);
@@ -51,14 +58,7 @@ export default function ProjectsPage() {
     return () => clearTimeout(id);
   }, [loadProjects]);
 
-  async function handleDelete(e: React.MouseEvent, id: string) {
-    e.stopPropagation(); // Prevent card click
-
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this project? This cannot be undone."
-    );
-    if (!confirmed) return;
-
+  async function handleDelete(id: string) {
     setDeletingId(id);
 
     try {
@@ -74,8 +74,49 @@ export default function ProjectsPage() {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setDeletingId(null);
+      setPendingDelete(null);
     }
   }
+
+  const platforms = useMemo(
+    () => Array.from(new Set(projects.map((p) => p.platform).filter(Boolean))) as string[],
+    [projects]
+  );
+  const styles = useMemo(
+    () => Array.from(new Set(projects.map((p) => p.style).filter(Boolean))) as string[],
+    [projects]
+  );
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const terms = q ? q.split(/\s+/) : [];
+    const list = projects.filter((p) => {
+      if (platform !== "all" && p.platform !== platform) return false;
+      if (style !== "all" && p.style !== style) return false;
+      if (!terms.length) return true;
+      const hay = `${p.title} ${p.idea ?? ""} ${p.platform ?? ""} ${p.style ?? ""}`.toLowerCase();
+      return terms.every((t) => hay.includes(t));
+    });
+    list.sort((a, b) => {
+      if (sort === "title") return a.title.localeCompare(b.title);
+      const d = Date.parse(a.created_at) - Date.parse(b.created_at);
+      return sort === "oldest" ? d : -d;
+    });
+    return list;
+  }, [projects, query, platform, style, sort]);
+
+  const shown = filtered.slice(0, visible);
+  const hasFilters = query.trim() !== "" || platform !== "all" || style !== "all";
+
+  function resetFilters() {
+    setQuery("");
+    setPlatform("all");
+    setStyle("all");
+    setVisible(PAGE_SIZE);
+  }
+
+  const selectClass =
+    "rounded-xl border border-white/10 bg-[#0d0d16] px-3 py-2 text-sm text-gray-200 outline-none focus:border-blue-400/50";
 
   function formatDate(dateStr: string) {
     return new Date(dateStr).toLocaleDateString("en-US", {
@@ -104,6 +145,49 @@ export default function ProjectsPage() {
             </div>
           </div>
 
+          {!loading && projects.length > 0 && (
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-white/10 bg-[#0d0d16] px-3 py-2 focus-within:border-blue-400/50">
+                <Search size={16} className="shrink-0 text-gray-500" />
+                <input
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setVisible(PAGE_SIZE);
+                  }}
+                  placeholder="Search title or idea…"
+                  aria-label="Search projects"
+                  className="w-full min-w-0 bg-transparent text-sm text-white outline-none placeholder:text-gray-500"
+                />
+                {query && (
+                  <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="text-gray-500 hover:text-white">
+                    <X size={14} />
+                  </button>
+                )}
+              </label>
+              {platforms.length > 1 && (
+                <select value={platform} onChange={(e) => { setPlatform(e.target.value); setVisible(PAGE_SIZE); }} aria-label="Filter by platform" className={selectClass}>
+                  <option value="all">All platforms</option>
+                  {platforms.map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+              )}
+              {styles.length > 1 && (
+                <select value={style} onChange={(e) => { setStyle(e.target.value); setVisible(PAGE_SIZE); }} aria-label="Filter by style" className={selectClass}>
+                  <option value="all">All styles</option>
+                  {styles.map((st) => <option key={st} value={st}>{st}</option>)}
+                </select>
+              )}
+              <label className="flex items-center gap-2 text-sm text-gray-400">
+                <ArrowUpDown size={14} />
+                <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} aria-label="Sort projects" className={selectClass}>
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="title">Title A–Z</option>
+                </select>
+              </label>
+            </div>
+          )}
+
           {error && (
             <p className="mt-6 rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-300">
               {error}
@@ -126,16 +210,28 @@ export default function ProjectsPage() {
                 Generate Your First Project
               </Link>
             </div>
+          ) : filtered.length === 0 ? (
+            <div className="mt-10 rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center">
+              <p className="text-gray-400">No projects match your filters.</p>
+              <button type="button" onClick={resetFilters} className="mt-4 text-sm text-blue-300 hover:text-blue-200">
+                Clear filters
+              </button>
+            </div>
           ) : (
-            <div className="mt-8 space-y-4">
-              {projects.map((project) => (
+            <div className="mt-6 space-y-4">
+              <p className="text-xs text-gray-500">
+                Showing {shown.length} of {filtered.length}{hasFilters ? " matching" : ""} project{filtered.length === 1 ? "" : "s"}
+              </p>
+              {shown.map((project) => (
                 <div
                   key={project.id}
-                  onClick={() => router.push(`/projects/${project.id}`)}
-                  className="cursor-pointer rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-blue-400/40 hover:bg-white/[0.05]"
+                  className="relative rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition focus-within:border-blue-400/40 hover:border-blue-400/40 hover:bg-white/[0.05]"
                 >
                   <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
+                    <Link
+                      href={`/projects/${project.id}`}
+                      className="min-w-0 flex-1 outline-none after:absolute after:inset-0 after:rounded-2xl focus-visible:after:ring-2 focus-visible:after:ring-blue-400/60"
+                    >
                       <h2 className="truncate text-lg font-semibold">
                         {project.title}
                       </h2>
@@ -164,12 +260,13 @@ export default function ProjectsPage() {
                           {formatDate(project.created_at)}
                         </span>
                       </div>
-                    </div>
+                    </Link>
 
                     <button
-                      onClick={(e) => handleDelete(e, project.id)}
+                      type="button"
+                      onClick={() => setPendingDelete(project)}
                       disabled={deletingId === project.id}
-                      className="flex shrink-0 items-center gap-2 rounded-xl border border-red-400/20 bg-red-500/5 px-3 py-2 text-sm text-red-300 transition hover:bg-red-500/15 disabled:opacity-50"
+                      className="relative z-10 flex shrink-0 items-center gap-2 rounded-xl border border-red-400/20 bg-red-500/5 px-3 py-2 text-sm text-red-300 transition hover:bg-red-500/15 disabled:opacity-50"
                     >
                       {deletingId === project.id ? (
                         <Loader2 size={16} className="animate-spin" />
@@ -181,10 +278,31 @@ export default function ProjectsPage() {
                   </div>
                 </div>
               ))}
+
+              {visible < filtered.length && (
+                <button
+                  type="button"
+                  onClick={() => setVisible((v) => v + PAGE_SIZE)}
+                  className="w-full rounded-2xl border border-white/10 bg-white/[0.03] py-3 text-sm text-gray-300 transition hover:border-white/20 hover:text-white"
+                >
+                  Load {Math.min(PAGE_SIZE, filtered.length - visible)} more
+                </button>
+              )}
             </div>
           )}
         </div>
       </main>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Delete this project?"
+        message={pendingDelete ? `"${pendingDelete.title}" and its generated content will be removed. This cannot be undone.` : ""}
+        confirmLabel="Delete project"
+        danger
+        busy={deletingId !== null}
+        onConfirm={() => pendingDelete && handleDelete(pendingDelete.id)}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

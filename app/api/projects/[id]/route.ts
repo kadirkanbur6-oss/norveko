@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { sanitizeProjectContent } from "@/lib/project-content";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
@@ -96,8 +97,22 @@ export async function PATCH(
       updates.title = title.trim();
     }
 
-    if (content && typeof content === "object") {
-      updates.content = content;
+    if (content !== undefined) {
+      const cleaned = sanitizeProjectContent(content);
+      if (!cleaned.ok) {
+        return NextResponse.json(
+          { success: false, error: cleaned.error },
+          { status: 400 }
+        );
+      }
+      updates.content = cleaned.content;
+    }
+
+    if (typeof title === "string" && title.trim().length > 200) {
+      return NextResponse.json(
+        { success: false, error: "Title is too long (max 200 characters)." },
+        { status: 400 }
+      );
     }
 
     const { error } = await supabase

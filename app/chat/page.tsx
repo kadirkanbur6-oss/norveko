@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Clapperboard, Coins, Loader2, Sparkles, Wand2 } from "lucide-react";
 import Link from "next/link";
 import Sidebar from "../components/Sidebar";
@@ -21,7 +22,30 @@ interface VoiceOption {
   preview_url: string | null;
 }
 
-export default function ChatPage() {
+const DRAFT_KEY = "norveko:chat-draft";
+
+interface Draft {
+  idea: string;
+  platform: string;
+  style: string;
+  duration: string;
+  language: string;
+  includeVoiceover: boolean;
+  voiceId: string;
+}
+
+function readDraft(): Partial<Draft> {
+  try {
+    return JSON.parse(sessionStorage.getItem(DRAFT_KEY) ?? "{}") as Partial<Draft>;
+  } catch {
+    return {};
+  }
+}
+
+function ChatContent() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [idea, setIdea] = useState("");
   const [platform, setPlatform] = useState<string>(PLATFORMS[0]);
   const [style, setStyle] = useState<string>(STYLES[0]);
@@ -48,6 +72,34 @@ export default function ChatPage() {
     video: includeVideo && videoAvailable,
   });
   const videoCost = VIDEO_CLIP_CREDITS * VIDEO_MAX_CLIPS;
+
+  // Restore an in-progress job from the URL and the unsent draft from
+  // sessionStorage, so a reload never loses the user's work.
+  useEffect(() => {
+    const job = searchParams.get("job");
+    const draft = readDraft();
+    const id = setTimeout(() => {
+      if (typeof draft.idea === "string") setIdea(draft.idea);
+      if (typeof draft.platform === "string") setPlatform(draft.platform);
+      if (typeof draft.style === "string") setStyle(draft.style);
+      if (typeof draft.duration === "string") setDuration(draft.duration);
+      if (typeof draft.language === "string") setLanguage(draft.language);
+      if (typeof draft.includeVoiceover === "boolean") setIncludeVoiceover(draft.includeVoiceover);
+      if (typeof draft.voiceId === "string") setVoiceId(draft.voiceId);
+      if (job && /^[0-9a-f-]{36}$/i.test(job)) setJobId(job);
+    }, 0);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    try {
+      const draft: Draft = { idea, platform, style, duration, language, includeVoiceover, voiceId };
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      // storage unavailable
+    }
+  }, [idea, platform, style, duration, language, includeVoiceover, voiceId]);
 
   // Current credit balance (refreshed after each generation starts).
   useEffect(() => {
@@ -204,6 +256,7 @@ export default function ChatPage() {
       }
 
       setJobId(data.jobId);
+      router.replace(`${pathname}?job=${data.jobId}`, { scroll: false });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -504,18 +557,48 @@ export default function ChatPage() {
           {jobId && <PipelineProgress jobId={jobId} />}
 
           {jobId && (
-            <button
-              onClick={() => {
-                setJobId(null);
-                setIdea("");
-              }}
-              className="mt-4 text-sm text-gray-500 transition hover:text-white"
-            >
-              Start a new generation
-            </button>
+            <div className="mt-4 flex flex-wrap gap-4">
+              <button
+                onClick={() => {
+                  setJobId(null);
+                  setError("");
+                  router.replace(pathname, { scroll: false });
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="text-sm text-blue-300 transition hover:text-blue-200"
+              >
+                Run again with the same idea &amp; settings
+              </button>
+              <button
+                onClick={() => {
+                  setJobId(null);
+                  setIdea("");
+                  setError("");
+                  router.replace(pathname, { scroll: false });
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="text-sm text-gray-500 transition hover:text-white"
+              >
+                Start a new generation
+              </button>
+            </div>
           )}
         </div>
       </main>
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#0a0a12]">
+          <Loader2 size={24} className="animate-spin text-blue-300" />
+        </div>
+      }
+    >
+      <ChatContent />
+    </Suspense>
   );
 }
