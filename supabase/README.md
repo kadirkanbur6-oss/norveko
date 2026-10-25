@@ -53,3 +53,59 @@ alter table public.pipeline_jobs
 ```
 
 Without the column the insert fails with "column options does not exist".
+
+## Provider cost log — `provider_usage` (`lib/pipeline/usage.ts`)
+
+Every OpenAI / ElevenLabs / Gemini / Kling call made by the pipeline worker
+is logged here with the units it consumed and an estimated USD cost, so a
+job's real cost can be compared with the credits charged for it. Written by
+the service role only; users never read it.
+
+```sql
+create table if not exists public.provider_usage (
+  id                 bigint generated always as identity primary key,
+  created_at         timestamptz not null default now(),
+  job_id             uuid not null references public.pipeline_jobs(id) on delete cascade,
+  user_id            uuid not null,
+  step               text not null,                  -- script | voiceover | thumbnail | video
+  provider           text not null,                  -- openai | elevenlabs | gemini | kling
+  model              text not null,
+  unit               text not null,                  -- tokens | characters | images | seconds
+  quantity           integer not null default 0,
+  input_tokens       integer,
+  output_tokens      integer,
+  estimated_cost_usd numeric(12,6) not null default 0,
+  duration_ms        integer not null default 0,
+  status             text not null check (status in ('ok','failed')),
+  error              text
+);
+
+create index if not exists provider_usage_job_idx     on public.provider_usage (job_id);
+create index if not exists provider_usage_user_idx    on public.provider_usage (user_id, created_at desc);
+create index if not exists provider_usage_created_idx on public.provider_usage (created_at desc);
+
+-- RLS on, no policies: only the service role can read or write.
+alter table public.provider_usage enable row level security;
+```
+
+Useful queries (SQL editor):
+
+```sql
+-- Cost vs credits per job (last 7 days)
+select j.id, j.created_at, j.credits_charged,
+       sum(u.estimated_cost_usd) as est_cost_usd,
+       count(*) filter (where u.status = 'failed') as failed_calls
+from public.pipeline_jobs j
+join public.provider_usage u on u.job_id = j.id
+where j.created_at > now() - interval '7 days'
+group by j.id order by j.created_at desc;
+
+-- Daily spend per provider
+select date_trunc('day', created_at) as day, provider,
+       sum(quantity) as units, sum(estimated_cost_usd) as est_cost_usd
+from public.provider_usage
+group by 1, 2 order by 1 desc, 2;
+```
+
+Prices live in `PRICE_LIST` (`lib/pipeline/usage.ts`); override without a
+deploy via the `PROVIDER_PRICE_OVERRIDES` env var (JSON, same keys).

@@ -20,6 +20,8 @@ export interface ScriptResult {
   tags: string[];
   thumbnailIdea: string;
   thumbnailPrompt: string; // Backward-compatible alias used by thumbnail step
+  /** Token usage reported by OpenAI (for the provider cost log). */
+  usage?: { inputTokens: number; outputTokens: number };
 }
 
 interface ScriptParams {
@@ -94,6 +96,13 @@ Target duration: ${duration ?? "60 seconds"}`;
 
   const data = await res.json();
   const content: string | undefined = data?.choices?.[0]?.message?.content;
+  const usage =
+    data?.usage && typeof data.usage === "object"
+      ? {
+          inputTokens: Number(data.usage.prompt_tokens ?? 0),
+          outputTokens: Number(data.usage.completion_tokens ?? 0),
+        }
+      : undefined;
   if (!content) {
     throw new Error("OpenAI returned an empty response.");
   }
@@ -167,5 +176,6 @@ Target duration: ${duration ?? "60 seconds"}`;
     tags: normalizedTags,
     thumbnailIdea: parsed.thumbnailIdea,
     thumbnailPrompt: parsed.thumbnailIdea,
+    usage,
   };
 }

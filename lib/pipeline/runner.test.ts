@@ -13,6 +13,7 @@ import {
   KICK_RETRY_MS,
   type JobRow,
 } from "./runner";
+import type { UsageRecord } from "./usage";
 
 type Row = Record<string, any>;
 
@@ -118,6 +119,7 @@ function makeRunner(
   const { db, rows, rpc, seedJob } = makeDb();
   const kicked: string[] = [];
   const calls: string[] = [];
+  const usage: UsageRecord[] = [];
   const klingStatuses = opts.klingStatuses ?? {};
   let taskSeq = 0;
   const runner = createPipelineRunner({
@@ -131,6 +133,7 @@ function makeRunner(
           scenes: [1, 2, 3].map((n) => ({ sceneNumber: n, description: `d${n}`, videoPrompt: `prompt ${n}` })),
           titles: [], description: "d", tags: [],
           thumbnailIdea: "idea", thumbnailPrompt: "p",
+          usage: { inputTokens: 1200, outputTokens: 800 },
         };
       },
       generateSpeech: async () => {
@@ -165,8 +168,11 @@ function makeRunner(
       kicked.push(id);
     },
     now: opts.now ?? Date.now,
+    recordUsage: async (record) => {
+      usage.push(record);
+    },
   });
-  return { runner, rows, rpc, seedJob, kicked, calls, klingStatuses };
+  return { runner, rows, rpc, seedJob, kicked, calls, klingStatuses, usage };
 }
 
 function seedVideoJob(seedJob: ReturnType<typeof makeDb>["seedJob"]) {
@@ -339,4 +345,37 @@ test("reconcile: an in-flight video step is re-kicked for polling, not timed out
   clock += 45 * 60 * 1000; // way past the async timeout
   assert.equal(await runner.reconcileJob(rows.get(id)! as JobRow), "failed");
   assert.equal(rows.get(id)!.status, "failed");
+});
+
+test("provider usage is logged per step with units and an estimated cost", async () => {
+  const { runner, seedJob, usage } = makeRunner();
+  const id = seedJob(true);
+  await runner.runNextStep(id); // script
+  await runner.runNextStep(id); // voiceover
+  await runner.runNextStep(id); // thumbnail
+
+  assert.deepEqual(
+    usage.map((u) => [u.step, u.provider, u.unit, u.quantity, u.status]),
+    [
+      ["script", "openai", "tokens", 2000, "ok"],
+      ["voiceover", "elevenlabs", "characters", 1, "ok"],
+      ["thumbnail", "gemini", "images", 1, "ok"],
+    ]
+  );
+  const script = usage[0];
+  assert.equal(script.inputTokens, 1200);
+  assert.equal(script.outputTokens, 800);
+  // gpt-5-mini list price: 1200 in @ $0.25/M + 800 out @ $2/M
+  assert.equal(script.estimatedCostUsd, 0.0019);
+  assert.ok(usage.every((u) => u.jobId === id && u.userId === "u1"));
+});
+
+test("a failed provider call is logged as failed with zero cost", async () => {
+  const { runner, seedJob, usage } = makeRunner({ failAt: "script" });
+  const id = seedJob(false);
+  assert.equal(await runner.runNextStep(id), "failed");
+  assert.equal(usage.length, 1);
+  assert.equal(usage[0].status, "failed");
+  assert.equal(usage[0].estimatedCostUsd, 0);
+  assert.match(usage[0].error ?? "", /openai down/);
 });

@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 const supabaseHost = (() => {
   try {
@@ -42,6 +43,8 @@ const cspDirectives = [
   "worker-src 'self' blob:",
   [
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.paddle.com",
+    // Sentry error reports go straight from the browser to the ingest host.
+    "https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io",
     isVercelPreview ? "https://vercel.live wss://*.pusher.com" : "",
   ]
     .filter(Boolean)
@@ -94,4 +97,15 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Sentry build plugin: uploads source maps when SENTRY_AUTH_TOKEN, SENTRY_ORG
+// and SENTRY_PROJECT are set (Vercel); otherwise it only wires the runtime.
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  // Keep source maps out of the deployed bundle once they are uploaded.
+  sourcemaps: { deleteSourcemapsAfterUpload: true },
+  // Never send build telemetry to Sentry.
+  telemetry: false,
+});

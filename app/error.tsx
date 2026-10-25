@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import * as Sentry from "@sentry/nextjs";
 import BrandMark from "./components/BrandMark";
 
 export default function Error({
@@ -13,6 +14,7 @@ export default function Error({
 }) {
   useEffect(() => {
     console.error("[app] unhandled error:", error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (

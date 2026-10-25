@@ -34,6 +34,13 @@ import {
 import type { KlingTaskResult } from "@/lib/pipeline/kling";
 import { getTemplate } from "@/lib/pipeline/templates";
 import { defaultOrientation } from "@/lib/pipeline/options";
+import {
+  estimateCostUsd,
+  recordProviderUsage,
+  splitProvider,
+  type UsageRecord,
+} from "@/lib/pipeline/usage";
+import { captureError } from "@/lib/observability";
 
 /** A step that has been running longer than this is considered dead. */
 export const STEP_TIMEOUT_MS = 8 * 60 * 1000;
@@ -97,6 +104,11 @@ export interface RunnerDeps {
   };
   kick: (jobId: string) => Promise<void>;
   now: () => number;
+  /**
+   * Provider cost log sink (see lib/pipeline/usage.ts). Optional so tests can
+   * omit it; production writes to the `provider_usage` table.
+   */
+  recordUsage?: (record: UsageRecord) => Promise<void>;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -159,6 +171,39 @@ function projectTitle(titles: unknown, idea: string): string {
 
 export function createPipelineRunner(deps: RunnerDeps) {
   const { db, providers, kick, now } = deps;
+
+  /** Write one provider usage row; never throws. */
+  async function logUsage(
+    job: Pick<JobRow, "id" | "user_id">,
+    stepId: PipelineStepId,
+    data: Omit<UsageRecord, "jobId" | "userId" | "step" | "provider" | "model" | "estimatedCostUsd"> & {
+      inputTokens?: number;
+      outputTokens?: number;
+    }
+  ): Promise<void> {
+    if (!deps.recordUsage) return;
+    const { provider, model } = splitProvider(getPipelineStepDefinition(stepId).provider);
+    try {
+      await deps.recordUsage({
+        jobId: job.id,
+        userId: job.user_id,
+        step: stepId,
+        provider,
+        model,
+        estimatedCostUsd:
+          data.status === "ok"
+            ? estimateCostUsd(provider, model, {
+                inputTokens: data.inputTokens,
+                outputTokens: data.outputTokens,
+                quantity: data.quantity,
+              })
+            : 0,
+        ...data,
+      });
+    } catch (err) {
+      console.error(`[usage] log failed for ${job.id}/${stepId}:`, err);
+    }
+  }
 
   async function loadJob(jobId: string): Promise<JobRow | null> {
     const { data } = await db
@@ -300,6 +345,13 @@ export function createPipelineRunner(deps: RunnerDeps) {
       } catch (err) {
         clip.status = "failed";
         clip.error = err instanceof Error ? err.message : "Submit failed";
+        await logUsage(job, "video", {
+          unit: "seconds",
+          quantity: VIDEO_CLIP_SECONDS,
+          durationMs: 0,
+          status: "failed",
+          error: clip.error,
+        });
       }
       clips.push(clip);
     }
@@ -314,6 +366,12 @@ export function createPipelineRunner(deps: RunnerDeps) {
       submitted_at: new Date(now()).toISOString(),
       last_polled_at: new Date(now()).toISOString(),
     });
+  }
+
+  /** Milliseconds since the video step was submitted (for the cost log). */
+  function submittedAgoMs(job: JobRow): number {
+    const submitted = Date.parse(String(job.steps?.video?.submitted_at ?? ""));
+    return Number.isFinite(submitted) ? Math.max(0, now() - submitted) : 0;
   }
 
   /**
@@ -337,7 +395,20 @@ export function createPipelineRunner(deps: RunnerDeps) {
         clip.status = "failed";
         clip.error = result.statusMessage ?? "Provider reported failure";
         changed = true;
+        await logUsage(job, "video", {
+          unit: "seconds",
+          quantity: VIDEO_CLIP_SECONDS,
+          durationMs: submittedAgoMs(job),
+          status: "failed",
+          error: clip.error,
+        });
       } else if (result.status === "succeed" && result.videoUrl) {
+        await logUsage(job, "video", {
+          unit: "seconds",
+          quantity: result.durationSeconds ?? VIDEO_CLIP_SECONDS,
+          durationMs: submittedAgoMs(job),
+          status: "ok",
+        });
         try {
           const buffer = await providers.downloadVideo(result.videoUrl);
           const storagePath = `${job.user_id}/${job.id}/scene-${clip.sceneNumber}.mp4`;
@@ -382,15 +453,36 @@ export function createPipelineRunner(deps: RunnerDeps) {
     if (stepId === "script") {
       const model = def.provider.split(":")[1] ?? "gpt-5-mini";
       const orientation = job.options?.orientation ?? defaultOrientation(job.platform ?? "");
-      const result = await providers.generateScript({
-        idea: job.idea,
-        platform: job.platform ?? "youtube",
-        style: job.style,
-        duration: job.duration,
-        outputLanguage: job.output_language ?? "EN",
-        model,
-        orientation,
-        brief: getTemplate(job.options?.template)?.brief ?? null,
+      const startedAt = now();
+      let result: Awaited<ReturnType<typeof providers.generateScript>>;
+      try {
+        result = await providers.generateScript({
+          idea: job.idea,
+          platform: job.platform ?? "youtube",
+          style: job.style,
+          duration: job.duration,
+          outputLanguage: job.output_language ?? "EN",
+          model,
+          orientation,
+          brief: getTemplate(job.options?.template)?.brief ?? null,
+        });
+      } catch (err) {
+        await logUsage(job, "script", {
+          unit: "tokens",
+          quantity: 0,
+          durationMs: now() - startedAt,
+          status: "failed",
+          error: err instanceof Error ? err.message : String(err),
+        });
+        throw err;
+      }
+      await logUsage(job, "script", {
+        unit: "tokens",
+        quantity: (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0),
+        inputTokens: result.usage?.inputTokens,
+        outputTokens: result.usage?.outputTokens,
+        durationMs: now() - startedAt,
+        status: "ok",
       });
       await patchStep(job, "script", {
         status: "completed",
@@ -416,7 +508,26 @@ export function createPipelineRunner(deps: RunnerDeps) {
         throw new Error("Voice is missing; cannot generate voiceover.");
       }
 
-      const speechBuffer = await providers.generateSpeech(script, voiceId);
+      const startedAt = now();
+      let speechBuffer: Buffer;
+      try {
+        speechBuffer = await providers.generateSpeech(script, voiceId);
+      } catch (err) {
+        await logUsage(job, "voiceover", {
+          unit: "characters",
+          quantity: script.length,
+          durationMs: now() - startedAt,
+          status: "failed",
+          error: err instanceof Error ? err.message : String(err),
+        });
+        throw err;
+      }
+      await logUsage(job, "voiceover", {
+        unit: "characters",
+        quantity: script.length,
+        durationMs: now() - startedAt,
+        status: "ok",
+      });
       const storagePath = `${job.user_id}/${job.id}.mp3`;
       const { error: uploadError } = await db.storage
         .from("voiceovers")
@@ -451,7 +562,26 @@ export function createPipelineRunner(deps: RunnerDeps) {
         throw new Error("Thumbnail idea is missing; cannot generate thumbnail.");
       }
       const orientation = job.options?.orientation ?? defaultOrientation(job.platform ?? "");
-      const result = await providers.generateThumbnail(idea, job.id, orientation);
+      const startedAt = now();
+      let result: Awaited<ReturnType<typeof providers.generateThumbnail>>;
+      try {
+        result = await providers.generateThumbnail(idea, job.id, orientation);
+      } catch (err) {
+        await logUsage(job, "thumbnail", {
+          unit: "images",
+          quantity: 1,
+          durationMs: now() - startedAt,
+          status: "failed",
+          error: err instanceof Error ? err.message : String(err),
+        });
+        throw err;
+      }
+      await logUsage(job, "thumbnail", {
+        unit: "images",
+        quantity: 1,
+        durationMs: now() - startedAt,
+        status: "ok",
+      });
       await patchStep(job, "thumbnail", {
         status: "completed",
         image_url: result.imageUrl,
@@ -550,6 +680,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
         console.error(`[pipeline] ${jobId} step ${inFlight} failed:`, message);
+        await captureError(err, { jobId, step: inFlight, area: "pipeline" });
         try {
           await patchStep(job, inFlight, { status: "failed", error: message });
         } catch {
@@ -592,6 +723,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       console.error(`[pipeline] ${jobId} step ${stepId} failed:`, message);
+      await captureError(err, { jobId, step: stepId, area: "pipeline" });
       try {
         await patchStep(claimed, stepId, { status: "failed", error: message });
       } catch {
@@ -699,15 +831,23 @@ export function createPipelineRunner(deps: RunnerDeps) {
 /* ----------------------------------------------------------------------- */
 
 let productionRunner: ReturnType<typeof createPipelineRunner> | null = null;
+let productionClient: SupabaseClient | null = null;
+
+function productionDb(): SupabaseClient {
+  if (!productionClient) {
+    productionClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    );
+  }
+  return productionClient;
+}
 
 function getRunner() {
   if (!productionRunner) {
     productionRunner = createPipelineRunner({
-      db: createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        { auth: { persistSession: false } }
-      ),
+      db: productionDb(),
       providers: {
         generateScript: async (...args) =>
           (await import("@/lib/pipeline/openai")).generateScript(...args),
@@ -724,6 +864,9 @@ function getRunner() {
       },
       kick: kickJob,
       now: Date.now,
+      recordUsage: async (record) => {
+        await recordProviderUsage(productionDb(), record);
+      },
     });
   }
   return productionRunner;

@@ -87,6 +87,17 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   `'unsafe-eval'`, Vercel preview'da `vercel.live` otomatik eklenir),
   `/api/health`, snapshot cron tüm bağlı kanallar için, saatlik üretim
   limiti, ESLint 0 hata.
+- Gözlemlenebilirlik: **Sentry** (`@sentry/nextjs` v11; `instrumentation.ts`
+  + `sentry.server|edge.config.ts` + `instrumentation-client.ts`;
+  `app/error.tsx` ve `app/global-error.tsx` yakalar; `next.config.ts`
+  `withSentryConfig` ile sarılı, source map yükleme `SENTRY_AUTH_TOKEN/ORG/
+  PROJECT` varsa). DSN yoksa SDK tamamen kapalı. Kod `lib/observability.ts`
+  (`captureError(err, {jobId, step})`) üzerinden çağırır, SDK'yı doğrudan
+  import ETME. **Provider maliyet logu**: `lib/pipeline/usage.ts` → her
+  OpenAI/ElevenLabs/Gemini/Kling çağrısı `provider_usage` tablosuna (birim +
+  tahmini USD; fiyat listesi `PRICE_LIST`, env `PROVIDER_PRICE_OVERRIDES`).
+  Runner `deps.recordUsage` ile yazar (testlerde bellekte). SQL ve sorgular
+  `supabase/README.md`'de.
 - Erişilebilirlik: global `:focus-visible` halkası (globals.css, `:where()`
   ile düşük özgüllük), "Skip to main content" linki (`app/layout.tsx` →
   her sayfada `id="main-content"`), ikon butonlarda aria-label, dialog/menu
@@ -130,8 +141,11 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
 
 ## 7. Bekleyen İşler (öncelik sırasıyla)
 
-Kod dışı (Kadir): `app/lib/legal.ts` `LEGAL_NAME` placeholder'ı (şirket
-kurulunca); Kling anahtarları; Paddle live ID'leri + webhook event'leri
+Kod dışı (Kadir): **Supabase'de `provider_usage` tablosunu oluştur**
+(`supabase/README.md` SQL'i) — yoksa log insert'i sessizce hata yazar, job
+etkilenmez; **Sentry projesi aç** → Vercel'e `NEXT_PUBLIC_SENTRY_DSN` (+
+`SENTRY_ORG/PROJECT/AUTH_TOKEN` source map için); `app/lib/legal.ts`
+`LEGAL_NAME` placeholder'ı (şirket kurulunca); Kling anahtarları; Paddle live ID'leri + webhook event'leri
 (`adjustment.*`); ElevenLabs Starter planı (kütüphane sesleri için).
 (`YOUTUBE_API_KEY` yeniden adlandırması 25 Ekim'de Vercel'de yapıldı; eski
 `NEXT_PUBLIC_` değişkeni silindi — `app/lib/youtube.ts` fallback'i artık
@@ -143,8 +157,8 @@ YouTube'a doğrudan yükleme → seri modu/zamanlama → ses klonlama + brand ki
 affiliate. Ertelenen: timeline editör, AI avatar, mobil app.
 
 Teknik borç: sahne düzeyinde yeniden üretim + versiyon geçmişi +
-`media_assets`/`projects.job_id` şeması; Sentry; provider maliyet logu;
-Supabase custom domain (Google ekranındaki supabase.co yazısı için).
+`media_assets`/`projects.job_id` şeması; Supabase custom domain (Google
+ekranındaki supabase.co yazısı için).
 
 ## 8. Çalışma Şekli (Kadir + Claude)
 
