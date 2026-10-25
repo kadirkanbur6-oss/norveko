@@ -205,7 +205,12 @@ function ChatContent() {
         }
 
         if (active) {
-          const loaded: VoiceOption[] = [...(data.voices ?? []), ...(data.library ?? [])];
+          // Outside English, native Voice Library narrators come first so the
+          // default pick sounds local; English keeps the account defaults first.
+          const account: VoiceOption[] = data.voices ?? [];
+          const library: VoiceOption[] = data.library ?? [];
+          const loaded: VoiceOption[] =
+            data.languageCode === "en" ? [...account, ...library] : [...library, ...account];
           setVoices(loaded);
           setNativeMatch(data.nativeMatch !== false);
           // Keep the current pick only if it still exists for this language.
