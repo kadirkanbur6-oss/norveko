@@ -3,6 +3,7 @@
 import { FormEvent, useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../lib/supabase";
+import { INTRO_FLAG } from "../components/WelcomeIntro";
 
 function LoginContent() {
   const router = useRouter();
@@ -47,6 +48,11 @@ function LoginContent() {
       return;
     }
 
+    try {
+      sessionStorage.setItem(INTRO_FLAG, "1");
+    } catch {
+      // storage unavailable — the dashboard simply opens without the intro
+    }
     router.push("/dashboard");
   }
 
