@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Circle, Loader2, XCircle, Copy } from "lucide-react";
 import { PIPELINE_STEP_ORDER, type PipelineStepId } from "@/lib/pipeline/steps";
+import { cuesToSrt, cuesToVtt } from "@/lib/pipeline/captions";
 import GenerationStage, { type StageStep } from "./GenerationStage";
 
 interface StepInfo {
@@ -28,12 +29,25 @@ interface StepInfo {
   audio_url?: string;
   voice_id?: string;
   storage_path?: string;
+  captions?: Array<{ start: number; end: number; text: string }>;
   clips?: Array<{
     sceneNumber: number;
     status: "pending" | "processing" | "succeed" | "failed";
     video_url?: string;
     error?: string;
   }>;
+}
+
+function downloadText(filename: string, text: string, type: string) {
+  const blob = new Blob([text], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 interface JobData {
@@ -372,21 +386,50 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
 
       {job.steps?.voiceover?.status === "completed" && job.steps.voiceover.audio_url && (
         <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <h4 className="text-sm font-semibold text-gray-300">Voiceover</h4>
-            <a
-              href={job.steps.voiceover.audio_url}
-              download
-              className="text-xs text-blue-300 transition hover:text-blue-200"
-            >
-              Download MP3
-            </a>
+            <div className="flex items-center gap-3 text-xs">
+              {job.steps.voiceover.captions && job.steps.voiceover.captions.length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      downloadText(`norveko-${job.id}.srt`, cuesToSrt(job.steps!.voiceover!.captions!), "application/x-subrip")
+                    }
+                    className="text-blue-300 transition hover:text-blue-200"
+                  >
+                    Subtitles .srt
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      downloadText(`norveko-${job.id}.vtt`, cuesToVtt(job.steps!.voiceover!.captions!), "text/vtt")
+                    }
+                    className="text-blue-300 transition hover:text-blue-200"
+                  >
+                    .vtt
+                  </button>
+                </>
+              )}
+              <a
+                href={job.steps.voiceover.audio_url}
+                download
+                className="text-blue-300 transition hover:text-blue-200"
+              >
+                Download MP3
+              </a>
+            </div>
           </div>
           <audio
             controls
             src={job.steps.voiceover.audio_url}
             className="mt-3 w-full"
           />
+          {job.steps.voiceover.captions && job.steps.voiceover.captions.length > 0 && (
+            <p className="mt-2 text-[11px] text-gray-500">
+              {job.steps.voiceover.captions.length} subtitle cues, word-timed from the narration.
+            </p>
+          )}
         </div>
       )}
 

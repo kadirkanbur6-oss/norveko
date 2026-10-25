@@ -139,7 +139,16 @@ function makeRunner(
       generateSpeech: async () => {
         calls.push("voiceover");
         if (opts.failAt === "voiceover") throw new Error("eleven down");
-        return Buffer.from("mp3");
+        // "Hi there." with one character every 100 ms.
+        const chars = "Hi there.".split("");
+        return {
+          audio: Buffer.from("mp3"),
+          alignment: {
+            characters: chars,
+            character_start_times_seconds: chars.map((_, i) => i * 0.1),
+            character_end_times_seconds: chars.map((_, i) => (i + 1) * 0.1),
+          },
+        };
       },
       generateThumbnail: async () => {
         calls.push("thumbnail");
@@ -205,6 +214,11 @@ test("runs steps in order, one per invocation, then finalizes into a project", a
   assert.equal(job.current_step, null);
   assert.match(job.steps.result.project_id, /^proj_/);
   assert.equal(job.steps.thumbnail.image_url, "https://cdn/t.png");
+  assert.deepEqual(
+    job.steps.voiceover.captions,
+    [{ start: 0, end: 0.9, text: "Hi there." }],
+    "voiceover step stores word-timed caption cues"
+  );
   assert.equal(rpc.length, 0, "no refunds on success");
 
   assert.equal(await runner.runNextStep(id), "noop", "completed job is a noop");

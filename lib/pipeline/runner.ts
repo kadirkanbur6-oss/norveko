@@ -19,6 +19,7 @@
 // tested without Supabase or provider network calls; the module-level exports
 // are the production instance.
 
+import { alignmentToCues } from "@/lib/pipeline/captions";
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
@@ -509,9 +510,9 @@ export function createPipelineRunner(deps: RunnerDeps) {
       }
 
       const startedAt = now();
-      let speechBuffer: Buffer;
+      let speech: Awaited<ReturnType<typeof providers.generateSpeech>>;
       try {
-        speechBuffer = await providers.generateSpeech(script, voiceId);
+        speech = await providers.generateSpeech(script, voiceId);
       } catch (err) {
         await logUsage(job, "voiceover", {
           unit: "characters",
@@ -531,7 +532,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
       const storagePath = `${job.user_id}/${job.id}.mp3`;
       const { error: uploadError } = await db.storage
         .from("voiceovers")
-        .upload(storagePath, speechBuffer, {
+        .upload(storagePath, speech.audio, {
           contentType: "audio/mpeg",
           upsert: true,
         });
@@ -542,10 +543,14 @@ export function createPipelineRunner(deps: RunnerDeps) {
         .from("voiceovers")
         .getPublicUrl(storagePath);
 
+      // Word-timed subtitles from the same TTS call (no extra cost). Kept
+      // compact: cues only, not the per-character alignment.
+      const captions = speech.alignment ? alignmentToCues(speech.alignment) : [];
       await patchStep(job, "voiceover", {
         status: "completed",
         audio_url: urlData.publicUrl,
         storage_path: storagePath,
+        captions,
       });
       return;
     }
@@ -600,6 +605,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
     const thumb = fresh.steps?.thumbnail ?? {};
     const voice = fresh.steps?.voiceover ?? {};
     const voiceoverUrl = typeof voice.audio_url === "string" ? voice.audio_url : "";
+    const captions = Array.isArray(voice.captions) && voice.captions.length ? voice.captions : undefined;
     const clips = (fresh.steps?.video?.clips as VideoClipState[] | undefined) ?? [];
     const scenes = Array.isArray(script.scenes)
       ? (script.scenes as Array<Record<string, unknown> & { sceneNumber?: number }>).map((scene) => {
@@ -631,6 +637,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
             thumbnailUrl: thumb.image_url,
             voiceoverUrl: voiceoverUrl || undefined,
             audio_url: voiceoverUrl || undefined,
+            captions,
           },
         })
         .select("id")

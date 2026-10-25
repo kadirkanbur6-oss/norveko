@@ -40,7 +40,8 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   async video adımını 20 sn'de bir poll eder, 40 dk sonra timeout).
 - `GET /api/pipeline/reap` (cron, günlük 03:30 UTC): tüm running job'lar için aynı.
 - Mantık `lib/pipeline/runner.ts` içinde `createPipelineRunner(deps)`;
-  `lib/pipeline/runner.test.ts` 8 senaryo (`npm run test:pipeline`).
+  `lib/pipeline/runner.test.ts` 8 senaryo + `captions.test.ts` 5 birim testi
+  (`npm run test:pipeline`).
 - Kredi maliyetleri **tek kaynak**: `lib/pipeline/steps.ts` (script 5, voiceover
   15, thumbnail 10, video 12×5 klip peşin; kullanılmayan/başarısız klip iade).
 - Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
@@ -71,9 +72,17 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   önizleme. **29 dil** `lib/pipeline/options.ts` `LANGUAGE_OPTIONS` (yerel ad
   UI'da, İngilizce ad LLM prompt'unda, ISO kod ses eşlemede, bayrak).
 - Projects: liste (arama, platform/stil filtresi, sıralama, load more), detay
-  (sekmeler, tam düzenleme, **Export**: copy all / .md / .txt / .srt, thumbnail
-  görseli, klip oynatıcı, stilli silme onayı). PATCH içeriği
-  `lib/project-content.ts` ile sanitize edilir.
+  (sekmeler, tam düzenleme, **Export**: copy all / .md / .txt / .srt / .vtt,
+  thumbnail görseli, klip oynatıcı, stilli silme onayı). PATCH içeriği
+  `lib/project-content.ts` ile sanitize edilir (`captions` dahil).
+- **Otomatik altyazı**: voiceover adımı ElevenLabs'in `/with-timestamps` uç
+  noktasını kullanır (aynı fiyat; JSON içinde base64 ses + karakter
+  zamanlaması). `lib/pipeline/captions.ts` karakter → kelime → cue (2 satır ×
+  38 karakter, ≤5 sn, ≥0.8 sn, 0.6 sn duraklamada kes, cümle sonunda kes;
+  `CAPTION_RULES`) ve SRT/VTT render eder. Cue'lar `steps.voiceover.captions`
+  ve `projects.content.captions` olarak saklanır (karakter hizalaması
+  saklanmaz). Voiceover yoksa export okuma hızından tahmin eder ve menü bunu
+  söyler. İleride MP4 render'da burn-in için aynı cue'lar kullanılacak.
 - Billing: Paddle overlay checkout, webhook (`transaction.completed` + refund
   `adjustment.*`, idempotent), ödeme sonrası bakiye yenileme, kredi metinleri
   `steps.ts`'ten.
@@ -154,7 +163,7 @@ kurulunca); Kling anahtarları; Paddle live ID'leri + webhook event'leri
 `NEXT_PUBLIC_` değişkeni silindi — `app/lib/youtube.ts` fallback'i artık
 sadece yerel .env için.)
 
-Ürün (rakip analizine göre): otomatik altyazı →
+Ürün (rakip analizine göre): ~~otomatik altyazı~~ (yapıldı) →
 tam MP4 render → 9:16/16:9 seçimi → niş şablonları + örnek galeri →
 YouTube'a doğrudan yükleme → seri modu/zamanlama → ses klonlama + brand kit →
 affiliate. Ertelenen: timeline editör, AI avatar, mobil app.

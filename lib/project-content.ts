@@ -3,12 +3,22 @@
 // Unknown keys are dropped, strings are trimmed and capped, arrays are bounded,
 // and media URLs must be https. Keeps the JSONB column from becoming a dump.
 
+import { cuesToSrt, cuesToVtt } from "@/lib/pipeline/captions";
+
 export interface ProjectScene {
   sceneNumber: number;
   description: string;
   videoPrompt: string;
   videoUrl?: string;
   videoDuration?: number;
+}
+
+export interface ProjectCaption {
+  /** Seconds from the start of the voiceover. */
+  start: number;
+  end: number;
+  /** One or two lines, joined with "\n". */
+  text: string;
 }
 
 export interface ProjectContent {
@@ -22,6 +32,8 @@ export interface ProjectContent {
   thumbnailUrl?: string;
   voiceoverUrl?: string;
   audio_url?: string;
+  /** Word-timed subtitle cues from the voiceover (see lib/pipeline/captions.ts). */
+  captions?: ProjectCaption[];
 }
 
 const LIMITS = {
@@ -37,6 +49,8 @@ const LIMITS = {
   titles: 20,
   tags: 60,
   url: 2_000,
+  captions: 2_000,
+  captionText: 200,
 } as const;
 
 /** Total serialized size allowed for one content object. */
@@ -57,6 +71,12 @@ function url(value: unknown): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+function num(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? Math.round(value * 1000) / 1000
+    : undefined;
 }
 
 function strList(value: unknown, maxItems: number, maxLen: number): string[] | undefined {
@@ -130,19 +150,24 @@ export function sanitizeProjectContent(
     content.audio_url = voiceoverUrl; // legacy readers
   }
 
+  if (Array.isArray(raw.captions)) {
+    const captions: ProjectCaption[] = [];
+    for (const c of raw.captions.slice(0, LIMITS.captions)) {
+      if (!c || typeof c !== "object") continue;
+      const cue = c as Record<string, unknown>;
+      const start = num(cue.start);
+      const end = num(cue.end);
+      const text = str(cue.text, LIMITS.captionText);
+      if (start === undefined || end === undefined || !text || end <= start) continue;
+      captions.push({ start, end, text });
+    }
+    if (captions.length) content.captions = captions;
+  }
+
   return { ok: true, content };
 }
 
 /* ---------------- Export helpers (used by the project page) ---------------- */
-
-function fmtTime(sec: number): string {
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = Math.floor(sec % 60);
-  const ms = Math.round((sec - Math.floor(sec)) * 1000);
-  const pad = (n: number, w = 2) => String(n).padStart(w, "0");
-  return `${pad(h)}:${pad(m)}:${pad(s)},${pad(ms, 3)}`;
-}
 
 /** Markdown export of the whole package. */
 export function contentToMarkdown(title: string, c: ProjectContent): string {
@@ -171,14 +196,30 @@ export function contentToPlainText(c: ProjectContent): string {
   return [c.hook, c.script].filter(Boolean).join("\n\n");
 }
 
+/** True when the project has word-timed captions from the voiceover. */
+export function hasTimedCaptions(c: ProjectContent): boolean {
+  return Array.isArray(c.captions) && c.captions.length > 0;
+}
+
 /**
- * SRT export. Without word timings we distribute the script across scenes by
- * character count over an estimated duration (≈150 words/min). Good enough as
- * a starting point for an editor; users adjust in their NLE.
+ * SRT export. Uses the voiceover's word-timed cues when present. Without
+ * them we distribute the script across sentences by character count over an
+ * estimated duration (≈150 words/min) — a starting point for an editor.
  */
 export function contentToSrt(c: ProjectContent): string {
+  if (hasTimedCaptions(c)) return cuesToSrt(c.captions!);
+  return cuesToSrt(estimatedCues(c));
+}
+
+/** WebVTT export (YouTube, web players). Same source rules as SRT. */
+export function contentToVtt(c: ProjectContent): string {
+  if (hasTimedCaptions(c)) return cuesToVtt(c.captions!);
+  return cuesToVtt(estimatedCues(c));
+}
+
+function estimatedCues(c: ProjectContent): ProjectCaption[] {
   const script = contentToPlainText(c);
-  if (!script) return "";
+  if (!script) return [];
   const sentences = script
     .replace(/\s+/g, " ")
     .match(/[^.!?]+[.!?]+["']?|[^.!?]+$/g)
@@ -189,12 +230,10 @@ export function contentToSrt(c: ProjectContent): string {
   const totalChars = sentences.reduce((n, s) => n + s.length, 0) || 1;
 
   let t = 0;
-  return sentences
-    .map((s, i) => {
-      const dur = Math.max(1.2, (s.length / totalChars) * total);
-      const start = t;
-      t += dur;
-      return `${i + 1}\n${fmtTime(start)} --> ${fmtTime(t)}\n${s}\n`;
-    })
-    .join("\n");
+  return sentences.map((s) => {
+    const dur = Math.max(1.2, (s.length / totalChars) * total);
+    const start = t;
+    t += dur;
+    return { start, end: t, text: s };
+  });
 }

@@ -2,7 +2,8 @@
 
 // app/components/ExportMenu.tsx
 // "Export" dropdown for a project: copy everything as Markdown, or download
-// .md / .txt (narration) / .srt (estimated subtitle timings).
+// .md / .txt (narration) / .srt + .vtt (word-timed when the project has a
+// voiceover, otherwise estimated from reading speed).
 
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Copy, Download, FileText } from "lucide-react";
@@ -10,6 +11,8 @@ import {
   contentToMarkdown,
   contentToPlainText,
   contentToSrt,
+  contentToVtt,
+  hasTimedCaptions,
   type ProjectContent,
 } from "@/lib/project-content";
 
@@ -101,7 +104,16 @@ export default function ExportMenu({
         setOpen(false);
       },
     },
+    {
+      label: "Download subtitles (.vtt)",
+      icon: <FileText size={14} />,
+      onClick: () => {
+        download(`${base}.vtt`, contentToVtt(content), "text/vtt");
+        setOpen(false);
+      },
+    },
   ];
+  const timed = hasTimedCaptions(content);
 
   return (
     <div ref={ref} className="relative">
@@ -135,7 +147,9 @@ export default function ExportMenu({
             </button>
           ))}
           <p className="px-3 pb-1.5 pt-2 text-[11px] leading-snug text-gray-500">
-            SRT timings are estimated from reading speed — adjust in your editor.
+            {timed
+              ? `Subtitles are word-timed from the voiceover (${content.captions!.length} cues).`
+              : "No voiceover: subtitle timings are estimated from reading speed — adjust in your editor."}
           </p>
         </div>
       )}

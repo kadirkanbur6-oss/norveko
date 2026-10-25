@@ -1,6 +1,8 @@
 // lib/pipeline/elevenlabs.ts
 // ElevenLabs voice list + TTS helperleri. Server-side only.
 
+import type { CharacterAlignment } from "./captions";
+
 const ELEVENLABS_BASE_URL = "https://api.elevenlabs.io";
 const ELEVENLABS_MODEL_ID = "eleven_multilingual_v2";
 
@@ -175,18 +177,28 @@ export async function addLibraryVoice(
   return data.voice_id || voiceId;
 }
 
+export interface SpeechResult {
+  audio: Buffer;
+  /** Character-level timing from ElevenLabs; null when the API omitted it. */
+  alignment: CharacterAlignment | null;
+}
+
+/**
+ * TTS with word timings. Uses the `/with-timestamps` variant of the endpoint:
+ * same price as plain TTS, but the response is JSON with base64 audio plus a
+ * character alignment that lib/pipeline/captions.ts turns into subtitles.
+ */
 export async function generateSpeech(
   text: string,
   voiceId: string
-): Promise<Buffer> {
+): Promise<SpeechResult> {
   const res = await fetch(
-    `${ELEVENLABS_BASE_URL}/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,
+    `${ELEVENLABS_BASE_URL}/v1/text-to-speech/${encodeURIComponent(voiceId)}/with-timestamps?output_format=mp3_44100_128`,
     {
       method: "POST",
       headers: {
         ...getAuthHeaders(),
         "Content-Type": "application/json",
-        Accept: "audio/mpeg",
       },
       body: JSON.stringify({
         text,
@@ -200,5 +212,33 @@ export async function generateSpeech(
     throw new Error(`ElevenLabs TTS error (${res.status}): ${errBody.slice(0, 300)}`);
   }
 
-  return Buffer.from(await res.arrayBuffer());
+  const data = (await res.json()) as {
+    audio_base64?: string;
+    alignment?: CharacterAlignment | null;
+    normalized_alignment?: CharacterAlignment | null;
+  };
+  if (typeof data.audio_base64 !== "string" || !data.audio_base64) {
+    throw new Error("ElevenLabs TTS returned no audio.");
+  }
+  // `alignment` maps to the text we sent; `normalized_alignment` is the
+  // spoken form (numbers expanded etc.). Captions should show the original.
+  const alignment = isAlignment(data.alignment)
+    ? data.alignment
+    : isAlignment(data.normalized_alignment)
+    ? data.normalized_alignment
+    : null;
+
+  return { audio: Buffer.from(data.audio_base64, "base64"), alignment };
+}
+
+function isAlignment(value: unknown): value is CharacterAlignment {
+  if (!value || typeof value !== "object") return false;
+  const a = value as Record<string, unknown>;
+  return (
+    Array.isArray(a.characters) &&
+    Array.isArray(a.character_start_times_seconds) &&
+    Array.isArray(a.character_end_times_seconds) &&
+    a.characters.length > 0 &&
+    a.characters.length === a.character_start_times_seconds.length
+  );
 }

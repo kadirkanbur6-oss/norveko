@@ -40,6 +40,7 @@ interface VideoContent {
   thumbnailUrl?: string;
   voiceoverUrl?: string;
   audio_url?: string;
+  captions?: Array<{ start: number; end: number; text: string }>;
   voiceover?: {
     url?: string;
     publicUrl?: string;
@@ -61,6 +62,7 @@ interface NormalizedVideoContent {
   thumbnailUrl?: string;
   voiceoverUrl?: string;
   audio_url?: string;
+  captions?: Array<{ start: number; end: number; text: string }>;
   voiceover?: {
     url?: string;
     publicUrl?: string;
@@ -727,17 +729,24 @@ export default function ProjectDetailPage() {
 
                   {voiceoverUrl && (
                     <div className="mt-4 rounded-xl border border-white/10 bg-[#0d0d16] p-4">
-                      <div className="flex items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
                         <h4 className="text-sm font-semibold text-gray-300">
                           Voiceover
                         </h4>
-                        <a
-                          href={voiceoverUrl}
-                          download
-                          className="text-xs text-blue-300 transition hover:text-blue-200"
-                        >
-                          Download MP3
-                        </a>
+                        <div className="flex items-center gap-3 text-xs">
+                          {normalizedProjectContent?.captions?.length ? (
+                            <span className="text-gray-500">
+                              {normalizedProjectContent.captions.length} subtitle cues · use Export for .srt/.vtt
+                            </span>
+                          ) : null}
+                          <a
+                            href={voiceoverUrl}
+                            download
+                            className="text-blue-300 transition hover:text-blue-200"
+                          >
+                            Download MP3
+                          </a>
+                        </div>
                       </div>
                       <audio controls src={voiceoverUrl} className="mt-3 w-full" />
                     </div>

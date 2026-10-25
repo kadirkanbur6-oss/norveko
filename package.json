@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:pipeline": "tsx --conditions react-server --test lib/pipeline/runner.test.ts"
+    "test:pipeline": "tsx --conditions react-server --test lib/pipeline/runner.test.ts lib/pipeline/captions.test.ts"
   },
   "dependencies": {
     "@paddle/paddle-js": "^1.6.4",
