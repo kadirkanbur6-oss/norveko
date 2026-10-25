@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown, Clapperboard, Coins, LayoutTemplate, Loader2, Search, Sparkles, Wand2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, Clapperboard, Coins, LayoutTemplate, Loader2, Mic, Play, Search, Sparkles, Square, Wand2 } from "lucide-react";
 import Link from "next/link";
 import Sidebar from "../components/Sidebar";
 import PipelineProgress from "../components/PipelineProgress";
@@ -21,6 +21,28 @@ interface VoiceOption {
   name: string;
   labels: Record<string, string>;
   preview_url: string | null;
+  languages?: string[];
+  source?: "account" | "library";
+  public_owner_id?: string;
+}
+
+const LANGUAGE_FLAGS: Record<string, string> = {
+  English: "🇬🇧",
+  "Türkçe": "🇹🇷",
+  "Español": "🇪🇸",
+  Deutsch: "🇩🇪",
+  "Français": "🇫🇷",
+  "Português": "🇵🇹",
+};
+
+function voiceDisplayName(name: string) {
+  // ElevenLabs names look like "Roger - Laid-Back, Casual, Resonant".
+  const [first, ...rest] = name.split(" - ");
+  return { short: first.trim(), tagline: rest.join(" - ").trim() };
+}
+
+function humanLabel(value: string) {
+  return value.replace(/_/g, " ");
 }
 
 const DRAFT_KEY = "norveko:chat-draft";
@@ -170,10 +192,10 @@ function ChatContent() {
     };
   }, []);
 
+  // Load voices for the selected output language whenever voiceover is on.
+  const [nativeMatch, setNativeMatch] = useState(true);
   useEffect(() => {
-    if (!includeVoiceover || voices.length > 0) {
-      return;
-    }
+    if (!includeVoiceover) return;
 
     let active = true;
 
@@ -182,7 +204,7 @@ function ChatContent() {
       setVoicesError("");
 
       try {
-        const res = await fetch("/api/voices");
+        const res = await fetch(`/api/voices?language=${encodeURIComponent(language)}`, { cache: "no-store" });
         const data = await res.json();
 
         if (!data.success) {
@@ -190,9 +212,13 @@ function ChatContent() {
         }
 
         if (active) {
-          const loadedVoices: VoiceOption[] = data.voices ?? [];
-          setVoices(loadedVoices);
-          setVoiceId((current) => current || loadedVoices[0]?.voice_id || "");
+          const loaded: VoiceOption[] = [...(data.voices ?? []), ...(data.library ?? [])];
+          setVoices(loaded);
+          setNativeMatch(data.nativeMatch !== false || (data.library ?? []).length > 0);
+          // Keep the current pick only if it still exists for this language.
+          setVoiceId((current) =>
+            loaded.some((v) => v.voice_id === current) ? current : loaded[0]?.voice_id || ""
+          );
         }
       } catch (err) {
         if (active) {
@@ -210,7 +236,7 @@ function ChatContent() {
     return () => {
       active = false;
     };
-  }, [includeVoiceover, voices.length]);
+  }, [includeVoiceover, language]);
 
   // Fall back to the first voice whenever none is selected.
   const effectiveVoiceId = voiceId || voices[0]?.voice_id || "";
@@ -255,11 +281,6 @@ function ChatContent() {
       .catch(() => setPlayingVoiceId(null));
   }
 
-  function formatVoiceLabels(labels: Record<string, string>) {
-    const values = Object.values(labels).filter(Boolean);
-    return values.length > 0 ? values.join(" · ") : "No labels";
-  }
-
   async function handleGenerate() {
     if (idea.trim().length < 5) {
       setError("Please describe your video idea in a bit more detail.");
@@ -287,6 +308,8 @@ function ChatContent() {
           outputLanguage: language,
           includeVoiceover,
           voiceId: includeVoiceover ? effectiveVoiceId : null,
+          voicePublicOwnerId: includeVoiceover ? selectedVoice?.public_owner_id ?? null : null,
+          voiceName: includeVoiceover ? selectedVoice?.name ?? null : null,
           includeVideo: includeVideo && videoAvailable,
           orientation,
           template: templateId,
@@ -509,51 +532,62 @@ function ChatContent() {
               </div>
             </div>
 
-            <div className="mt-4 rounded-2xl border border-white/10 bg-[#0d0d16] p-4">
+            {/* Voiceover */}
+            <div
+              className={`mt-4 rounded-2xl border p-4 transition ${
+                includeVoiceover ? "border-blue-400/30 bg-[#0d0d16]" : "border-white/10 bg-[#0d0d16]"
+              }`}
+            >
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <label className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={includeVoiceover}
-                    onChange={(e) => {
-                      setIncludeVoiceover(e.target.checked);
-                      if (!e.target.checked) stopPreview();
-                    }}
-                    className="h-4 w-4 rounded border-white/20 bg-transparent text-blue-500 focus:ring-0"
-                  />
-                  <span className="text-sm font-semibold text-white">
-                    Generate voiceover (+15 credits)
+                <label className="flex cursor-pointer items-center gap-3">
+                  <span className="relative inline-flex h-6 w-11 shrink-0 items-center">
+                    <input
+                      type="checkbox"
+                      checked={includeVoiceover}
+                      onChange={(e) => {
+                        setIncludeVoiceover(e.target.checked);
+                        if (!e.target.checked) stopPreview();
+                      }}
+                      className="peer sr-only"
+                    />
+                    <span className="absolute inset-0 rounded-full bg-white/10 transition peer-checked:bg-gradient-to-r peer-checked:from-blue-500 peer-checked:to-purple-600 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-400/60" />
+                    <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
+                  </span>
+                  <span>
+                    <span className="flex items-center gap-2 text-sm font-semibold text-white">
+                      <Mic size={15} className="text-blue-300" />
+                      AI voiceover
+                      <span className="rounded-full border border-yellow-400/20 bg-yellow-500/5 px-2 py-0.5 text-[11px] font-medium text-yellow-300">
+                        +15 credits
+                      </span>
+                    </span>
+                    <span className="mt-0.5 block text-xs text-gray-500">
+                      Narration of the full script, delivered as MP3
+                    </span>
                   </span>
                 </label>
 
-                <span className="flex items-center gap-2 text-sm text-gray-400">
-                  <span>Total cost: {totalCost} credits</span>
-                  {balance !== null && (
-                    <span
-                      className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${
-                        balance >= totalCost
-                          ? "border-yellow-400/20 bg-yellow-500/5 text-yellow-300"
-                          : "border-red-400/30 bg-red-500/10 text-red-300"
-                      }`}
-                    >
-                      <Coins size={12} />
-                      {balance} available
-                    </span>
-                  )}
-                </span>
+                {includeVoiceover && (
+                  <span className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-gray-300">
+                    <span aria-hidden>{LANGUAGE_FLAGS[language] ?? "🌐"}</span>
+                    Voices for {language}
+                  </span>
+                )}
               </div>
 
               {includeVoiceover && (
                 <div className="mt-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <label className="text-sm text-gray-400">
-                      Voice
-                      {selectedVoice && (
-                        <span className="ml-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-2 py-0.5 text-xs text-blue-200">
-                          {selectedVoice.name}
-                        </span>
+                    <p className="text-xs text-gray-500">
+                      {selectedVoice ? (
+                        <>
+                          Selected:{" "}
+                          <span className="font-semibold text-blue-200">{voiceDisplayName(selectedVoice.name).short}</span>
+                        </>
+                      ) : (
+                        "Pick a narrator"
                       )}
-                    </label>
+                    </p>
                     {voices.length > 6 && (
                       <label className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#12121c] px-2.5 py-1.5">
                         <Search size={13} className="text-gray-500" />
@@ -567,25 +601,45 @@ function ChatContent() {
                       </label>
                     )}
                   </div>
-                  {voicesLoading && (
-                    <p className="mt-2 text-xs text-gray-500">Loading voices...</p>
-                  )}
-                  {voicesError && (
-                    <p className="mt-2 text-xs text-red-300">{voicesError}</p>
+
+                  {!voicesLoading && !voicesError && voices.length > 0 && !nativeMatch && (
+                    <p className="mt-2 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-gray-400">
+                      No narrators tagged for {language} yet — these voices still speak {language} fluently with the multilingual model.
+                    </p>
                   )}
 
-                  {voices.length > 0 && (
+                  {voicesLoading && (
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3" aria-busy>
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="h-[72px] animate-pulse rounded-xl border border-white/5 bg-white/[0.03]" />
+                      ))}
+                    </div>
+                  )}
+                  {voicesError && <p className="mt-2 text-xs text-red-300">{voicesError}</p>}
+
+                  {!voicesLoading && voices.length > 0 && (
                     <div
                       role="radiogroup"
                       aria-label="Voice"
-                      className="mt-2 max-h-64 space-y-1.5 overflow-y-auto rounded-xl border border-white/10 bg-[#12121c] p-1.5"
+                      className="mt-3 grid max-h-72 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3"
                     >
                       {filteredVoices.length === 0 && (
-                        <p className="p-3 text-xs text-gray-500">No voices match “{voiceQuery}”.</p>
+                        <p className="p-3 text-xs text-gray-500 sm:col-span-2 lg:col-span-3">No voices match “{voiceQuery}”.</p>
                       )}
                       {filteredVoices.map((voice) => {
                         const isSelected = effectiveVoiceId === voice.voice_id;
                         const isPlaying = playingVoiceId === voice.voice_id;
+                        const { short, tagline } = voiceDisplayName(voice.name);
+                        const gender = voice.labels.gender;
+                        const avatar =
+                          gender === "female"
+                            ? "from-pink-400 to-purple-500"
+                            : gender === "male"
+                            ? "from-sky-400 to-blue-600"
+                            : "from-emerald-400 to-teal-600";
+                        const chips = [voice.labels.accent, voice.labels.age, voice.labels.use_case]
+                          .filter((v): v is string => Boolean(v))
+                          .slice(0, 2);
 
                         return (
                           <div
@@ -600,31 +654,63 @@ function ChatContent() {
                                 setVoiceId(voice.voice_id);
                               }
                             }}
-                            className={`flex cursor-pointer items-center justify-between gap-3 rounded-lg border px-3 py-2 transition ${
+                            className={`group relative flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-left transition ${
                               isSelected
-                                ? "border-blue-400/40 bg-blue-500/10"
-                                : "border-transparent hover:border-white/10 hover:bg-white/[0.03]"
+                                ? "border-blue-400/60 bg-blue-500/10 shadow-[0_0_0_1px_rgba(96,165,250,0.35)]"
+                                : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]"
                             }`}
                           >
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-semibold text-white">{voice.name}</p>
-                              <p className="truncate text-xs text-gray-500">{formatVoiceLabels(voice.labels)}</p>
-                            </div>
                             <button
                               type="button"
+                              aria-label={isPlaying ? `Stop ${short}` : `Preview ${short}`}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handlePreviewVoice(voice);
                               }}
                               disabled={!voice.preview_url}
-                              className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                                isPlaying
-                                  ? "border-blue-400/40 bg-blue-500/20 text-blue-100"
-                                  : "border-white/10 bg-white/[0.03] text-gray-300 hover:text-white"
+                              className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-sm font-bold text-white transition disabled:opacity-40 ${avatar} ${
+                                isPlaying ? "ring-2 ring-white/70" : ""
                               }`}
                             >
-                              {isPlaying ? "Stop" : "Play"}
+                              <span className={`transition ${isPlaying ? "opacity-0" : "group-hover:opacity-0"}`}>
+                                {short.charAt(0).toUpperCase()}
+                              </span>
+                              <span
+                                className={`absolute inset-0 flex items-center justify-center transition ${
+                                  isPlaying ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                                }`}
+                              >
+                                {isPlaying ? <Square size={14} fill="currentColor" /> : <Play size={16} fill="currentColor" className="ml-0.5" />}
+                              </span>
+                              {isPlaying && (
+                                <span className="absolute -inset-1 animate-ping rounded-full border border-white/40" aria-hidden />
+                              )}
                             </button>
+
+                            <div className="min-w-0 flex-1">
+                              <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-white">
+                                {short}
+                                {voice.source === "library" && (
+                                  <span className="rounded-full border border-purple-400/30 bg-purple-500/10 px-1.5 py-px text-[10px] font-medium text-purple-200">
+                                    Library
+                                  </span>
+                                )}
+                              </p>
+                              <p className="truncate text-xs text-gray-400">{tagline || humanLabel(voice.labels.descriptive ?? "")}</p>
+                              {chips.length > 0 && (
+                                <p className="mt-1 flex flex-wrap gap-1">
+                                  {chips.map((c) => (
+                                    <span key={c} className="rounded-md bg-white/5 px-1.5 py-px text-[10px] capitalize text-gray-400">
+                                      {humanLabel(c)}
+                                    </span>
+                                  ))}
+                                </p>
+                              )}
+                            </div>
+
+                            {isSelected && (
+                              <CheckCircle2 size={16} className="shrink-0 text-blue-300" aria-hidden />
+                            )}
                           </div>
                         );
                       })}
@@ -667,55 +753,70 @@ function ChatContent() {
               </div>
             </div>
 
-            {generationAvailable && balance !== null && balance < totalCost && (
-              <p className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-200">
-                <span>
-                  You need {totalCost} credits for this generation but have {balance}.
-                </span>
-                <Link
-                  href="/billing"
-                  className="rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 px-3 py-1.5 text-xs font-semibold text-white"
-                >
-                  Top up credits
-                </Link>
-              </p>
-            )}
-
             {!generationAvailable && (
               <p className="mt-6 rounded-xl border border-yellow-400/30 bg-yellow-500/10 p-4 text-sm text-yellow-100">
                 {launchLockMessage ?? "Content generation is temporarily closed."}
               </p>
             )}
 
-            <button
-              onClick={handleGenerate}
-              disabled={
-                starting ||
-                !generationAvailable ||
-                (balance !== null && balance < totalCost) ||
-                (jobId !== null && !error) ||
-                (includeVoiceover && (!effectiveVoiceId || voicesLoading))
-              }
-              className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 py-4 font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-            >
-              {starting ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" />
-                  Starting pipeline...
-                </>
-              ) : (
-                <>
-                  <Sparkles size={18} />
-                  Generate (Pipeline) — {totalCost} credits
-                </>
-              )}
-            </button>
-
             {error && (
-              <p className="mt-4 rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-300">
+              <p className="mt-6 rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-300">
                 {error}
               </p>
             )}
+
+            {/* Sticky action bar: cost + Generate always within reach */}
+            <div className="sticky bottom-0 z-10 -mx-6 -mb-6 mt-6 rounded-b-2xl border-t border-white/10 bg-[#0a0a12]/90 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="text-gray-400">
+                    Total <span className="font-semibold text-white">{totalCost} credits</span>
+                  </span>
+                  {balance !== null && (
+                    <span
+                      className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${
+                        balance >= totalCost
+                          ? "border-yellow-400/20 bg-yellow-500/5 text-yellow-300"
+                          : "border-red-400/30 bg-red-500/10 text-red-300"
+                      }`}
+                    >
+                      <Coins size={12} />
+                      {balance} available
+                    </span>
+                  )}
+                  {generationAvailable && balance !== null && balance < totalCost && (
+                    <Link href="/billing" className="text-xs font-semibold text-blue-300 underline-offset-2 hover:underline">
+                      Top up credits →
+                    </Link>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleGenerate}
+                  disabled={
+                    starting ||
+                    !generationAvailable ||
+                    (balance !== null && balance < totalCost) ||
+                    (jobId !== null && !error) ||
+                    (includeVoiceover && (!effectiveVoiceId || voicesLoading))
+                  }
+                  className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-3 font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:opacity-90 disabled:opacity-50 disabled:shadow-none"
+                >
+                  {starting ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      Starting…
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={18} />
+                      Generate
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
           </div>
 
           <div ref={progressRef} className="scroll-mt-20">

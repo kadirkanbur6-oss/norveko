@@ -1,54 +1,96 @@
-import { NextResponse } from "next/server";
+// app/api/voices/route.ts
+// GET /api/voices?language=Türkçe
+// Returns voices for the voiceover picker, split into:
+//   voices  — voices already in the ElevenLabs account that match the language
+//             (all account voices when none are tagged for it)
+//   library — Voice Library voices for that language, usable once picked
+//             (they are added to the account on demand by /api/pipeline/start)
+
+import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/supabase-server";
-import { listVoices } from "@/lib/pipeline/elevenlabs";
+import { listLibraryVoices, listVoices } from "@/lib/pipeline/elevenlabs";
 import { isGenerationEnabled, LAUNCH_LOCK_MESSAGE } from "@/lib/pipeline/features";
+import { LANGUAGES, isOneOf, languageCode } from "@/lib/pipeline/options";
 
-// ElevenLabs voice list changes rarely; cache per server instance to avoid
-// hitting the provider on every page open.
+export const dynamic = "force-dynamic";
+
+// Voice lists change rarely; cache per server instance.
 const VOICES_TTL_MS = 10 * 60 * 1000;
-let voicesCache: { at: number; voices: Awaited<ReturnType<typeof listVoices>> } | null = null;
+let accountCache: { at: number; voices: Awaited<ReturnType<typeof listVoices>> } | null = null;
+const libraryCache = new Map<string, { at: number; voices: Awaited<ReturnType<typeof listLibraryVoices>> }>();
 
-async function getVoicesCached() {
-  if (voicesCache && Date.now() - voicesCache.at < VOICES_TTL_MS) return voicesCache.voices;
+async function getAccountVoices() {
+  if (accountCache && Date.now() - accountCache.at < VOICES_TTL_MS) return accountCache.voices;
   const voices = await listVoices();
-  voicesCache = { at: Date.now(), voices };
+  accountCache = { at: Date.now(), voices };
   return voices;
 }
 
-export async function GET() {
+async function getLibraryVoices(code: string) {
+  const hit = libraryCache.get(code);
+  if (hit && Date.now() - hit.at < VOICES_TTL_MS) return hit.voices;
+  const voices = await listLibraryVoices(code);
+  libraryCache.set(code, { at: Date.now(), voices });
+  return voices;
+}
+
+export async function GET(req: NextRequest) {
   try {
     const { user } = await requireUser();
 
     if (!user) {
-      return NextResponse.json(
-        { success: false, error: "Not authenticated" },
-        { status: 401 }
-      );
+      return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
     }
 
     if (!isGenerationEnabled(user.id)) {
-      return NextResponse.json(
-        { success: false, error: LAUNCH_LOCK_MESSAGE },
-        { status: 403 }
-      );
+      return NextResponse.json({ success: false, error: LAUNCH_LOCK_MESSAGE }, { status: 403 });
     }
 
-    const voices = await getVoicesCached();
+    const langParam = req.nextUrl.searchParams.get("language");
+    const language = isOneOf(LANGUAGES, langParam) ? langParam : LANGUAGES[0];
+    const code = languageCode(language);
+
+    const account = await getAccountVoices();
+    const tagged = account.filter((v) => v.languages.includes(code));
+    const voices = tagged.length > 0 ? tagged : account;
+
+    // Library voices in the user's language (skip for English: the account
+    // defaults already cover it). Failures here must not break the picker.
+    let library: Awaited<ReturnType<typeof listLibraryVoices>> = [];
+    if (code !== "en") {
+      try {
+        const inAccount = new Set(account.map((v) => v.voice_id));
+        library = (await getLibraryVoices(code)).filter((v) => !inAccount.has(v.voice_id));
+      } catch (err) {
+        console.warn("[voices] library lookup failed:", err);
+      }
+    }
 
     return NextResponse.json({
       success: true,
+      language,
+      languageCode: code,
+      nativeMatch: tagged.length > 0,
       voices: voices.map((voice) => ({
         voice_id: voice.voice_id,
         name: voice.name,
         labels: voice.labels,
         preview_url: voice.preview_url,
+        languages: voice.languages,
+        source: "account" as const,
+      })),
+      library: library.map((voice) => ({
+        voice_id: voice.voice_id,
+        public_owner_id: voice.public_owner_id,
+        name: voice.name,
+        labels: voice.labels,
+        preview_url: voice.preview_url,
+        languages: voice.languages,
+        source: "library" as const,
       })),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json(
-      { success: false, error: message },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

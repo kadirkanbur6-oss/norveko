@@ -102,7 +102,10 @@ export async function POST(req: NextRequest) {
     const template = getTemplate(typeof body.template === "string" ? body.template : null)?.id ?? null;
 
     const voiceoverEnabled = body.includeVoiceover === true;
-    const voiceId = typeof body.voiceId === "string" ? body.voiceId.trim() : "";
+    let voiceId = typeof body.voiceId === "string" ? body.voiceId.trim() : "";
+    const voicePublicOwnerId =
+      typeof body.voicePublicOwnerId === "string" ? body.voicePublicOwnerId.trim() : "";
+    const voiceName = typeof body.voiceName === "string" ? body.voiceName.trim() : "";
     const videoRequested = body.includeVideo === true;
 
     // Video generation is gated. Rejecting here means a disabled feature can
@@ -122,7 +125,19 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
-      const { listVoices } = await import("@/lib/pipeline/elevenlabs");
+      const { listVoices, addLibraryVoice } = await import("@/lib/pipeline/elevenlabs");
+      if (voicePublicOwnerId) {
+        // A Voice Library pick: make it usable for TTS before charging anything.
+        try {
+          voiceId = await addLibraryVoice(voicePublicOwnerId, voiceId, voiceName || "Norveko voice");
+        } catch (err) {
+          console.error("[pipeline] library voice add failed:", err);
+          return NextResponse.json(
+            { success: false, error: "This voice could not be added right now. Please pick another voice." },
+            { status: 400 }
+          );
+        }
+      }
       const voices = await listVoices();
       if (!voices.some((voice) => voice.voice_id === voiceId)) {
         return NextResponse.json(

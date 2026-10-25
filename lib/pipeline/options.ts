@@ -29,6 +29,20 @@ export const LANGUAGES = [
   "Português",
 ] as const;
 
+/** ISO 639-1 code for each output language (used to pick matching voices). */
+export const LANGUAGE_CODES: Record<(typeof LANGUAGES)[number], string> = {
+  English: "en",
+  "Türkçe": "tr",
+  "Español": "es",
+  Deutsch: "de",
+  "Français": "fr",
+  "Português": "pt",
+};
+
+export function languageCode(language: string): string {
+  return (LANGUAGE_CODES as Record<string, string>)[language] ?? "en";
+}
+
 export function isOneOf<T extends readonly string[]>(
   list: T,
   value: unknown
