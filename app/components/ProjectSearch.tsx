@@ -29,27 +29,23 @@ export default function ProjectSearch() {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // Load once, lazily, the first time the box is focused.
-  useEffect(() => {
-    if (!focused || projects !== null || loading) return;
-    let cancelled = false;
-    const id = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const res = await fetch("/api/projects", { cache: "no-store" });
-        const data = await res.json();
-        if (!cancelled) setProjects(data?.success ? data.projects : []);
-      } catch {
-        if (!cancelled) setProjects([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }, 0);
-    return () => {
-      cancelled = true;
-      clearTimeout(id);
-    };
-  }, [focused, projects, loading]);
+  // Load once, lazily, the first time the box is focused (event-driven, no effect).
+  const requested = useRef(false);
+  async function ensureLoaded() {
+    if (requested.current) return;
+    requested.current = true;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/projects", { cache: "no-store" });
+      const data = await res.json();
+      setProjects(data?.success ? data.projects : []);
+    } catch {
+      setProjects([]);
+      requested.current = false; // allow a retry on next focus
+    } finally {
+      setLoading(false);
+    }
+  }
 
   // "/" focuses the search from anywhere on the page.
   useEffect(() => {
@@ -126,7 +122,10 @@ export default function ProjectSearch() {
             setQuery(e.target.value);
             setActive(0);
           }}
-          onFocus={() => setFocused(true)}
+          onFocus={() => {
+            setFocused(true);
+            void ensureLoaded();
+          }}
           onKeyDown={onKeyDown}
           placeholder="Search projects…"
           aria-label="Search projects"
