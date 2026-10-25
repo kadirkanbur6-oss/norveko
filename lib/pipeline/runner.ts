@@ -258,18 +258,25 @@ export function createPipelineRunner(deps: RunnerDeps) {
 
   /**
    * Mark the job failed and refund credits, exactly once. The conditional
-   * update (status = running AND credits_refunded IS NULL) is the guard.
+   * update (status = running AND nothing refunded yet) is the guard.
+   * `credits_refunded` defaults to 0 in the DB (older rows may be NULL), so
+   * both count as "not refunded" — filtering on IS NULL alone silently
+   * skipped every refund and left jobs stuck in "running".
    */
   async function failJob(jobId: string, message: string): Promise<boolean> {
-    const { data: claimed } = await db
+    const { data: claimed, error: claimError } = await db
       .from("pipeline_jobs")
       .update({ status: "failed", error: message })
       .eq("id", jobId)
       .eq("status", "running")
-      .is("credits_refunded", null)
+      .or("credits_refunded.is.null,credits_refunded.eq.0")
       .select("id, user_id, credits_charged")
       .maybeSingle();
 
+    if (claimError) {
+      console.error(`[pipeline] failJob update failed for ${jobId}:`, claimError.message);
+      await captureError(new Error(claimError.message), { jobId, area: "pipeline.failJob" });
+    }
     if (!claimed) return false;
 
     const cost = Number(claimed.credits_charged ?? 0);

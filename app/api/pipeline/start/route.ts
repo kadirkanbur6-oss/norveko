@@ -125,7 +125,9 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
-      const { listVoices, addLibraryVoice } = await import("@/lib/pipeline/elevenlabs");
+      const { listVoices, addLibraryVoice, getSubscriptionTier } = await import(
+        "@/lib/pipeline/elevenlabs"
+      );
       if (voicePublicOwnerId) {
         // A Voice Library pick: make it usable for TTS before charging anything.
         try {
@@ -146,11 +148,30 @@ export async function POST(req: NextRequest) {
         }
       }
       const voices = await listVoices();
-      if (!voices.some((voice) => voice.voice_id === voiceId)) {
+      const chosen = voices.find((voice) => voice.voice_id === voiceId);
+      if (!chosen) {
         return NextResponse.json(
           { success: false, error: "Selected voice is not available." },
           { status: 400 }
         );
+      }
+      // Library-origin voices (anything not "premade") fail at TTS time on the
+      // ElevenLabs free tier (402 paid_plan_required). Refuse BEFORE charging
+      // credits rather than failing the job later.
+      if (chosen.category !== "premade") {
+        const tier = await getSubscriptionTier().catch(() => null);
+        const libraryAllowed = tier
+          ? tier !== "free"
+          : process.env.ELEVENLABS_LIBRARY_VOICES === "true";
+        if (!libraryAllowed) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "This voice isn't available on the current plan. Please pick another voice.",
+            },
+            { status: 400 }
+          );
+        }
       }
     }
 

@@ -120,7 +120,11 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
 - **ElevenLabs hesabı Free plan** (anahtar `norveko-dev`, Voices izni Write
   yapıldı). Free planda kütüphane sesleri API'den kullanılamaz (402
   paid_plan_required) → `/api/voices` tier "free" ise ya da tier bilinmiyor ve
-  `ELEVENLABS_LIBRARY_VOICES` != "true" ise Library seslerini **gizler**.
+  `ELEVENLABS_LIBRARY_VOICES` != "true" ise Library seslerini **gizler**;
+  daha önce hesaba eklenmiş kütüphane kökenli sesler de (`category !=
+  "premade"`) aynı koşulda gizlenir ve `/api/pipeline/start` bunları kredi
+  düşmeden önce 400 ile reddeder (25 Ekim: `fXhoW006…` sesi iki işi 402 ile
+  düşürmüştü).
   Starter'a geçince Vercel'e `ELEVENLABS_LIBRARY_VOICES=true` ekle (veya
   anahtara User→Access izni ver, otomatik algılar). Bu konu şimdilik SKIP.
 - Stok B-roll: Pexels yeni anahtar vermiyor → **Pixabay** eklendi
@@ -147,6 +151,10 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   (`lib/supabase-server.ts`; `getUser()` kullanır, `getSession()` KULLANMA).
 - Kredi düşme/iade SADECE server-side, service role ile (`deduct_credits` /
   `add_credits` RPC). `add_credits` negatif tutara izin vermeli (Paddle iadesi).
+  `pipeline_jobs.credits_refunded` DB'de **0** varsayılanlı (NULL değil);
+  `failJob` guard'ı `is.null OR eq.0` kullanır — 25 Ekim'e kadar sadece IS NULL
+  bakıldığı için başarısız işler "running"de takılıp iade almıyordu. Testler
+  artık 0 ile seed eder.
 - **Fake/hardcoded veri yasak**; her metrik gerçek kaynaktan gelir.
 - Next.js route params: `Promise<{ id: string }>` — `await` edilir.
 - Provider lib'leri (`lib/pipeline/openai|elevenlabs|gemini-image|kling.ts`)

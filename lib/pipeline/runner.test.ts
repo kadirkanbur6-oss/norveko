@@ -27,6 +27,17 @@ function makeDb() {
       const m = k.match(/^steps->(\w+)->>status$/);
       if (m) return (row.steps?.[m[1]]?.status ?? null) === v;
       if (k === "__is_null") return row[v] == null;
+      if (k === "__or") {
+        // Minimal PostgREST `or()` support: "col.is.null,col.eq.0"
+        return String(v)
+          .split(",")
+          .some((clause) => {
+            const [col, op, val] = clause.split(".");
+            if (op === "is" && val === "null") return row[col] == null;
+            if (op === "eq") return String(row[col]) === val;
+            return false;
+          });
+      }
       return row[k] === v;
     });
   }
@@ -42,7 +53,7 @@ function makeDb() {
         rows.set(id, {
           id,
           created_at: new Date(0).toISOString(),
-          credits_refunded: null,
+          credits_refunded: 0, // DB default
           error: null,
           ...insertRow,
         });
@@ -56,6 +67,7 @@ function makeDb() {
       select: () => q,
       eq: (k: string, v: any) => (filters.push([k, v]), q),
       is: (k: string) => (filters.push(["__is_null", k]), q),
+      or: (expr: string) => (filters.push(["__or", expr]), q),
       limit: () => q,
       update: (p: Row) => ((patch = p), q),
       insert: (r: Row) => ((insertRow = r), q),
@@ -102,7 +114,7 @@ function makeDb() {
       current_step: "script",
       steps,
       credits_charged: withVoice ? 30 : 15,
-      credits_refunded: null,
+      credits_refunded: 0, // DB default; the refund guard must treat 0 as "not refunded"
       error: null,
       created_at: new Date(0).toISOString(),
       ...overrides,

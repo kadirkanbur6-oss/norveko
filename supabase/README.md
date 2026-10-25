@@ -109,3 +109,38 @@ group by 1, 2 order by 1 desc, 2;
 
 Prices live in `PRICE_LIST` (`lib/pipeline/usage.ts`); override without a
 deploy via the `PROVIDER_PRICE_OVERRIDES` env var (JSON, same keys).
+
+## One-off repair — jobs stuck in "running" with a failed step (2026-10-25)
+
+Before commit `fix refund guard`, `failJob()` filtered on `credits_refunded IS NULL`
+while the column defaults to `0`, so failed jobs never flipped to `failed` and
+never refunded. Run once to repair any such rows and refund the user:
+
+```sql
+do $$
+declare j record;
+begin
+  for j in
+    select id, user_id, credits_charged
+    from public.pipeline_jobs
+    where status = 'running'
+      and coalesce(credits_refunded, 0) = 0
+      and (steps->'script'->>'status' = 'failed'
+        or steps->'voiceover'->>'status' = 'failed'
+        or steps->'thumbnail'->>'status' = 'failed'
+        or steps->'video'->>'status' = 'failed')
+  loop
+    update public.pipeline_jobs
+       set status = 'failed',
+           error = coalesce(steps->'voiceover'->>'error', steps->'script'->>'error',
+                            steps->'thumbnail'->>'error', steps->'video'->>'error'),
+           credits_refunded = j.credits_charged
+     where id = j.id;
+    perform public.add_credits(j.user_id, j.credits_charged::int, 'refund',
+      'Refund: pipeline job failed (manual repair after refund-guard fix)');
+  end loop;
+end $$;
+
+select id, status, credits_charged, credits_refunded
+from public.pipeline_jobs order by created_at desc limit 5;
+```
