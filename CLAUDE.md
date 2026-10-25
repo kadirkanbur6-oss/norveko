@@ -125,6 +125,12 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   `PIXABAY_API_KEY`, `YOUTUBE_API_KEY` (Production) ✅ — lansman kilidi canlıda,
   zincir uçtan uca test edildi. CSP enforce canlıda doğrulandı (ses önizleme +
   Paddle overlay, konsolda ihlal yok).
+- Gözlemlenebilirlik kurulumu (25 Ekim gece) ✅: Supabase'de `provider_usage`
+  tablosu + indeksler + RLS oluşturuldu. Sentry org `norvekoapp`, proje
+  `norveko` (Next.js, EU ingest `ingest.de.sentry.io`). Vercel Production:
+  `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN`
+  (org token `vercel-source-maps`). Canlıda tarayıcı SDK'dan test olayı
+  gönderildi, Sentry'de NORVEKO-1 olarak düştü ve resolve edildi.
 
 ## 6. Teknik Kurallar / Kalıplar
 
@@ -141,11 +147,8 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
 
 ## 7. Bekleyen İşler (öncelik sırasıyla)
 
-Kod dışı (Kadir): **Supabase'de `provider_usage` tablosunu oluştur**
-(`supabase/README.md` SQL'i) — yoksa log insert'i sessizce hata yazar, job
-etkilenmez; **Sentry projesi aç** → Vercel'e `NEXT_PUBLIC_SENTRY_DSN` (+
-`SENTRY_ORG/PROJECT/AUTH_TOKEN` source map için); `app/lib/legal.ts`
-`LEGAL_NAME` placeholder'ı (şirket kurulunca); Kling anahtarları; Paddle live ID'leri + webhook event'leri
+Kod dışı (Kadir): `app/lib/legal.ts` `LEGAL_NAME` placeholder'ı (şirket
+kurulunca); Kling anahtarları; Paddle live ID'leri + webhook event'leri
 (`adjustment.*`); ElevenLabs Starter planı (kütüphane sesleri için).
 (`YOUTUBE_API_KEY` yeniden adlandırması 25 Ekim'de Vercel'de yapıldı; eski
 `NEXT_PUBLIC_` değişkeni silindi — `app/lib/youtube.ts` fallback'i artık
