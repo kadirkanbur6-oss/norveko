@@ -52,7 +52,6 @@ export async function GET(req: NextRequest) {
 
     const account = await getAccountVoices();
     const tagged = account.filter((v) => v.languages.includes(code));
-    const voices = tagged.length > 0 ? tagged : account;
 
     // Library voices in the user's language (skip for English: the account
     // defaults already cover it). Failures here must not break the picker.
@@ -66,11 +65,17 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Only voices for the selected language. If neither the account nor the
+    // library has any, fall back to every account voice (the multilingual
+    // model still speaks the language) and say so via nativeMatch=false.
+    const nativeMatch = tagged.length > 0 || library.length > 0;
+    const voices = nativeMatch ? tagged : account;
+
     return NextResponse.json({
       success: true,
       language,
       languageCode: code,
-      nativeMatch: tagged.length > 0,
+      nativeMatch,
       voices: voices.map((voice) => ({
         voice_id: voice.voice_id,
         name: voice.name,

@@ -86,6 +86,7 @@ function ChatContent() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const [voiceQuery, setVoiceQuery] = useState("");
+  const [voiceListOpen, setVoiceListOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(true);
   const progressRef = useRef<HTMLDivElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -206,7 +207,7 @@ function ChatContent() {
         if (active) {
           const loaded: VoiceOption[] = [...(data.voices ?? []), ...(data.library ?? [])];
           setVoices(loaded);
-          setNativeMatch(data.nativeMatch !== false || (data.library ?? []).length > 0);
+          setNativeMatch(data.nativeMatch !== false);
           // Keep the current pick only if it still exists for this language.
           setVoiceId((current) =>
             loaded.some((v) => v.voice_id === current) ? current : loaded[0]?.voice_id || ""
@@ -241,6 +242,11 @@ function ChatContent() {
           Object.values(v.labels).some((l) => l.toLowerCase().includes(voiceNeedle))
       )
     : voices;
+
+  function chooseVoice(id: string) {
+    setVoiceId(id);
+    setVoiceListOpen(false);
+  }
 
   function stopPreview() {
     const audio = audioRef.current;
@@ -569,18 +575,63 @@ function ChatContent() {
 
               {includeVoiceover && (
                 <div className="mt-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-xs text-gray-500">
-                      {selectedVoice ? (
-                        <>
-                          Selected:{" "}
-                          <span className="font-semibold text-blue-200">{voiceDisplayName(selectedVoice.name).short}</span>
-                        </>
-                      ) : (
-                        "Pick a narrator"
-                      )}
-                    </p>
-                    {voices.length > 6 && (
+                  {selectedVoice && !voicesLoading ? (
+                    <div className="flex items-center gap-3 rounded-xl border border-blue-400/40 bg-blue-500/10 p-3">
+                      <button
+                        type="button"
+                        aria-label={playingVoiceId === selectedVoice.voice_id ? "Stop preview" : "Preview voice"}
+                        onClick={() => handlePreviewVoice(selectedVoice)}
+                        disabled={!selectedVoice.preview_url}
+                        className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-sm font-bold text-white disabled:opacity-40 ${
+                          selectedVoice.labels.gender === "female"
+                            ? "from-pink-400 to-purple-500"
+                            : selectedVoice.labels.gender === "male"
+                            ? "from-sky-400 to-blue-600"
+                            : "from-emerald-400 to-teal-600"
+                        }`}
+                      >
+                        {playingVoiceId === selectedVoice.voice_id ? (
+                          <Square size={14} fill="currentColor" />
+                        ) : (
+                          <Play size={16} fill="currentColor" className="ml-0.5" />
+                        )}
+                        {playingVoiceId === selectedVoice.voice_id && (
+                          <span className="absolute -inset-1 animate-ping rounded-full border border-white/40" aria-hidden />
+                        )}
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-white">
+                          {voiceDisplayName(selectedVoice.name).short}
+                          {selectedVoice.source === "library" && (
+                            <span className="rounded-full border border-purple-400/30 bg-purple-500/10 px-1.5 py-px text-[10px] font-medium text-purple-200">
+                              Library
+                            </span>
+                          )}
+                        </p>
+                        <p className="truncate text-xs text-gray-400">
+                          {voiceDisplayName(selectedVoice.name).tagline || humanLabel(selectedVoice.labels.descriptive ?? "")}
+                          {selectedVoice.labels.accent ? ` · ${humanLabel(selectedVoice.labels.accent)}` : ""}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setVoiceListOpen((o) => !o)}
+                        aria-expanded={voiceListOpen}
+                        className="flex shrink-0 items-center gap-1 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-gray-200 transition hover:border-white/20 hover:text-white"
+                      >
+                        {voiceListOpen ? "Close" : "Change voice"}
+                        <ChevronDown size={14} className={`transition ${voiceListOpen ? "rotate-180" : ""}`} />
+                      </button>
+                    </div>
+                  ) : (
+                    !voicesLoading && !voicesError && voices.length === 0 && (
+                      <p className="text-xs text-gray-500">No voices available for {language} right now.</p>
+                    )
+                  )}
+
+                  {(voiceListOpen || !selectedVoice) && voices.length > 6 && !voicesLoading && (
+                    <div className="mt-3 flex items-center justify-between gap-2">
+                      <p className="text-xs text-gray-500">{voices.length} narrators for {language}</p>
                       <label className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#12121c] px-2.5 py-1.5">
                         <Search size={13} className="text-gray-500" />
                         <input
@@ -591,8 +642,8 @@ function ChatContent() {
                           className="w-36 bg-transparent text-xs text-white outline-none placeholder:text-gray-500 sm:w-48"
                         />
                       </label>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   {!voicesLoading && !voicesError && voices.length > 0 && !nativeMatch && (
                     <p className="mt-2 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-gray-400">
@@ -609,7 +660,7 @@ function ChatContent() {
                   )}
                   {voicesError && <p className="mt-2 text-xs text-red-300">{voicesError}</p>}
 
-                  {!voicesLoading && voices.length > 0 && (
+                  {!voicesLoading && voices.length > 0 && (voiceListOpen || !selectedVoice) && (
                     <div
                       role="radiogroup"
                       aria-label="Voice"
@@ -639,11 +690,11 @@ function ChatContent() {
                             role="radio"
                             aria-checked={isSelected}
                             tabIndex={0}
-                            onClick={() => setVoiceId(voice.voice_id)}
+                            onClick={() => chooseVoice(voice.voice_id)}
                             onKeyDown={(e) => {
                               if (e.key === "Enter" || e.key === " ") {
                                 e.preventDefault();
-                                setVoiceId(voice.voice_id);
+                                chooseVoice(voice.voice_id);
                               }
                             }}
                             className={`group relative flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-left transition ${
