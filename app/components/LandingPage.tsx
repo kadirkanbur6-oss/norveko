@@ -317,10 +317,25 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
         </div>
       </section>
 
-      {/* 2. PLATFORMS */}
+      {/* 2. TRUST STRIP + PLATFORMS */}
       <section className="border-y border-white/5 py-6">
         <Reveal>
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-8 gap-y-3 px-4 sm:px-6">
+          <div className="mx-auto grid max-w-6xl gap-3 px-4 sm:grid-cols-3 sm:px-6">
+            {[
+              ["Credits never expire", "Buy once, use whenever. No monthly reset."],
+              ["Failed = refunded", "If a generation fails, every credit comes back automatically."],
+              ["See the cost first", "The exact credit price is shown before you click Generate."],
+            ].map(([title, desc]) => (
+              <div key={title} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <Check size={16} className="mt-0.5 shrink-0 text-green-400" />
+                <div>
+                  <p className="text-sm font-semibold text-white">{title}</p>
+                  <p className="mt-0.5 text-xs text-gray-400">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mx-auto mt-6 flex max-w-6xl flex-wrap items-center justify-center gap-x-8 gap-y-3 px-4 sm:px-6">
             <span className="text-xs uppercase tracking-[3px] text-gray-500">
               Built for creators on
             </span>

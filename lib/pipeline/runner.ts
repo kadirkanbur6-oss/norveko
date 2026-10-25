@@ -32,6 +32,8 @@ import {
   type PipelineStepId,
 } from "@/lib/pipeline/steps";
 import type { KlingTaskResult } from "@/lib/pipeline/kling";
+import { getTemplate } from "@/lib/pipeline/templates";
+import { defaultOrientation } from "@/lib/pipeline/options";
 
 /** A step that has been running longer than this is considered dead. */
 export const STEP_TIMEOUT_MS = 8 * 60 * 1000;
@@ -68,6 +70,8 @@ export interface JobRow {
   style: string | null;
   duration: string | null;
   output_language: string | null;
+  /** Optional UI choices stored on the job (orientation, template id). */
+  options?: { orientation?: "vertical" | "horizontal"; template?: string | null } | null;
   status: "queued" | "running" | "completed" | "failed";
   current_step: string | null;
   steps: Record<string, StepRecord>;
@@ -265,7 +269,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
 
   /** First run of the video step: submit one task per scene. */
   async function submitVideoTasks(job: JobRow): Promise<void> {
-    const { aspectRatioForPlatform } = await import("@/lib/pipeline/kling");
+    const orientation = job.options?.orientation ?? defaultOrientation(job.platform ?? "");
     const scenes = Array.isArray(job.steps?.script?.scenes)
       ? (job.steps.script.scenes as Array<{ sceneNumber?: number; videoPrompt?: string; description?: string }>)
       : [];
@@ -276,7 +280,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
       throw new Error("No scene prompts available for video generation.");
     }
 
-    const aspectRatio = aspectRatioForPlatform(job.platform);
+    const aspectRatio: "9:16" | "16:9" = orientation === "vertical" ? "9:16" : "16:9";
     const clips: VideoClipState[] = [];
     for (const [i, scene] of usable.entries()) {
       const prompt = String(scene.videoPrompt).trim();
@@ -377,6 +381,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
 
     if (stepId === "script") {
       const model = def.provider.split(":")[1] ?? "gpt-5-mini";
+      const orientation = job.options?.orientation ?? defaultOrientation(job.platform ?? "");
       const result = await providers.generateScript({
         idea: job.idea,
         platform: job.platform ?? "youtube",
@@ -384,6 +389,8 @@ export function createPipelineRunner(deps: RunnerDeps) {
         duration: job.duration,
         outputLanguage: job.output_language ?? "EN",
         model,
+        orientation,
+        brief: getTemplate(job.options?.template)?.brief ?? null,
       });
       await patchStep(job, "script", {
         status: "completed",
@@ -443,7 +450,8 @@ export function createPipelineRunner(deps: RunnerDeps) {
       if (typeof idea !== "string" || !idea) {
         throw new Error("Thumbnail idea is missing; cannot generate thumbnail.");
       }
-      const result = await providers.generateThumbnail(idea, job.id);
+      const orientation = job.options?.orientation ?? defaultOrientation(job.platform ?? "");
+      const result = await providers.generateThumbnail(idea, job.id, orientation);
       await patchStep(job, "thumbnail", {
         status: "completed",
         image_url: result.imageUrl,

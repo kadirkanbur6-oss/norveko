@@ -17,6 +17,9 @@ import {
 import Sidebar from "../../components/Sidebar";
 import ExportMenu from "../../components/ExportMenu";
 import ConfirmDialog from "../../components/ConfirmDialog";
+import StockFootagePicker from "../../components/StockFootagePicker";
+import { defaultOrientation } from "@/lib/pipeline/options";
+import type { StockClip } from "@/lib/pipeline/pexels";
 
 interface VideoScene {
   sceneNumber: number;
@@ -178,6 +181,31 @@ export default function ProjectDetailPage() {
     setEditing(false);
     setEditContent(null);
     setSaveMessage("");
+  }
+
+  async function attachStockClip(sceneNumber: number, clip: StockClip) {
+    if (!project?.content) return;
+    const current = normalizeContent(project.content);
+    const scenes = current.scenes.map((sc) =>
+      sc.sceneNumber === sceneNumber
+        ? { ...sc, videoUrl: clip.videoUrl, videoDuration: clip.durationSeconds }
+        : sc
+    );
+    const next = { ...current, scenes };
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: next }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Failed to save.");
+      setProject((prev) => (prev ? { ...prev, content: next } : prev));
+      setSaveMessage(`Stock clip attached to scene ${sceneNumber} ✓`);
+      setTimeout(() => setSaveMessage(""), 3000);
+    } catch (err) {
+      setSaveMessage(err instanceof Error ? err.message : "Unknown error");
+    }
   }
 
   async function handleSave() {
@@ -609,9 +637,43 @@ export default function ProjectDetailPage() {
                     </button>
                   </div>
 
-                  <div className="mt-4 whitespace-pre-wrap break-words rounded-xl border border-white/10 bg-[#0d0d16] p-4 text-sm leading-relaxed text-gray-200 sm:p-6">
-                    {getTabText(activeTab)}
-                  </div>
+                  {(activeTab === "scenes" || activeTab === "prompts") && normalizedProjectContent ? (
+                    <div className="mt-4 space-y-3">
+                      {normalizedProjectContent.scenes.map((scene) => (
+                        <div
+                          key={scene.sceneNumber}
+                          className="rounded-xl border border-white/10 bg-[#0d0d16] p-4"
+                        >
+                          <p className="text-xs font-semibold uppercase tracking-wide text-blue-300">
+                            Scene {scene.sceneNumber}
+                            {scene.videoUrl ? (
+                              <span className="ml-2 rounded-full border border-green-400/30 bg-green-500/10 px-2 py-0.5 text-[10px] normal-case tracking-normal text-green-200">
+                                clip attached
+                              </span>
+                            ) : null}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-200">{scene.description}</p>
+                          {activeTab === "prompts" && (
+                            <p className="mt-2 whitespace-pre-wrap break-words rounded-lg bg-black/30 p-3 font-mono text-xs text-gray-300">
+                              {scene.videoPrompt}
+                            </p>
+                          )}
+                          <StockFootagePicker
+                            prompt={scene.videoPrompt || scene.description}
+                            orientation={defaultOrientation(project.platform ?? "")}
+                            onPick={(clip) => void attachStockClip(scene.sceneNumber, clip)}
+                          />
+                        </div>
+                      ))}
+                      {saveMessage && !editing && (
+                        <p className="text-xs text-green-300">{saveMessage}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-4 whitespace-pre-wrap break-words rounded-xl border border-white/10 bg-[#0d0d16] p-4 text-sm leading-relaxed text-gray-200 sm:p-6">
+                      {getTabText(activeTab)}
+                    </div>
+                  )}
 
                   {activeTab === "thumbnail" && thumbnailUrl && (
                     <div className="mt-4 rounded-xl border border-white/10 bg-[#0d0d16] p-4">

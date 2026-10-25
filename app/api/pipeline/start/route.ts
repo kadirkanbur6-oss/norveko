@@ -17,7 +17,8 @@ import {
   isVideoGenerationEnabled,
   LAUNCH_LOCK_MESSAGE,
 } from "@/lib/pipeline/features";
-import { DURATIONS, LANGUAGES, PLATFORMS, STYLES, isOneOf } from "@/lib/pipeline/options";
+import { DURATIONS, LANGUAGES, PLATFORMS, STYLES, ORIENTATIONS, defaultOrientation, isOneOf } from "@/lib/pipeline/options";
+import { getTemplate } from "@/lib/pipeline/templates";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -92,6 +93,13 @@ export async function POST(req: NextRequest) {
     const style = body.style;
     const duration = body.duration;
     const outputLanguage = body.outputLanguage;
+
+    const orientationIds = ORIENTATIONS.map((o) => o.id) as readonly string[];
+    const orientation =
+      typeof body.orientation === "string" && orientationIds.includes(body.orientation)
+        ? (body.orientation as "vertical" | "horizontal")
+        : defaultOrientation(platform);
+    const template = getTemplate(typeof body.template === "string" ? body.template : null)?.id ?? null;
 
     const voiceoverEnabled = body.includeVoiceover === true;
     const voiceId = typeof body.voiceId === "string" ? body.voiceId.trim() : "";
@@ -201,6 +209,7 @@ export async function POST(req: NextRequest) {
         style,
         duration,
         output_language: outputLanguage,
+        options: { orientation, template },
         status: "running",
         current_step: firstStep.id,
         steps,

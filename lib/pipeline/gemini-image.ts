@@ -26,8 +26,10 @@ interface ThumbnailResult {
 
 export async function generateThumbnail(
   prompt: string,
-  jobId: string
+  jobId: string,
+  orientation: "vertical" | "horizontal" = "horizontal"
 ): Promise<ThumbnailResult> {
+  const aspectRatio = orientation === "vertical" ? "9:16" : "16:9";
   // 1) Gemini'den görseli iste
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent`,
@@ -42,13 +44,13 @@ export async function generateThumbnail(
           {
             parts: [
               {
-                text: `YouTube thumbnail, 16:9 aspect ratio, high contrast, bold and readable overlay text, cinematic lighting. ${prompt}`,
+                text: `${orientation === "vertical" ? "Vertical short-form cover" : "YouTube thumbnail"}, ${aspectRatio} aspect ratio, high contrast, bold and readable overlay text, cinematic lighting. ${prompt}`,
               },
             ],
           },
         ],
         generationConfig: {
-          imageConfig: { aspectRatio: "16:9" },
+          imageConfig: { aspectRatio },
         },
       }),
     }

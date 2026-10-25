@@ -42,3 +42,14 @@ destination at `https://norveko.app/api/webhooks/paddle` and subscribe to:
   and finished URLs are merged into `projects.content.scenes[].videoUrl`.
 - The feature is off until `VIDEO_GENERATION_ENABLED=true` (or the user id is
   in `VIDEO_BETA_USER_IDS`); the API rejects video requests before charging.
+
+## Job options column (orientation + template)
+
+`app/api/pipeline/start` stores the user's UI choices on the job:
+
+```sql
+alter table public.pipeline_jobs
+  add column if not exists options jsonb not null default '{}'::jsonb;
+```
+
+Without the column the insert fails with "column options does not exist".

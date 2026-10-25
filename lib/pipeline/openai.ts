@@ -27,10 +27,15 @@ interface ScriptParams {
   duration?: string | null;
   outputLanguage: string;
   model: string; // from steps.ts, e.g. "gpt-5-mini"
+  /** "vertical" (9:16) or "horizontal" (16:9). */
+  orientation?: "vertical" | "horizontal";
+  /** Extra genre guidance from a niche template. */
+  brief?: string | null;
 }
 
 export async function generateScript(params: ScriptParams): Promise<ScriptResult> {
-  const { idea, platform, style, duration, outputLanguage, model } = params;
+  const { idea, platform, style, duration, outputLanguage, model, orientation, brief } = params;
+  const aspect = orientation === "vertical" ? "9:16 vertical" : "16:9 horizontal";
 
   const systemPrompt = `You are an expert short-form and YouTube video content strategist.
 Respond ONLY with a valid JSON object, no markdown, no extra text. Schema:
@@ -47,7 +52,7 @@ Respond ONLY with a valid JSON object, no markdown, no extra text. Schema:
   "titles": ["title option 1", "title option 2", "title option 3", "title option 4", "title option 5"],
   "description": "SEO-friendly video description",
   "tags": ["tag1", "tag2", "tag3"],
-  "thumbnailIdea": "a vivid, cinematic ENGLISH image-generation prompt for a 16:9 thumbnail including short bold overlay text direction"
+  "thumbnailIdea": "a vivid, cinematic ENGLISH image-generation prompt for a ${aspect} thumbnail including short bold overlay text direction"
 }
 Rules:
 - "hook", "script", scene "description", title options, and "description" must be written in this language: ${outputLanguage}
@@ -56,7 +61,8 @@ Rules:
 - return 5 titles exactly.
 - return 5-8 scenes suitable for the target duration.
 - "tags" should be concise SEO tags without # symbols.
-- Match the tone to the platform and style. Keep the script length appropriate for the target duration.`;
+- Match the tone to the platform and style. Keep the script length appropriate for the target duration.
+- The video is ${aspect}; compose every videoPrompt and the thumbnail for that framing (e.g. subjects centred and tall for vertical).${brief ? `\n- ${brief}` : ""}`;
 
   const userPrompt = `Video idea: ${idea}
 Platform: ${platform}

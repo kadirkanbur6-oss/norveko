@@ -2,12 +2,13 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Clapperboard, Coins, Loader2, Sparkles, Wand2 } from "lucide-react";
+import { Clapperboard, Coins, LayoutTemplate, Loader2, Sparkles, Wand2 } from "lucide-react";
 import Link from "next/link";
 import Sidebar from "../components/Sidebar";
 import PipelineProgress from "../components/PipelineProgress";
 
-import { DURATIONS, LANGUAGES, PLATFORMS, STYLES } from "@/lib/pipeline/options";
+import { DURATIONS, LANGUAGES, ORIENTATIONS, PLATFORMS, STYLES, defaultOrientation, type OrientationId } from "@/lib/pipeline/options";
+import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
 import {
   totalPipelineCredits,
   VIDEO_CLIP_CREDITS,
@@ -32,6 +33,8 @@ interface Draft {
   language: string;
   includeVoiceover: boolean;
   voiceId: string;
+  orientation?: OrientationId;
+  template?: string | null;
 }
 
 function readDraft(): Partial<Draft> {
@@ -51,6 +54,9 @@ function ChatContent() {
   const [style, setStyle] = useState<string>(STYLES[0]);
   const [duration, setDuration] = useState<string>(DURATIONS[1]);
   const [language, setLanguage] = useState<string>(LANGUAGES[0]);
+  const [orientation, setOrientation] = useState<OrientationId>(defaultOrientation(PLATFORMS[0]));
+  const [orientationTouched, setOrientationTouched] = useState(false);
+  const [templateId, setTemplateId] = useState<string | null>(null);
   const [includeVoiceover, setIncludeVoiceover] = useState(false);
   const [includeVideo, setIncludeVideo] = useState(false);
   const [videoAvailable, setVideoAvailable] = useState(false);
@@ -86,6 +92,11 @@ function ChatContent() {
       if (typeof draft.language === "string") setLanguage(draft.language);
       if (typeof draft.includeVoiceover === "boolean") setIncludeVoiceover(draft.includeVoiceover);
       if (typeof draft.voiceId === "string") setVoiceId(draft.voiceId);
+      if (draft.orientation === "vertical" || draft.orientation === "horizontal") {
+        setOrientation(draft.orientation);
+        setOrientationTouched(true);
+      }
+      if (typeof draft.template === "string") setTemplateId(draft.template);
       if (job && /^[0-9a-f-]{36}$/i.test(job)) setJobId(job);
     }, 0);
     return () => clearTimeout(id);
@@ -94,12 +105,28 @@ function ChatContent() {
 
   useEffect(() => {
     try {
-      const draft: Draft = { idea, platform, style, duration, language, includeVoiceover, voiceId };
+      const draft: Draft = { idea, platform, style, duration, language, includeVoiceover, voiceId, orientation, template: templateId };
       sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     } catch {
       // storage unavailable
     }
-  }, [idea, platform, style, duration, language, includeVoiceover, voiceId]);
+  }, [idea, platform, style, duration, language, includeVoiceover, voiceId, orientation, templateId]);
+
+  // Keep orientation in step with the platform until the user picks one explicitly.
+  function choosePlatform(next: string) {
+    setPlatform(next);
+    if (!orientationTouched) setOrientation(defaultOrientation(next));
+  }
+
+  function applyTemplate(id: string) {
+    const t = NICHE_TEMPLATES.find((x) => x.id === id);
+    if (!t) return;
+    setTemplateId(t.id);
+    setPlatform(t.platform);
+    setStyle(t.style);
+    setDuration(t.duration);
+    if (!orientationTouched) setOrientation(defaultOrientation(t.platform));
+  }
 
   // Current credit balance (refreshed after each generation starts).
   useEffect(() => {
@@ -246,6 +273,8 @@ function ChatContent() {
           includeVoiceover,
           voiceId: includeVoiceover ? effectiveVoiceId : null,
           includeVideo: includeVideo && videoAvailable,
+          orientation,
+          template: templateId,
         }),
       });
 
@@ -286,6 +315,53 @@ function ChatContent() {
           </div>
 
           <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+            {/* Niche templates */}
+            <div className="mb-5">
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <LayoutTemplate size={15} className="text-purple-300" />
+                Start from a template <span className="text-gray-600">(optional)</span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {NICHE_TEMPLATES.map((t) => {
+                  const active = templateId === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => (active ? setTemplateId(null) : applyTemplate(t.id))}
+                      title={t.tagline}
+                      className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                        active
+                          ? "border-purple-400/50 bg-purple-500/15 text-purple-100"
+                          : "border-white/10 bg-white/[0.03] text-gray-300 hover:border-white/20 hover:text-white"
+                      }`}
+                    >
+                      {t.name}
+                    </button>
+                  );
+                })}
+              </div>
+              {templateId && (
+                <div className="mt-3 rounded-xl border border-purple-400/20 bg-purple-500/5 p-3">
+                  <p className="text-xs text-purple-200">
+                    {NICHE_TEMPLATES.find((t) => t.id === templateId)?.tagline} — try one of these:
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {NICHE_TEMPLATES.find((t) => t.id === templateId)?.examples.map((ex) => (
+                      <button
+                        key={ex}
+                        type="button"
+                        onClick={() => setIdea(ex)}
+                        className="rounded-lg border border-white/10 bg-[#0d0d16] px-2.5 py-1.5 text-left text-xs text-gray-200 transition hover:border-purple-400/40"
+                      >
+                        {ex}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <label className="text-sm text-gray-400">Video Idea</label>
             <textarea
               value={idea}
@@ -300,7 +376,7 @@ function ChatContent() {
                 <label className="text-sm text-gray-400">Platform</label>
                 <select
                   value={platform}
-                  onChange={(e) => setPlatform(e.target.value)}
+                  onChange={(e) => choosePlatform(e.target.value)}
                   className={selectClass}
                 >
                   {PLATFORMS.map((p) => (
@@ -354,6 +430,43 @@ function ChatContent() {
                     </option>
                   ))}
                 </select>
+              </div>
+            </div>
+
+            {/* Orientation */}
+            <div className="mt-4">
+              <label className="text-sm text-gray-400">Output format</label>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Output format">
+                {ORIENTATIONS.map((o) => {
+                  const active = orientation === o.id;
+                  return (
+                    <button
+                      key={o.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => {
+                        setOrientation(o.id);
+                        setOrientationTouched(true);
+                      }}
+                      className={`flex items-center gap-3 rounded-xl border p-3 text-left transition ${
+                        active
+                          ? "border-blue-400/50 bg-blue-500/10"
+                          : "border-white/10 bg-[#12121c] hover:border-white/20"
+                      }`}
+                    >
+                      <span
+                        className={`block shrink-0 rounded-sm border ${
+                          active ? "border-blue-300 bg-blue-400/30" : "border-gray-500 bg-white/5"
+                        } ${o.id === "vertical" ? "h-7 w-4" : "h-4 w-7"}`}
+                      />
+                      <span>
+                        <span className="block text-sm font-semibold text-white">{o.label}</span>
+                        <span className="block text-xs text-gray-500">{o.hint}</span>
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
