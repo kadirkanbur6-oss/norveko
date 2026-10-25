@@ -15,10 +15,11 @@ export async function middleware(request: NextRequest) {
 
   const supabase = createMiddlewareSupabaseClient(request, response);
 
-  const { data } = await supabase.auth.getSession();
-  const session = data?.session ?? null;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!session) {
+  if (!user) {
     if (!PUBLIC_PAGES.includes(pathname)) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/login";
@@ -28,7 +29,7 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  if (pathname === "/login" || pathname === "/signup") {
+  if (pathname === "/login" || pathname === "/signup" || pathname === "/forgot-password") {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/dashboard";
     return NextResponse.redirect(redirectUrl);

@@ -35,6 +35,25 @@ const nextConfig: NextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=()",
           },
+          {
+            // Report-only first: lets us see violations in the console/Sentry
+            // without breaking Paddle.js or Supabase. Switch to
+            // Content-Security-Policy once the report is clean.
+            key: "Content-Security-Policy-Report-Only",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' https://cdn.paddle.com https://sandbox-cdn.paddle.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "font-src 'self' https://fonts.gstatic.com data:",
+              "img-src 'self' data: blob: https:",
+              "media-src 'self' blob: https:",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.paddle.com https://api.elevenlabs.io",
+              "frame-src https://*.paddle.com",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+            ].join("; "),
+          },
         ],
       },
     ];

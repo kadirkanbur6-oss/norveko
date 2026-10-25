@@ -10,6 +10,19 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
+/**
+ * Route-handler helper: returns the cookie-bound client and the verified user
+ * (auth.getUser() validates the JWT against Supabase, unlike getSession()).
+ * `user` is null when not signed in.
+ */
+export async function requireUser() {
+  const supabase = createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return { supabase, user };
+}
+
 export function createServerSupabaseClient() {
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
@@ -25,28 +38,24 @@ export function createServerSupabaseClient() {
 }
 
 export async function getUserChannelContext() {
-  const supabase = createServerSupabaseClient();
-  const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
+  const { supabase, user } = await requireUser();
 
-  if (sessionError || !session?.user?.id) {
+  if (!user) {
     return { userId: null, channelId: null };
   }
 
   const { data, error } = await supabase
     .from("user_channels")
     .select("channel_id")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .maybeSingle();
 
   if (error) {
     console.error("getUserChannelContext error:", error);
-    return { userId: session.user.id, channelId: null };
+    return { userId: user.id, channelId: null };
   }
 
-  return { userId: session.user.id, channelId: data?.channel_id ?? null };
+  return { userId: user.id, channelId: data?.channel_id ?? null };
 }
 
 export async function getUserChannelId() {

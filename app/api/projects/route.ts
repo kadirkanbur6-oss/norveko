@@ -1,36 +1,13 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
+import { requireUser } from "@/lib/supabase-server";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
-
-async function getSupabaseWithSession() {
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll: async () => {
-        const requestCookies = await cookies();
-        return requestCookies.getAll().map((cookie) => ({
-          name: cookie.name,
-          value: cookie.value,
-        }));
-      },
-    },
-  });
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  return { supabase, session };
-}
 
 // Projeleri listele
 export async function GET() {
   try {
-    const { supabase, session } = await getSupabaseWithSession();
+    const { supabase, user } = await requireUser();
 
-    if (!session?.user?.id) {
+    if (!user) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 }
@@ -40,7 +17,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from("projects")
       .select("id, title, platform, style, duration, idea, status, created_at")
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -60,9 +37,9 @@ export async function GET() {
 // Yeni proje kaydet
 export async function POST(request: Request) {
   try {
-    const { supabase, session } = await getSupabaseWithSession();
+    const { supabase, user } = await requireUser();
 
-    if (!session?.user?.id) {
+    if (!user) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 }
@@ -82,7 +59,7 @@ export async function POST(request: Request) {
     const { data, error } = await supabase
       .from("projects")
       .insert({
-        user_id: session.user.id,
+        user_id: user.id,
         title: title.trim(),
         platform: platform ?? null,
         style: style ?? null,

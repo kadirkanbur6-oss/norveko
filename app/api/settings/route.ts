@@ -1,36 +1,13 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
+import { requireUser } from "@/lib/supabase-server";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
-
-async function getSupabaseWithSession() {
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll: async () => {
-        const requestCookies = await cookies();
-        return requestCookies.getAll().map((cookie) => ({
-          name: cookie.name,
-          value: cookie.value,
-        }));
-      },
-    },
-  });
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  return { supabase, session };
-}
 
 // Ayarları getir: profil + bağlı kanal
 export async function GET() {
   try {
-    const { supabase, session } = await getSupabaseWithSession();
+    const { supabase, user } = await requireUser();
 
-    if (!session?.user?.id) {
+    if (!user) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 }
@@ -40,14 +17,14 @@ export async function GET() {
     const { data: channelData } = await supabase
       .from("user_channels")
       .select("channel_id")
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .maybeSingle();
 
     return NextResponse.json({
       success: true,
       settings: {
-        email: session.user.email ?? "",
-        createdAt: session.user.created_at ?? null,
+        email: user.email ?? "",
+        createdAt: user.created_at ?? null,
         channelId: channelData?.channel_id ?? null,
       },
     });
@@ -63,9 +40,9 @@ export async function GET() {
 // Kanal ID güncelle
 export async function PATCH(request: Request) {
   try {
-    const { supabase, session } = await getSupabaseWithSession();
+    const { supabase, user } = await requireUser();
 
-    if (!session?.user?.id) {
+    if (!user) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 }
@@ -90,19 +67,19 @@ export async function PATCH(request: Request) {
     const { data: existing } = await supabase
       .from("user_channels")
       .select("id")
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .maybeSingle();
 
     if (existing) {
       const { error } = await supabase
         .from("user_channels")
         .update({ channel_id: channelId })
-        .eq("user_id", session.user.id);
+        .eq("user_id", user.id);
 
       if (error) throw new Error(error.message);
     } else {
       const { error } = await supabase.from("user_channels").insert({
-        user_id: session.user.id,
+        user_id: user.id,
         channel_id: channelId,
       });
 

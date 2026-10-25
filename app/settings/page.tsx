@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import SignOutButton from "../components/SignOutButton";
+import AccountSecurity from "../components/AccountSecurity";
 
 interface UserSettings {
   email: string;
@@ -212,6 +213,8 @@ export default function SettingsPage() {
                   </p>
                 )}
               </div>
+
+              <AccountSecurity />
             </div>
           ) : null}
         </div>

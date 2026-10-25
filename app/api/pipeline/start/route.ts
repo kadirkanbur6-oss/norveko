@@ -4,9 +4,8 @@
 // the UI polls /api/pipeline/[id] for progress.
 
 import { NextRequest, NextResponse, after } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { requireUser } from "@/lib/supabase-server";
 import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
 import {
   buildPipelineSteps,
   totalPipelineCredits,
@@ -36,23 +35,7 @@ const MAX_JOBS_PER_HOUR = 10;
 export async function POST(req: NextRequest) {
   try {
     // 1) Authenticate
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll() {},
-        },
-      }
-    );
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { user } = await requireUser();
 
     if (!user) {
       return NextResponse.json(

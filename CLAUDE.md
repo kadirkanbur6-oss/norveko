@@ -1,230 +1,117 @@
 # CLAUDE.md — Norveko Project Context
 
 > Bu dosya, yeni bir Claude oturumu başladığında proje bağlamını geri yüklemek içindir.
-> Her büyük milestone sonrası güncellenmelidir. Son güncelleme: 2026-07-06
+> Her büyük milestone sonrası güncellenmelidir. Son güncelleme: 2026-10-25
 
 ## 1. Proje Nedir?
 
 **Norveko** — AI destekli video içerik üretim SaaS'ı. Hedef kitle: YouTube ve
-kısa video (Shorts/Reels/TikTok) üreticileri, global pazar. UI dili: **İngilizce**.
+kısa video (Shorts/Reels/TikTok) üreticileri, faceless kanallar, belgesel/gizem/
+tarih anlatıcıları; global pazar. UI dili: **İngilizce**. Açıklamalar: **Türkçe**.
 
-**ÖNEMLİ — Kapsam geçmişi:** Proje başlangıçta bir YouTube analytics aracıydı
-(snapshot, büyüme, sağlık skoru). Daha sonra tam bir AI içerik üretim SaaS'ına
-genişletildi. Analytics altyapısı hâlâ kod tabanında durur ve çalışır, ancak
-artık ana ürün AI Workspace + kredi sistemidir. Eski analytics odaklı planlara
-göre hareket etme.
+Vizyon: tek fikirden → araştırma → senaryo → sahne planı → üretim (görsel/video/
+ses) → kurgu → yayın → analiz. Bugün ürün "içerik paketi + thumbnail + opsiyonel
+voiceover + (kapılı) Kling klipleri" üretiyor; tam video render yol haritasında.
+Detaylı vizyon belgesi: proje devir dokümanı (Ekim 2026).
 
-- Canlı: https://norveko.app (Vercel, GitHub push → otomatik deploy)
-- MVP durumu: ~%75
-
-## 2. Tech Stack
-
-- Next.js App Router + TypeScript + TailwindCSS
-- Supabase: database + auth (RLS her tabloda aktif)
-- Vercel: hosting + Cron Jobs
-- YouTube Data API v3 (analytics tarafı)
-- Gemini API: `gemini-2.5-flash`, native Google endpoint,
-  `x-goog-api-key` header, `thinkingBudget: 0`,
-  `responseMimeType: "application/json"` + `extractJson` fallback
-
-## 3. Tamamlanan Modüller
-
-### AI Ürün (güncel odak)
-- **AI Workspace (`/chat`)**: Gemini destekli üretim endpoint'i. Çıktı:
-  hook, voice-over script, scene plan (sinematik İngilizce video promptları),
-  title options, description, tags, thumbnail concept.
-  Çok dilli çıktı: EN, TR, ES, DE, FR, PT.
-- **Projects**: Supabase `projects` tablosu (RLS), tam CRUD API route'ları,
-  `/projects` liste sayfası, `/projects/[id]` detay sayfası
-  (görüntüleme, bölüm bazlı kopyalama, başlık düzenleme PATCH, onaylı silme DELETE).
-- **Kredi sistemi**: `user_credits` + `credit_transactions` tabloları,
-  signup'ta 50 hoş geldin kredisi (trigger), üretim başına 5 kredi kesintisi,
-  hata durumunda otomatik iade. `deduct_credits` / `add_credits` RPC
-  (anon/authenticated execute yetkisi kaldırıldı — sadece service role).
-  Server-side işlemler için `SUPABASE_SERVICE_ROLE_KEY` ile admin client.
-- **Billing sayfası**: 3 paket (Starter / Creator / Pro) — "Coming soon".
-- **Dashboard**: `DashboardHighlights` — gerçek kredi bakiyesi, son projeler,
-  hızlı aksiyonlar. Fake/hardcoded veri YOK.
-- **Landing page (`/`)**: server-side session kontrolü, girişli kullanıcı
-  → `/dashboard` redirect.
-- **Sidebar**: gerçek Next.js `Link` navigasyonu, `usePathname` ile aktif
-  route vurgusu, "Soon" rozetleri.
-- **Settings**: profil görüntüleme + YouTube kanal ID yönetimi
-  (`UC` prefix validasyonu).
-
-### Analytics Altyapısı (eski faz — çalışır durumda, korunuyor)
-- `channel_stats_snapshots` tablosu (RLS), YouTube Data API v3 entegrasyonu
-  (kesin kural: fake veri YASAK).
-- `/api/snapshot-stats` endpoint'i (`SNAPSHOT_SECRET`/`CRON_SECRET` korumalı),
-  Vercel Cron günlük UTC 03:00.
-- `lib/channelGrowth.ts` (gerçek büyüme %), `lib/channelHealth.ts` (sağlık skoru).
-- `user_channels` tablosu + `/connect-channel` (kullanıcı-kanal eşleme).
-- `channel_videos_cache` + `lib/dashboardData.ts` — dashboard SADECE
-  Supabase cache'ten okur, asla canlı YouTube API çağırmaz.
-- Auth: Supabase email/password + zorunlu doğrulama, `middleware.ts` route koruması.
-
-### Düzeltilen Kritik Buglar (tekrarlama!)
-1. Middleware tüm `/api/` route'larını yakalıyordu → düzeltildi.
-2. Dashboard component'leri her yüklemede canlı YouTube API çağırıyordu → cache'e geçildi.
-3. Cache sorguları `channel_id` ile filtreliyordu → `user_id` merkezli yapıldı.
-
-## 4. Teknik Kurallar / Kalıplar
-
-- Tüm Supabase server client'ları: `@supabase/ssr` + `createServerClient` +
-  cookie forwarding.
-- Next.js route params tipi: `Promise<{ id: string }>` — mutlaka `await` edilir.
-- Stale build hatası çözümü: `Remove-Item -Recurse -Force .next` + `npm run dev`.
-- Kredi kesintileri SADECE server-side, admin client üzerinden.
-- Fake/hardcoded veri kesinlikle yasak — her metrik gerçek kaynaktan gelir.
-- UI dili İngilizce (global hedef kitle).
-
-## 5. Sıradaki İşler (öncelik sırasıyla)
-
-1. **Editor** — üretilen içeriği düzenleme/geliştirme modülü (sıradaki ana iş)
-2. Landing page rötuşları
-3. Settings iyileştirmeleri
-4. Billing paketlerinin aktifleştirilmesi (ödeme entegrasyonu — ileride)
-5. Uzun vade: tek fikirden metin → ses → video üreten tam AI pipeline
-
-## 6. Çalışma Şekli (Kadir + Claude)
-
-- Claude ana geliştiricidir: kodu eksiksiz, kopyala-yapıştır hazır TAM dosyalar
-  halinde yazar. Kadir VS Code'a yapıştırır.
-- Her görev kısa bir planla başlar; değişen dosyaların özeti + sonraki adımla biter.
-- Sadece ilgili dosyalara dokunulur; mevcut yapı ve component'ler yeniden kullanılır.
-- Tüm açıklamalar **Türkçe** yapılır (kod ve UI İngilizce).
-- Kod bloklarında her zaman Copy butonu kullanılır (elle seçim uzun blokları kesebilir).
-- Kadir beginner-intermediate seviyededir: adım adım açıklama beklenir.
-# CLAUDE.md — Norveko Project Context
-
-> Bu dosya, yeni bir Claude oturumu başladığında proje bağlamını geri yüklemek içindir.
-> Her büyük milestone sonrası güncellenmelidir. Son güncelleme: 2026-07-07
-
-## 1. Proje Nedir?
-
-**Norveko** — AI destekli video içerik üretim SaaS'ı. Hedef kitle: YouTube ve
-kısa video (Shorts/Reels/TikTok) üreticileri, global pazar. UI dili: **İngilizce**.
-
-**ÖNEMLİ — Kapsam geçmişi:** Proje başlangıçta bir YouTube analytics aracıydı
-(snapshot, büyüme, sağlık skoru). Daha sonra tam bir AI içerik üretim SaaS'ına
-genişletildi. Analytics altyapısı hâlâ kod tabanında durur ve çalışır, ancak
-artık ana ürün AI Workspace + kredi sistemidir. Eski analytics odaklı planlara
-göre hareket etme.
-
-- Canlı: https://norveko.app (Vercel, GitHub push → otomatik deploy)
-- MVP durumu: ~%85–90
+- Canlı: https://norveko.app (Vercel; `main`'e push → otomatik deploy)
+- Repo: github.com/kadirkanbur6-oss/norveko
+- Teknik özet ve komutlar: `README.md`; env envanteri: `.env.example`;
+  DB/storage varsayımları: `supabase/README.md`
 
 ## 2. Tech Stack
 
-- Next.js App Router + TypeScript + TailwindCSS
-- Supabase: database + auth (RLS her tabloda aktif)
-- Vercel: hosting + Cron Jobs
-- YouTube Data API v3 (analytics tarafı)
-- Gemini API: `gemini-2.5-flash`, native Google endpoint,
-  `x-goog-api-key` header, `thinkingBudget: 0`,
-  `responseMimeType: "application/json"` + `extractJson` fallback
+Next.js 16 App Router + TypeScript + Tailwind v4 · Supabase (DB, Auth, Storage;
+RLS her tabloda) · Vercel (hosting + cron) · OpenAI `gpt-5-mini` (script) ·
+ElevenLabs (voiceover) · Gemini image (thumbnail) · Kling (video klip, kapılı) ·
+Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel)
 
-## 3. Tamamlanan Modüller
+## 3. Mimari — Pipeline (en önemli kısım)
 
-### AI Ürün (güncel odak)
-- **AI Workspace (`/chat`)**: Gemini destekli üretim endpoint'i. Çıktı:
-  hook, voice-over script, scene plan (sinematik İngilizce video promptları),
-  title options, description, tags, thumbnail concept.
-  Çok dilli çıktı: EN, TR, ES, DE, FR, PT.
-- **Projects**: Supabase `projects` tablosu (RLS), tam CRUD API route'ları,
-  `/projects` liste sayfası, `/projects/[id]` detay sayfası
-  (görüntüleme, bölüm bazlı kopyalama, başlık düzenleme PATCH, onaylı silme DELETE).
-  → Ayrı bir "Editor" modülüne gerek kalmadı, bu detay sayfası düzenleme ihtiyacını karşılıyor.
-- **Kredi sistemi**: `user_credits` + `credit_transactions` tabloları,
-  signup'ta 50 hoş geldin kredisi (trigger), üretim başına 5 kredi kesintisi,
-  hata durumunda otomatik iade. `deduct_credits` / `add_credits` RPC
-  (anon/authenticated execute yetkisi kaldırıldı — sadece service role).
-  Server-side işlemler için `SUPABASE_SERVICE_ROLE_KEY` ile admin client.
-- **Billing sayfası**: 3 paket ($9 / $29 / $59 → 500 / 2000 / 5000 kredi) — şu an "Coming soon".
-  Gerçek satın almaya çevirme işi Paddle ile yapılacak (bkz. Bölüm 5 → Ödeme Entegrasyonu).
-- **Dashboard**: `DashboardHighlights` — gerçek kredi bakiyesi, son projeler,
-  hızlı aksiyonlar. Fake/hardcoded veri YOK.
-  (Not: Sayfada hâlâ eski analytics kalıntıları var — bkz. Bölüm 7 bekleyen düzeltmeler.)
-- **Landing page (`/`)**: server-side session kontrolü.
-  Girişli kullanıcı için ARTIK `/dashboard`'a redirect YOK — landing görünür,
-  sağ üstte "Dashboard" butonu çıkar. Girişsizse Log in + Start Free.
-- **Sidebar**: gerçek Next.js `Link` navigasyonu, `usePathname` ile aktif
-  route vurgusu, "Soon" rozetleri. Sol üst marka bloğu `/` adresine linklendi
-  (ama şu an tıklama çalışmıyor — bkz. Bölüm 7).
-- **Settings**: profil görüntüleme + YouTube kanal ID yönetimi
-  (`UC` prefix validasyonu).
+- `POST /api/pipeline/start`: doğrular, feature gate'leri kontrol eder, krediyi
+  düşer, `pipeline_jobs` satırı açar, **hemen döner** ve `after()` ile worker'ı
+  tetikler.
+- `POST /api/pipeline/run` (internal, `PIPELINE_WORKER_SECRET`): **her çağrıda
+  tek adım** çalıştırır (`script` → `voiceover`? → `thumbnail` → `video`?) ve
+  kendini bir sonraki adım için tekrar tetikler. Adım claim'i atomik
+  (pending→running koşullu update), çift tetikleme zararsız.
+- `GET /api/pipeline/[id]`: UI poll eder; aynı zamanda job'ı "iyileştirir"
+  (8 dk'yı aşan adımı iade ile failed yapar, unutulan adımı yeniden tetikler,
+  async video adımını 20 sn'de bir poll eder, 40 dk sonra timeout).
+- `GET /api/pipeline/reap` (cron, günlük 03:30 UTC): tüm running job'lar için aynı.
+- Mantık `lib/pipeline/runner.ts` içinde `createPipelineRunner(deps)`;
+  `lib/pipeline/runner.test.ts` 8 senaryo (`npm run test:pipeline`).
+- Kredi maliyetleri **tek kaynak**: `lib/pipeline/steps.ts` (script 5, voiceover
+  15, thumbnail 10, video 12×5 klip peşin; kullanılmayan/başarısız klip iade).
+- Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
+- Bitince sonuç `projects.content` JSONB'ye yazılır; başlık = AI'nin ilk title'ı.
 
-### Analytics Altyapısı (eski faz — çalışır durumda, korunuyor)
-- `channel_stats_snapshots` tablosu (RLS), YouTube Data API v3 entegrasyonu
-  (kesin kural: fake veri YASAK).
-- `/api/snapshot-stats` endpoint'i (`SNAPSHOT_SECRET`/`CRON_SECRET` korumalı),
-  Vercel Cron günlük UTC 03:00.
-- `lib/channelGrowth.ts` (gerçek büyüme %), `lib/channelHealth.ts` (sağlık skoru).
-- `user_channels` tablosu + `/connect-channel` (kullanıcı-kanal eşleme, opsiyonel).
-- `channel_videos_cache` + `lib/dashboardData.ts` — dashboard SADECE
-  Supabase cache'ten okur, asla canlı YouTube API çağırmaz.
-- Auth: Supabase email/password + zorunlu doğrulama + Google OAuth,
-  `middleware.ts` route koruması (`/` public).
+## 4. Feature gate'ler (env)
 
-### Düzeltilen Kritik Buglar (tekrarlama!)
-1. Middleware tüm `/api/` route'larını yakalıyordu → düzeltildi.
-2. Dashboard component'leri her yüklemede canlı YouTube API çağırıyordu → cache'e geçildi.
-3. Cache sorguları `channel_id` ile filtreliyordu → `user_id` merkezli yapıldı.
+- `GENERATION_ENABLED=false` → **lansman kilidi**: `BETA_USER_IDS` dışındakiler
+  üretim yapamaz, kredi düşmeden 403. UI "launching soon" gösterir.
+- `VIDEO_GENERATION_ENABLED=true` veya `VIDEO_BETA_USER_IDS` → Kling klipleri.
+- Kontrol: `lib/pipeline/features.ts`, UI'a `GET /api/features`.
 
-## 4. Teknik Kurallar / Kalıplar
+## 5. Tamamlanan Modüller (Ekim 2026 itibarıyla)
 
-- Tüm Supabase server client'ları: `@supabase/ssr` + `createServerClient` +
-  cookie forwarding.
-- Next.js route params tipi: `Promise<{ id: string }>` — mutlaka `await` edilir.
-- Stale build hatası çözümü: `Remove-Item -Recurse -Force .next` + `npm run dev`.
-- Kredi kesintileri SADECE server-side, admin client üzerinden.
-- Fake/hardcoded veri kesinlikle yasak — her metrik gerçek kaynaktan gelir.
-- UI dili İngilizce (global hedef kitle).
+- Auth: e-posta/şifre + zorunlu doğrulama + Google OAuth (yayında), şifre
+  sıfırlama (`/forgot-password`, `/reset-password`), doğrulama maili yeniden
+  gönderme, her yerde çıkış. `middleware.ts` public sayfa listesi başta.
+- Dashboard: gerçek kredi bakiyesi, son projeler, **çalışan bildirim zili**
+  (`/api/notifications`, türetilmiş gerçek olaylar), **proje araması**.
+- AI Workspace `/chat`: taslak sessionStorage'da, çalışan iş `?job=`'da
+  (yenileme kaybetmez), bakiye/maliyet gösterimi, yetersiz kredide buton pasif,
+  "aynı ayarlarla tekrar üret", her sonuç kartında Copy.
+- Projects: liste (arama, platform/stil filtresi, sıralama, load more), detay
+  (sekmeler, tam düzenleme, **Export**: copy all / .md / .txt / .srt, thumbnail
+  görseli, klip oynatıcı, stilli silme onayı). PATCH içeriği
+  `lib/project-content.ts` ile sanitize edilir.
+- Billing: Paddle overlay checkout, webhook (`transaction.completed` + refund
+  `adjustment.*`, idempotent), ödeme sonrası bakiye yenileme, kredi metinleri
+  `steps.ts`'ten.
+- Settings: profil, YouTube kanal ID, **şifre değiştir**, **hesap sil**
+  (`/api/account`: storage + tablolar + auth user).
+- Marka: `BrandMark` (inline SVG N-monogram), `app/icon.png`, OG metadata,
+  2.5 sn giriş sonrası intro (`WelcomeIntro`, oturum başına bir kez).
+- Ops: `robots.ts`, `sitemap.ts`, `not-found/error/loading.tsx`, security
+  header'lar + CSP (report-only), `/api/health`, snapshot cron tüm bağlı
+  kanallar için, saatlik üretim limiti, ESLint 0 hata.
 
-## 5. Ödeme Entegrasyonu — KARAR (2026-07-07)
+## 6. Teknik Kurallar / Kalıplar
 
-**Stripe DEĞİL, Paddle kullanılacak.**
-- Sebep: Türkiye'de mukim şahıs/limited şirketle Stripe (ve PayPal) ödeme
-  kabulü doğrudan çalışmıyor. Paddle bir **Merchant of Record (MoR)**:
-  vergiyi (VAT/GST/sales tax) hesaplar + tahsil eder + beyan eder + öder.
-  Ücret: %5 + $0.50/işlem (vergi uyumu dahil).
-- Kredi paketleri **tek seferlik (one-time)** satın alma. Paketler:
-  $9/500, $29/2000, $59/5000. (Paket isimleri netleştirilecek — CLAUDE.md'de
-  eskiden "Starter/Creator/Pro", son `packages.ts` taslağında "Starter/Pro/Business".)
-- Akış: Paddle.js **overlay checkout** → webhook (`transaction.completed` /
-  `transaction.paid`) → kredileri **idempotent** ekle.
-- Webhook tuzakları: raw body `await req.text()` ile alınmalı (`req.json()`
-  imzayı bozar). Aynı event birden çok kez gelir → idempotency ŞART.
+- Route handler'larda auth: `const { supabase, user } = await requireUser()`
+  (`lib/supabase-server.ts`; `getUser()` kullanır, `getSession()` KULLANMA).
+- Kredi düşme/iade SADECE server-side, service role ile (`deduct_credits` /
+  `add_credits` RPC). `add_credits` negatif tutara izin vermeli (Paddle iadesi).
+- **Fake/hardcoded veri yasak**; her metrik gerçek kaynaktan gelir.
+- Next.js route params: `Promise<{ id: string }>` — `await` edilir.
+- Provider lib'leri (`lib/pipeline/openai|elevenlabs|gemini-image|kling.ts`)
+  server-only; env yoksa import anında throw eder → runner lazy import kullanır.
+- Yeni özellik eklerken: tsc + `npm run lint` + `npm run test:pipeline` temiz
+  olmalı; UI metinleri İngilizce.
 
-**Hazır kod (taslak, henüz repoda commit edilmedi):**
-- `lib/packages.ts` — Paddle Price ID + `getPackageByPriceId` (webhook ödenen
-  fiyattan paketi bulur, istemciye güvenmez).
-- `lib/paddle.ts` — `@paddle/paddle-node-sdk` server client (sandbox/production env).
-- `credit_purchases` tablosu — `paddle_transaction_id` UNIQUE = idempotency + RLS.
-- Env: `NEXT_PUBLIC_PADDLE_ENV`, `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`,
-  `PADDLE_API_KEY`, `PADDLE_WEBHOOK_SECRET`.
-- npm: `@paddle/paddle-js`, `@paddle/paddle-node-sdk`.
+## 7. Bekleyen İşler (öncelik sırasıyla)
 
-**Bekleyen (Kadir tarafı, kod dışı):**
-- Yasal şirket kurulumu — mali müşavir. Şahıs vs limited kararı VERİLMEDİ.
-- Paddle **sandbox** hesabı (`sandbox-vendors.paddle.com/signup` — doğrulama
-  gerektirmez, geliştirme burada yapılır). Canlı hesap şirket + site incelemesi ister.
-- Sandbox'ta: API key + client-side token + 3 ürün/fiyat (one-time) → `pri_...` ID'leri.
+Kod dışı (Kadir): `app/lib/legal.ts` `LEGAL_NAME` placeholder'ı; Vercel env
+(`GENERATION_ENABLED`, `BETA_USER_IDS`, `NEXT_PUBLIC_SITE_URL`,
+`PIPELINE_WORKER_SECRET`, Kling anahtarları, Paddle live ID'leri); Supabase
+`videos` bucket'ı + `supabase/README.md` kontrolleri; Paddle webhook event'leri.
 
-**Devam noktası:** Sandbox kimlik bilgileri + 3 `pri_...` gelince Faz 2'ye geçilir
-(Paddle.js checkout bileşeni + Billing
+Ürün (rakip analizine göre): stok B-roll fallback (Pexels) → otomatik altyazı →
+tam MP4 render → 9:16/16:9 seçimi → niş şablonları + örnek galeri →
+YouTube'a doğrudan yükleme → seri modu/zamanlama → ses klonlama + brand kit →
+affiliate. Ertelenen: timeline editör, AI avatar, mobil app.
 
-## 6. Faz B — Optional Voiceover (2026-07-09)
-- Pipeline artık opsiyonel ElevenLabs voiceover destekliyor: base 15 kredi, voiceover açıkken toplam 30 kredi.
-- Voice listesi server-side `GET /api/voices` ile geliyor; MP3 çıktıları public `voiceovers` bucket'ına yazılıyor.
-- `ELEVENLABS_API_KEY` client'a hiç açılmamalı; voiceover hatasında mevcut refund akışı kullanılmalı.
+Teknik borç: sahne düzeyinde yeniden üretim + versiyon geçmişi +
+`media_assets`/`projects.job_id` şeması; Sentry; provider maliyet logu;
+erişilebilirlik (focus stilleri, kontrast); CSP'yi enforce moduna alma;
+Supabase custom domain (Google ekranındaki supabase.co yazısı için).
 
-## 7. Faz C — Pipeline to Projects (2026-07-09)
-- Başarılı pipeline job tamamlanınca sonuç `projects` tablosuna da kaydediliyor (title/idea + content JSON).
-- Project kaydı başarısız olursa pipeline yine `completed` kalır; hata sadece server log'a düşer.
-- `steps.result.project_id` üzerinden PipelineProgress kartında "View project" linki gösterilir.
+## 8. Çalışma Şekli (Kadir + Claude)
 
-## 8. Unified Content Flow (2026-07-09)
-- Pipeline script adımı artık full content package üretiyor: hook, script, scenes, titles, description, tags, thumbnailIdea.
-- `/chat` artık `/api/pipeline/start` kullanıyor; ilerleme/çıktı PipelineProgress üzerinden poll ediliyor.
-- `/pipeline-test` internal test sayfası olarak aynı pipeline akışını doğrulamak için korunuyor.
+- Claude ana geliştiricidir; repo üzerinde doğrudan commit + push yapar
+  (GitHub bağlı). Her görev kısa planla başlar, değişen dosyaların özeti ve
+  sonraki adımla biter.
+- Sadece ilgili dosyalara dokunulur; mevcut bileşenler yeniden kullanılır.
+- Kadir beginner-intermediate seviyededir: adım adım, Türkçe açıklama.

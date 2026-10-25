@@ -1,30 +1,7 @@
 import { NextResponse } from "next/server";
+import { requireUser } from "@/lib/supabase-server";
 import { sanitizeProjectContent } from "@/lib/project-content";
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
-
-async function getSupabaseWithSession() {
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll: async () => {
-        const requestCookies = await cookies();
-        return requestCookies.getAll().map((cookie) => ({
-          name: cookie.name,
-          value: cookie.value,
-        }));
-      },
-    },
-  });
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  return { supabase, session };
-}
 
 // Tek projeyi getir
 export async function GET(
@@ -33,9 +10,9 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { supabase, session } = await getSupabaseWithSession();
+    const { supabase, user } = await requireUser();
 
-    if (!session?.user?.id) {
+    if (!user) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 }
@@ -46,7 +23,7 @@ export async function GET(
       .from("projects")
       .select("*")
       .eq("id", id)
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .maybeSingle();
 
     if (error) {
@@ -77,9 +54,9 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const { supabase, session } = await getSupabaseWithSession();
+    const { supabase, user } = await requireUser();
 
-    if (!session?.user?.id) {
+    if (!user) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 }
@@ -119,7 +96,7 @@ export async function PATCH(
       .from("projects")
       .update(updates)
       .eq("id", id)
-      .eq("user_id", session.user.id);
+      .eq("user_id", user.id);
 
     if (error) {
       throw new Error(error.message);
@@ -142,9 +119,9 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const { supabase, session } = await getSupabaseWithSession();
+    const { supabase, user } = await requireUser();
 
-    if (!session?.user?.id) {
+    if (!user) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 }
@@ -155,7 +132,7 @@ export async function DELETE(
       .from("projects")
       .delete()
       .eq("id", id)
-      .eq("user_id", session.user.id);
+      .eq("user_id", user.id);
 
     if (error) {
       throw new Error(error.message);
