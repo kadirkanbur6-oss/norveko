@@ -1,6 +1,7 @@
 'use client';
 
-import { ChevronDown, Search, Settings, User } from "lucide-react";
+import { ChevronDown, Settings, User } from "lucide-react";
+import ProjectSearch from "./ProjectSearch";
 import NotificationsMenu from "./NotificationsMenu";
 import SignOutButton from "./SignOutButton";
 import { useEffect, useState } from "react";
@@ -39,14 +40,7 @@ export default function Header() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-        <div className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 sm:flex-none">
-          <Search size={18} className="text-gray-400" />
-
-          <input
-            placeholder="Search..."
-            className="w-full min-w-0 bg-transparent text-sm outline-none sm:w-52"
-          />
-        </div>
+        <ProjectSearch />
 
         <NotificationsMenu />
 
