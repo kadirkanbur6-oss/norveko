@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import SignOutButton from "./SignOutButton";
+import BrandMark from "./BrandMark";
 import { supabase } from "../lib/supabase";
 import {
   BarChart3,
   Coins,
   CreditCard,
   FolderOpen,
-  Layers,
   Menu,
   Settings,
   Wand2,
@@ -83,10 +83,8 @@ export default function Sidebar() {
     <>
       {/* Mobile / tablet top bar */}
       <div className="fixed inset-x-0 top-0 z-40 flex h-16 items-center justify-between border-b border-white/10 bg-[#0a0a12]/90 px-4 backdrop-blur-xl lg:hidden">
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/20 bg-white/10">
-            <Layers size={18} className="text-blue-300" />
-          </div>
+        <Link href="/" aria-label="Norveko home" className="flex items-center gap-2.5">
+          <BrandMark size={36} />
           <span className="text-lg font-bold tracking-wide text-white">
             NORVEKO
           </span>
@@ -130,15 +128,14 @@ export default function Sidebar() {
         <div className="flex items-center justify-between">
           <Link
             href="/"
+            aria-label="Norveko home"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-3"
+            className="group flex items-center gap-3 rounded-2xl transition hover:opacity-90"
           >
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-white/10">
-              <Layers className="text-blue-300" />
-            </div>
+            <BrandMark size={48} className="shadow-[0_8px_24px_rgba(99,102,241,0.35)]" />
 
             <div>
-              <h1 className="text-2xl font-bold">NORVEKO</h1>
+              <h1 className="text-2xl font-bold tracking-tight">NORVEKO</h1>
               <p className="text-xs text-gray-400">Creator Studio</p>
             </div>
           </Link>

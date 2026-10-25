@@ -12,10 +12,31 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://norveko.app";
+const DESCRIPTION =
+  "Turn one idea into a script, scene plan, video prompts, thumbnail concept, and SEO-ready metadata. One AI workspace for video creators.";
+
 export const metadata: Metadata = {
-  title: "Norveko — AI Content Workspace for Creators",
-  description:
-    "Turn one idea into a script, scene plan, video prompts, thumbnail concept, and SEO-ready metadata. One AI workspace for video creators.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Norveko — AI Content Workspace for Creators",
+    template: "%s · Norveko",
+  },
+  description: DESCRIPTION,
+  openGraph: {
+    type: "website",
+    siteName: "Norveko",
+    title: "Norveko — AI Content Workspace for Creators",
+    description: DESCRIPTION,
+    url: SITE_URL,
+    images: [{ url: "/brand/norveko-logo.png", width: 512, height: 512, alt: "Norveko" }],
+  },
+  twitter: {
+    card: "summary",
+    title: "Norveko — AI Content Workspace for Creators",
+    description: DESCRIPTION,
+    images: ["/brand/norveko-logo.png"],
+  },
 };
 
 export default function RootLayout({

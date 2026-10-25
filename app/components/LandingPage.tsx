@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import HeroDemo from "./HeroDemo";
 import SignOutButton from "./SignOutButton";
+import BrandMark from "./BrandMark";
 import { CREDIT_PACKAGES } from "@/lib/packages";
 import {
   ArrowRight,
@@ -18,7 +19,6 @@ import {
   Menu,
   MessageSquare,
   Search,
-  Sparkles,
   Wand2,
   X,
   Zap,
@@ -170,12 +170,10 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
       {/* NAVBAR */}
       <header className="sticky top-0 z-50 border-b border-white/5 bg-[#0a0a12]/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
-          <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-600">
-              <Sparkles size={18} />
-            </div>
+          <Link href="/" aria-label="Norveko home" className="flex items-center gap-2.5">
+            <BrandMark size={36} />
             <span className="text-lg font-bold tracking-tight">NORVEKO</span>
-          </div>
+          </Link>
 
           <nav className="hidden items-center gap-8 text-sm text-gray-400 md:flex">
             <a href="#workflow" className="transition hover:text-white">Workflow</a>
@@ -672,12 +670,10 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
       {/* 12. FOOTER */}
       <footer className="border-t border-white/5 py-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-purple-600">
-              <Sparkles size={15} />
-            </div>
+          <Link href="/" aria-label="Norveko home" className="flex items-center gap-2">
+            <BrandMark size={32} />
             <span className="font-bold">NORVEKO</span>
-          </div>
+          </Link>
           <nav className="flex flex-wrap justify-center gap-6 gap-y-2 text-sm text-gray-500">
             <a href="#workflow" className="transition hover:text-gray-300">Workflow</a>
             <a href="#pricing" className="transition hover:text-gray-300">Pricing</a>
