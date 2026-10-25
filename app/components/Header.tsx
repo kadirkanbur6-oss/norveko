@@ -1,6 +1,7 @@
 'use client';
 
-import { Bell, ChevronDown, LogOut, Search, User } from "lucide-react";
+import { Bell, ChevronDown, Search, Settings, User } from "lucide-react";
+import SignOutButton from "./SignOutButton";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
@@ -25,11 +26,6 @@ export default function Header() {
 
     loadUser();
   }, []);
-
-  async function handleSignOut() {
-    await supabase.auth.signOut();
-    router.push("/");
-  }
 
   return (
     <header className="mb-8 flex flex-col gap-5 lg:mb-10 lg:flex-row lg:items-center lg:justify-between">
@@ -84,17 +80,13 @@ export default function Header() {
                 }}
                 className="flex w-full items-center gap-2 rounded-3xl px-4 py-3 text-sm text-white transition hover:bg-white/5"
               >
-                <span className="inline-block h-4 w-4 rounded-full bg-blue-400/50" />
-                Change Channel
+                <Settings size={16} />
+                Settings
               </button>
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="mt-2 flex w-full items-center gap-2 rounded-3xl px-4 py-3 text-sm text-white transition hover:bg-white/5"
-              >
-                <LogOut size={16} />
-                Log out
-              </button>
+              <SignOutButton
+                onDone={() => setMenuOpen(false)}
+                className="mt-2 flex w-full items-center gap-2 rounded-3xl px-4 py-3 text-sm text-white transition hover:bg-white/5 disabled:opacity-60"
+              />
             </div>
           ) : null}
         </div>

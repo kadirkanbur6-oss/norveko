@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import SignOutButton from "./SignOutButton";
+import { supabase } from "../lib/supabase";
 import {
   BarChart3,
   Coins,
@@ -27,6 +29,17 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [credits, setCredits] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (active) setEmail(data.user?.email ?? null);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     async function loadCredits() {
@@ -110,7 +123,7 @@ export default function Sidebar() {
 
       {/* Sidebar: drawer on mobile/tablet, static column on desktop */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-white/10 bg-[#0a0a12] p-6 transition-transform duration-300 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:max-w-none lg:translate-x-0 lg:bg-white/[0.03] lg:shrink-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col overflow-y-auto border-r border-white/10 bg-[#0a0a12] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] transition-transform duration-300 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:max-w-none lg:translate-x-0 lg:bg-white/[0.03] lg:shrink-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -187,6 +200,18 @@ export default function Sidebar() {
             </span>
           </div>
         </Link>
+
+        {/* Account */}
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-xs uppercase tracking-wide text-gray-500">Signed in as</p>
+            <p className="truncate text-sm text-gray-200">{email ?? "—"}</p>
+          </div>
+          <SignOutButton
+            onDone={() => setOpen(false)}
+            className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-gray-300 transition hover:border-red-400/40 hover:text-red-200 disabled:opacity-60"
+          />
+        </div>
       </aside>
     </>
   );

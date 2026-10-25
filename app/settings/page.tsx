@@ -10,6 +10,7 @@ import {
   Video,
 } from "lucide-react";
 import Sidebar from "../components/Sidebar";
+import SignOutButton from "../components/SignOutButton";
 
 interface UserSettings {
   email: string;
@@ -137,6 +138,13 @@ export default function SettingsPage() {
                     <span className="text-gray-400">Member since</span>
                     <span>{formatDate(settings.createdAt)}</span>
                   </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
+                  <p className="text-xs text-gray-500">
+                    Signing out ends your session on this device only.
+                  </p>
+                  <SignOutButton className="flex items-center gap-2 rounded-xl border border-red-400/20 bg-red-500/5 px-4 py-2 text-sm text-red-300 transition hover:bg-red-500/15 disabled:opacity-60" />
                 </div>
               </div>
 

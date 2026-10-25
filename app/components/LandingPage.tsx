@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import HeroDemo from "./HeroDemo";
+import SignOutButton from "./SignOutButton";
 import { CREDIT_PACKAGES } from "@/lib/packages";
 import {
   ArrowRight,
@@ -185,12 +186,17 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
 
           <div className="flex items-center gap-2 sm:gap-3">
             {isLoggedIn ? (
-              <Link
-                href="/dashboard"
-                className="rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-4 py-2 text-sm font-semibold transition hover:opacity-90"
-              >
-                Dashboard
-              </Link>
+              <>
+                <SignOutButton
+                  className="hidden items-center gap-2 rounded-xl px-3 py-2 text-sm text-gray-400 transition hover:text-white sm:flex"
+                />
+                <Link
+                  href="/dashboard"
+                  className="rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-4 py-2 text-sm font-semibold transition hover:opacity-90"
+                >
+                  Dashboard
+                </Link>
+              </>
             ) : (
               <>
                 <Link
@@ -245,6 +251,12 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                 >
                   Log in
                 </Link>
+              )}
+              {isLoggedIn && (
+                <SignOutButton
+                  onDone={() => setMenuOpen(false)}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-left transition hover:bg-white/5 hover:text-white sm:hidden"
+                />
               )}
             </div>
           </nav>
