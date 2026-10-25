@@ -32,7 +32,8 @@ const cspDirectives = [
   ]
     .filter(Boolean)
     .join(" "),
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  // Paddle.js injects its own stylesheet (cdn/sandbox-cdn.paddle.com).
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.paddle.com",
   "font-src 'self' https://fonts.gstatic.com data:",
   // Thumbnails, stock footage previews, voice previews and generated clips
   // come from Supabase Storage, Pixabay/Pexels, ElevenLabs and Kling CDNs.

@@ -111,7 +111,9 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
 - Supabase: `pipeline_jobs.options` kolonu ✅, `videos` bucket ✅.
 - Vercel env: `GENERATION_ENABLED=false`, `BETA_USER_IDS=92779a9c-cb1c-47a8-
   bcc8-e07f4de6dc56` (Kadir), `NEXT_PUBLIC_SITE_URL`, `PIPELINE_WORKER_SECRET`,
-  `PIXABAY_API_KEY` ✅ — lansman kilidi canlıda, zincir uçtan uca test edildi.
+  `PIXABAY_API_KEY`, `YOUTUBE_API_KEY` (Production) ✅ — lansman kilidi canlıda,
+  zincir uçtan uca test edildi. CSP enforce canlıda doğrulandı (ses önizleme +
+  Paddle overlay, konsolda ihlal yok).
 
 ## 6. Teknik Kurallar / Kalıplar
 
@@ -130,8 +132,10 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
 
 Kod dışı (Kadir): `app/lib/legal.ts` `LEGAL_NAME` placeholder'ı (şirket
 kurulunca); Kling anahtarları; Paddle live ID'leri + webhook event'leri
-(`adjustment.*`); ElevenLabs Starter planı (kütüphane sesleri için);
-`NEXT_PUBLIC_YOUTUBE_API_KEY` → `YOUTUBE_API_KEY` yeniden adlandırma.
+(`adjustment.*`); ElevenLabs Starter planı (kütüphane sesleri için).
+(`YOUTUBE_API_KEY` yeniden adlandırması 25 Ekim'de Vercel'de yapıldı; eski
+`NEXT_PUBLIC_` değişkeni silindi — `app/lib/youtube.ts` fallback'i artık
+sadece yerel .env için.)
 
 Ürün (rakip analizine göre): otomatik altyazı →
 tam MP4 render → 9:16/16:9 seçimi → niş şablonları + örnek galeri →
