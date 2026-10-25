@@ -7,7 +7,7 @@ import Link from "next/link";
 import Sidebar from "../components/Sidebar";
 import PipelineProgress from "../components/PipelineProgress";
 
-import { DURATIONS, LANGUAGES, ORIENTATIONS, PLATFORMS, STYLES, defaultOrientation, type OrientationId } from "@/lib/pipeline/options";
+import { DURATIONS, LANGUAGE_OPTIONS, LANGUAGES, ORIENTATIONS, PLATFORMS, STYLES, defaultOrientation, languageOption, type OrientationId } from "@/lib/pipeline/options";
 import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
 import {
   totalPipelineCredits,
@@ -26,14 +26,6 @@ interface VoiceOption {
   public_owner_id?: string;
 }
 
-const LANGUAGE_FLAGS: Record<string, string> = {
-  English: "🇬🇧",
-  "Türkçe": "🇹🇷",
-  "Español": "🇪🇸",
-  Deutsch: "🇩🇪",
-  "Français": "🇫🇷",
-  "Português": "🇵🇹",
-};
 
 function voiceDisplayName(name: string) {
   // ElevenLabs names look like "Roger - Laid-Back, Casual, Resonant".
@@ -486,9 +478,9 @@ function ChatContent() {
                   onChange={(e) => setLanguage(e.target.value)}
                   className={selectClass}
                 >
-                  {LANGUAGES.map((l) => (
-                    <option key={l} value={l}>
-                      {l}
+                  {LANGUAGE_OPTIONS.map((l) => (
+                    <option key={l.code} value={l.label}>
+                      {l.flag} {l.label} · {l.english}
                     </option>
                   ))}
                 </select>
@@ -569,7 +561,7 @@ function ChatContent() {
 
                 {includeVoiceover && (
                   <span className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-gray-300">
-                    <span aria-hidden>{LANGUAGE_FLAGS[language] ?? "🌐"}</span>
+                    <span aria-hidden>{languageOption(language).flag}</span>
                     Voices for {language}
                   </span>
                 )}

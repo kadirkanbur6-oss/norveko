@@ -1,6 +1,8 @@
 // lib/pipeline/openai.ts
 // OpenAI ile full content package üretimi (server-side only).
 
+import { languagePromptName } from "./options";
+
 if (!process.env.OPENAI_API_KEY) {
   throw new Error("OPENAI_API_KEY is not set.");
 }
@@ -55,7 +57,7 @@ Respond ONLY with a valid JSON object, no markdown, no extra text. Schema:
   "thumbnailIdea": "a vivid, cinematic ENGLISH image-generation prompt for a ${aspect} thumbnail including short bold overlay text direction"
 }
 Rules:
-- "hook", "script", scene "description", title options, and "description" must be written in this language: ${outputLanguage}
+- "hook", "script", scene "description", title options, and "description" must be written in this language: ${languagePromptName(outputLanguage)}
 - every "videoPrompt" must ALWAYS be in English regardless of output language.
 - "thumbnailIdea" must ALWAYS be in English regardless of output language.
 - return 5 titles exactly.

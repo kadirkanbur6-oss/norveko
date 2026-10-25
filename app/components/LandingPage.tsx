@@ -1,5 +1,7 @@
 "use client";
 
+import { LANGUAGE_OPTIONS } from "@/lib/pipeline/options";
+
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import HeroDemo from "./HeroDemo";
@@ -127,7 +129,7 @@ const FORMATS = [
   "LinkedIn",
 ];
 
-const LANGUAGES = ["English", "Türkçe", "Español", "Deutsch", "Français", "Português"];
+const LANGUAGES = LANGUAGE_OPTIONS.map((l) => l.label);
 
 const PRICING = CREDIT_PACKAGES.map((pack) => ({
   ...pack,
@@ -554,17 +556,16 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-3 px-4 sm:px-6">
             <span className="flex items-center gap-2 text-sm font-semibold text-gray-300">
               <Globe size={16} className="text-blue-300" />
-              Create in 6 languages:
+              Create in {LANGUAGES.length} languages:
             </span>
             {LANGUAGES.map((lang) => (
               <span
                 key={lang}
-                className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-sm text-gray-300"
+                className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-gray-300 sm:text-sm"
               >
                 {lang}
               </span>
             ))}
-            <span className="text-sm text-gray-500">More coming.</span>
           </div>
         </Reveal>
       </section>
