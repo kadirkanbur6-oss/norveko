@@ -6,11 +6,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Circle, Loader2, XCircle, Copy } from "lucide-react";
-import { PIPELINE_STEP_ORDER } from "@/lib/pipeline/steps";
+import { PIPELINE_STEP_ORDER, type PipelineStepId } from "@/lib/pipeline/steps";
+import GenerationStage, { type StageStep } from "./GenerationStage";
 
 interface StepInfo {
   status: "pending" | "running" | "completed" | "failed";
   error?: string | null;
+  started_at?: string;
   hook?: string;
   script?: string;
   scenes?: Array<{
@@ -40,6 +42,7 @@ interface JobData {
   current_step: string | null;
   steps: Record<string, StepInfo>;
   error: string | null;
+  created_at?: string;
 }
 
 interface PipelineResultStep {
@@ -100,8 +103,8 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
 
   if (!job) {
     return (
-      <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-        <Loader2 size={20} className="animate-spin text-blue-300" />
+      <div className="mt-6">
+        <GenerationStage steps={[{ id: "script", label: "Content Package", status: "pending" }]} />
       </div>
     );
   }
@@ -115,42 +118,57 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
       ? resultStep.project_id
       : null) ?? null;
 
+  const stageSteps: StageStep[] = STEP_ORDER.flatMap(({ id, label }) => {
+    const step = job.steps?.[id];
+    if (!step) return [];
+    return [{ id: id as PipelineStepId, label, status: step.status ?? "pending", startedAt: step.started_at }];
+  });
+  const isRunning = job.status === "running" || job.status === "queued";
+
   return (
-    <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+    <div className="mt-6 space-y-4">
+      {isRunning && !timedOut && (
+        <GenerationStage steps={stageSteps} createdAt={job.created_at} />
+      )}
+
+      {job.status === "completed" && projectId && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-green-400/20 bg-green-500/10 p-4 text-sm text-green-200">
+          <span className="flex items-center gap-2">
+            <CheckCircle2 size={18} className="text-green-400" />
+            Your content package is ready.
+          </span>
+          <Link
+            href={`/projects/${projectId}`}
+            className="rounded-lg bg-green-500/20 px-3 py-1.5 font-semibold text-green-50 transition hover:bg-green-500/30"
+          >
+            Open project →
+          </Link>
+        </div>
+      )}
+
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
       {/* Step list */}
-      <div className="flex flex-col gap-3">
-        {STEP_ORDER.map(({ id, label }) => {
-          const step = job.steps?.[id];
-          if (!step) return null;
-          const status = step?.status ?? "pending";
-          return (
-            <div key={id} className="flex items-center gap-3">
-              {status === "completed" && (
-                <CheckCircle2 size={18} className="text-green-400" />
-              )}
-              {status === "running" && (
-                <Loader2 size={18} className="animate-spin text-blue-300" />
-              )}
-              {status === "failed" && (
-                <XCircle size={18} className="text-red-400" />
-              )}
-              {status === "pending" && (
-                <Circle size={18} className="text-gray-600" />
-              )}
-              <span
-                className={
-                  status === "completed"
-                    ? "text-white"
-                    : status === "running"
-                    ? "text-blue-300"
-                    : "text-gray-500"
-                }
-              >
-                {label}
-              </span>
-            </div>
-          );
-        })}
+      <div className="flex flex-wrap gap-2">
+        {stageSteps.map(({ id, label, status }) => (
+          <div
+            key={id}
+            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs ${
+              status === "completed"
+                ? "border-green-400/30 bg-green-500/10 text-green-100"
+                : status === "running"
+                ? "border-blue-400/40 bg-blue-500/10 text-blue-100"
+                : status === "failed"
+                ? "border-red-400/30 bg-red-500/10 text-red-200"
+                : "border-white/10 bg-white/[0.02] text-gray-500"
+            }`}
+          >
+            {status === "completed" && <CheckCircle2 size={14} className="text-green-400" />}
+            {status === "running" && <Loader2 size={14} className="animate-spin text-blue-300" />}
+            {status === "failed" && <XCircle size={14} className="text-red-400" />}
+            {status === "pending" && <Circle size={14} className="text-gray-600" />}
+            {label}
+          </div>
+        ))}
       </div>
 
       {timedOut && job.status === "running" && (
@@ -166,18 +184,6 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
         <div className="mt-4 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-300">
           Something went wrong: {job.error ?? "Unknown error"}. Your credits
           have been refunded.
-        </div>
-      )}
-
-      {job.status === "completed" && projectId && (
-        <div className="mt-4 rounded-xl border border-green-400/20 bg-green-500/10 p-4 text-sm text-green-200">
-          Pipeline completed successfully.
-          <Link
-            href={`/projects/${projectId}`}
-            className="ml-2 font-semibold text-green-100 underline transition hover:text-white"
-          >
-            View project
-          </Link>
         </div>
       )}
 
@@ -395,6 +401,7 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
           />
         </div>
       )}
+    </div>
     </div>
   );
 }

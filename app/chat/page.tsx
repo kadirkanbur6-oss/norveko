@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Clapperboard, Coins, LayoutTemplate, Loader2, Sparkles, Wand2 } from "lucide-react";
+import { ChevronDown, Clapperboard, Coins, LayoutTemplate, Loader2, Search, Sparkles, Wand2 } from "lucide-react";
 import Link from "next/link";
 import Sidebar from "../components/Sidebar";
 import PipelineProgress from "../components/PipelineProgress";
@@ -71,6 +71,9 @@ function ChatContent() {
   const [error, setError] = useState("");
   const [jobId, setJobId] = useState<string | null>(null);
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
+  const [voiceQuery, setVoiceQuery] = useState("");
+  const [formOpen, setFormOpen] = useState(true);
+  const progressRef = useRef<HTMLDivElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const totalCost = totalPipelineCredits({
@@ -97,7 +100,10 @@ function ChatContent() {
         setOrientationTouched(true);
       }
       if (typeof draft.template === "string") setTemplateId(draft.template);
-      if (job && /^[0-9a-f-]{36}$/i.test(job)) setJobId(job);
+      if (job && /^[0-9a-f-]{36}$/i.test(job)) {
+        setJobId(job);
+        setFormOpen(false);
+      }
     }, 0);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -208,6 +214,15 @@ function ChatContent() {
 
   // Fall back to the first voice whenever none is selected.
   const effectiveVoiceId = voiceId || voices[0]?.voice_id || "";
+  const selectedVoice = voices.find((v) => v.voice_id === effectiveVoiceId) ?? null;
+  const voiceNeedle = voiceQuery.trim().toLowerCase();
+  const filteredVoices = voiceNeedle
+    ? voices.filter(
+        (v) =>
+          v.name.toLowerCase().includes(voiceNeedle) ||
+          Object.values(v.labels).some((l) => l.toLowerCase().includes(voiceNeedle))
+      )
+    : voices;
 
   function stopPreview() {
     const audio = audioRef.current;
@@ -285,7 +300,11 @@ function ChatContent() {
       }
 
       setJobId(data.jobId);
+      setFormOpen(false);
       router.replace(`${pathname}?job=${data.jobId}`, { scroll: false });
+      setTimeout(() => {
+        progressRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -314,7 +333,27 @@ function ChatContent() {
             </div>
           </div>
 
-          <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+          {jobId && !formOpen && (
+            <button
+              type="button"
+              onClick={() => setFormOpen(true)}
+              className="mt-6 flex w-full items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left transition hover:border-white/20"
+            >
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold text-white">{idea || "Untitled idea"}</span>
+                <span className="mt-1 block truncate text-xs text-gray-500">
+                  {platform} · {style} · {duration} · {language} · {orientation === "vertical" ? "9:16" : "16:9"}
+                  {includeVoiceover ? " · voiceover" : ""}
+                  {templateId ? ` · ${NICHE_TEMPLATES.find((t) => t.id === templateId)?.name}` : ""}
+                </span>
+              </span>
+              <span className="flex shrink-0 items-center gap-1 text-xs text-gray-400">
+                Edit settings <ChevronDown size={14} />
+              </span>
+            </button>
+          )}
+
+          <div className={`mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6 ${jobId && !formOpen ? "hidden" : ""}`}>
             {/* Niche templates */}
             <div className="mb-5">
               <div className="flex items-center gap-2 text-sm text-gray-400">
@@ -505,75 +544,87 @@ function ChatContent() {
               </div>
 
               {includeVoiceover && (
-                <div className="mt-4 space-y-4">
-                  <div>
-                    <label className="text-sm text-gray-400">Voice</label>
-                    <select
-                      value={effectiveVoiceId}
-                      onChange={(e) => setVoiceId(e.target.value)}
-                      className={selectClass}
-                      disabled={voicesLoading}
-                    >
-                      <option value="">Select a voice</option>
-                      {voices.map((voice) => (
-                        <option key={voice.voice_id} value={voice.voice_id}>
-                          {voice.name}
-                        </option>
-                      ))}
-                    </select>
-                    {voicesLoading && (
-                      <p className="mt-2 text-xs text-gray-500">Loading voices...</p>
-                    )}
-                    {voicesError && (
-                      <p className="mt-2 text-xs text-red-300">{voicesError}</p>
+                <div className="mt-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <label className="text-sm text-gray-400">
+                      Voice
+                      {selectedVoice && (
+                        <span className="ml-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-2 py-0.5 text-xs text-blue-200">
+                          {selectedVoice.name}
+                        </span>
+                      )}
+                    </label>
+                    {voices.length > 6 && (
+                      <label className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#12121c] px-2.5 py-1.5">
+                        <Search size={13} className="text-gray-500" />
+                        <input
+                          value={voiceQuery}
+                          onChange={(e) => setVoiceQuery(e.target.value)}
+                          placeholder="Search voices…"
+                          aria-label="Search voices"
+                          className="w-36 bg-transparent text-xs text-white outline-none placeholder:text-gray-500 sm:w-48"
+                        />
+                      </label>
                     )}
                   </div>
+                  {voicesLoading && (
+                    <p className="mt-2 text-xs text-gray-500">Loading voices...</p>
+                  )}
+                  {voicesError && (
+                    <p className="mt-2 text-xs text-red-300">{voicesError}</p>
+                  )}
 
                   {voices.length > 0 && (
-                    <div className="grid gap-3 md:grid-cols-2">
-                      {voices.map((voice) => {
+                    <div
+                      role="radiogroup"
+                      aria-label="Voice"
+                      className="mt-2 max-h-64 space-y-1.5 overflow-y-auto rounded-xl border border-white/10 bg-[#12121c] p-1.5"
+                    >
+                      {filteredVoices.length === 0 && (
+                        <p className="p-3 text-xs text-gray-500">No voices match “{voiceQuery}”.</p>
+                      )}
+                      {filteredVoices.map((voice) => {
                         const isSelected = effectiveVoiceId === voice.voice_id;
                         const isPlaying = playingVoiceId === voice.voice_id;
 
                         return (
                           <div
                             key={voice.voice_id}
-                            className={`flex items-center justify-between gap-3 rounded-xl border p-3 ${
+                            role="radio"
+                            aria-checked={isSelected}
+                            tabIndex={0}
+                            onClick={() => setVoiceId(voice.voice_id)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setVoiceId(voice.voice_id);
+                              }
+                            }}
+                            className={`flex cursor-pointer items-center justify-between gap-3 rounded-lg border px-3 py-2 transition ${
                               isSelected
                                 ? "border-blue-400/40 bg-blue-500/10"
-                                : "border-white/10 bg-white/[0.02]"
+                                : "border-transparent hover:border-white/10 hover:bg-white/[0.03]"
                             }`}
                           >
-                            <div>
-                              <p className="text-sm font-semibold text-white">
-                                {voice.name}
-                              </p>
-                              <p className="mt-1 text-xs text-gray-500">
-                                {formatVoiceLabels(voice.labels)}
-                              </p>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-white">{voice.name}</p>
+                              <p className="truncate text-xs text-gray-500">{formatVoiceLabels(voice.labels)}</p>
                             </div>
-
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handlePreviewVoice(voice)}
-                                disabled={!voice.preview_url}
-                                className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-gray-300 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-                              >
-                                {isPlaying ? "Stop" : "Play"}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setVoiceId(voice.voice_id)}
-                                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                                  isSelected
-                                    ? "bg-blue-500/20 text-blue-200"
-                                    : "border border-white/10 bg-white/[0.03] text-gray-300 hover:text-white"
-                                }`}
-                              >
-                                {isSelected ? "Selected" : "Use"}
-                              </button>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePreviewVoice(voice);
+                              }}
+                              disabled={!voice.preview_url}
+                              className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                                isPlaying
+                                  ? "border-blue-400/40 bg-blue-500/20 text-blue-100"
+                                  : "border-white/10 bg-white/[0.03] text-gray-300 hover:text-white"
+                              }`}
+                            >
+                              {isPlaying ? "Stop" : "Play"}
+                            </button>
                           </div>
                         );
                       })}
@@ -667,7 +718,9 @@ function ChatContent() {
             )}
           </div>
 
-          {jobId && <PipelineProgress jobId={jobId} />}
+          <div ref={progressRef} className="scroll-mt-20">
+            {jobId && <PipelineProgress jobId={jobId} />}
+          </div>
 
           {jobId && (
             <div className="mt-4 flex flex-wrap gap-4">
@@ -675,6 +728,7 @@ function ChatContent() {
                 onClick={() => {
                   setJobId(null);
                   setError("");
+                  setFormOpen(true);
                   router.replace(pathname, { scroll: false });
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
@@ -687,6 +741,7 @@ function ChatContent() {
                   setJobId(null);
                   setIdea("");
                   setError("");
+                  setFormOpen(true);
                   router.replace(pathname, { scroll: false });
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
