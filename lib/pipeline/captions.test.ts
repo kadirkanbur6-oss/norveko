@@ -88,5 +88,47 @@ test("pricing: subtitles add 10 credits only together with a voiceover", async (
   assert.equal(totalPipelineCredits({ voiceover: false, subtitles: true }), 15, "no voiceover → no subtitles charge");
   const steps = initialStepsState({ voiceover: true, subtitles: true });
   assert.equal(steps.voiceover.subtitles, true);
-  assert.deepEqual(optionsFromSteps(steps), { voiceover: true, subtitles: true, video: false });
+  const o = optionsFromSteps(steps);
+  assert.equal(o.voiceover, true);
+  assert.equal(o.subtitles, true);
+  assert.equal(o.video, false);
+  assert.equal(o.fullVideo, false);
+});
+
+test("timeline: planSlots spreads Kling slots evenly and maps scenes in order", async () => {
+  const { planSlots, stillScenes, buildEdit, narrationSeconds } = await import("./timeline");
+  const scenes = [1, 2, 3, 4, 5].map((n) => ({ sceneNumber: n, videoPrompt: `p${n}` }));
+  const slots = planSlots(scenes, 58.2, 12, 3);
+  assert.equal(slots.length, 12);
+  assert.deepEqual(slots.filter((s) => s.kind === "kling").map((s) => s.index), [0, 4, 8]);
+  assert.deepEqual(slots.map((s) => s.sceneNumber), [1, 1, 1, 2, 2, 3, 3, 3, 4, 4, 5, 5]);
+  const totalLen = slots.reduce((n, s) => n + s.length, 0);
+  assert.ok(Math.abs(totalLen - 58.2) < 0.05, "slots cover the narration exactly");
+  assert.deepEqual(stillScenes(slots), [1, 2, 3, 4, 5]);
+  assert.equal(narrationSeconds([{ start: 0, end: 51.9, text: "x" }], 60), 52.5);
+  assert.equal(narrationSeconds(undefined, 60), 60);
+
+  // Edit: failed slot borrows the nearest ready visual; Kling clip is slowed to fill its slot.
+  slots.forEach((s) => {
+    s.status = s.index === 1 ? "failed" : "succeed";
+    s.url = `https://cdn/${s.index}`;
+    if (s.kind === "kling") s.sourceSeconds = 5;
+  });
+  const edit = buildEdit({ slots, voiceoverUrl: "https://cdn/v.mp3", subtitlesUrl: "https://cdn/c.srt", orientation: "vertical", totalSeconds: 58.2 }) as any;
+  // Slots here are 4.85 s, shorter than the 5 s clip → trimmed at normal speed.
+  assert.equal(edit.timeline.tracks[1].clips[0].asset.speed, 1);
+  // A longer narration (70 s / 12 = 5.83 s slots) slows the clip to fill the slot.
+  const longSlots = planSlots(scenes, 70, 12, 3);
+  longSlots.forEach((s) => { s.status = "succeed"; s.url = "u"; if (s.kind === "kling") s.sourceSeconds = 5; });
+  const longEdit = buildEdit({ slots: longSlots, voiceoverUrl: "v", orientation: "horizontal", totalSeconds: 70 }) as any;
+  assert.ok(longEdit.timeline.tracks[0].clips[0].asset.speed < 1 && longEdit.timeline.tracks[0].clips[0].asset.speed >= 0.5);
+  assert.equal(longEdit.timeline.tracks.length, 1, "no subtitles → no caption track");
+  const visual = edit.timeline.tracks[1].clips;
+  assert.equal(visual.length, 12);
+  assert.equal(visual[1].asset.src, "https://cdn/0", "failed slot falls back to its neighbour");
+  assert.equal(visual[0].asset.type, "video");
+  assert.equal(visual[2].asset.type, "image");
+  assert.ok(visual[2].effect, "stills get a Ken Burns effect");
+  assert.equal(edit.output.size.height, 1920);
+  assert.equal(edit.output.range.length, 58.2);
 });

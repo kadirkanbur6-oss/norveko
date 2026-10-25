@@ -24,6 +24,7 @@ const EXPECTED_SECONDS: Record<PipelineStepId, number> = {
   voiceover: 35,
   thumbnail: 40,
   video: 360,
+  render: 150,
 };
 
 const MESSAGES: Record<PipelineStepId, string[]> = {
@@ -43,6 +44,12 @@ const MESSAGES: Record<PipelineStepId, string[]> = {
     "Sketching thumbnail concepts…",
     "Rendering the thumbnail…",
     "Tuning colours and contrast…",
+  ],
+  render: [
+    "Laying clips on the timeline…",
+    "Syncing narration and subtitles…",
+    "Rendering the final MP4…",
+    "Almost there — encoding…",
   ],
   video: [
     "Sending scenes to the video model…",

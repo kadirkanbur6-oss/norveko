@@ -35,6 +35,17 @@ export function isVideoGenerationEnabled(userId: string | null | undefined): boo
   return isAllowlisted(userId, process.env.VIDEO_BETA_USER_IDS);
 }
 
+/**
+ * May this user render a full video (Kling/stills + voiceover + subtitles →
+ * MP4)? Private beta: OFF unless FULL_VIDEO_ENABLED=true, with
+ * FULL_VIDEO_BETA_USER_IDS as the allowlist.
+ */
+export function isFullVideoEnabled(userId: string | null | undefined): boolean {
+  if (!isGenerationEnabled(userId)) return false;
+  if (process.env.FULL_VIDEO_ENABLED === "true") return true;
+  return isAllowlisted(userId, process.env.FULL_VIDEO_BETA_USER_IDS);
+}
+
 /** Message shown to users while the launch lock is on. */
 export const LAUNCH_LOCK_MESSAGE =
   "Norveko is launching soon. Content generation is temporarily closed while we finish building — your credits are safe and nothing has been charged.";

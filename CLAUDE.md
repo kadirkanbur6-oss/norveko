@@ -40,12 +40,25 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   async video adımını 20 sn'de bir poll eder, 40 dk sonra timeout).
 - `GET /api/pipeline/reap` (cron, günlük 03:30 UTC): tüm running job'lar için aynı.
 - Mantık `lib/pipeline/runner.ts` içinde `createPipelineRunner(deps)`;
-  `lib/pipeline/runner.test.ts` 8 senaryo + `captions.test.ts` 5 birim testi
+  `lib/pipeline/runner.test.ts` 11 senaryo (tam video dahil) +
+  `captions.test.ts` 9 birim testi (altyazı, fiyat, timeline)
   (`npm run test:pipeline`).
 - Kredi maliyetleri **tek kaynak**: `lib/pipeline/steps.ts` (script 5, voiceover
   15, **altyazı eklentisi 10** (`SUBTITLES_CREDITS`, sadece voiceover ile;
   adım değil, `steps.voiceover.subtitles=true` olarak kaydedilir), thumbnail
-  10, video 12×5 klip peşin; kullanılmayan/başarısız klip iade).
+  10, **Kling klip 90** (5 sn; 26 Ekim'de 12'den yükseltildi — 12 zarardaydı),
+  **AI görsel sahne 12**, **render 30 / 30 sn**). `creditBreakdown(opts)` UI
+  ve fatura metni için kalemleri verir; kullanılmayan/başarısız görsel iade.
+
+### Fiyatlandırma mantığı (26 Ekim 2026, hedef ≥%70 kâr)
+Paddle komisyonu sonrası 1 kredi ≈ $0.011 (Business paketi, en kötü durum) →
+fiyat ≥ maliyet × 3.33. Sağlayıcı maliyetleri: Kling 2.1 std 5 sn ≈ $0.28
+(direkt API, $9.80 deneme / $700 standart paket ön ödemeli), Gemini görsel
+$0.04, Shotstack render $0.20/dk (PAYG $10 = 50 dk), ElevenLabs
+$0.00022/karakter. 60 sn tam video: Hybrid ~430 kredi (maliyet ~$1.6),
+Cinematic ~1.180 (~$3.9), Stills ~250 (~$0.8). `lib/pipeline/usage.ts`
+`PRICE_LIST` güncel; `provider_usage` tablosundan gerçek maliyet/kredi
+karşılaştırması yapılır.
 - Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
 - Bitince sonuç `projects.content` JSONB'ye yazılır; başlık = AI'nin ilk title'ı.
 
@@ -53,7 +66,10 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
 
 - `GENERATION_ENABLED=false` → **lansman kilidi**: `BETA_USER_IDS` dışındakiler
   üretim yapamaz, kredi düşmeden 403. UI "launching soon" gösterir.
-- `VIDEO_GENERATION_ENABLED=true` veya `VIDEO_BETA_USER_IDS` → Kling klipleri.
+- `VIDEO_GENERATION_ENABLED=true` veya `VIDEO_BETA_USER_IDS` → Kling klipleri
+  (eski "clips-only" seçeneği).
+- `FULL_VIDEO_ENABLED=true` veya `FULL_VIDEO_BETA_USER_IDS` → **tam video**
+  (özel beta, sadece Kadir).
 - Kontrol: `lib/pipeline/features.ts`, UI'a `GET /api/features`.
 
 ## 5. Tamamlanan Modüller (Ekim 2026 itibarıyla)
@@ -86,6 +102,27 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   ve `projects.content.captions` olarak saklanır (karakter hizalaması
   saklanmaz). Voiceover yoksa export okuma hızından tahmin eder ve menü bunu
   söyler. İleride MP4 render'da burn-in için aynı cue'lar kullanılacak.
+- **Tam video (tek cümle → MP4)** — özel beta: `PipelineOptions.fullVideo` +
+  `footage` ("hybrid" | "cinematic" | "stills") + `duration` (sadece 30/60 sn,
+  `FULL_VIDEO_DURATIONS`). Voiceover + altyazı otomatik dahil. Adımlar: script
+  → voiceover → thumbnail → **video (görseller)** → **render**.
+  `fullVideoPlan()` zaman çizelgesini ~5 sn'lik **slot**'lara böler (60 sn →
+  12; hybrid: her 4. slot Kling, cinematic: hepsi, stills: hiçbiri); plan
+  `steps.video.plan` ve `steps.render.plan`'a yazılır, kredi peşin.
+  `lib/pipeline/timeline.ts`: `planSlots()` (sahneleri sıralı slotlara
+  dağıtır, Kling slotları eşit aralıklı), `buildEdit()` (Shotstack edit JSON:
+  rich-caption SRT URL'den, Kling klibi slotu dolduracak şekilde `speed`
+  ≥0.5, görsellere Ken Burns `effect`, soundtrack = voiceover, 1080×1920 /
+  1920×1080, 30 fps, `range` anlatım süresi). Runner: görseller adımı async —
+  ilk çağrıda Kling slotları gönderilir, her poll'da Kling sorgulanır + en
+  fazla 2 AI görsel üretilir (`generateSceneImage`, sahne başına bir görsel,
+  komşu slotlar paylaşır; fazlası peşinen iade), başarısız Kling slotu iade +
+  render'da komşu görselle doldurulur. Render adımı async: SRT `videos`
+  bucket'a yüklenir, Shotstack'e gönderilir (`lib/pipeline/shotstack.ts`),
+  poll'da `done` olunca MP4 indirilip `videos/{user}/{job}/final.mp4`'e
+  yazılır → `projects.content.finalVideoUrl`. UI: `/chat`'te "Render the full
+  video" kartı (footage seçimi + kredi), ilerlemede slot ızgarası + final
+  oynatıcı + Download MP4; proje sayfasında "Final video" bölümü.
 - **Ses oynatıcı** `app/components/AudioPlayer.tsx`: native `<audio controls>`
   yerine özel oynatıcı — MP3 tarayıcıda Web Audio ile decode edilip gerçek
   dalga formu (96 çubuk) çizilir, tıkla/sürükle ile seek, hız (0.75–2×),
@@ -172,15 +209,18 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
 
 ## 7. Bekleyen İşler (öncelik sırasıyla)
 
-Kod dışı (Kadir): `app/lib/legal.ts` `LEGAL_NAME` placeholder'ı (şirket
-kurulunca); Kling anahtarları; Paddle live ID'leri + webhook event'leri
-(`adjustment.*`); ElevenLabs Starter planı (kütüphane sesleri için).
+Kod dışı (Kadir): **tam video betası için Vercel env**: `SHOTSTACK_API_KEY`
++ `SHOTSTACK_ENV=stage` (test; `v1` = filigransız prod, PAYG $10),
+`KLING_ACCESS_KEY/SECRET_KEY` ($9.80 deneme paketi yeter),
+`FULL_VIDEO_BETA_USER_IDS=92779a9c-cb1c-47a8-bcc8-e07f4de6dc56`; `app/lib/legal.ts`
+`LEGAL_NAME` placeholder'ı (şirket kurulunca); Paddle live ID'leri + webhook
+event'leri (`adjustment.*`); ElevenLabs Starter planı (kütüphane sesleri için).
 (`YOUTUBE_API_KEY` yeniden adlandırması 25 Ekim'de Vercel'de yapıldı; eski
 `NEXT_PUBLIC_` değişkeni silindi — `app/lib/youtube.ts` fallback'i artık
 sadece yerel .env için.)
 
-Ürün (rakip analizine göre): ~~otomatik altyazı~~ (yapıldı) →
-tam MP4 render → 9:16/16:9 seçimi → niş şablonları + örnek galeri →
+Ürün (rakip analizine göre): ~~otomatik altyazı~~ → ~~tam MP4 render~~
+(özel beta, canlı test bekliyor) → ~~9:16/16:9 seçimi~~ → niş şablonları + örnek galeri →
 YouTube'a doğrudan yükleme → seri modu/zamanlama → ses klonlama + brand kit →
 affiliate. Ertelenen: timeline editör, AI avatar, mobil app.
 

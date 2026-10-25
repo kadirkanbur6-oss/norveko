@@ -12,7 +12,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PipelineStepId } from "@/lib/pipeline/steps";
 
-export type UsageProvider = "openai" | "elevenlabs" | "gemini" | "kling";
+export type UsageProvider = "openai" | "elevenlabs" | "gemini" | "kling" | "shotstack";
 
 export interface UsageRecord {
   jobId: string;
@@ -51,8 +51,10 @@ export const PRICE_LIST: Record<string, Price> = {
   "elevenlabs:eleven_multilingual_v2": { perUnit: 0.00022 },
   // Gemini image — per generated image.
   "gemini:gemini-3.1-flash-image": { perUnit: 0.04 },
-  // Kling — per second of generated video (std mode).
-  "kling:kling-v2-1": { perUnit: 0.05 },
+  // Kling — per second of generated video (std mode, 5 s ≈ $0.28 direct).
+  "kling:kling-v2-1": { perUnit: 0.056 },
+  // Shotstack — per second of rendered output (pay-as-you-go $0.20/min).
+  "shotstack:render": { perUnit: 0.0034 },
 };
 
 function priceFor(provider: UsageProvider, model: string): Price | null {
@@ -128,6 +130,7 @@ export function splitProvider(spec: string): { provider: UsageProvider; model: s
   if (p === "openai" || p === "elevenlabs" || p === "kling") {
     return { provider: p, model: m ?? "" };
   }
+  if (p === "shotstack") return { provider: "shotstack", model: m ?? "render" };
   // Thumbnail step is stored as a bare model id ("gemini-3.1-flash-image").
   return { provider: "gemini", model: m ?? p };
 }

@@ -14,6 +14,7 @@ import {
   type JobRow,
 } from "./runner";
 import type { UsageRecord } from "./usage";
+import { initialStepsState, totalPipelineCredits } from "./steps";
 
 type Row = Record<string, any>;
 
@@ -133,6 +134,8 @@ function makeRunner(
   const calls: string[] = [];
   const usage: UsageRecord[] = [];
   const klingStatuses = opts.klingStatuses ?? {};
+  const renderStatus: { value: "queued" | "rendering" | "done" | "failed" } = { value: "rendering" };
+  let lastEdit: Record<string, unknown> | null = null;
   let taskSeq = 0;
   const runner = createPipelineRunner({
     db,
@@ -184,6 +187,23 @@ function makeRunner(
         };
       },
       downloadVideo: async () => Buffer.from("mp4"),
+      generateSceneImage: async (_prompt, _jobId, _userId, sceneNumber) => {
+        calls.push(`still:${sceneNumber}`);
+        if (opts.failAt === "still") throw new Error("gemini still down");
+        return { imageUrl: `https://cdn/still-${sceneNumber}.png`, storagePath: `still-${sceneNumber}.png` };
+      },
+      submitRender: async (edit) => {
+        calls.push("render:submit");
+        lastEdit = edit;
+        if (opts.failAt === "render-submit") throw new Error("shotstack down");
+        return "render_1";
+      },
+      getRender: async (id) => {
+        calls.push(`render:poll:${id}`);
+        const status = renderStatus.value;
+        return { id, status, url: status === "done" ? "https://shotstack/final.mp4" : undefined, duration: 60 };
+      },
+      downloadRender: async () => Buffer.from("mp4-final"),
     },
     kick: async (id) => {
       kicked.push(id);
@@ -193,7 +213,7 @@ function makeRunner(
       usage.push(record);
     },
   });
-  return { runner, rows, rpc, seedJob, kicked, calls, klingStatuses, usage };
+  return { runner, rows, rpc, seedJob, kicked, calls, klingStatuses, usage, renderStatus, edit: () => lastEdit };
 }
 
 function seedVideoJob(seedJob: ReturnType<typeof makeDb>["seedJob"]) {
@@ -203,7 +223,7 @@ function seedVideoJob(seedJob: ReturnType<typeof makeDb>["seedJob"]) {
       thumbnail: { status: "pending", provider: "gemini", error: null },
       video: { status: "pending", provider: "kling", error: null },
     },
-    credits_charged: 15 + 12 * 5,
+    credits_charged: 15 + 90 * 5,
   });
 }
 
@@ -318,7 +338,7 @@ test("video step: submits one task per scene, refunds unused clips, polls until 
   assert.equal(job.steps.video.status, "running");
   assert.equal(job.steps.video.clips.length, 3);
   // 5 clips charged, 3 scenes -> 2 clips refunded right away
-  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [24]);
+  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [180]);
 
   // Still processing: polling is a noop
   assert.equal(await runner.runNextStep(id), "noop");
@@ -335,7 +355,7 @@ test("video step: submits one task per scene, refunds unused clips, polls until 
   assert.equal(job.steps.video.status, "completed");
   assert.deepEqual(job.steps.video.clips.map((c: any) => c.status), ["succeed", "failed", "succeed"]);
   assert.match(job.steps.video.clips[0].video_url, /^https:\/\/cdn\//);
-  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [24, 12]);
+  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [180, 90]);
   assert.equal(job.steps.result.project_id.startsWith("proj_"), true);
 });
 
@@ -347,8 +367,8 @@ test("video step: every submit failing fails the job with a full refund", async 
   assert.equal(await runner.runNextStep(id), "failed");
   const job = rows.get(id)!;
   assert.equal(job.status, "failed");
-  assert.equal(job.credits_refunded, 75);
-  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [75]);
+  assert.equal(job.credits_refunded, 465);
+  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [465]);
 });
 
 test("reconcile: an in-flight video step is re-kicked for polling, not timed out at 8 minutes", async () => {
@@ -415,4 +435,87 @@ test("subtitles add-on off: voiceover completes without caption cues", async () 
   const job = rows.get(id)!;
   assert.equal(job.steps.voiceover.status, "completed");
   assert.equal(job.steps.voiceover.captions, undefined);
+});
+
+function seedFullVideoJob(seedJob: ReturnType<typeof makeDb>["seedJob"], footage: "hybrid" | "cinematic" | "stills" = "hybrid") {
+  const opts = { fullVideo: true, footage, duration: "60 seconds" as const };
+  const steps = initialStepsState(opts) as Record<string, any>;
+  steps.script.queued_at = new Date(0).toISOString();
+  steps.voiceover.voice_id = "v1";
+  return seedJob(false, { steps, credits_charged: totalPipelineCredits(opts), options: { orientation: "vertical" } });
+}
+
+test("full video (hybrid, 60 s): 12 slots, 3 Kling + stills, render to final MP4, 70%-margin pricing", async () => {
+  assert.equal(totalPipelineCredits({ fullVideo: true, footage: "hybrid", duration: "60 seconds" }), 5 + 15 + 10 + 10 + 3 * 90 + 9 * 12 + 2 * 30);
+  assert.equal(totalPipelineCredits({ fullVideo: true, footage: "cinematic", duration: "60 seconds" }), 40 + 12 * 90 + 60);
+  assert.equal(totalPipelineCredits({ fullVideo: true, footage: "stills", duration: "30 seconds" }), 40 + 6 * 12 + 30);
+  assert.equal(totalPipelineCredits({ fullVideo: true, duration: "8 minutes" }), 15, "unsupported duration → plain package");
+
+  const { runner, rows, rpc, seedJob, calls, klingStatuses, renderStatus, edit } = makeRunner();
+  const id = seedFullVideoJob(seedJob);
+
+  assert.equal(await runner.runNextStep(id), "advanced"); // script
+  assert.equal(await runner.runNextStep(id), "advanced"); // voiceover (+captions)
+  assert.equal(await runner.runNextStep(id), "advanced"); // thumbnail
+  assert.equal(await runner.runNextStep(id), "advanced"); // visuals: submit
+  let job = rows.get(id)!;
+  assert.equal(job.steps.video.slots.length, 12);
+  assert.deepEqual(
+    job.steps.video.slots.filter((s: any) => s.kind === "kling").map((s: any) => s.index),
+    [0, 4, 8]
+  );
+  assert.equal(calls.filter((c) => c.startsWith("submit:")).length, 3);
+  // 9 still slots planned but only 3 distinct scenes → 6 stills refunded up front
+  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [6 * 12]);
+
+  // Polls: Kling still processing, stills generated 2 per poll (3 scenes → 2 polls)
+  assert.equal(await runner.runNextStep(id), "noop");
+  assert.equal(calls.filter((c) => c.startsWith("still:")).length, 2);
+  assert.equal(await runner.runNextStep(id), "noop");
+  assert.equal(calls.filter((c) => c.startsWith("still:")).length, 3, "one image per scene, shared by slots");
+
+  klingStatuses.task_1 = "succeed";
+  klingStatuses.task_2 = "succeed";
+  klingStatuses.task_3 = "failed";
+  assert.equal(await runner.runNextStep(id), "advanced"); // visuals settle → render queued
+  job = rows.get(id)!;
+  assert.equal(job.steps.video.status, "completed");
+  assert.equal(job.current_step, "render");
+  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [72, 90], "failed Kling slot refunded");
+
+  assert.equal(await runner.runNextStep(id), "advanced"); // render: submit
+  const e = edit()!;
+  const tl = e.timeline as any;
+  assert.equal(tl.tracks.length, 2, "captions track + visuals track");
+  assert.equal(tl.tracks[0].clips[0].asset.type, "rich-caption");
+  assert.equal(tl.tracks[1].clips.length, 12, "every slot has a visual (failed one falls back to a neighbour)");
+  assert.equal((e.output as any).size.width, 1080);
+  assert.equal(tl.soundtrack.src.startsWith("https://cdn/"), true);
+
+  assert.equal(await runner.runNextStep(id), "noop"); // rendering
+  renderStatus.value = "done";
+  assert.equal(await runner.runNextStep(id), "completed");
+  job = rows.get(id)!;
+  assert.equal(job.status, "completed");
+  assert.equal(job.steps.render.status, "completed");
+  assert.equal(job.steps.render.storage_path, "u1/" + id + "/final.mp4");
+  assert.ok(typeof job.steps.render.video_url === "string" && job.steps.render.video_url.startsWith("https://cdn/"));
+});
+
+test("full video: a failed render fails the job and refunds", async () => {
+  const { runner, rows, seedJob, klingStatuses, renderStatus } = makeRunner();
+  const id = seedFullVideoJob(seedJob, "stills");
+  for (let i = 0; i < 4; i++) await runner.runNextStep(id); // script, voiceover, thumbnail, visuals submit
+  klingStatuses.task_1 = "succeed";
+  await runner.runNextStep(id); await runner.runNextStep(id); // 3 stills over 2 polls → settle? (needs 2 polls)
+  let job = rows.get(id)!;
+  if (job.current_step !== "render") await runner.runNextStep(id);
+  job = rows.get(id)!;
+  assert.equal(job.current_step, "render");
+  assert.equal(await runner.runNextStep(id), "advanced"); // submit render
+  renderStatus.value = "failed";
+  assert.equal(await runner.runNextStep(id), "failed");
+  job = rows.get(id)!;
+  assert.equal(job.status, "failed");
+  assert.ok(job.credits_refunded > 0);
 });

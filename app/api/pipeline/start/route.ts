@@ -8,13 +8,18 @@ import { requireUser } from "@/lib/supabase-server";
 import { createClient } from "@supabase/supabase-js";
 import {
   buildPipelineSteps,
+  FOOTAGE_MODES,
+  fullVideoPlan,
+  resolvePipelineOptions,
   totalPipelineCredits,
+  type FootageMode,
+  type PipelineOptions,
   initialStepsState,
 } from "@/lib/pipeline/steps";
 import { kickJob } from "@/lib/pipeline/runner";
 import {
   isGenerationEnabled,
-  isVideoGenerationEnabled,
+  isFullVideoEnabled, isVideoGenerationEnabled,
   LAUNCH_LOCK_MESSAGE,
 } from "@/lib/pipeline/features";
 import { DURATIONS, LANGUAGES, PLATFORMS, STYLES, ORIENTATIONS, defaultOrientation, isOneOf } from "@/lib/pipeline/options";
@@ -106,7 +111,11 @@ export async function POST(req: NextRequest) {
     const voicePublicOwnerId =
       typeof body.voicePublicOwnerId === "string" ? body.voicePublicOwnerId.trim() : "";
     const voiceName = typeof body.voiceName === "string" ? body.voiceName.trim() : "";
-    const videoRequested = body.includeVideo === true;
+    const fullVideoRequested = body.includeFullVideo === true;
+    const footage: FootageMode = FOOTAGE_MODES.includes(body.footage as FootageMode)
+      ? (body.footage as FootageMode)
+      : "hybrid";
+    const videoRequested = !fullVideoRequested && body.includeVideo === true;
     const subtitlesRequested = voiceoverEnabled && body.includeSubtitles === true;
 
     // Video generation is gated. Rejecting here means a disabled feature can
@@ -117,9 +126,29 @@ export async function POST(req: NextRequest) {
         { status: 403 }
       );
     }
-    const options = { voiceover: voiceoverEnabled, subtitles: subtitlesRequested, video: videoRequested };
+    if (fullVideoRequested && !isFullVideoEnabled(user.id)) {
+      return NextResponse.json(
+        { success: false, error: "Full video rendering is in private beta." },
+        { status: 403 }
+      );
+    }
+    if (fullVideoRequested && !fullVideoPlan(duration, footage)) {
+      return NextResponse.json(
+        { success: false, error: "Full videos are available for 30 and 60 second durations for now." },
+        { status: 400 }
+      );
+    }
+    const options: PipelineOptions = {
+      voiceover: voiceoverEnabled || fullVideoRequested,
+      subtitles: subtitlesRequested || fullVideoRequested,
+      video: videoRequested,
+      fullVideo: fullVideoRequested,
+      footage,
+      duration,
+    };
+    const resolved = resolvePipelineOptions(options);
 
-    if (voiceoverEnabled) {
+    if (resolved.voiceover) {
       if (!voiceId) {
         return NextResponse.json(
           { success: false, error: "Please select a voice for the voiceover." },
@@ -218,7 +247,7 @@ export async function POST(req: NextRequest) {
       {
         p_user_id: user.id,
         p_amount: cost,
-        p_reason: `AI pipeline generation (content package + thumbnail${voiceoverEnabled ? " + voiceover" : ""}${subtitlesRequested ? " + subtitles" : ""}${videoRequested ? " + video clips" : ""})`,
+        p_reason: `AI pipeline generation (content package + thumbnail${resolved.voiceover ? " + voiceover" : ""}${resolved.subtitles ? " + subtitles" : ""}${resolved.fullVideo ? ` + full video (${footage})` : ""}${videoRequested ? " + video clips" : ""})`,
       }
     );
 
@@ -240,7 +269,7 @@ export async function POST(req: NextRequest) {
     const steps = initialStepsState(options) as Record<string, Record<string, unknown>>;
     const firstStep = buildPipelineSteps(options)[0];
     steps[firstStep.id] = { ...steps[firstStep.id], queued_at: new Date().toISOString() };
-    if (voiceoverEnabled) {
+    if (resolved.voiceover) {
       steps.voiceover = { ...steps.voiceover, voice_id: voiceId };
     }
 
@@ -253,7 +282,7 @@ export async function POST(req: NextRequest) {
         style,
         duration,
         output_language: outputLanguage,
-        options: { orientation, template },
+        options: { orientation, template, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined },
         status: "running",
         current_step: firstStep.id,
         steps,

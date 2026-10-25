@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Captions, CheckCircle2, ChevronDown, Clapperboard, Coins, LayoutTemplate, Loader2, Mic, Play, Search, Sparkles, Square, Wand2 } from "lucide-react";
+import { Captions, CheckCircle2, Film, ChevronDown, Clapperboard, Coins, LayoutTemplate, Loader2, Mic, Play, Search, Sparkles, Square, Wand2 } from "lucide-react";
 import Link from "next/link";
 import Sidebar from "../components/Sidebar";
 import PipelineProgress from "../components/PipelineProgress";
@@ -10,8 +10,11 @@ import PipelineProgress from "../components/PipelineProgress";
 import { DURATIONS, LANGUAGE_OPTIONS, LANGUAGES, ORIENTATIONS, PLATFORMS, STYLES, defaultOrientation, languageOption, type OrientationId } from "@/lib/pipeline/options";
 import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
 import {
+  fullVideoPlan,
+  FULL_VIDEO_DURATIONS,
   SUBTITLES_CREDITS,
   totalPipelineCredits,
+  type FootageMode,
   VIDEO_CLIP_CREDITS,
   VIDEO_CLIP_SECONDS,
   VIDEO_MAX_CLIPS,
@@ -48,6 +51,8 @@ interface Draft {
   language: string;
   includeVoiceover: boolean;
   includeSubtitles?: boolean;
+  includeFullVideo?: boolean;
+  footage?: FootageMode;
   voiceId: string;
   orientation?: OrientationId;
   template?: string | null;
@@ -77,6 +82,9 @@ function ChatContent() {
   const [includeSubtitles, setIncludeSubtitles] = useState(true);
   const [includeVideo, setIncludeVideo] = useState(false);
   const [videoAvailable, setVideoAvailable] = useState(false);
+  const [includeFullVideo, setIncludeFullVideo] = useState(false);
+  const [footage, setFootage] = useState<FootageMode>("hybrid");
+  const [fullVideoAvailable, setFullVideoAvailable] = useState(false);
   const [generationAvailable, setGenerationAvailable] = useState(true);
   const [balance, setBalance] = useState<number | null>(null);
   const [launchLockMessage, setLaunchLockMessage] = useState<string | null>(null);
@@ -94,11 +102,16 @@ function ChatContent() {
   const progressRef = useRef<HTMLDivElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  const fullVideoOn = includeFullVideo && fullVideoAvailable && Boolean(fullVideoPlan(duration, footage));
   const totalCost = totalPipelineCredits({
-    voiceover: includeVoiceover,
-    subtitles: includeVoiceover && includeSubtitles,
-    video: includeVideo && videoAvailable,
+    voiceover: includeVoiceover || fullVideoOn,
+    subtitles: (includeVoiceover && includeSubtitles) || fullVideoOn,
+    video: !fullVideoOn && includeVideo && videoAvailable,
+    fullVideo: fullVideoOn,
+    footage,
+    duration,
   });
+  const fullVideoSupported = Boolean(FULL_VIDEO_DURATIONS[duration]);
   const videoCost = VIDEO_CLIP_CREDITS * VIDEO_MAX_CLIPS;
 
   // Restore an in-progress job from the URL and the unsent draft from
@@ -114,6 +127,8 @@ function ChatContent() {
       if (typeof draft.language === "string") setLanguage(draft.language);
       if (typeof draft.includeVoiceover === "boolean") setIncludeVoiceover(draft.includeVoiceover);
       if (typeof draft.includeSubtitles === "boolean") setIncludeSubtitles(draft.includeSubtitles);
+      if (typeof draft.includeFullVideo === "boolean") setIncludeFullVideo(draft.includeFullVideo);
+      if (draft.footage === "hybrid" || draft.footage === "cinematic" || draft.footage === "stills") setFootage(draft.footage);
       if (typeof draft.voiceId === "string") setVoiceId(draft.voiceId);
       if (draft.orientation === "vertical" || draft.orientation === "horizontal") {
         setOrientation(draft.orientation);
@@ -131,12 +146,12 @@ function ChatContent() {
 
   useEffect(() => {
     try {
-      const draft: Draft = { idea, platform, style, duration, language, includeVoiceover, includeSubtitles, voiceId, orientation, template: templateId };
+      const draft: Draft = { idea, platform, style, duration, language, includeVoiceover, includeSubtitles, includeFullVideo, footage, voiceId, orientation, template: templateId };
       sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     } catch {
       // storage unavailable
     }
-  }, [idea, platform, style, duration, language, includeVoiceover, includeSubtitles, voiceId, orientation, templateId]);
+  }, [idea, platform, style, duration, language, includeVoiceover, includeSubtitles, includeFullVideo, footage, voiceId, orientation, templateId]);
 
   // Keep orientation in step with the platform until the user picks one explicitly.
   function choosePlatform(next: string) {
@@ -178,6 +193,7 @@ function ChatContent() {
       .then((data) => {
         if (active && data?.success) {
           setVideoAvailable(Boolean(data.features?.videoGeneration));
+          setFullVideoAvailable(Boolean(data.features?.fullVideo));
           setGenerationAvailable(data.features?.generation !== false);
           setLaunchLockMessage(data.launchLockMessage ?? null);
         }
@@ -314,12 +330,14 @@ function ChatContent() {
           style,
           duration,
           outputLanguage: language,
-          includeVoiceover,
-          includeSubtitles: includeVoiceover && includeSubtitles,
-          voiceId: includeVoiceover ? effectiveVoiceId : null,
-          voicePublicOwnerId: includeVoiceover ? selectedVoice?.public_owner_id ?? null : null,
-          voiceName: includeVoiceover ? selectedVoice?.name ?? null : null,
-          includeVideo: includeVideo && videoAvailable,
+          includeVoiceover: includeVoiceover || fullVideoOn,
+          includeSubtitles: (includeVoiceover && includeSubtitles) || fullVideoOn,
+          voiceId: includeVoiceover || fullVideoOn ? effectiveVoiceId : null,
+          voicePublicOwnerId: includeVoiceover || fullVideoOn ? selectedVoice?.public_owner_id ?? null : null,
+          voiceName: includeVoiceover || fullVideoOn ? selectedVoice?.name ?? null : null,
+          includeVideo: !fullVideoOn && includeVideo && videoAvailable,
+          includeFullVideo: fullVideoOn,
+          footage,
           orientation,
           template: templateId,
         }),
@@ -377,6 +395,7 @@ function ChatContent() {
                   {platform} · {style} · {duration} · {language} · {orientation === "vertical" ? "9:16" : "16:9"}
                   {includeVoiceover ? " · voiceover" : ""}
                   {includeVoiceover && includeSubtitles ? " · subtitles" : ""}
+                  {fullVideoOn ? ` · full video (${footage})` : ""}
                   {templateId ? ` · ${NICHE_TEMPLATES.find((t) => t.id === templateId)?.name}` : ""}
                 </span>
               </span>
@@ -553,7 +572,8 @@ function ChatContent() {
                   <span className="relative inline-flex h-6 w-11 shrink-0 items-center">
                     <input
                       type="checkbox"
-                      checked={includeVoiceover}
+                      checked={includeVoiceover || fullVideoOn}
+                      disabled={fullVideoOn}
                       onChange={(e) => {
                         setIncludeVoiceover(e.target.checked);
                         if (!e.target.checked) stopPreview();
@@ -786,7 +806,8 @@ function ChatContent() {
                   <span className="relative inline-flex h-6 w-11 shrink-0 items-center">
                     <input
                       type="checkbox"
-                      checked={includeSubtitles}
+                      checked={includeSubtitles || fullVideoOn}
+                      disabled={fullVideoOn}
                       onChange={(e) => setIncludeSubtitles(e.target.checked)}
                       className="peer sr-only"
                     />
@@ -809,7 +830,92 @@ function ChatContent() {
               </div>
             )}
 
+            {/* Full video (private beta): one sentence → finished MP4 */}
+            {fullVideoAvailable && (
+              <div
+                className={`mt-4 rounded-2xl border p-4 transition ${
+                  fullVideoOn ? "border-purple-400/40 bg-gradient-to-br from-purple-500/10 to-blue-500/5" : "border-white/10 bg-[#0d0d16]"
+                }`}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <label className={`flex items-center gap-3 ${fullVideoSupported ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}>
+                    <span className="relative inline-flex h-6 w-11 shrink-0 items-center">
+                      <input
+                        type="checkbox"
+                        checked={fullVideoOn}
+                        disabled={!fullVideoSupported}
+                        onChange={(e) => {
+                          setIncludeFullVideo(e.target.checked);
+                          if (e.target.checked) setIncludeVoiceover(true);
+                        }}
+                        className="peer sr-only"
+                      />
+                      <span className="absolute inset-0 rounded-full bg-white/10 transition peer-checked:bg-gradient-to-r peer-checked:from-purple-500 peer-checked:to-blue-500 peer-focus-visible:ring-2 peer-focus-visible:ring-purple-400/60" />
+                      <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
+                    </span>
+                    <span>
+                      <span className="flex items-center gap-2 text-sm font-semibold text-white">
+                        <Film size={15} className="text-purple-300" />
+                        Render the full video
+                        <span className="rounded-full border border-purple-400/30 bg-purple-500/10 px-2 py-0.5 text-[11px] font-medium text-purple-200">
+                          Private beta
+                        </span>
+                      </span>
+                      <span className="mt-0.5 block text-xs text-gray-500">
+                        {fullVideoSupported
+                          ? "Finished MP4 with narration, burned-in subtitles and AI visuals — ready to upload."
+                          : "Available for 30 and 60 second videos for now."}
+                      </span>
+                    </span>
+                  </label>
+                </div>
+
+                {fullVideoOn && (
+                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                    {(
+                      [
+                        { id: "hybrid", name: "Hybrid", hint: "AI video clips for key moments, cinematic stills in between" },
+                        { id: "cinematic", name: "Cinematic", hint: "Every scene is an AI video clip" },
+                        { id: "stills", name: "Stills", hint: "Cinematic AI stills with camera motion, no video clips" },
+                      ] as Array<{ id: FootageMode; name: string; hint: string }>
+                    ).map((m) => {
+                      const plan = fullVideoPlan(duration, m.id);
+                      const active = footage === m.id;
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setFootage(m.id)}
+                          aria-pressed={active}
+                          className={`rounded-xl border p-3 text-left transition ${
+                            active ? "border-purple-400/60 bg-purple-500/10" : "border-white/10 bg-white/[0.02] hover:border-white/20"
+                          }`}
+                        >
+                          <span className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-semibold text-white">{m.name}</span>
+                            {plan && (
+                              <span className="rounded-full border border-yellow-400/20 bg-yellow-500/5 px-2 py-0.5 text-[11px] font-medium text-yellow-300">
+                                +{plan.credits.total}
+                              </span>
+                            )}
+                          </span>
+                          <span className="mt-1 block text-xs text-gray-500">{m.hint}</span>
+                          {plan && (
+                            <span className="mt-1 block text-[11px] text-gray-500">
+                              {plan.klingSlots > 0 ? `${plan.klingSlots} AI clips` : "no AI clips"}
+                              {plan.stillSlots > 0 ? ` · ${plan.stillSlots} stills` : ""} · {plan.seconds}s render
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Video clips (Kling) — gated until launch */}
+            {!fullVideoOn && (
             <div
               className={`mt-4 rounded-2xl border p-4 ${
                 videoAvailable
@@ -841,6 +947,7 @@ function ChatContent() {
                 </span>
               </div>
             </div>
+            )}
 
             {!generationAvailable && (
               <p className="mt-6 rounded-xl border border-yellow-400/30 bg-yellow-500/10 p-4 text-sm text-yellow-100">

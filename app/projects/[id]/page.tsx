@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   Check,
   Copy,
+  Download,
   FolderOpen,
   Loader2,
   Pencil,
@@ -53,6 +54,7 @@ interface VideoContent {
   voiceoverUrl?: string;
   audio_url?: string;
   captions?: Array<{ start: number; end: number; text: string }>;
+  finalVideoUrl?: string;
   voiceover?: {
     url?: string;
     publicUrl?: string;
@@ -75,6 +77,7 @@ interface NormalizedVideoContent {
   voiceoverUrl?: string;
   audio_url?: string;
   captions?: Array<{ start: number; end: number; text: string }>;
+  finalVideoUrl?: string;
   voiceover?: {
     url?: string;
     publicUrl?: string;
@@ -618,6 +621,32 @@ export default function ProjectDetailPage() {
               {editing ? (
                 renderEditForm()
               ) : project.content ? (
+                <>
+                {normalizedProjectContent?.finalVideoUrl && (
+                  <div className="mt-8 rounded-2xl border border-purple-400/30 bg-gradient-to-br from-purple-500/10 to-blue-500/5 p-4 sm:p-6">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-sm font-semibold text-white">Final video</h3>
+                        <p className="text-xs text-gray-400">1080p MP4 with narration and burned-in subtitles</p>
+                      </div>
+                      <a
+                        href={normalizedProjectContent.finalVideoUrl}
+                        download={`${slugify(project.title)}.mp4`}
+                        className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:opacity-90"
+                      >
+                        <Download size={15} />
+                        Download MP4
+                      </a>
+                    </div>
+                    <video
+                      controls
+                      playsInline
+                      preload="metadata"
+                      src={normalizedProjectContent.finalVideoUrl}
+                      className="mx-auto mt-4 max-h-[70vh] w-auto max-w-full rounded-xl border border-white/10 bg-black"
+                    />
+                  </div>
+                )}
                 <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
                   {/* Tabs */}
                   <div className="flex flex-wrap gap-2">
@@ -760,6 +789,7 @@ export default function ProjectDetailPage() {
                     </div>
                   )}
                 </div>
+                </>
               ) : (
                 <p className="mt-8 rounded-xl border border-white/10 bg-white/[0.03] p-6 text-sm text-gray-400">
                   No content found in this project.

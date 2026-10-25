@@ -34,6 +34,8 @@ export interface ProjectContent {
   audio_url?: string;
   /** Word-timed subtitle cues from the voiceover (see lib/pipeline/captions.ts). */
   captions?: ProjectCaption[];
+  /** Rendered MP4 (full-video jobs). */
+  finalVideoUrl?: string;
 }
 
 const LIMITS = {
@@ -150,6 +152,9 @@ export function sanitizeProjectContent(
     content.audio_url = voiceoverUrl; // legacy readers
   }
 
+  const finalVideoUrl = url(raw.finalVideoUrl);
+  if (finalVideoUrl) content.finalVideoUrl = finalVideoUrl;
+
   if (Array.isArray(raw.captions)) {
     const captions: ProjectCaption[] = [];
     for (const c of raw.captions.slice(0, LIMITS.captions)) {
@@ -188,6 +193,7 @@ export function contentToMarkdown(title: string, c: ProjectContent): string {
   if (c.thumbnailIdea) lines.push("## Thumbnail concept", "", c.thumbnailIdea, "");
   if (c.thumbnailUrl) lines.push(`Thumbnail image: ${c.thumbnailUrl}`, "");
   if (c.voiceoverUrl) lines.push(`Voiceover: ${c.voiceoverUrl}`, "");
+  if (c.finalVideoUrl) lines.push(`Final video: ${c.finalVideoUrl}`, "");
   return lines.join("\n");
 }
 

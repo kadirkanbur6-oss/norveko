@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/supabase-server";
 import {
+  isFullVideoEnabled,
   isGenerationEnabled,
   isVideoGenerationEnabled,
   LAUNCH_LOCK_MESSAGE,
@@ -19,6 +20,7 @@ export async function GET() {
     features: {
       generation: isGenerationEnabled(user?.id),
       videoGeneration: isVideoGenerationEnabled(user?.id),
+      fullVideo: isFullVideoEnabled(user?.id),
     },
     launchLockMessage: isGenerationEnabled(user?.id) ? null : LAUNCH_LOCK_MESSAGE,
   });

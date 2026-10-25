@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Circle, Loader2, XCircle, Copy } from "lucide-react";
+import { CheckCircle2, Circle, Clapperboard, Download, Loader2, XCircle, Copy } from "lucide-react";
 import { PIPELINE_STEP_ORDER, type PipelineStepId } from "@/lib/pipeline/steps";
 import AudioPlayer from "./AudioPlayer";
 import VoiceoverDownloads from "./VoiceoverDownloads";
@@ -37,6 +37,19 @@ interface StepInfo {
     video_url?: string;
     error?: string;
   }>;
+  /** Full video: timeline slots (visuals step) */
+  slots?: Array<{
+    index: number;
+    sceneNumber: number;
+    kind: "kling" | "still";
+    status: "pending" | "processing" | "succeed" | "failed";
+    url?: string;
+    error?: string;
+  }>;
+  /** Full video: render step */
+  video_url?: string;
+  provider_status?: string;
+  total_seconds?: number;
 }
 
 interface JobData {
@@ -187,6 +200,75 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
         <div className="mt-4 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-300">
           Something went wrong: {job.error ?? "Unknown error"}. Your credits
           have been refunded.
+        </div>
+      )}
+
+      {/* Full video: final MP4 */}
+      {job.steps?.render?.status === "completed" && job.steps.render.video_url && (
+        <div className="mt-4 rounded-2xl border border-purple-400/30 bg-gradient-to-br from-purple-500/10 to-blue-500/5 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h4 className="text-sm font-semibold text-white">Your video is ready</h4>
+              <p className="text-xs text-gray-400">
+                {job.steps.render.total_seconds ? `${Math.round(job.steps.render.total_seconds)} s · ` : ""}
+                1080p MP4 with narration and subtitles
+              </p>
+            </div>
+            <a
+              href={job.steps.render.video_url}
+              download={`norveko-video-${job.id.slice(0, 8)}.mp4`}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:opacity-90"
+            >
+              <Download size={15} />
+              Download MP4
+            </a>
+          </div>
+          <video
+            controls
+            playsInline
+            preload="metadata"
+            src={job.steps.render.video_url}
+            className="mx-auto mt-3 max-h-[70vh] w-auto max-w-full rounded-xl border border-white/10 bg-black"
+          />
+        </div>
+      )}
+
+      {/* Full video: visuals progress */}
+      {videoStep?.slots && videoStep.slots.length > 0 && job.steps?.render?.status !== "completed" && (
+        <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-gray-300">Visuals</h4>
+            <span className="text-xs text-gray-500">
+              {videoStep.slots.filter((s) => s.status === "succeed").length}/{videoStep.slots.length} ready
+              {job.steps?.render?.status === "running" ? " · rendering the final video" : ""}
+            </span>
+          </div>
+          <div className="mt-3 grid grid-cols-6 gap-1.5 sm:grid-cols-12">
+            {videoStep.slots.map((slot) => (
+              <div
+                key={slot.index}
+                title={`Slot ${slot.index + 1} · scene ${slot.sceneNumber} · ${slot.kind === "kling" ? "AI clip" : "AI still"} · ${slot.status}`}
+                className={`flex aspect-[9/16] items-center justify-center overflow-hidden rounded-md border text-[10px] ${
+                  slot.status === "succeed"
+                    ? "border-green-400/30 bg-green-500/10"
+                    : slot.status === "failed"
+                    ? "border-red-400/30 bg-red-500/10"
+                    : "border-white/10 bg-white/[0.03]"
+                }`}
+              >
+                {slot.status === "succeed" && slot.url && slot.kind === "still" ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={slot.url} alt="" className="h-full w-full object-cover" />
+                ) : slot.status === "succeed" ? (
+                  <Clapperboard size={12} className="text-green-300" />
+                ) : slot.status === "failed" ? (
+                  <XCircle size={12} className="text-red-300" />
+                ) : (
+                  <Loader2 size={12} className="animate-spin text-blue-300" />
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

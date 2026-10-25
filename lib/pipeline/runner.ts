@@ -19,7 +19,14 @@
 // tested without Supabase or provider network calls; the module-level exports
 // are the production instance.
 
-import { alignmentToCues } from "@/lib/pipeline/captions";
+import { alignmentToCues, cuesToSrt, type CaptionCue } from "@/lib/pipeline/captions";
+import {
+  buildEdit,
+  narrationSeconds,
+  planSlots,
+  stillScenes,
+  type TimelineSlot,
+} from "@/lib/pipeline/timeline";
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
@@ -28,6 +35,8 @@ import {
   nextStep,
   optionsFromSteps,
   VIDEO_CLIP_CREDITS,
+  STILL_SCENE_CREDITS,
+  type FullVideoPlan,
   VIDEO_CLIP_SECONDS,
   VIDEO_MAX_CLIPS,
   type PipelineStepId,
@@ -102,6 +111,10 @@ export interface RunnerDeps {
     submitTextToVideo: typeof import("@/lib/pipeline/kling").submitTextToVideo;
     getTextToVideoTask: typeof import("@/lib/pipeline/kling").getTextToVideoTask;
     downloadVideo: typeof import("@/lib/pipeline/kling").downloadVideo;
+    generateSceneImage: typeof import("@/lib/pipeline/gemini-image").generateSceneImage;
+    submitRender: typeof import("@/lib/pipeline/shotstack").submitRender;
+    getRender: typeof import("@/lib/pipeline/shotstack").getRender;
+    downloadRender: typeof import("@/lib/pipeline/shotstack").downloadRender;
   };
   kick: (jobId: string) => Promise<void>;
   now: () => number;
@@ -378,7 +391,8 @@ export function createPipelineRunner(deps: RunnerDeps) {
 
   /** Milliseconds since the video step was submitted (for the cost log). */
   function submittedAgoMs(job: JobRow): number {
-    const submitted = Date.parse(String(job.steps?.video?.submitted_at ?? ""));
+    const step = job.steps?.render?.status === "running" ? job.steps.render : job.steps?.video;
+    const submitted = Date.parse(String(step?.submitted_at ?? ""));
     return Number.isFinite(submitted) ? Math.max(0, now() - submitted) : 0;
   }
 
@@ -453,6 +467,315 @@ export function createPipelineRunner(deps: RunnerDeps) {
 
     await patchStep(job, "video", patch);
     return settled;
+  }
+
+  /* ---------------- Full video: slot-based visuals (async) ---------------- */
+
+  /** Stills generated per poll invocation (keeps each worker run short). */
+  const STILLS_PER_POLL = 2;
+
+  function isFullVideo(job: JobRow): boolean {
+    return Boolean(job.steps?.video?.plan) && Boolean(job.steps?.render);
+  }
+
+  function orientationOf(job: JobRow): "vertical" | "horizontal" {
+    return (job.options?.orientation ?? defaultOrientation(job.platform ?? "")) === "vertical"
+      ? "vertical"
+      : "horizontal";
+  }
+
+  /** Give back credits for planned visuals that were never produced. */
+  async function refundVisuals(job: JobRow, klingUnused: number, stillUnused: number): Promise<void> {
+    const amount = Math.max(0, klingUnused) * VIDEO_CLIP_CREDITS + Math.max(0, stillUnused) * STILL_SCENE_CREDITS;
+    if (amount <= 0) return;
+    const { error } = await db.rpc("add_credits", {
+      p_user_id: job.user_id,
+      p_amount: amount,
+      p_type: "refund",
+      p_reason: `Refund: unused visuals (${klingUnused} clip${klingUnused === 1 ? "" : "s"}, ${stillUnused} scene${stillUnused === 1 ? "" : "s"})`,
+    });
+    if (error) console.error(`[pipeline] ${job.id} visuals refund failed:`, error);
+  }
+
+  /**
+   * First run of the visuals step for a full video: plan the slots from the
+   * script scenes and narration length, submit every Kling slot, and refund
+   * still credits for scenes that share an image.
+   */
+  async function submitFullVideoVisuals(job: JobRow): Promise<void> {
+    const plan = job.steps!.video!.plan as FullVideoPlan;
+    const scenes = Array.isArray(job.steps?.script?.scenes)
+      ? (job.steps!.script!.scenes as Array<{ sceneNumber?: number; videoPrompt?: string; description?: string }>)
+      : [];
+    const cues = job.steps?.voiceover?.captions as CaptionCue[] | undefined;
+    const total = narrationSeconds(cues, plan.seconds);
+    const slots = planSlots(
+      scenes.map((sc, i) => ({
+        sceneNumber: sc.sceneNumber ?? i + 1,
+        videoPrompt: String(sc.videoPrompt ?? ""),
+        description: sc.description,
+      })),
+      total,
+      plan.slots,
+      plan.klingSlots
+    );
+    if (!slots.length) throw new Error("No scene prompts available for the video.");
+
+    const aspectRatio: "9:16" | "16:9" = orientationOf(job) === "vertical" ? "9:16" : "16:9";
+    for (const slot of slots) {
+      if (slot.kind !== "kling") continue;
+      try {
+        slot.taskId = await providers.submitTextToVideo({
+          prompt: slot.prompt,
+          duration: String(VIDEO_CLIP_SECONDS) as "5" | "10",
+          aspectRatio,
+          mode: "std",
+        });
+        slot.status = "processing";
+      } catch (err) {
+        slot.status = "failed";
+        slot.error = err instanceof Error ? err.message : "Submit failed";
+        await logUsage(job, "video", {
+          unit: "seconds",
+          quantity: VIDEO_CLIP_SECONDS,
+          durationMs: 0,
+          status: "failed",
+          error: slot.error,
+        });
+      }
+    }
+
+    // Stills: one image per distinct scene; adjacent slots reuse it.
+    const stillScenesNeeded = stillScenes(slots).length;
+    const stillSlotsPlanned = slots.filter((s) => s.kind === "still").length;
+    const klingFailed = slots.filter((s) => s.kind === "kling" && s.status === "failed").length;
+    await refundVisuals(job, klingFailed, stillSlotsPlanned - stillScenesNeeded);
+
+    await patchStep(job, "video", {
+      slots,
+      total_seconds: total,
+      stills: {},
+      submitted_at: new Date(now()).toISOString(),
+      last_polled_at: new Date(now()).toISOString(),
+    });
+  }
+
+  /**
+   * Later runs: poll Kling slots, generate a few stills, settle when every
+   * slot is done. Returns true once settled.
+   */
+  async function pollFullVideoVisuals(job: JobRow): Promise<boolean> {
+    const slots = (job.steps?.video?.slots as TimelineSlot[] | undefined) ?? [];
+    const stills = { ...((job.steps?.video?.stills as Record<string, string> | undefined) ?? {}) };
+    let changed = false;
+
+    // 1) Kling polls.
+    for (const slot of slots) {
+      if (slot.kind !== "kling" || slot.status !== "processing" || !slot.taskId) continue;
+      let result: KlingTaskResult;
+      try {
+        result = await providers.getTextToVideoTask(slot.taskId);
+      } catch (err) {
+        console.error(`[pipeline] ${job.id} poll ${slot.taskId} failed:`, err);
+        continue;
+      }
+      if (result.status === "failed") {
+        slot.status = "failed";
+        slot.error = result.statusMessage ?? "Provider reported failure";
+        changed = true;
+        await logUsage(job, "video", {
+          unit: "seconds",
+          quantity: VIDEO_CLIP_SECONDS,
+          durationMs: submittedAgoMs(job),
+          status: "failed",
+          error: slot.error,
+        });
+      } else if (result.status === "succeed" && result.videoUrl) {
+        await logUsage(job, "video", {
+          unit: "seconds",
+          quantity: result.durationSeconds ?? VIDEO_CLIP_SECONDS,
+          durationMs: submittedAgoMs(job),
+          status: "ok",
+        });
+        try {
+          const buffer = await providers.downloadVideo(result.videoUrl);
+          const storagePath = `${job.user_id}/${job.id}/slot-${slot.index}.mp4`;
+          const { error: uploadError } = await db.storage
+            .from("videos")
+            .upload(storagePath, buffer, { contentType: "video/mp4", upsert: true });
+          if (uploadError) throw new Error(uploadError.message);
+          const { data: urlData } = db.storage.from("videos").getPublicUrl(storagePath);
+          slot.url = urlData.publicUrl;
+          slot.storage_path = storagePath;
+          slot.sourceSeconds = result.durationSeconds ?? VIDEO_CLIP_SECONDS;
+          slot.status = "succeed";
+        } catch (err) {
+          slot.status = "failed";
+          slot.error = err instanceof Error ? err.message : "Store failed";
+        }
+        changed = true;
+      }
+    }
+
+    // 2) Stills: a few per invocation, one image per scene, shared by slots.
+    let generated = 0;
+    for (const slot of slots) {
+      if (slot.kind !== "still" || slot.status !== "pending") continue;
+      const key = String(slot.sceneNumber);
+      if (stills[key]) {
+        slot.url = stills[key];
+        slot.status = "succeed";
+        changed = true;
+        continue;
+      }
+      if (generated >= STILLS_PER_POLL) continue;
+      generated += 1;
+      const startedAt = now();
+      try {
+        const img = await providers.generateSceneImage(
+          slot.prompt,
+          job.id,
+          job.user_id,
+          slot.sceneNumber,
+          orientationOf(job)
+        );
+        stills[key] = img.imageUrl;
+        slot.url = img.imageUrl;
+        slot.storage_path = img.storagePath;
+        slot.status = "succeed";
+        await logUsage(job, "thumbnail", {
+          unit: "images",
+          quantity: 1,
+          durationMs: now() - startedAt,
+          status: "ok",
+        });
+      } catch (err) {
+        slot.status = "failed";
+        slot.error = err instanceof Error ? err.message : "Image failed";
+        await logUsage(job, "thumbnail", {
+          unit: "images",
+          quantity: 1,
+          durationMs: now() - startedAt,
+          status: "failed",
+          error: slot.error,
+        });
+      }
+      changed = true;
+    }
+
+    const settled = slots.every((s) => s.status === "succeed" || s.status === "failed");
+    const patch: Record<string, unknown> = { last_polled_at: new Date(now()).toISOString() };
+    if (changed) {
+      patch.slots = slots;
+      patch.stills = stills;
+    }
+    if (settled) {
+      const ok = slots.filter((s) => s.status === "succeed").length;
+      if (ok === 0) {
+        await patchStep(job, "video", patch);
+        throw new Error(`No visuals could be generated: ${slots[0]?.error ?? "unknown error"}`);
+      }
+      // Kling slots that failed after submission get their credits back now.
+      const klingFailedLate = slots.filter((s) => s.kind === "kling" && s.status === "failed" && s.taskId).length;
+      await refundVisuals(job, klingFailedLate, 0);
+      patch.status = "completed";
+    }
+    await patchStep(job, "video", patch);
+    return settled;
+  }
+
+  /* ---------------- Full video: render (async) ---------------- */
+
+  async function submitRenderJob(job: JobRow): Promise<void> {
+    const slots = (job.steps?.video?.slots as TimelineSlot[] | undefined) ?? [];
+    const voiceoverUrl = job.steps?.voiceover?.audio_url;
+    if (typeof voiceoverUrl !== "string" || !voiceoverUrl) throw new Error("Voiceover is missing; cannot render.");
+    const total = Number(job.steps?.video?.total_seconds) || (job.steps?.render?.plan as { seconds?: number } | undefined)?.seconds || 60;
+
+    // Subtitles: upload the SRT so Shotstack can fetch it.
+    let subtitlesUrl: string | undefined;
+    const cues = job.steps?.voiceover?.captions as CaptionCue[] | undefined;
+    if (cues?.length) {
+      const path = `${job.user_id}/${job.id}/captions.srt`;
+      const { error } = await db.storage
+        .from("videos")
+        .upload(path, Buffer.from(cuesToSrt(cues), "utf8"), { contentType: "application/x-subrip", upsert: true });
+      if (error) {
+        console.warn(`[pipeline] ${job.id} srt upload failed, rendering without subtitles:`, error.message);
+      } else {
+        subtitlesUrl = db.storage.from("videos").getPublicUrl(path).data.publicUrl;
+      }
+    }
+
+    const edit = buildEdit({
+      slots,
+      voiceoverUrl,
+      subtitlesUrl,
+      orientation: orientationOf(job),
+      totalSeconds: total,
+      fallbackImageUrl: typeof job.steps?.thumbnail?.image_url === "string" ? job.steps.thumbnail.image_url : undefined,
+    });
+
+    const renderId = await providers.submitRender(edit);
+    await patchStep(job, "render", {
+      render_id: renderId,
+      subtitles_url: subtitlesUrl,
+      total_seconds: total,
+      submitted_at: new Date(now()).toISOString(),
+      last_polled_at: new Date(now()).toISOString(),
+    });
+  }
+
+  async function pollRenderJob(job: JobRow): Promise<boolean> {
+    const renderId = job.steps?.render?.render_id;
+    if (typeof renderId !== "string" || !renderId) throw new Error("Render id is missing.");
+    const result = await providers.getRender(renderId);
+    const patch: Record<string, unknown> = {
+      last_polled_at: new Date(now()).toISOString(),
+      provider_status: result.status,
+    };
+    if (result.status === "failed") {
+      await patchStep(job, "render", patch);
+      await logUsage(job, "render", {
+        unit: "seconds",
+        quantity: Number(job.steps?.render?.total_seconds) || 0,
+        durationMs: submittedAgoMs(job),
+        status: "failed",
+        error: result.error ?? "Render failed",
+      });
+      throw new Error(`Final video render failed: ${result.error ?? "provider error"}`);
+    }
+    if (result.status !== "done" || !result.url) {
+      await patchStep(job, "render", patch);
+      return false;
+    }
+    const buffer = await providers.downloadRender(result.url);
+    const storagePath = `${job.user_id}/${job.id}/final.mp4`;
+    const { error: uploadError } = await db.storage
+      .from("videos")
+      .upload(storagePath, buffer, { contentType: "video/mp4", upsert: true });
+    if (uploadError) throw new Error(`Final video upload failed: ${uploadError.message}`);
+    const { data: urlData } = db.storage.from("videos").getPublicUrl(storagePath);
+    await logUsage(job, "render", {
+      unit: "seconds",
+      quantity: result.duration ?? Number(job.steps?.render?.total_seconds) ?? 0,
+      durationMs: submittedAgoMs(job),
+      status: "ok",
+    });
+    await patchStep(job, "render", {
+      ...patch,
+      status: "completed",
+      video_url: urlData.publicUrl,
+      storage_path: storagePath,
+      provider_url: result.url,
+    });
+    return true;
+  }
+
+  /** Poll whichever async step is in flight. */
+  async function pollAsyncStep(job: JobRow, stepId: PipelineStepId): Promise<boolean> {
+    if (stepId === "render") return pollRenderJob(job);
+    return isFullVideo(job) ? pollFullVideoVisuals(job) : pollVideoTasks(job);
   }
 
   async function executeStep(job: JobRow, stepId: PipelineStepId): Promise<void> {
@@ -565,7 +888,13 @@ export function createPipelineRunner(deps: RunnerDeps) {
 
     if (stepId === "video") {
       // Async: submitting is the whole first invocation; polling happens later.
-      await submitVideoTasks(job);
+      if (isFullVideo(job)) await submitFullVideoVisuals(job);
+      else await submitVideoTasks(job);
+      return;
+    }
+
+    if (stepId === "render") {
+      await submitRenderJob(job);
       return;
     }
 
@@ -614,6 +943,8 @@ export function createPipelineRunner(deps: RunnerDeps) {
     const voice = fresh.steps?.voiceover ?? {};
     const voiceoverUrl = typeof voice.audio_url === "string" ? voice.audio_url : "";
     const captions = Array.isArray(voice.captions) && voice.captions.length ? voice.captions : undefined;
+    const finalVideoUrl =
+      typeof fresh.steps?.render?.video_url === "string" ? (fresh.steps.render.video_url as string) : undefined;
     const clips = (fresh.steps?.video?.clips as VideoClipState[] | undefined) ?? [];
     const scenes = Array.isArray(script.scenes)
       ? (script.scenes as Array<Record<string, unknown> & { sceneNumber?: number }>).map((scene) => {
@@ -646,6 +977,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
             voiceoverUrl: voiceoverUrl || undefined,
             audio_url: voiceoverUrl || undefined,
             captions,
+            finalVideoUrl,
           },
         })
         .select("id")
@@ -690,7 +1022,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
     );
     if (inFlight) {
       try {
-        const settled = await pollVideoTasks(job);
+        const settled = await pollAsyncStep(job, inFlight);
         if (!settled) return "noop";
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
@@ -876,6 +1208,14 @@ function getRunner() {
           (await import("@/lib/pipeline/kling")).getTextToVideoTask(...args),
         downloadVideo: async (...args) =>
           (await import("@/lib/pipeline/kling")).downloadVideo(...args),
+        generateSceneImage: async (...args) =>
+          (await import("@/lib/pipeline/gemini-image")).generateSceneImage(...args),
+        submitRender: async (...args) =>
+          (await import("@/lib/pipeline/shotstack")).submitRender(...args),
+        getRender: async (...args) =>
+          (await import("@/lib/pipeline/shotstack")).getRender(...args),
+        downloadRender: async (...args) =>
+          (await import("@/lib/pipeline/shotstack")).downloadRender(...args),
       },
       kick: kickJob,
       now: Date.now,

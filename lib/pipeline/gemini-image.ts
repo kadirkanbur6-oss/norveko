@@ -104,3 +104,74 @@ export async function generateThumbnail(
 
   return { imageUrl: urlData.publicUrl, storagePath };
 }
+/* ---------------- Scene stills for full videos ---------------- */
+
+export interface SceneImageResult {
+  imageUrl: string;
+  storagePath: string;
+}
+
+/**
+ * One cinematic still for a scene of a full video (Ken Burns is applied at
+ * render time). No overlay text — unlike thumbnails, these are B-roll.
+ * Stored in the `videos` bucket next to the job's clips.
+ */
+export async function generateSceneImage(
+  prompt: string,
+  jobId: string,
+  userId: string,
+  sceneNumber: number,
+  orientation: "vertical" | "horizontal" = "vertical"
+): Promise<SceneImageResult> {
+  const aspectRatio = orientation === "vertical" ? "9:16" : "16:9";
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": process.env.GEMINI_API_KEY!,
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: `Photorealistic cinematic film still, ${aspectRatio} aspect ratio, shallow depth of field, dramatic natural lighting, no text, no captions, no watermark, no logos. ${prompt}`,
+              },
+            ],
+          },
+        ],
+        generationConfig: { imageConfig: { aspectRatio } },
+      }),
+    }
+  );
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(`Gemini image API error (${res.status}): ${errBody.slice(0, 300)}`);
+  }
+  const data = await res.json();
+  type InlinePart = { data?: string; mimeType?: string; mime_type?: string };
+  const parts: Array<{ inlineData?: InlinePart; inline_data?: InlinePart }> =
+    data?.candidates?.[0]?.content?.parts ?? [];
+  let base64: string | null = null;
+  let mimeType = "image/png";
+  for (const part of parts) {
+    const inline = part.inlineData ?? part.inline_data;
+    if (inline?.data) {
+      base64 = inline.data;
+      mimeType = inline.mimeType ?? inline.mime_type ?? "image/png";
+      break;
+    }
+  }
+  if (!base64) throw new Error("Gemini response contained no image.");
+
+  const extension = mimeType.includes("jpeg") ? "jpg" : "png";
+  const storagePath = `${userId}/${jobId}/still-${sceneNumber}.${extension}`;
+  const { error: uploadError } = await supabaseAdmin.storage
+    .from("videos")
+    .upload(storagePath, Buffer.from(base64, "base64"), { contentType: mimeType, upsert: true });
+  if (uploadError) throw new Error(`Scene image upload failed: ${uploadError.message}`);
+  const { data: urlData } = supabaseAdmin.storage.from("videos").getPublicUrl(storagePath);
+  return { imageUrl: urlData.publicUrl, storagePath };
+}
