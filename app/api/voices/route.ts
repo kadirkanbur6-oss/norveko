@@ -70,8 +70,10 @@ export async function GET(req: NextRequest) {
     // defaults already cover it). Failures here must not break the picker.
     // ElevenLabs only allows library voices over the API on paid tiers, so on
     // a free plan we don't offer them at all (a pick would fail at TTS time).
+    // Tier is known when the key has user_read; otherwise fall back to the
+    // ELEVENLABS_LIBRARY_VOICES flag (set it to "true" on a paid plan).
     const tier = await getTier();
-    const libraryAllowed = tier !== "free";
+    const libraryAllowed = tier ? tier !== "free" : process.env.ELEVENLABS_LIBRARY_VOICES === "true";
     let library: Awaited<ReturnType<typeof listLibraryVoices>> = [];
     if (code !== "en" && libraryAllowed) {
       try {
