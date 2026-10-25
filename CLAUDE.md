@@ -1,7 +1,7 @@
 # CLAUDE.md — Norveko Project Context
 
 > Bu dosya, yeni bir Claude oturumu başladığında proje bağlamını geri yüklemek içindir.
-> Her büyük milestone sonrası güncellenmelidir. Son güncelleme: 2026-10-25
+> Her büyük milestone sonrası güncellenmelidir. Son güncelleme: 2026-10-25 (akşam)
 
 ## 1. Proje Nedir?
 
@@ -62,7 +62,14 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   (`/api/notifications`, türetilmiş gerçek olaylar), **proje araması**.
 - AI Workspace `/chat`: taslak sessionStorage'da, çalışan iş `?job=`'da
   (yenileme kaybetmez), bakiye/maliyet gösterimi, yetersiz kredide buton pasif,
-  "aynı ayarlarla tekrar üret", her sonuç kartında Copy.
+  "aynı ayarlarla tekrar üret", her sonuç kartında Copy. **Üretim sahnesi**
+  (`GenerationStage`: animasyonlu logo, adım mesajları, tahmini %, süre; CSS
+  `nv-stage-*` globals.css'te), iş başlayınca form özet karta çöker ve ekran
+  ilerlemeye kayar, Generate + maliyet **sticky alt barda**. **Ses seçici**:
+  dile göre yüklenir (`/api/voices?language=`), sadece o dilin sesleri,
+  seçilince tek satıra kapanır ("Change voice"), avatar kartlarında hover
+  önizleme. **29 dil** `lib/pipeline/options.ts` `LANGUAGE_OPTIONS` (yerel ad
+  UI'da, İngilizce ad LLM prompt'unda, ISO kod ses eşlemede, bayrak).
 - Projects: liste (arama, platform/stil filtresi, sıralama, load more), detay
   (sekmeler, tam düzenleme, **Export**: copy all / .md / .txt / .srt, thumbnail
   görseli, klip oynatıcı, stilli silme onayı). PATCH içeriği
@@ -77,6 +84,27 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
 - Ops: `robots.ts`, `sitemap.ts`, `not-found/error/loading.tsx`, security
   header'lar + CSP (report-only), `/api/health`, snapshot cron tüm bağlı
   kanallar için, saatlik üretim limiti, ESLint 0 hata.
+
+### ElevenLabs sesleri (önemli)
+- `lib/pipeline/elevenlabs.ts`: `listVoices()` (hesap sesleri, `languages`
+  = labels.language ∪ verified_languages), `listLibraryVoices(code)`
+  (Voice Library), `addLibraryVoice()` (seçilince hesaba ekler; `/api/pipeline/
+  start` kredi düşmeden önce çağırır), `getSubscriptionTier()`.
+- **ElevenLabs hesabı Free plan** (anahtar `norveko-dev`, Voices izni Write
+  yapıldı). Free planda kütüphane sesleri API'den kullanılamaz (402
+  paid_plan_required) → `/api/voices` tier "free" ise ya da tier bilinmiyor ve
+  `ELEVENLABS_LIBRARY_VOICES` != "true" ise Library seslerini **gizler**.
+  Starter'a geçince Vercel'e `ELEVENLABS_LIBRARY_VOICES=true` ekle (veya
+  anahtara User→Access izni ver, otomatik algılar). Bu konu şimdilik SKIP.
+- Stok B-roll: Pexels yeni anahtar vermiyor → **Pixabay** eklendi
+  (`PIXABAY_API_KEY` Vercel'de, `lib/pipeline/pexels.ts` iki sağlayıcıyı da
+  destekler).
+
+### Dış kurulum durumu (25 Ekim akşamı)
+- Supabase: `pipeline_jobs.options` kolonu ✅, `videos` bucket ✅.
+- Vercel env: `GENERATION_ENABLED=false`, `BETA_USER_IDS=92779a9c-cb1c-47a8-
+  bcc8-e07f4de6dc56` (Kadir), `NEXT_PUBLIC_SITE_URL`, `PIPELINE_WORKER_SECRET`,
+  `PIXABAY_API_KEY` ✅ — lansman kilidi canlıda, zincir uçtan uca test edildi.
 
 ## 6. Teknik Kurallar / Kalıplar
 
@@ -93,12 +121,12 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
 
 ## 7. Bekleyen İşler (öncelik sırasıyla)
 
-Kod dışı (Kadir): `app/lib/legal.ts` `LEGAL_NAME` placeholder'ı; Vercel env
-(`GENERATION_ENABLED`, `BETA_USER_IDS`, `NEXT_PUBLIC_SITE_URL`,
-`PIPELINE_WORKER_SECRET`, Kling anahtarları, Paddle live ID'leri); Supabase
-`videos` bucket'ı + `supabase/README.md` kontrolleri; Paddle webhook event'leri.
+Kod dışı (Kadir): `app/lib/legal.ts` `LEGAL_NAME` placeholder'ı (şirket
+kurulunca); Kling anahtarları; Paddle live ID'leri + webhook event'leri
+(`adjustment.*`); ElevenLabs Starter planı (kütüphane sesleri için);
+`NEXT_PUBLIC_YOUTUBE_API_KEY` → `YOUTUBE_API_KEY` yeniden adlandırma.
 
-Ürün (rakip analizine göre): stok B-roll fallback (Pexels) → otomatik altyazı →
+Ürün (rakip analizine göre): otomatik altyazı →
 tam MP4 render → 9:16/16:9 seçimi → niş şablonları + örnek galeri →
 YouTube'a doğrudan yükleme → seri modu/zamanlama → ses klonlama + brand kit →
 affiliate. Ertelenen: timeline editör, AI avatar, mobil app.
