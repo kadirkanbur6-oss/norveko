@@ -38,14 +38,16 @@ export async function submitRender(edit: Record<string, unknown>): Promise<strin
     body: JSON.stringify(edit),
     cache: "no-store",
   });
-  const body = (await res.json().catch(() => ({}))) as {
-    success?: boolean;
-    message?: string;
-    response?: { id?: string; message?: string };
-  };
+  const raw = await res.text();
+  let body: { success?: boolean; message?: string; response?: { id?: string; message?: string; error?: unknown } } = {};
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    // non-JSON (gateway / WAF page) — surfaced below
+  }
   if (!res.ok || !body?.response?.id) {
-    const msg = body?.response?.message ?? body?.message ?? `HTTP ${res.status}`;
-    throw new Error(`Shotstack submit failed: ${String(msg).slice(0, 300)}`);
+    const msg = body?.response?.message ?? body?.message ?? raw.replace(/\s+/g, " ").slice(0, 200) ?? `HTTP ${res.status}`;
+    throw new Error(`Shotstack submit failed (HTTP ${res.status}, ${ENV}): ${String(msg).slice(0, 300)}`);
   }
   return body.response.id;
 }
