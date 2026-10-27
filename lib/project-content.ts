@@ -36,6 +36,8 @@ export interface ProjectContent {
   captions?: ProjectCaption[];
   /** Rendered MP4 (full-video jobs). */
   finalVideoUrl?: string;
+  /** Web research brief + sources the script was built on. */
+  research?: { brief: string; sources: Array<{ title: string; url: string }> };
 }
 
 const LIMITS = {
@@ -155,6 +157,19 @@ export function sanitizeProjectContent(
   const finalVideoUrl = url(raw.finalVideoUrl);
   if (finalVideoUrl) content.finalVideoUrl = finalVideoUrl;
 
+  if (raw.research && typeof raw.research === "object") {
+    const r = raw.research as Record<string, unknown>;
+    const brief = str(r.brief, 4_000);
+    const sources: Array<{ title: string; url: string }> = [];
+    for (const src of Array.isArray(r.sources) ? r.sources.slice(0, 10) : []) {
+      if (!src || typeof src !== "object") continue;
+      const o = src as Record<string, unknown>;
+      const u = url(o.url);
+      if (u) sources.push({ title: str(o.title, 160) ?? u, url: u });
+    }
+    if (brief) content.research = { brief, sources };
+  }
+
   if (Array.isArray(raw.captions)) {
     const captions: ProjectCaption[] = [];
     for (const c of raw.captions.slice(0, LIMITS.captions)) {
@@ -194,6 +209,10 @@ export function contentToMarkdown(title: string, c: ProjectContent): string {
   if (c.thumbnailUrl) lines.push(`Thumbnail image: ${c.thumbnailUrl}`, "");
   if (c.voiceoverUrl) lines.push(`Voiceover: ${c.voiceoverUrl}`, "");
   if (c.finalVideoUrl) lines.push(`Final video: ${c.finalVideoUrl}`, "");
+  if (c.research) {
+    lines.push("## Research", "", c.research.brief, "");
+    if (c.research.sources.length) lines.push("Sources:", ...c.research.sources.map((s) => `- ${s.title}: ${s.url}`), "");
+  }
   return lines.join("\n");
 }
 

@@ -51,6 +51,9 @@ interface StepInfo {
   provider_status?: string;
   total_seconds?: number;
   hosted_by?: "supabase" | "shotstack";
+  /** Research step */
+  brief?: string;
+  sources?: Array<{ title: string; url: string }>;
 }
 
 interface JobData {
@@ -324,6 +327,29 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
       )}
 
       {/* Results */}
+      {job.steps?.research?.status === "completed" && job.steps.research.brief && (
+        <details className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-gray-300">
+            Research brief
+            <span className="ml-2 text-xs font-normal text-gray-500">
+              {job.steps.research.sources?.length ?? 0} sources · the script is built on these facts
+            </span>
+          </summary>
+          <p className="mt-3 whitespace-pre-line text-sm text-gray-200">{job.steps.research.brief}</p>
+          {job.steps.research.sources && job.steps.research.sources.length > 0 && (
+            <ul className="mt-3 space-y-1 text-xs">
+              {job.steps.research.sources.map((src) => (
+                <li key={src.url} className="truncate">
+                  <a href={src.url} target="_blank" rel="noreferrer" className="text-blue-300 hover:text-blue-200">
+                    {src.title}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </details>
+      )}
+
       {scriptStep?.status === "completed" && (
         <div className="mt-6 space-y-4">
           <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">

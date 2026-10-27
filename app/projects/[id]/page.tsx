@@ -55,6 +55,7 @@ interface VideoContent {
   audio_url?: string;
   captions?: Array<{ start: number; end: number; text: string }>;
   finalVideoUrl?: string;
+  research?: { brief: string; sources: Array<{ title: string; url: string }> };
   voiceover?: {
     url?: string;
     publicUrl?: string;
@@ -78,6 +79,7 @@ interface NormalizedVideoContent {
   audio_url?: string;
   captions?: Array<{ start: number; end: number; text: string }>;
   finalVideoUrl?: string;
+  research?: { brief: string; sources: Array<{ title: string; url: string }> };
   voiceover?: {
     url?: string;
     publicUrl?: string;
@@ -622,6 +624,28 @@ export default function ProjectDetailPage() {
                 renderEditForm()
               ) : project.content ? (
                 <>
+                {normalizedProjectContent?.research?.brief && (
+                  <details className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                    <summary className="cursor-pointer text-sm font-semibold text-gray-300">
+                      Research brief
+                      <span className="ml-2 text-xs font-normal text-gray-500">
+                        {normalizedProjectContent.research.sources.length} sources
+                      </span>
+                    </summary>
+                    <p className="mt-3 whitespace-pre-line text-sm text-gray-200">{normalizedProjectContent.research.brief}</p>
+                    {normalizedProjectContent.research.sources.length > 0 && (
+                      <ul className="mt-3 space-y-1 text-xs">
+                        {normalizedProjectContent.research.sources.map((src) => (
+                          <li key={src.url} className="truncate">
+                            <a href={src.url} target="_blank" rel="noreferrer" className="text-blue-300 hover:text-blue-200">
+                              {src.title}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </details>
+                )}
                 {normalizedProjectContent?.finalVideoUrl && (
                   <div className="mt-8 rounded-2xl border border-purple-400/30 bg-gradient-to-br from-purple-500/10 to-blue-500/5 p-4 sm:p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">

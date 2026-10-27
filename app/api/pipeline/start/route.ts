@@ -139,6 +139,7 @@ export async function POST(req: NextRequest) {
       );
     }
     const options: PipelineOptions = {
+      research: body.includeResearch !== false,
       voiceover: voiceoverEnabled || fullVideoRequested,
       subtitles: subtitlesRequested || fullVideoRequested,
       video: videoRequested,
@@ -247,7 +248,7 @@ export async function POST(req: NextRequest) {
       {
         p_user_id: user.id,
         p_amount: cost,
-        p_reason: `AI pipeline generation (content package + thumbnail${resolved.voiceover ? " + voiceover" : ""}${resolved.subtitles ? " + subtitles" : ""}${resolved.fullVideo ? ` + full video (${footage})` : ""}${videoRequested ? " + video clips" : ""})`,
+        p_reason: `AI pipeline generation (${resolved.research ? "research + " : ""}content package + thumbnail${resolved.voiceover ? " + voiceover" : ""}${resolved.subtitles ? " + subtitles" : ""}${resolved.fullVideo ? ` + full video (${footage})` : ""}${videoRequested ? " + video clips" : ""})`,
       }
     );
 

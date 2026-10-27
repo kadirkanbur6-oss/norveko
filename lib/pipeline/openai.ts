@@ -35,6 +35,8 @@ interface ScriptParams {
   orientation?: "vertical" | "horizontal";
   /** Extra genre guidance from a niche template. */
   brief?: string | null;
+  /** Verified research brief (from researchTopic); the only source of truth for real-world claims. */
+  research?: string | null;
 }
 
 /** Spoken-word budget for a duration label ("30 seconds" → 65 words). */
@@ -46,7 +48,7 @@ function wordBudget(duration: string | null | undefined): number {
 }
 
 export async function generateScript(params: ScriptParams): Promise<ScriptResult> {
-  const { idea, platform, style, duration, outputLanguage, model, orientation, brief } = params;
+  const { idea, platform, style, duration, outputLanguage, model, orientation, brief, research } = params;
   const aspect = orientation === "vertical" ? "9:16 vertical" : "16:9 horizontal";
 
   const systemPrompt = `You are an expert short-form and YouTube video content strategist.
@@ -75,7 +77,8 @@ Rules:
 - "tags" should be concise SEO tags without # symbols.
 - Match the tone to the platform and style.
 - HARD LENGTH LIMIT: the hook + script together are read aloud at ~2.3 words per second, so they must total AT MOST ${wordBudget(duration)} words (target ${Math.round(wordBudget(duration) * 0.9)}). Count before answering; never exceed it.
-- The video is ${aspect}; compose every videoPrompt and the thumbnail for that framing (e.g. subjects centred and tall for vertical).${brief ? `\n- ${brief}` : ""}`;
+- The video is ${aspect}; compose every videoPrompt and the thumbnail for that framing (e.g. subjects centred and tall for vertical).
+- If the topic involves real people, teams, companies or brands: videoPrompts must NOT depict identifiable real people, faces, logos, crests or jersey names. Show atmosphere, places, objects, crowds and colours instead (e.g. "fans in red-and-yellow striped shirts"), and never ask for readable text, scoreboards or signs — generated text is always wrong.${brief ? `\n- ${brief}` : ""}${research ? `\n\nVERIFIED RESEARCH BRIEF — the ONLY source of truth for any claim about real events, people, numbers, dates or outcomes. Build the script on these facts, do not invent or "remember" others, and do not contradict them:\n${research}` : ""}`;
 
   const userPrompt = `Video idea: ${idea}
 Platform: ${platform}
@@ -187,4 +190,93 @@ Target duration: ${duration ?? "60 seconds"}`;
     thumbnailPrompt: parsed.thumbnailIdea,
     usage,
   };
+}
+/* ---------------- Research (web search before the script) ---------------- */
+
+export interface ResearchSource {
+  title: string;
+  url: string;
+}
+
+export interface ResearchResult {
+  /** Dated, factual brief in the output language (≈120–220 words). */
+  brief: string;
+  sources: ResearchSource[];
+  usage?: { inputTokens: number; outputTokens: number };
+}
+
+interface ResearchParams {
+  idea: string;
+  outputLanguage: string;
+  model: string;
+  /** ISO date of "today" so the model knows what "yesterday" means. */
+  today?: string;
+}
+
+/**
+ * Fact-finding pass using OpenAI's built-in web search (Responses API).
+ * Returns a brief the script step must treat as the only source of truth for
+ * claims about real events, people, numbers and dates.
+ */
+export async function researchTopic(params: ResearchParams): Promise<ResearchResult> {
+  const { idea, outputLanguage, model } = params;
+  const today = params.today ?? new Date().toISOString().slice(0, 10);
+  const language = languagePromptName(outputLanguage);
+
+  const instructions = `You are a fact-checker preparing a research brief for a short video script.
+Today's date is ${today}. Search the web for the most recent, reliable information about the topic.
+Write the brief in ${language}. Rules:
+- Only include facts you found in sources; never guess. If something is disputed or unknown, say so.
+- Prefer primary and reputable sources (official sites, major news outlets, encyclopedias). For "yesterday"/"last night" style topics, find the exact date and the concrete events.
+- Include the concrete details a script needs: who, what, when (exact dates), where, numbers, outcomes, quotes if notable.
+- 120–220 words, plain paragraphs or short bullets, no headings, no markdown links in the text.`;
+
+  const res = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model,
+      instructions,
+      input: `Topic: ${idea}`,
+      tools: [{ type: "web_search" }],
+      tool_choice: "auto",
+    }),
+  });
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(`OpenAI research error (${res.status}): ${errBody.slice(0, 300)}`);
+  }
+  const data = await res.json();
+
+  // Responses API: output[] holds tool calls and a final "message" with
+  // content parts; url_citation annotations carry the sources.
+  let brief = "";
+  const sources: ResearchSource[] = [];
+  const seen = new Set<string>();
+  const output = Array.isArray(data?.output) ? data.output : [];
+  for (const item of output) {
+    if (item?.type !== "message" || !Array.isArray(item.content)) continue;
+    for (const part of item.content) {
+      if (part?.type === "output_text" && typeof part.text === "string") {
+        brief += (brief ? "\n" : "") + part.text;
+        for (const a of Array.isArray(part.annotations) ? part.annotations : []) {
+          if (a?.type === "url_citation" && typeof a.url === "string" && !seen.has(a.url)) {
+            seen.add(a.url);
+            sources.push({ title: String(a.title ?? a.url).slice(0, 160), url: a.url.slice(0, 500) });
+          }
+        }
+      }
+    }
+  }
+  if (!brief.trim() && typeof data?.output_text === "string") brief = data.output_text;
+  if (!brief.trim()) throw new Error("Research returned no text.");
+
+  const usage =
+    data?.usage && typeof data.usage === "object"
+      ? { inputTokens: Number(data.usage.input_tokens ?? 0), outputTokens: Number(data.usage.output_tokens ?? 0) }
+      : undefined;
+  return { brief: brief.trim().slice(0, 4000), sources: sources.slice(0, 10), usage };
 }

@@ -136,11 +136,22 @@ function makeRunner(
   const klingStatuses = opts.klingStatuses ?? {};
   const renderStatus: { value: "queued" | "rendering" | "done" | "failed" } = { value: "rendering" };
   let lastEdit: Record<string, unknown> | null = null;
+  let lastScriptParams: Parameters<typeof createPipelineRunner>[0]["providers"]["generateScript"] extends (p: infer P) => unknown ? P | null : never = null;
   let taskSeq = 0;
   const runner = createPipelineRunner({
     db,
     providers: {
-      generateScript: async () => {
+      researchTopic: async ({ idea }) => {
+        calls.push("research");
+        if (opts.failAt === "research") throw new Error("search down");
+        return {
+          brief: `Facts about ${idea}: happened on 2026-10-26.`,
+          sources: [{ title: "Source A", url: "https://example.com/a" }],
+          usage: { inputTokens: 500, outputTokens: 200 },
+        };
+      },
+      generateScript: async (p) => {
+        lastScriptParams = p;
         calls.push("script");
         if (opts.failAt === "script") throw new Error("openai down");
         return {
@@ -213,7 +224,7 @@ function makeRunner(
       usage.push(record);
     },
   });
-  return { runner, rows, rpc, seedJob, kicked, calls, klingStatuses, usage, renderStatus, edit: () => lastEdit };
+  return { runner, rows, rpc, seedJob, kicked, calls, klingStatuses, usage, renderStatus, edit: () => lastEdit, scriptParams: () => lastScriptParams };
 }
 
 function seedVideoJob(seedJob: ReturnType<typeof makeDb>["seedJob"]) {
@@ -517,4 +528,36 @@ test("full video: a failed render fails the job and refunds", async () => {
   const job = rows.get(id)!;
   assert.equal(job.status, "failed");
   assert.ok(job.credits_refunded > 0);
+});
+
+test("research step runs first and its brief is handed to the script", async () => {
+  const opts = { research: true, voiceover: false };
+  assert.equal(totalPipelineCredits(opts), 5 + 5 + 10);
+  const { runner, rows, seedJob, calls, scriptParams } = makeRunner();
+  const steps = initialStepsState(opts) as Record<string, any>;
+  steps.research.queued_at = new Date(0).toISOString();
+  const id = seedJob(false, { steps, current_step: "research", credits_charged: 20 });
+
+  assert.equal(await runner.runNextStep(id), "advanced"); // research
+  assert.deepEqual(calls, ["research"]);
+  let job = rows.get(id)!;
+  assert.equal(job.steps.research.status, "completed");
+  assert.match(job.steps.research.brief, /2026-10-26/);
+  assert.equal(job.current_step, "script");
+
+  assert.equal(await runner.runNextStep(id), "advanced"); // script
+  assert.match(String(scriptParams()?.research), /2026-10-26/, "script receives the research brief");
+  assert.equal(await runner.runNextStep(id), "completed"); // thumbnail → finalize
+  job = rows.get(id)!;
+  assert.equal(job.status, "completed");
+});
+
+test("research failure fails the job with a full refund", async () => {
+  const { runner, rows, seedJob, rpc } = makeRunner({ failAt: "research" });
+  const steps = initialStepsState({ research: true }) as Record<string, any>;
+  steps.research.queued_at = new Date(0).toISOString();
+  const id = seedJob(false, { steps, current_step: "research", credits_charged: 20 });
+  assert.equal(await runner.runNextStep(id), "failed");
+  assert.equal(rows.get(id)!.status, "failed");
+  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [20]);
 });

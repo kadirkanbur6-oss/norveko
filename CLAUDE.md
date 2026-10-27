@@ -32,7 +32,8 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   düşer, `pipeline_jobs` satırı açar, **hemen döner** ve `after()` ile worker'ı
   tetikler.
 - `POST /api/pipeline/run` (internal, `PIPELINE_WORKER_SECRET`): **her çağrıda
-  tek adım** çalıştırır (`script` → `voiceover`? → `thumbnail` → `video`?) ve
+  tek adım** çalıştırır (`research`? → `script` → `voiceover`? → `thumbnail`
+  → `video`? → `render`?) ve
   kendini bir sonraki adım için tekrar tetikler. Adım claim'i atomik
   (pending→running koşullu update), çift tetikleme zararsız.
 - `GET /api/pipeline/[id]`: UI poll eder; aynı zamanda job'ı "iyileştirir"
@@ -40,10 +41,21 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   async video adımını 20 sn'de bir poll eder, 40 dk sonra timeout).
 - `GET /api/pipeline/reap` (cron, günlük 03:30 UTC): tüm running job'lar için aynı.
 - Mantık `lib/pipeline/runner.ts` içinde `createPipelineRunner(deps)`;
-  `lib/pipeline/runner.test.ts` 11 senaryo (tam video dahil) +
+  `lib/pipeline/runner.test.ts` 13 senaryo (tam video, research dahil) +
   `captions.test.ts` 9 birim testi (altyazı, fiyat, timeline)
   (`npm run test:pipeline`).
-- Kredi maliyetleri **tek kaynak**: `lib/pipeline/steps.ts` (script 5, voiceover
+- **Web araştırması** (`research` adımı, 5 kredi, UI'da "Research the topic
+  first" toggle'ı varsayılan açık): `lib/pipeline/openai.ts` `researchTopic()`
+  OpenAI **Responses API** + `web_search` aracıyla (gpt-5-mini) bugünün
+  tarihini vererek kaynaklı 120–220 kelimelik brief üretir; `url_citation`
+  annotation'larından kaynak listesi. `steps.research.brief/sources` →
+  senaryo prompt'una "VERIFIED RESEARCH BRIEF — tek gerçek kaynak" olarak
+  girer; `projects.content.research` olarak saklanır, ilerleme kartında ve
+  proje sayfasında "Research brief" (kaynak linkleri) gösterilir. Senaryo
+  prompt'unda ayrıca gerçek kişi/marka kuralı: videoPrompt'lar yüz, arma,
+  forma ismi, skor tabelası, okunur yazı istemez (AI görseller bunları
+  uyduruyor).
+- Kredi maliyetleri **tek kaynak**: `lib/pipeline/steps.ts` (research 5, script 5, voiceover
   15, **altyazı eklentisi 10** (`SUBTITLES_CREDITS`, sadece voiceover ile;
   adım değil, `steps.voiceover.subtitles=true` olarak kaydedilir), thumbnail
   10, **Kling klip 130** (5 sn, Kling 3.0 720p sessiz = 3 unit ≈ $0.42;

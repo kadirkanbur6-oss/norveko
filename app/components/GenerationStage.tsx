@@ -20,6 +20,7 @@ export interface StageStep {
 
 // Typical wall-clock per step; only used for the progress estimate.
 const EXPECTED_SECONDS: Record<PipelineStepId, number> = {
+  research: 30,
   script: 45,
   voiceover: 35,
   thumbnail: 40,
@@ -28,6 +29,11 @@ const EXPECTED_SECONDS: Record<PipelineStepId, number> = {
 };
 
 const MESSAGES: Record<PipelineStepId, string[]> = {
+  research: [
+    "Searching the web for the latest facts…",
+    "Reading sources and checking dates…",
+    "Writing the research brief…",
+  ],
   script: [
     "Researching your topic…",
     "Finding the strongest hook…",

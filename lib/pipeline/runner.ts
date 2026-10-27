@@ -105,6 +105,7 @@ export interface RunnerDeps {
   db: SupabaseClient;
   providers: {
     generateScript: typeof import("@/lib/pipeline/openai").generateScript;
+    researchTopic: typeof import("@/lib/pipeline/openai").researchTopic;
     generateSpeech: typeof import("@/lib/pipeline/elevenlabs").generateSpeech;
     generateThumbnail: typeof import("@/lib/pipeline/gemini-image").generateThumbnail;
     submitTextToVideo: typeof import("@/lib/pipeline/kling").submitTextToVideo;
@@ -796,6 +797,43 @@ export function createPipelineRunner(deps: RunnerDeps) {
   async function executeStep(job: JobRow, stepId: PipelineStepId): Promise<void> {
     const def = getPipelineStepDefinition(stepId);
 
+    if (stepId === "research") {
+      const model = def.provider.split(":")[1] ?? "gpt-5-mini";
+      const startedAt = now();
+      let result: Awaited<ReturnType<typeof providers.researchTopic>>;
+      try {
+        result = await providers.researchTopic({
+          idea: job.idea,
+          outputLanguage: job.output_language ?? "EN",
+          model,
+          today: new Date(now()).toISOString().slice(0, 10),
+        });
+      } catch (err) {
+        await logUsage(job, "research", {
+          unit: "tokens",
+          quantity: 0,
+          durationMs: now() - startedAt,
+          status: "failed",
+          error: err instanceof Error ? err.message : String(err),
+        });
+        throw err;
+      }
+      await logUsage(job, "research", {
+        unit: "tokens",
+        quantity: (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0),
+        inputTokens: result.usage?.inputTokens,
+        outputTokens: result.usage?.outputTokens,
+        durationMs: now() - startedAt,
+        status: "ok",
+      });
+      await patchStep(job, "research", {
+        status: "completed",
+        brief: result.brief,
+        sources: result.sources,
+      });
+      return;
+    }
+
     if (stepId === "script") {
       const model = def.provider.split(":")[1] ?? "gpt-5-mini";
       const orientation = job.options?.orientation ?? defaultOrientation(job.platform ?? "");
@@ -811,6 +849,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
           model,
           orientation,
           brief: getTemplate(job.options?.template)?.brief ?? null,
+          research: typeof job.steps?.research?.brief === "string" ? (job.steps.research.brief as string) : null,
         });
       } catch (err) {
         await logUsage(job, "script", {
@@ -960,6 +999,10 @@ export function createPipelineRunner(deps: RunnerDeps) {
     const captions = Array.isArray(voice.captions) && voice.captions.length ? voice.captions : undefined;
     const finalVideoUrl =
       typeof fresh.steps?.render?.video_url === "string" ? (fresh.steps.render.video_url as string) : undefined;
+    const research =
+      typeof fresh.steps?.research?.brief === "string"
+        ? { brief: fresh.steps.research.brief as string, sources: (fresh.steps.research.sources as unknown[]) ?? [] }
+        : undefined;
     const clips = (fresh.steps?.video?.clips as VideoClipState[] | undefined) ?? [];
     const scenes = Array.isArray(script.scenes)
       ? (script.scenes as Array<Record<string, unknown> & { sceneNumber?: number }>).map((scene) => {
@@ -993,6 +1036,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
             audio_url: voiceoverUrl || undefined,
             captions,
             finalVideoUrl,
+            research,
           },
         })
         .select("id")
@@ -1213,6 +1257,8 @@ function getRunner() {
       providers: {
         generateScript: async (...args) =>
           (await import("@/lib/pipeline/openai")).generateScript(...args),
+        researchTopic: async (...args) =>
+          (await import("@/lib/pipeline/openai")).researchTopic(...args),
         generateSpeech: async (...args) =>
           (await import("@/lib/pipeline/elevenlabs")).generateSpeech(...args),
         generateThumbnail: async (...args) =>

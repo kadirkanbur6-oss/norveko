@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Captions, CheckCircle2, Film, ChevronDown, Clapperboard, Coins, LayoutTemplate, Loader2, Mic, Play, Search, Sparkles, Square, Wand2 } from "lucide-react";
+import { Captions, CheckCircle2, Film, Globe, ChevronDown, Clapperboard, Coins, LayoutTemplate, Loader2, Mic, Play, Search, Sparkles, Square, Wand2 } from "lucide-react";
 import Link from "next/link";
 import Sidebar from "../components/Sidebar";
 import PipelineProgress from "../components/PipelineProgress";
@@ -12,6 +12,7 @@ import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
 import {
   fullVideoPlan,
   FULL_VIDEO_DURATIONS,
+  RESEARCH_CREDITS,
   SUBTITLES_CREDITS,
   totalPipelineCredits,
   type FootageMode,
@@ -50,6 +51,7 @@ interface Draft {
   duration: string;
   language: string;
   includeVoiceover: boolean;
+  includeResearch?: boolean;
   includeSubtitles?: boolean;
   includeFullVideo?: boolean;
   footage?: FootageMode;
@@ -79,6 +81,7 @@ function ChatContent() {
   const [orientationTouched, setOrientationTouched] = useState(false);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [includeVoiceover, setIncludeVoiceover] = useState(false);
+  const [includeResearch, setIncludeResearch] = useState(true);
   const [includeSubtitles, setIncludeSubtitles] = useState(true);
   const [includeVideo, setIncludeVideo] = useState(false);
   const [videoAvailable, setVideoAvailable] = useState(false);
@@ -104,6 +107,7 @@ function ChatContent() {
 
   const fullVideoOn = includeFullVideo && fullVideoAvailable && Boolean(fullVideoPlan(duration, footage));
   const totalCost = totalPipelineCredits({
+    research: includeResearch,
     voiceover: includeVoiceover || fullVideoOn,
     subtitles: (includeVoiceover && includeSubtitles) || fullVideoOn,
     video: !fullVideoOn && includeVideo && videoAvailable,
@@ -127,6 +131,7 @@ function ChatContent() {
       if (typeof draft.language === "string") setLanguage(draft.language);
       if (typeof draft.includeVoiceover === "boolean") setIncludeVoiceover(draft.includeVoiceover);
       if (typeof draft.includeSubtitles === "boolean") setIncludeSubtitles(draft.includeSubtitles);
+      if (typeof draft.includeResearch === "boolean") setIncludeResearch(draft.includeResearch);
       if (typeof draft.includeFullVideo === "boolean") setIncludeFullVideo(draft.includeFullVideo);
       if (draft.footage === "hybrid" || draft.footage === "cinematic" || draft.footage === "stills") setFootage(draft.footage);
       if (typeof draft.voiceId === "string") setVoiceId(draft.voiceId);
@@ -146,12 +151,12 @@ function ChatContent() {
 
   useEffect(() => {
     try {
-      const draft: Draft = { idea, platform, style, duration, language, includeVoiceover, includeSubtitles, includeFullVideo, footage, voiceId, orientation, template: templateId };
+      const draft: Draft = { idea, platform, style, duration, language, includeVoiceover, includeResearch, includeSubtitles, includeFullVideo, footage, voiceId, orientation, template: templateId };
       sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     } catch {
       // storage unavailable
     }
-  }, [idea, platform, style, duration, language, includeVoiceover, includeSubtitles, includeFullVideo, footage, voiceId, orientation, templateId]);
+  }, [idea, platform, style, duration, language, includeVoiceover, includeResearch, includeSubtitles, includeFullVideo, footage, voiceId, orientation, templateId]);
 
   // Keep orientation in step with the platform until the user picks one explicitly.
   function choosePlatform(next: string) {
@@ -331,6 +336,7 @@ function ChatContent() {
           duration,
           outputLanguage: language,
           includeVoiceover: includeVoiceover || fullVideoOn,
+          includeResearch,
           includeSubtitles: (includeVoiceover && includeSubtitles) || fullVideoOn,
           voiceId: includeVoiceover || fullVideoOn ? effectiveVoiceId : null,
           voicePublicOwnerId: includeVoiceover || fullVideoOn ? selectedVoice?.public_owner_id ?? null : null,
@@ -393,6 +399,7 @@ function ChatContent() {
                 <span className="block truncate text-sm font-semibold text-white">{idea || "Untitled idea"}</span>
                 <span className="mt-1 block truncate text-xs text-gray-500">
                   {platform} · {style} · {duration} · {language} · {orientation === "vertical" ? "9:16" : "16:9"}
+                  {includeResearch ? " · research" : ""}
                   {includeVoiceover ? " · voiceover" : ""}
                   {includeVoiceover && includeSubtitles ? " · subtitles" : ""}
                   {fullVideoOn ? ` · full video (${footage})` : ""}
@@ -559,6 +566,38 @@ function ChatContent() {
                   );
                 })}
               </div>
+            </div>
+
+            {/* Web research before the script */}
+            <div
+              className={`mt-4 rounded-2xl border p-4 transition ${
+                includeResearch ? "border-blue-400/30 bg-[#0d0d16]" : "border-white/10 bg-[#0d0d16]"
+              }`}
+            >
+              <label className="flex cursor-pointer items-center gap-3">
+                <span className="relative inline-flex h-6 w-11 shrink-0 items-center">
+                  <input
+                    type="checkbox"
+                    checked={includeResearch}
+                    onChange={(e) => setIncludeResearch(e.target.checked)}
+                    className="peer sr-only"
+                  />
+                  <span className="absolute inset-0 rounded-full bg-white/10 transition peer-checked:bg-gradient-to-r peer-checked:from-blue-500 peer-checked:to-purple-600 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-400/60" />
+                  <span className="absolute left-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
+                </span>
+                <span>
+                  <span className="flex items-center gap-2 text-sm font-semibold text-white">
+                    <Globe size={15} className="text-blue-300" />
+                    Research the topic first
+                    <span className="rounded-full border border-yellow-400/20 bg-yellow-500/5 px-2 py-0.5 text-[11px] font-medium text-yellow-300">
+                      +{RESEARCH_CREDITS} credits
+                    </span>
+                  </span>
+                  <span className="mt-0.5 block text-xs text-gray-500">
+                    Searches the web for current, sourced facts before writing — essential for news, sports and recent events
+                  </span>
+                </span>
+              </label>
             </div>
 
             {/* Voiceover */}

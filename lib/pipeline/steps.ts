@@ -1,7 +1,7 @@
 // lib/pipeline/steps.ts
 // Pipeline step definitions and credit costs — the single source of truth.
 
-export type PipelineStepId = "script" | "voiceover" | "thumbnail" | "video" | "render";
+export type PipelineStepId = "research" | "script" | "voiceover" | "thumbnail" | "video" | "render";
 
 export type StepStatus = "pending" | "running" | "completed" | "failed";
 
@@ -31,6 +31,8 @@ export const FOOTAGE_MODES: FootageMode[] = ["hybrid", "cinematic", "stills"];
 
 /** Options that decide which optional steps a job includes. */
 export interface PipelineOptions {
+  /** Web research before the script (current events, real people, numbers). */
+  research?: boolean;
   voiceover?: boolean;
   /** Word-timed subtitles (SRT/VTT). Add-on to the voiceover step; ignored without it. */
   subtitles?: boolean;
@@ -112,7 +114,16 @@ export function fullVideoPlan(duration: string | undefined, footage: FootageMode
   };
 }
 
+/** Credits for the research step (one OpenAI web-search call ≈ $0.015). */
+export const RESEARCH_CREDITS = 5;
+
 export const PIPELINE_STEP_ORDER: StepDefinition[] = [
+  {
+    id: "research",
+    label: "Research",
+    credits: RESEARCH_CREDITS,
+    provider: "openai:gpt-5-mini",
+  },
   {
     id: "script",
     label: "Content Package",
@@ -150,6 +161,7 @@ export const PIPELINE_STEP_ORDER: StepDefinition[] = [
 
 /** Accept the legacy boolean (voiceover only) or the options object. */
 type Normalized = {
+  research: boolean;
   voiceover: boolean;
   subtitles: boolean;
   video: boolean;
@@ -160,12 +172,13 @@ type Normalized = {
 
 function normalize(opts: boolean | PipelineOptions | undefined): Normalized {
   if (typeof opts === "boolean") {
-    return { voiceover: opts, subtitles: false, video: false, fullVideo: false, footage: "hybrid", duration: undefined };
+    return { research: false, voiceover: opts, subtitles: false, video: false, fullVideo: false, footage: "hybrid", duration: undefined };
   }
   const fullVideo = Boolean(opts?.fullVideo) && Boolean(fullVideoPlan(opts?.duration, opts?.footage));
   // A full video always narrates and burns in subtitles.
   const voiceover = fullVideo || Boolean(opts?.voiceover);
   return {
+    research: Boolean(opts?.research),
     voiceover,
     subtitles: voiceover && (fullVideo || Boolean(opts?.subtitles)),
     video: fullVideo || Boolean(opts?.video),
@@ -209,8 +222,9 @@ export function creditBreakdown(opts: boolean | PipelineOptions = false): Array<
 export function buildPipelineSteps(
   opts: boolean | PipelineOptions = false
 ): StepDefinition[] {
-  const { voiceover, video, fullVideo } = normalize(opts);
+  const { research, voiceover, video, fullVideo } = normalize(opts);
   return PIPELINE_STEP_ORDER.filter((step) => {
+    if (step.id === "research") return research;
     if (step.id === "voiceover") return voiceover;
     if (step.id === "video") return video;
     if (step.id === "render") return fullVideo;
@@ -268,6 +282,7 @@ export function optionsFromSteps(steps: Record<string, unknown> | null | undefin
   const video = steps?.video as Record<string, unknown> | undefined;
   const plan = (video?.plan ?? null) as (FullVideoPlan & { footage?: FootageMode; duration?: string }) | null;
   return {
+    research: Boolean(steps?.research),
     voiceover: Boolean(voiceover),
     subtitles: Boolean(voiceover?.subtitles),
     video: Boolean(video),
