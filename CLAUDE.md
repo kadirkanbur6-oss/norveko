@@ -211,7 +211,9 @@ karşılaştırması yapılır.
 
 Kod dışı (Kadir): **tam video betası için Vercel env**: `SHOTSTACK_API_KEY`
 + `SHOTSTACK_ENV=stage` (test; `v1` = filigransız prod, PAYG $10),
-`KLING_ACCESS_KEY/SECRET_KEY` ($9.80 deneme paketi yeter),
+`KLING_API_KEY` (yeni konsol tek anahtar verir, `api-key-kling-…`; Bearer
+olarak gönderilir — `lib/pipeline/kling.ts` `authToken()`; eski
+Access/Secret çifti hâlâ fallback) ($9.80 deneme paketi yeter),
 `FULL_VIDEO_BETA_USER_IDS=92779a9c-cb1c-47a8-bcc8-e07f4de6dc56`; `app/lib/legal.ts`
 `LEGAL_NAME` placeholder'ı (şirket kurulunca); Paddle live ID'leri + webhook
 event'leri (`adjustment.*`); ElevenLabs Starter planı (kütüphane sesleri için).

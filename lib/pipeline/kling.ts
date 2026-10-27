@@ -6,7 +6,8 @@
 // task_status is "succeed" or "failed". Result URLs expire, so the caller
 // copies the MP4 into Supabase Storage.
 //
-// Env: KLING_ACCESS_KEY, KLING_SECRET_KEY, optional KLING_API_BASE
+// Env: KLING_API_KEY (new single key) — or legacy KLING_ACCESS_KEY +
+// KLING_SECRET_KEY — and optional KLING_API_BASE
 // (default https://api-singapore.klingai.com).
 
 import "server-only";
@@ -39,9 +40,20 @@ function getCredentials() {
   const accessKey = process.env.KLING_ACCESS_KEY;
   const secretKey = process.env.KLING_SECRET_KEY;
   if (!accessKey || !secretKey) {
-    throw new Error("KLING_ACCESS_KEY / KLING_SECRET_KEY are not set.");
+    throw new Error("KLING_API_KEY (or KLING_ACCESS_KEY / KLING_SECRET_KEY) is not set.");
   }
   return { accessKey, secretKey };
+}
+
+/**
+ * Bearer token for the request. Kling's new console (Oct 2026) issues a single
+ * API key ("api-key-kling-…") used directly as the bearer token; the older
+ * Access Key + Secret Key pair is signed into a short-lived JWT.
+ */
+export function authToken(now: number = Date.now()): string {
+  const apiKey = process.env.KLING_API_KEY?.trim();
+  if (apiKey) return apiKey;
+  return buildKlingToken(now);
 }
 
 function base64url(input: Buffer | string): string {
@@ -75,7 +87,7 @@ async function klingFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
     ...init,
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${buildKlingToken()}`,
+      authorization: `Bearer ${authToken()}`,
       ...(init.headers ?? {}),
     },
     cache: "no-store",
