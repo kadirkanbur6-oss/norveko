@@ -37,6 +37,14 @@ interface ScriptParams {
   brief?: string | null;
 }
 
+/** Spoken-word budget for a duration label ("30 seconds" → 65 words). */
+function wordBudget(duration: string | null | undefined): number {
+  const d = (duration ?? "60 seconds").toLowerCase();
+  const n = Number(d.match(/\d+/)?.[0] ?? 60);
+  const seconds = d.includes("minute") ? n * 60 : n;
+  return Math.max(40, Math.round(seconds * 2.2));
+}
+
 export async function generateScript(params: ScriptParams): Promise<ScriptResult> {
   const { idea, platform, style, duration, outputLanguage, model, orientation, brief } = params;
   const aspect = orientation === "vertical" ? "9:16 vertical" : "16:9 horizontal";
@@ -65,7 +73,8 @@ Rules:
 - return 5 titles exactly.
 - return 5-8 scenes suitable for the target duration.
 - "tags" should be concise SEO tags without # symbols.
-- Match the tone to the platform and style. Keep the script length appropriate for the target duration.
+- Match the tone to the platform and style.
+- HARD LENGTH LIMIT: the hook + script together are read aloud at ~2.3 words per second, so they must total AT MOST ${wordBudget(duration)} words (target ${Math.round(wordBudget(duration) * 0.9)}). Count before answering; never exceed it.
 - The video is ${aspect}; compose every videoPrompt and the thumbnail for that framing (e.g. subjects centred and tall for vertical).${brief ? `\n- ${brief}` : ""}`;
 
   const userPrompt = `Video idea: ${idea}

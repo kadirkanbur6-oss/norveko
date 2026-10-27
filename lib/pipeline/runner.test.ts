@@ -465,14 +465,14 @@ test("full video (hybrid, 60 s): 12 slots, 3 Kling + stills, render to final MP4
     [0, 4, 8]
   );
   assert.equal(calls.filter((c) => c.startsWith("submit:")).length, 3);
-  // 9 still slots planned but only 3 distinct scenes → 6 stills refunded up front
-  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [6 * 12]);
+  // Every still slot gets its own image (no back-to-back repeats) → nothing refunded up front
+  assert.deepEqual(rpc.map(([, a]) => a.p_amount), []);
 
-  // Polls: Kling still processing, stills generated 2 per poll (3 scenes → 2 polls)
+  // Polls: Kling still processing, stills generated 2 per poll (9 slots → 5 polls)
   assert.equal(await runner.runNextStep(id), "noop");
   assert.equal(calls.filter((c) => c.startsWith("still:")).length, 2);
-  assert.equal(await runner.runNextStep(id), "noop");
-  assert.equal(calls.filter((c) => c.startsWith("still:")).length, 3, "one image per scene, shared by slots");
+  for (let i = 0; i < 4; i++) await runner.runNextStep(id);
+  assert.equal(calls.filter((c) => c.startsWith("still:")).length, 9, "one image per still slot");
 
   klingStatuses.task_1 = "succeed";
   klingStatuses.task_2 = "succeed";
@@ -481,7 +481,7 @@ test("full video (hybrid, 60 s): 12 slots, 3 Kling + stills, render to final MP4
   job = rows.get(id)!;
   assert.equal(job.steps.video.status, "completed");
   assert.equal(job.current_step, "render");
-  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [72, 130], "failed Kling slot refunded");
+  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [130], "failed Kling slot refunded");
 
   assert.equal(await runner.runNextStep(id), "advanced"); // render: submit
   const e = edit()!;
@@ -507,15 +507,14 @@ test("full video: a failed render fails the job and refunds", async () => {
   const id = seedFullVideoJob(seedJob, "stills");
   for (let i = 0; i < 4; i++) await runner.runNextStep(id); // script, voiceover, thumbnail, visuals submit
   klingStatuses.task_1 = "succeed";
-  await runner.runNextStep(id); await runner.runNextStep(id); // 3 stills over 2 polls → settle? (needs 2 polls)
-  let job = rows.get(id)!;
-  if (job.current_step !== "render") await runner.runNextStep(id);
-  job = rows.get(id)!;
-  assert.equal(job.current_step, "render");
-  assert.equal(await runner.runNextStep(id), "advanced"); // submit render
+  // Poll until the render has been submitted (stills: 2 per poll, then settle, then submit).
+  for (let i = 0; i < 12 && !rows.get(id)!.steps.render?.render_id; i++) await runner.runNextStep(id);
+  const job0 = rows.get(id)!;
+  assert.equal(job0.current_step, "render");
+  assert.ok(job0.steps.render.render_id, "render submitted");
   renderStatus.value = "failed";
   assert.equal(await runner.runNextStep(id), "failed");
-  job = rows.get(id)!;
+  const job = rows.get(id)!;
   assert.equal(job.status, "failed");
   assert.ok(job.credits_refunded > 0);
 });

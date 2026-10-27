@@ -24,7 +24,6 @@ import {
   buildEdit,
   narrationSeconds,
   planSlots,
-  stillScenes,
   type TimelineSlot,
 } from "@/lib/pipeline/timeline";
 import "server-only";
@@ -545,11 +544,10 @@ export function createPipelineRunner(deps: RunnerDeps) {
       }
     }
 
-    // Stills: one image per distinct scene; adjacent slots reuse it.
-    const stillScenesNeeded = stillScenes(slots).length;
-    const stillSlotsPlanned = slots.filter((s) => s.kind === "still").length;
+    // Stills: one image per SLOT (a scene spanning several slots gets a
+    // different angle in each), so no visual ever repeats back-to-back.
     const klingFailed = slots.filter((s) => s.kind === "kling" && s.status === "failed").length;
-    await refundVisuals(job, klingFailed, stillSlotsPlanned - stillScenesNeeded);
+    await refundVisuals(job, klingFailed, 0);
 
     await patchStep(job, "video", {
       slots,
@@ -617,26 +615,25 @@ export function createPipelineRunner(deps: RunnerDeps) {
       }
     }
 
-    // 2) Stills: a few per invocation, one image per scene, shared by slots.
+    // 2) Stills: a few per invocation, one image per slot. Slots that share a
+    // scene get a varied camera angle so the picture visibly changes.
+    const ANGLES = ["wide establishing shot", "close-up detail", "low angle", "over-the-shoulder view", "aerial view", "dramatic side light"];
     let generated = 0;
     for (const slot of slots) {
       if (slot.kind !== "still" || slot.status !== "pending") continue;
-      const key = String(slot.sceneNumber);
-      if (stills[key]) {
-        slot.url = stills[key];
-        slot.status = "succeed";
-        changed = true;
-        continue;
-      }
+      const key = `slot-${slot.index}`;
       if (generated >= STILLS_PER_POLL) continue;
       generated += 1;
       const startedAt = now();
       try {
+        const sameScene = slots.filter((s) => s.kind === "still" && s.sceneNumber === slot.sceneNumber);
+        const variant = sameScene.findIndex((s) => s.index === slot.index);
+        const prompt = sameScene.length > 1 ? `${slot.prompt} (${ANGLES[variant % ANGLES.length]})` : slot.prompt;
         const img = await providers.generateSceneImage(
-          slot.prompt,
+          prompt,
           job.id,
           job.user_id,
-          slot.sceneNumber,
+          slot.index + 1,
           orientationOf(job)
         );
         stills[key] = img.imageUrl;

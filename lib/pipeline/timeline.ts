@@ -154,11 +154,18 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
           asset: {
             type: "rich-caption",
             src: input.subtitlesUrl,
-            font: { family: "Montserrat ExtraBold", size: orientation === "vertical" ? 44 : 38, color: "#ffffff", weight: 800 },
-            stroke: { width: 3, color: "#000000", opacity: 0.9 },
-            animation: { style: "none" },
+            font: {
+              family: "Montserrat ExtraBold",
+              size: orientation === "vertical" ? 58 : 44,
+              color: "#ffffff",
+              weight: 800,
+            },
+            stroke: { width: 5, color: "#000000", opacity: 1 },
+            // Viral-shorts style: the spoken word lights up yellow.
+            animation: { style: "karaoke" },
+            active: { font: { color: "#FFD60A" } },
             align: { vertical: "bottom" },
-            style: { textTransform: "none" },
+            style: { textTransform: "uppercase" },
           },
           start: 0,
           length: "end",
