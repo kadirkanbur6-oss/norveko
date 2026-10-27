@@ -50,6 +50,7 @@ interface StepInfo {
   video_url?: string;
   provider_status?: string;
   total_seconds?: number;
+  hosted_by?: "supabase" | "shotstack";
 }
 
 interface JobData {
@@ -213,6 +214,11 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
                 {job.steps.render.total_seconds ? `${Math.round(job.steps.render.total_seconds)} s · ` : ""}
                 1080p MP4 with narration and subtitles
               </p>
+              {job.steps.render.hosted_by === "shotstack" && (
+                <p className="mt-1 text-xs text-yellow-300">
+                  This file is hosted temporarily — download it within 24 hours.
+                </p>
+              )}
             </div>
             <a
               href={job.steps.render.video_url}

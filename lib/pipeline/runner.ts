@@ -754,8 +754,24 @@ export function createPipelineRunner(deps: RunnerDeps) {
     const { error: uploadError } = await db.storage
       .from("videos")
       .upload(storagePath, buffer, { contentType: "video/mp4", upsert: true });
-    if (uploadError) throw new Error(`Final video upload failed: ${uploadError.message}`);
-    const { data: urlData } = db.storage.from("videos").getPublicUrl(storagePath);
+    let finalUrl: string;
+    let hostedBy: "supabase" | "shotstack" = "supabase";
+    if (uploadError) {
+      // Too large for our bucket (Supabase free plan caps objects at 50 MB):
+      // deliver the provider-hosted file instead of failing a finished render.
+      // Shotstack keeps renders for ~24 h, so the UI warns the user to download.
+      console.warn(`[pipeline] ${job.id} final upload failed (${uploadError.message}); using provider URL`);
+      await captureError(new Error(`Final video upload failed: ${uploadError.message}`), {
+        jobId: job.id,
+        step: "render",
+        area: "pipeline.render.upload",
+        bytes: buffer.byteLength,
+      });
+      finalUrl = result.url;
+      hostedBy = "shotstack";
+    } else {
+      finalUrl = db.storage.from("videos").getPublicUrl(storagePath).data.publicUrl;
+    }
     await logUsage(job, "render", {
       unit: "seconds",
       quantity: result.duration ?? Number(job.steps?.render?.total_seconds) ?? 0,
@@ -765,9 +781,11 @@ export function createPipelineRunner(deps: RunnerDeps) {
     await patchStep(job, "render", {
       ...patch,
       status: "completed",
-      video_url: urlData.publicUrl,
-      storage_path: storagePath,
+      video_url: finalUrl,
+      storage_path: hostedBy === "supabase" ? storagePath : undefined,
       provider_url: result.url,
+      hosted_by: hostedBy,
+      bytes: buffer.byteLength,
     });
     return true;
   }
