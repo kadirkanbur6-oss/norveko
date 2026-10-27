@@ -46,17 +46,19 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
 - Kredi maliyetleri **tek kaynak**: `lib/pipeline/steps.ts` (script 5, voiceover
   15, **altyazı eklentisi 10** (`SUBTITLES_CREDITS`, sadece voiceover ile;
   adım değil, `steps.voiceover.subtitles=true` olarak kaydedilir), thumbnail
-  10, **Kling klip 90** (5 sn; 26 Ekim'de 12'den yükseltildi — 12 zarardaydı),
+  10, **Kling klip 130** (5 sn, Kling 3.0 720p sessiz = 3 unit ≈ $0.42;
+  26 Ekim'de 12 → 90 → 28 Ekim'de 130: yeni platformda 2.1 yok),
   **AI görsel sahne 12**, **render 30 / 30 sn**). `creditBreakdown(opts)` UI
   ve fatura metni için kalemleri verir; kullanılmayan/başarısız görsel iade.
 
 ### Fiyatlandırma mantığı (26 Ekim 2026, hedef ≥%70 kâr)
 Paddle komisyonu sonrası 1 kredi ≈ $0.011 (Business paketi, en kötü durum) →
-fiyat ≥ maliyet × 3.33. Sağlayıcı maliyetleri: Kling 2.1 std 5 sn ≈ $0.28
-(direkt API, $9.80 deneme / $700 standart paket ön ödemeli), Gemini görsel
+fiyat ≥ maliyet × 3.33. Sağlayıcı maliyetleri: Kling 3.0 720p sessiz 5 sn ≈
+$0.42 liste (0.6 unit/sn × $0.14; 1080p 0.8 unit/sn; deneme paketi %30
+indirimli; $9.80 deneme / $700 standart paket ön ödemeli), Gemini görsel
 $0.04, Shotstack render $0.20/dk (PAYG $10 = 50 dk), ElevenLabs
-$0.00022/karakter. 60 sn tam video: Hybrid ~430 kredi (maliyet ~$1.6),
-Cinematic ~1.180 (~$3.9), Stills ~250 (~$0.8). `lib/pipeline/usage.ts`
+$0.00022/karakter. 60 sn tam video: Hybrid ~600 kredi (maliyet ~$2.0),
+Cinematic ~1.660 (~$5.6), Stills ~250 (~$0.8). `lib/pipeline/usage.ts`
 `PRICE_LIST` güncel; `provider_usage` tablosundan gerçek maliyet/kredi
 karşılaştırması yapılır.
 - Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
@@ -211,9 +213,12 @@ karşılaştırması yapılır.
 
 Kod dışı (Kadir): **tam video betası için Vercel env**: `SHOTSTACK_API_KEY`
 + `SHOTSTACK_ENV=stage` (test; `v1` = filigransız prod, PAYG $10),
-`KLING_API_KEY` (yeni konsol tek anahtar verir, `api-key-kling-…`; Bearer
-olarak gönderilir — `lib/pipeline/kling.ts` `authToken()`; eski
-Access/Secret çifti hâlâ fallback) ($9.80 deneme paketi yeter),
+~~`KLING_API_KEY`~~ ✅ 28 Ekim: Vercel'de (`norveko-prod`, deneme paketi 100
+unit/30 gün). **Kling yeni platform API'si** (`lib/pipeline/kling.ts`): `POST
+/text-to-video/kling-3.0` + `settings{resolution:"720p", aspect_ratio,
+duration:int, audio:"off"}`, sorgu `GET /tasks?task_ids=`, durum
+`succeeded` → runner'ın beklediği `succeed`'e çevrilir; eski `kling-v2-1`
+"model is not supported" veriyor. Shotstack production (`v1`) ✅.
 `FULL_VIDEO_BETA_USER_IDS=92779a9c-cb1c-47a8-bcc8-e07f4de6dc56`; `app/lib/legal.ts`
 `LEGAL_NAME` placeholder'ı (şirket kurulunca); Paddle live ID'leri + webhook
 event'leri (`adjustment.*`); ElevenLabs Starter planı (kütüphane sesleri için).

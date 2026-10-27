@@ -51,7 +51,9 @@ export const PRICE_LIST: Record<string, Price> = {
   "elevenlabs:eleven_multilingual_v2": { perUnit: 0.00022 },
   // Gemini image — per generated image.
   "gemini:gemini-3.1-flash-image": { perUnit: 0.04 },
-  // Kling — per second of generated video (std mode, 5 s ≈ $0.28 direct).
+  // Kling 3.0 — per second, 720p, no audio: 0.6 units × $0.14 list.
+  "kling:kling-3.0": { perUnit: 0.084 },
+  // Legacy model id (kept for old provider_usage rows).
   "kling:kling-v2-1": { perUnit: 0.056 },
   // Shotstack — per second of rendered output (pay-as-you-go $0.20/min).
   "shotstack:render": { perUnit: 0.0034 },

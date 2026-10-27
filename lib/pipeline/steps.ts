@@ -54,12 +54,12 @@ export const SUBTITLES_CREDITS = 10;
 /* ---------------- Video pricing (≥70% margin target) ----------------
  * Revenue per credit after Paddle fees is ≈ $0.011 (Business pack, worst
  * case). Margin ≥ 70% ⇒ price ≥ provider cost × 3.33. Provider costs
- * (Oct 2026): Kling 2.1 std 5 s ≈ $0.28, Gemini image ≈ $0.04, Shotstack
+ * (Oct 2026): Kling 3.0 720p 5 s ≈ $0.42 (0.6 units/s × $0.14), Gemini image ≈ $0.04, Shotstack
  * render ≈ $0.20/min. See docs in CLAUDE.md §"Fiyatlandırma".
  */
 
-/** Credits per 5-second Kling clip ($0.28 cost → ≈$1.00 revenue). */
-export const VIDEO_CLIP_CREDITS = 90;
+/** Credits per 5-second Kling 3.0 clip, 720p, no audio (3 units ≈ $0.42 list → ≈$1.43 revenue, 70% margin). */
+export const VIDEO_CLIP_CREDITS = 130;
 /** Legacy clips-only option: clips generated per job (one per scene, capped). */
 export const VIDEO_MAX_CLIPS = 5;
 /** Seconds per Kling clip requested from the provider. */
@@ -136,7 +136,7 @@ export const PIPELINE_STEP_ORDER: StepDefinition[] = [
     label: "Visuals",
     // Legacy clips-only price; full videos are priced by fullVideoPlan().
     credits: VIDEO_CLIP_CREDITS * VIDEO_MAX_CLIPS,
-    provider: "kling:kling-v2-1",
+    provider: "kling:kling-3.0",
     async: true,
   },
   {
