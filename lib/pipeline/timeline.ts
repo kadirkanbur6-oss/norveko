@@ -140,7 +140,10 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
       // Slow a short clip down to fill its slot (never below 0.5×), trim a long one.
       const src = v.sourceSeconds && v.sourceSeconds > 0 ? v.sourceSeconds : SLOT_SECONDS;
       const speed = Math.max(0.5, Math.min(1, Math.round((src / slot.length) * 100) / 100));
-      clips.push({ ...base, asset: { type: "video", src: v.url, volume: 0, speed } });
+      // transcode: Kling stores portrait clips with a rotation tag that the
+      // renderer otherwise ignores (clips came out sideways); pre-processing
+      // bakes the rotation in.
+      clips.push({ ...base, asset: { type: "video", src: v.url, volume: 0, speed, transcode: true } });
     } else {
       clips.push({ ...base, asset: { type: "image", src: v.url }, effect: KEN_BURNS[i % KEN_BURNS.length] });
     }
