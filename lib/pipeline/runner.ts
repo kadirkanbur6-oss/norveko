@@ -389,6 +389,12 @@ export function createPipelineRunner(deps: RunnerDeps) {
     });
   }
 
+  /** Seconds of speech from a character alignment (0 when unknown). */
+  function spokenSeconds(alignment: { character_end_times_seconds: number[] } | null | undefined): number {
+    const ends = alignment?.character_end_times_seconds;
+    return Array.isArray(ends) && ends.length ? Number(ends[ends.length - 1]) || 0 : 0;
+  }
+
   /** Milliseconds since the video step was submitted (for the cost log). */
   function submittedAgoMs(job: JobRow): number {
     const step = job.steps?.render?.status === "running" ? job.steps.render : job.steps?.video;
@@ -913,6 +919,36 @@ export function createPipelineRunner(deps: RunnerDeps) {
         durationMs: now() - startedAt,
         status: "ok",
       });
+
+      // Full videos must hit the chosen duration. Speaking rate varies ±20%
+      // with the text, so measure the first take and, if it misses the target
+      // by more than 10%, re-synthesise once with ElevenLabs' speed setting
+      // (0.7–1.2). Costs one extra TTS call only when needed.
+      let speed = 1;
+      const targetSeconds = Number((job.steps?.render?.plan as { seconds?: number } | undefined)?.seconds);
+      const measured = spokenSeconds(speech.alignment);
+      if (isFullVideo(job) && targetSeconds > 0 && measured > 0) {
+        const ratio = measured / targetSeconds;
+        if (ratio < 0.9 || ratio > 1.1) {
+          const wanted = Math.min(1.2, Math.max(0.7, Math.round(ratio * 100) / 100));
+          const retryAt = now();
+          try {
+            const retake = await providers.generateSpeech(script, voiceId, { speed: wanted });
+            if (retake.alignment) {
+              speech = retake;
+              speed = wanted;
+            }
+            await logUsage(job, "voiceover", {
+              unit: "characters",
+              quantity: script.length,
+              durationMs: now() - retryAt,
+              status: "ok",
+            });
+          } catch (err) {
+            console.warn(`[pipeline] ${job.id} speed retake failed, keeping first take:`, err);
+          }
+        }
+      }
       const storagePath = `${job.user_id}/${job.id}.mp3`;
       const { error: uploadError } = await db.storage
         .from("voiceovers")
@@ -935,6 +971,8 @@ export function createPipelineRunner(deps: RunnerDeps) {
         status: "completed",
         audio_url: urlData.publicUrl,
         storage_path: storagePath,
+        speed,
+        duration_seconds: spokenSeconds(speech.alignment) || undefined,
         ...(captions ? { captions } : {}),
       });
       return;

@@ -55,12 +55,16 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   prompt'unda ayrıca gerçek kişi/marka kuralı: videoPrompt'lar yüz, arma,
   forma ismi, skor tabelası, okunur yazı istemez (AI görseller bunları
   uyduruyor).
-- **Süre tutarlılığı**: `lib/pipeline/narration.ts` — ölçülen anlatım hızı
-  2,1 kelime/sn (`WORDS_PER_SECOND`); `wordRange(duration)` hedef ±%8 aralık
-  verir (30 sn → 58–68 kelime). Senaryo prompt'u bu aralığı zorunlu kılar;
-  çıktı aralık dışındaysa `reviseNarrationLength()` hook+script'i bir kez
-  yeniden yazdırır (sahneler sabit kalır). Zaman çizelgesi her durumda
-  gerçek anlatım süresine (`narrationSeconds`) göre kurulur.
+- **Süre tutarlılığı** (iki katman): (1) `lib/pipeline/narration.ts` —
+  `WORDS_PER_SECOND` 2,3; `wordRange(duration)` hedef ±%8 aralık (30 sn →
+  63–75 kelime); senaryo prompt'u zorunlu kılar, kaçırırsa
+  `reviseNarrationLength()` hook+script'i bir kez yeniden yazdırır. Ölçülen
+  gerçek hız metne göre 2,0–2,6 kelime/sn (13–19 karakter/sn) oynadığı için
+  tek başına yetmez → (2) **tam video modunda** voiceover adımı ilk kaydın
+  süresini alignment'tan ölçer (`spokenSeconds`), hedeften %10+ sapıyorsa
+  ElevenLabs `voice_settings.speed` (0,7–1,2, oran = ölçülen/hedef) ile bir
+  kez yeniden üretir; `steps.voiceover.speed` ve `duration_seconds` yazılır.
+  Zaman çizelgesi her durumda gerçek anlatım süresine göre kurulur.
 - Kredi maliyetleri **tek kaynak**: `lib/pipeline/steps.ts` (research 5, script 5, voiceover
   15, **altyazı eklentisi 10** (`SUBTITLES_CREDITS`, sadece voiceover ile;
   adım değil, `steps.voiceover.subtitles=true` olarak kaydedilir), thumbnail

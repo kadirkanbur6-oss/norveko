@@ -162,17 +162,18 @@ function makeRunner(
           usage: { inputTokens: 1200, outputTokens: 800 },
         };
       },
-      generateSpeech: async () => {
-        calls.push("voiceover");
+      generateSpeech: async (_text, _voice, options) => {
+        calls.push(options?.speed ? `voiceover@${options.speed}` : "voiceover");
         if (opts.failAt === "voiceover") throw new Error("eleven down");
-        // "Hi there." with one character every 100 ms.
+        // "Hi there." with one character every 100 ms (0.9 s of speech).
         const chars = "Hi there.".split("");
+        const step = 0.1 / (options?.speed ?? 1);
         return {
           audio: Buffer.from("mp3"),
           alignment: {
             characters: chars,
-            character_start_times_seconds: chars.map((_, i) => i * 0.1),
-            character_end_times_seconds: chars.map((_, i) => (i + 1) * 0.1),
+            character_start_times_seconds: chars.map((_, i) => i * step),
+            character_end_times_seconds: chars.map((_, i) => (i + 1) * step),
           },
         };
       },
@@ -467,6 +468,9 @@ test("full video (hybrid, 60 s): 12 slots, 3 Kling + stills, render to final MP4
 
   assert.equal(await runner.runNextStep(id), "advanced"); // script
   assert.equal(await runner.runNextStep(id), "advanced"); // voiceover (+captions)
+  // 0.9 s of speech for a 60 s target → retake at the slowest allowed speed (0.7)
+  assert.deepEqual(calls.filter((c) => c.startsWith("voiceover")), ["voiceover", "voiceover@0.7"]);
+  assert.equal(rows.get(id)!.steps.voiceover.speed, 0.7);
   assert.equal(await runner.runNextStep(id), "advanced"); // thumbnail
   assert.equal(await runner.runNextStep(id), "advanced"); // visuals: submit
   let job = rows.get(id)!;

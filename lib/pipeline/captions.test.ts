@@ -136,9 +136,9 @@ test("timeline: planSlots spreads Kling slots evenly and maps scenes in order", 
 test("narration: word range tracks the selected duration at ~2.1 words/s", async () => {
   const { wordRange, narrationWordCount } = await import("./narration");
   const r30 = wordRange("30 seconds");
-  assert.deepEqual(r30, { min: 58, target: 63, max: 68, seconds: 30 });
+  assert.deepEqual(r30, { min: 63, target: 69, max: 75, seconds: 30 });
   const r60 = wordRange("60 seconds");
-  assert.equal(r60.target, 126);
+  assert.equal(r60.target, 138);
   assert.equal(wordRange("3 minutes").seconds, 180);
   assert.equal(narrationWordCount("Bir iki.", "üç  dört\nbeş"), 5);
 });

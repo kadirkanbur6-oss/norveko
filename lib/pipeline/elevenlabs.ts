@@ -190,8 +190,14 @@ export interface SpeechResult {
  */
 export async function generateSpeech(
   text: string,
-  voiceId: string
+  voiceId: string,
+  options: { speed?: number } = {}
 ): Promise<SpeechResult> {
+  // ElevenLabs accepts 0.7–1.2; outside that the API rejects the request.
+  const speed =
+    typeof options.speed === "number" && Number.isFinite(options.speed)
+      ? Math.min(1.2, Math.max(0.7, Math.round(options.speed * 100) / 100))
+      : undefined;
   const res = await fetch(
     `${ELEVENLABS_BASE_URL}/v1/text-to-speech/${encodeURIComponent(voiceId)}/with-timestamps?output_format=mp3_44100_128`,
     {
@@ -203,6 +209,7 @@ export async function generateSpeech(
       body: JSON.stringify({
         text,
         model_id: ELEVENLABS_MODEL_ID,
+        ...(speed !== undefined && speed !== 1 ? { voice_settings: { speed } } : {}),
       }),
     }
   );

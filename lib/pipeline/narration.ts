@@ -3,10 +3,10 @@
 
 /**
  * Spoken-word range for a duration label. Measured narration rate with
- * ElevenLabs Multilingual v2 (Turkish, Liam): ≈2.1 words/s. We aim for the
+ * ElevenLabs Multilingual v2 (Turkish, Liam): 2.0–2.6 words/s. We aim for the
  * target duration ±~8% so a "30 seconds" video really is ~30 s.
  */
-export const WORDS_PER_SECOND = 2.1;
+export const WORDS_PER_SECOND = 2.3;
 export function wordRange(duration: string | null | undefined): { min: number; target: number; max: number; seconds: number } {
   const d = (duration ?? "60 seconds").toLowerCase();
   const n = Number(d.match(/\d+/)?.[0] ?? 60);
