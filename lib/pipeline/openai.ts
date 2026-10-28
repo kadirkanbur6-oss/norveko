@@ -2,6 +2,7 @@
 // OpenAI ile full content package üretimi (server-side only).
 
 import { languagePromptName } from "./options";
+import { WORDS_PER_SECOND, narrationWordCount, wordRange } from "./narration";
 
 if (!process.env.OPENAI_API_KEY) {
   throw new Error("OPENAI_API_KEY is not set.");
@@ -39,17 +40,10 @@ interface ScriptParams {
   research?: string | null;
 }
 
-/** Spoken-word budget for a duration label ("30 seconds" → 65 words). */
-function wordBudget(duration: string | null | undefined): number {
-  const d = (duration ?? "60 seconds").toLowerCase();
-  const n = Number(d.match(/\d+/)?.[0] ?? 60);
-  const seconds = d.includes("minute") ? n * 60 : n;
-  return Math.max(40, Math.round(seconds * 2.2));
-}
-
 export async function generateScript(params: ScriptParams): Promise<ScriptResult> {
   const { idea, platform, style, duration, outputLanguage, model, orientation, brief, research } = params;
   const aspect = orientation === "vertical" ? "9:16 vertical" : "16:9 horizontal";
+  const range = wordRange(duration);
 
   const systemPrompt = `You are an expert short-form and YouTube video content strategist.
 Respond ONLY with a valid JSON object, no markdown, no extra text. Schema:
@@ -76,7 +70,7 @@ Rules:
 - return 5-8 scenes suitable for the target duration.
 - "tags" should be concise SEO tags without # symbols.
 - Match the tone to the platform and style.
-- HARD LENGTH LIMIT: the hook + script together are read aloud at ~2.3 words per second, so they must total AT MOST ${wordBudget(duration)} words (target ${Math.round(wordBudget(duration) * 0.9)}). Count before answering; never exceed it.
+- STRICT LENGTH: the hook + script together are read aloud at ~${WORDS_PER_SECOND} words per second. For the target duration they MUST total between ${range.min} and ${range.max} words (aim for ${range.target}). Count the words before answering; do not go under or over.
 - The video is ${aspect}; compose every videoPrompt and the thumbnail for that framing (e.g. subjects centred and tall for vertical).
 - If the topic involves real people, teams, companies or brands: videoPrompts must NOT depict identifiable real people, faces, logos, crests or jersey names. Show atmosphere, places, objects, crowds and colours instead (e.g. "fans in red-and-yellow striped shirts"), and never ask for readable text, scoreboards or signs — generated text is always wrong.${brief ? `\n- ${brief}` : ""}${research ? `\n\nVERIFIED RESEARCH BRIEF — the ONLY source of truth for any claim about real events, people, numbers, dates or outcomes. Build the script on these facts, do not invent or "remember" others, and do not contradict them:\n${research}` : ""}`;
 
@@ -179,17 +173,79 @@ Target duration: ${duration ?? "60 seconds"}`;
     .filter((tag) => tag.length > 0)
     .slice(0, 12);
 
+  // Length guard: if the narration misses the range, ask for one rewrite of
+  // hook + script only (scenes etc. stay), then accept whatever comes back.
+  let hook = String(parsed.hook);
+  let script = String(parsed.script);
+  let usageTotal = usage;
+  const count = narrationWordCount(hook, script);
+  if (count < range.min || count > range.max) {
+    const fixed = await reviseNarrationLength({ hook, script, range, outputLanguage, model, count });
+    if (fixed) {
+      hook = fixed.hook;
+      script = fixed.script;
+      if (fixed.usage && usageTotal) {
+        usageTotal = {
+          inputTokens: usageTotal.inputTokens + fixed.usage.inputTokens,
+          outputTokens: usageTotal.outputTokens + fixed.usage.outputTokens,
+        };
+      }
+    }
+  }
+
   return {
-    hook: parsed.hook,
-    script: parsed.script,
+    hook,
+    script,
     scenes: normalizedScenes,
     titles: normalizedTitles,
     description: parsed.description ?? "",
     tags: normalizedTags,
     thumbnailIdea: parsed.thumbnailIdea,
     thumbnailPrompt: parsed.thumbnailIdea,
-    usage,
+    usage: usageTotal,
   };
+}
+
+async function reviseNarrationLength(args: {
+  hook: string;
+  script: string;
+  range: { min: number; target: number; max: number; seconds: number };
+  outputLanguage: string;
+  model: string;
+  count: number;
+}): Promise<{ hook: string; script: string; usage?: { inputTokens: number; outputTokens: number } } | null> {
+  const { hook, script, range, outputLanguage, model, count } = args;
+  const direction = count < range.min ? "too short — expand it with concrete details" : "too long — tighten it";
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+    body: JSON.stringify({
+      model,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: `You edit voice-over narration for length. Respond ONLY with JSON {"hook": "...", "script": "..."} in ${languagePromptName(outputLanguage)}. Keep every fact and the meaning; change wording only as needed.`,
+        },
+        {
+          role: "user",
+          content: `This narration is ${count} words, which is ${direction}. Rewrite so that hook + script together are between ${range.min} and ${range.max} words (aim for ${range.target}) — it must be spoken in about ${range.seconds} seconds. Count carefully.\n\nHOOK:\n${hook}\n\nSCRIPT:\n${script}`,
+        },
+      ],
+    }),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  try {
+    const out = JSON.parse(data?.choices?.[0]?.message?.content ?? "");
+    if (typeof out?.hook !== "string" || typeof out?.script !== "string" || !out.script.trim()) return null;
+    const usage = data?.usage
+      ? { inputTokens: Number(data.usage.prompt_tokens ?? 0), outputTokens: Number(data.usage.completion_tokens ?? 0) }
+      : undefined;
+    return { hook: out.hook, script: out.script, usage };
+  } catch {
+    return null;
+  }
 }
 /* ---------------- Research (web search before the script) ---------------- */
 

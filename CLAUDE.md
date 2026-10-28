@@ -42,7 +42,7 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
 - `GET /api/pipeline/reap` (cron, günlük 03:30 UTC): tüm running job'lar için aynı.
 - Mantık `lib/pipeline/runner.ts` içinde `createPipelineRunner(deps)`;
   `lib/pipeline/runner.test.ts` 13 senaryo (tam video, research dahil) +
-  `captions.test.ts` 9 birim testi (altyazı, fiyat, timeline)
+  `captions.test.ts` 10 birim testi (altyazı, fiyat, timeline, süre)
   (`npm run test:pipeline`).
 - **Web araştırması** (`research` adımı, 5 kredi, UI'da "Research the topic
   first" toggle'ı varsayılan açık): `lib/pipeline/openai.ts` `researchTopic()`
@@ -55,6 +55,12 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   prompt'unda ayrıca gerçek kişi/marka kuralı: videoPrompt'lar yüz, arma,
   forma ismi, skor tabelası, okunur yazı istemez (AI görseller bunları
   uyduruyor).
+- **Süre tutarlılığı**: `lib/pipeline/narration.ts` — ölçülen anlatım hızı
+  2,1 kelime/sn (`WORDS_PER_SECOND`); `wordRange(duration)` hedef ±%8 aralık
+  verir (30 sn → 58–68 kelime). Senaryo prompt'u bu aralığı zorunlu kılar;
+  çıktı aralık dışındaysa `reviseNarrationLength()` hook+script'i bir kez
+  yeniden yazdırır (sahneler sabit kalır). Zaman çizelgesi her durumda
+  gerçek anlatım süresine (`narrationSeconds`) göre kurulur.
 - Kredi maliyetleri **tek kaynak**: `lib/pipeline/steps.ts` (research 5, script 5, voiceover
   15, **altyazı eklentisi 10** (`SUBTITLES_CREDITS`, sadece voiceover ile;
   adım değil, `steps.voiceover.subtitles=true` olarak kaydedilir), thumbnail
