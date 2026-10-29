@@ -116,6 +116,20 @@ export default function TermsPage() {
           for ensuring your use complies with the policies of the platforms
           where you publish.
         </p>
+        <p>
+          <strong>Background music.</strong> Rendered videos may include music
+          licensed under Creative Commons Attribution 4.0 (CC BY 4.0), such as
+          works by Kevin MacLeod (incompetech.com). This music is free to use
+          commercially, but the license requires attribution. The required
+          credit line is added automatically to the video&apos;s generated
+          description; <strong>you are responsible for keeping that credit</strong>
+          (for example in the description of the platform where you publish)
+          and for complying with the CC BY 4.0 license terms
+          (creativecommons.org/licenses/by/4.0/). If you remove the credit, you
+          do so at your own risk. We do not guarantee that CC-licensed music
+          will be free of automated copyright claims on third-party platforms;
+          such claims are typically resolved by referencing the license.
+        </p>
       </section>
 
       <section>
