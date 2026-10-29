@@ -156,7 +156,14 @@ karşılaştırması yapılır.
   `textTransform:uppercase` Türkçe İ/ı'yı bozuyordu ("PIRAMIDI") → render
   SRT'si `cuesToSrt(cues,{uppercase:<ISO>})` ile sunucuda büyütülür
   (`captions.ts` `upper()`), hook da aynı; indirilen .srt/.vtt orijinal
-  kalır. Kling klibi slotu dolduracak şekilde `speed`
+  kalır. **Arka plan müziği (29 Ekim):** `lib/pipeline/music.ts` — Kevin
+  MacLeod CC BY 4.0 parçaları (incompetech.com; FreePD kapandı, Shotstack
+  demo parçaları sınırlı), stile göre mood (Mystery/Horror/Documentary/
+  Educational/Cinematic/Ad), `pickMusicTrack(style, jobId)` deterministik;
+  runner `ensureMusicCached()` parçayı ilk kullanımda `videos/music/<id>.mp3`
+  olarak bucket'a kopyalar; edit'te ayrı audio track `volume 0.13` (≈-18 dB)
+  `fadeInFadeOut`; `steps.render.music{title,credit}` ve zorunlu atıf
+  `musicCredit()` proje açıklamasının sonuna eklenir. Kling klibi slotu dolduracak şekilde `speed`
   ≥0.5, görsellere Ken Burns `effect`, soundtrack = voiceover, 1080×1920 /
   1920×1080, 30 fps, `range` anlatım süresi). Runner: görseller adımı async —
   ilk çağrıda Kling slotları gönderilir, her poll'da Kling sorgulanır + en

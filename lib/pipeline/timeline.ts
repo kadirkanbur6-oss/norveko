@@ -13,6 +13,7 @@
 
 import { upper, type CaptionCue } from "./captions";
 import { SLOT_SECONDS } from "./steps";
+import { MUSIC_VOLUME } from "./music";
 
 export type SlotKind = "kling" | "still";
 export type SlotStatus = "pending" | "processing" | "succeed" | "failed";
@@ -107,6 +108,8 @@ export interface EditInput {
   hookText?: string;
   /** ISO code of the narration language — drives locale-aware uppercase. */
   languageCode?: string;
+  /** Background music (already ≥ the video length); mixed well under the voice. */
+  musicUrl?: string;
 }
 
 /** Seconds the hook title stays on screen. */
@@ -243,6 +246,20 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
     });
   }
   tracks.push({ clips });
+
+  // Background music as its own audio track (the soundtrack slot is the
+  // voice): quiet, fades in/out, trimmed to the narration.
+  if (input.musicUrl) {
+    tracks.push({
+      clips: [
+        {
+          asset: { type: "audio", src: input.musicUrl, volume: MUSIC_VOLUME, effect: "fadeInFadeOut" },
+          start: 0,
+          length: Math.round(totalSeconds * 100) / 100,
+        },
+      ],
+    });
+  }
 
   return {
     timeline: {

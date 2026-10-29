@@ -44,6 +44,7 @@ import {
 } from "@/lib/pipeline/steps";
 import type { KlingTaskResult } from "@/lib/pipeline/kling";
 import { getTemplate } from "@/lib/pipeline/templates";
+import { musicCredit, pickMusicTrack, type MusicTrack } from "@/lib/pipeline/music";
 import { defaultOrientation, languageCode } from "@/lib/pipeline/options";
 import {
   estimateCostUsd,
@@ -383,6 +384,13 @@ export function createPipelineRunner(deps: RunnerDeps) {
 
   function isDone(status: StepRecord["status"] | undefined): boolean {
     return status === "completed" || status === "skipped";
+  }
+
+  /** CC BY attribution for the background track, appended once to the description. */
+  function withMusicCredit(description: unknown, music: unknown): unknown {
+    const credit = (music as { credit?: string } | null | undefined)?.credit;
+    if (typeof description !== "string" || !credit || description.includes(credit)) return description;
+    return `${description.trimEnd()}\n\n${credit}`;
   }
 
   function stepOrder(job: Pick<JobRow, "steps">): PipelineStepId[] {
@@ -794,6 +802,20 @@ export function createPipelineRunner(deps: RunnerDeps) {
 
   /* ---------------- Full video: render (async) ---------------- */
 
+  /** Copy a music track into `videos/music/<id>.mp3` if it is not there yet; return our public URL. */
+  async function ensureMusicCached(track: MusicTrack): Promise<string> {
+    const path = `music/${track.id}.mp3`;
+    const publicUrl = db.storage.from("videos").getPublicUrl(path).data.publicUrl;
+    const { data: existing } = await db.storage.from("videos").list("music", { search: `${track.id}.mp3`, limit: 1 });
+    if (existing?.some((f) => f.name === `${track.id}.mp3`)) return publicUrl;
+    const res = await fetch(track.sourceUrl, { cache: "no-store" });
+    if (!res.ok) throw new Error(`music download failed (HTTP ${res.status})`);
+    const buffer = Buffer.from(await res.arrayBuffer());
+    const { error } = await db.storage.from("videos").upload(path, buffer, { contentType: "audio/mpeg", upsert: true });
+    if (error) throw new Error(`music upload failed: ${error.message}`);
+    return publicUrl;
+  }
+
   async function submitRenderJob(job: JobRow): Promise<void> {
     const slots = (job.steps?.video?.slots as TimelineSlot[] | undefined) ?? [];
     const voiceoverUrl = job.steps?.voiceover?.audio_url;
@@ -818,10 +840,21 @@ export function createPipelineRunner(deps: RunnerDeps) {
       }
     }
 
+    // Background music: mirror the CC BY track into our bucket once, then
+    // reference our copy (no dependency on the source host at render time).
+    const music = pickMusicTrack(job.style, job.id);
+    let musicUrl: string | undefined;
+    try {
+      musicUrl = await ensureMusicCached(music);
+    } catch (err) {
+      console.warn(`[pipeline] ${job.id} music unavailable, rendering without it:`, err instanceof Error ? err.message : err);
+    }
+
     const edit = buildEdit({
       slots,
       voiceoverUrl,
       subtitlesUrl,
+      musicUrl,
       orientation: orientationOf(job),
       totalSeconds: total,
       fallbackImageUrl: typeof job.steps?.thumbnail?.image_url === "string" ? job.steps.thumbnail.image_url : undefined,
@@ -833,6 +866,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
     await patchStep(job, "render", {
       render_id: renderId,
       subtitles_url: subtitlesUrl,
+      music: musicUrl ? { id: music.id, title: music.title, credit: musicCredit(music) } : null,
       total_seconds: total,
       submitted_at: new Date(now()).toISOString(),
       last_polled_at: new Date(now()).toISOString(),
@@ -1180,7 +1214,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
             script: script.script,
             scenes,
             titles: script.titles,
-            description: script.description,
+            description: withMusicCredit(script.description, fresh.steps?.render?.music),
             tags: script.tags,
             thumbnailIdea: script.thumbnailIdea,
             thumbnailUrl: thumb.image_url,

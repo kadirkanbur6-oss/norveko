@@ -19,6 +19,7 @@ import { initialStepsState, totalPipelineCredits } from "./steps";
 type Row = Record<string, any>;
 
 function makeDb() {
+  const projects: Row[] = [];
   const rows = new Map<string, Row>();
   const rpc: Array<[string, Row]> = [];
   let seq = 0;
@@ -48,7 +49,10 @@ function makeDb() {
     let patch: Row | null = null;
     let insertRow: Row | null = null;
     const run = () => {
-      if (name === "projects") return { data: [{ id: `proj_${++seq}` }], error: null };
+      if (name === "projects") {
+        if (insertRow) projects.push(insertRow);
+        return { data: [{ id: `proj_${++seq}` }], error: null };
+      }
       if (insertRow) {
         const id = `job_${++seq}`;
         rows.set(id, {
@@ -91,7 +95,9 @@ function makeDb() {
     storage: {
       from: () => ({
         upload: async () => ({ error: null }),
-        getPublicUrl: () => ({ data: { publicUrl: "https://cdn/x.mp3" } }),
+        getPublicUrl: (path: string) => ({ data: { publicUrl: `https://cdn/${path}` } }),
+        // Music cache: pretend every track is already mirrored (no network in tests).
+        list: async (_dir: string, opts: { search?: string }) => ({ data: [{ name: opts.search ?? "" }], error: null }),
       }),
     },
   };
@@ -123,13 +129,13 @@ function makeDb() {
     return id;
   }
 
-  return { db: db as any, rows, rpc, seedJob };
+  return { db: db as any, rows, rpc, seedJob, projects };
 }
 
 function makeRunner(
   opts: { failAt?: string; now?: () => number; klingStatuses?: Record<string, "processing" | "succeed" | "failed"> } = {}
 ) {
-  const { db, rows, rpc, seedJob } = makeDb();
+  const { db, rows, rpc, seedJob, projects } = makeDb();
   const kicked: string[] = [];
   const calls: string[] = [];
   const usage: UsageRecord[] = [];
@@ -225,7 +231,7 @@ function makeRunner(
       usage.push(record);
     },
   });
-  return { runner, rows, rpc, seedJob, kicked, calls, klingStatuses, usage, renderStatus, edit: () => lastEdit, scriptParams: () => lastScriptParams };
+  return { runner, rows, rpc, seedJob, kicked, calls, klingStatuses, usage, renderStatus, projects, edit: () => lastEdit, scriptParams: () => lastScriptParams };
 }
 
 function seedVideoJob(seedJob: ReturnType<typeof makeDb>["seedJob"]) {
@@ -468,7 +474,7 @@ test("full video (hybrid, 60 s): 12 slots, 3 Kling + stills, render to final MP4
   assert.equal(totalPipelineCredits({ fullVideo: true, footage: "stills", duration: "30 seconds" }), 40 + 6 * 12 + 30);
   assert.equal(totalPipelineCredits({ fullVideo: true, duration: "8 minutes" }), 15, "unsupported duration → plain package");
 
-  const { runner, rows, rpc, seedJob, calls, klingStatuses, renderStatus, edit } = makeRunner();
+  const { runner, rows, rpc, seedJob, calls, klingStatuses, renderStatus, edit, projects } = makeRunner();
   const id = seedFullVideoJob(seedJob);
 
   assert.equal(await runner.runNextStep(id), "advanced"); // script
@@ -506,7 +512,11 @@ test("full video (hybrid, 60 s): 12 slots, 3 Kling + stills, render to final MP4
   assert.equal(await runner.runNextStep(id), "advanced"); // render: submit
   const e = edit()!;
   const tl = e.timeline as any;
-  assert.equal(tl.tracks.length, 3, "hook card + captions track + visuals track");
+  assert.equal(tl.tracks.length, 4, "hook card + captions track + visuals track + music track");
+  const musicClip = tl.tracks[3].clips[0];
+  assert.equal(musicClip.asset.type, "audio");
+  assert.ok(musicClip.asset.volume <= 0.2, "music sits well under the narration");
+  assert.match(musicClip.asset.src, /^https:\/\/cdn\/music\/[a-z-]+\.mp3$/);
   assert.equal(tl.tracks[0].clips[0].asset.type, "rich-text");
   assert.equal(tl.tracks[0].clips[0].asset.text, "H");
   assert.equal(tl.tracks[0].clips[0].start, 0);
@@ -524,6 +534,8 @@ test("full video (hybrid, 60 s): 12 slots, 3 Kling + stills, render to final MP4
   assert.equal(job.steps.render.status, "completed");
   assert.equal(job.steps.render.storage_path, "u1/" + id + "/final.mp4");
   assert.ok(typeof job.steps.render.video_url === "string" && job.steps.render.video_url.startsWith("https://cdn/"));
+  // CC BY attribution for the background track lands in the saved description.
+  assert.match(String(projects.at(-1)?.content?.description), /Music: ".+" by Kevin MacLeod/);
 });
 
 test("full video: a failed render fails the job and refunds", async () => {
