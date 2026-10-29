@@ -154,7 +154,8 @@ karşılaştırması yapılır.
   ilk çağrıda Kling slotları gönderilir, her poll'da Kling sorgulanır + en
   fazla 2 AI görsel üretilir (`generateSceneImage`, sahne başına bir görsel,
   komşu slotlar paylaşır; fazlası peşinen iade), başarısız Kling slotu iade +
-  render'da komşu görselle doldurulur. Render adımı async: SRT `videos`
+  render'da komşu görselle doldurulur; **Kling klibi 12 dk'da bitmezse**
+  (`KLING_CLIP_TIMEOUT_MS`, 29 Ekim) aynı şekilde failed+iade sayılır. Render adımı async: SRT `videos`
   bucket'a yüklenir, Shotstack'e gönderilir (`lib/pipeline/shotstack.ts`),
   poll'da `done` olunca MP4 indirilip `videos/{user}/{job}/final.mp4`'e
   yazılır → `projects.content.finalVideoUrl`. UI: `/chat`'te "Render the full

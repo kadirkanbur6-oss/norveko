@@ -61,6 +61,8 @@ export const RESEARCH_STEP_TIMEOUT_MS = 2 * 60 * 1000;
 export const ASYNC_STEP_TIMEOUT_MS = 40 * 60 * 1000;
 /** A pending step that nobody picked up for this long gets re-kicked. */
 export const KICK_RETRY_MS = 90 * 1000;
+/** Give up on a single Kling clip after this long in the provider queue. */
+export const KLING_CLIP_TIMEOUT_MS = 12 * 60 * 1000;
 /** How often an async step is polled while it is in flight. */
 export const ASYNC_POLL_INTERVAL_MS = 20 * 1000;
 
@@ -680,6 +682,11 @@ export function createPipelineRunner(deps: RunnerDeps) {
       } catch (err) {
         console.error(`[pipeline] ${job.id} poll ${slot.taskId} failed:`, err);
         continue;
+      }
+      // A clip stuck in Kling's queue must not hold the whole video hostage:
+      // give it up, refund it, and let the render fill the slot from a neighbour.
+      if (result.status !== "succeed" && result.status !== "failed" && submittedAgoMs(job) > KLING_CLIP_TIMEOUT_MS) {
+        result = { ...result, status: "failed", statusMessage: `Clip took longer than ${Math.round(KLING_CLIP_TIMEOUT_MS / 60000)} minutes` };
       }
       if (result.status === "failed") {
         slot.status = "failed";
