@@ -254,7 +254,13 @@ event'leri (`adjustment.*`); ElevenLabs Starter planı (kütüphane sesleri içi
 sadece yerel .env için.)
 
 Ürün (rakip analizine göre): ~~otomatik altyazı~~ → ~~tam MP4 render~~
-(özel beta, canlı test bekliyor) → ~~9:16/16:9 seçimi~~ → niş şablonları + örnek galeri →
+(özel beta, canlı test bekliyor) → ~~9:16/16:9 seçimi~~ → ~~niş şablonları + örnek
+galeri~~ (29 Ekim: landing `#examples` gerçek render'lar `lib/showcase.ts`
+— Supabase `videos`/`thumbnails` bucket yolları, URL `NEXT_PUBLIC_SUPABASE_URL`'den;
+`#templates` kartları `/chat?template=<id>`; fiyat kartlarında "≈ X paket /
+X video" satırı `steps.ts`'ten hesaplanır. **Paket kredileri/fiyatları 29
+Ekim'de gözden geçirildi, Kadir "şimdilik değiştirme" dedi** — Starter 500 ile
+yalnızca 1×30 sn video çıkıyor; ileride tekrar bakılacak) →
 YouTube'a doğrudan yükleme → seri modu/zamanlama → ses klonlama + brand kit →
 affiliate. Ertelenen: timeline editör, AI avatar, mobil app.
 

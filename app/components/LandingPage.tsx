@@ -10,6 +10,7 @@ import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
 import SignOutButton from "./SignOutButton";
 import BrandMark from "./BrandMark";
 import { CREDIT_PACKAGES } from "@/lib/packages";
+import { totalPipelineCredits } from "@/lib/pipeline/steps";
 import {
   ArrowRight,
   Check,
@@ -134,8 +135,18 @@ const FORMATS = [
 
 const LANGUAGES = LANGUAGE_OPTIONS.map((l) => l.label);
 
+// What a pack buys, from the single source of credit prices (steps.ts).
+const PACKAGE_CREDITS = totalPipelineCredits({ research: true, voiceover: true, subtitles: true });
+const VIDEO_30S_CREDITS = totalPipelineCredits({ research: true, fullVideo: true, footage: "hybrid", duration: "30 seconds" });
+
 const PRICING = CREDIT_PACKAGES.map((pack) => ({
   ...pack,
+  buys: [
+    `≈ ${Math.floor(pack.credits / PACKAGE_CREDITS)} content packages with voiceover & subtitles`,
+    Math.floor(pack.credits / VIDEO_30S_CREDITS) > 0
+      ? `or ≈ ${Math.floor(pack.credits / VIDEO_30S_CREDITS)} fully rendered 30 s video${Math.floor(pack.credits / VIDEO_30S_CREDITS) === 1 ? "" : "s"} (beta)`
+      : null,
+  ].filter((x): x is string => Boolean(x)),
   desc:
     pack.id === "starter"
       ? "A simple credit pack for creators getting started."
@@ -668,6 +679,11 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                 <p className="mt-2 text-sm font-medium text-gray-300">
                   {plan.credits.toLocaleString()} credits
                 </p>
+                <ul className="mt-2 space-y-1 text-xs text-gray-500">
+                  {plan.buys.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
 
                 <Link
                   href="/signup"
