@@ -137,7 +137,7 @@ export async function generateSceneImage(
           {
             parts: [
               {
-                text: `Photorealistic cinematic film still, ${aspectRatio} aspect ratio, shallow depth of field, dramatic natural lighting, no text, no captions, no watermark, no logos. ${prompt}`,
+                text: `Photorealistic cinematic film still from a high-budget documentary, ${aspectRatio} aspect ratio, shot on a full-frame cinema camera with a 35mm lens, shallow depth of field, volumetric light, rich colour grading, fine skin/surface texture, strong subject in focus. Absolutely no text, letters, captions, subtitles, watermarks or logos anywhere in the image. ${prompt}`,
               },
             ],
           },

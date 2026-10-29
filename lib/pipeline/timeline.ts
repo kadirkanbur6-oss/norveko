@@ -103,6 +103,22 @@ export interface EditInput {
   totalSeconds: number;
   /** Optional thumbnail/poster shown when a slot has no visual at all. */
   fallbackImageUrl?: string;
+  /** Short on-screen hook shown over the first seconds (viral-shorts style). */
+  hookText?: string;
+}
+
+/** Seconds the hook title stays on screen. */
+export const HOOK_CARD_SECONDS = 4;
+
+/** Keep the on-screen hook short enough to read in a glance (≤ ~9 words). */
+export function hookTitle(hook: string | undefined | null): string | null {
+  const text = (hook ?? "").replace(/\s+/g, " ").trim();
+  if (!text) return null;
+  // First sentence only, then cap the word count.
+  const first = text.split(/(?<=[.!?…])\s+/)[0] ?? text;
+  const words = first.split(" ");
+  const short = words.length > 9 ? `${words.slice(0, 9).join(" ")}…` : first;
+  return short.replace(/[.]+$/, "").toUpperCase();
 }
 
 /** Build the Shotstack edit. Failed slots fall back to a neighbour's visual. */
@@ -150,6 +166,44 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
   });
 
   const tracks: Array<Record<string, unknown>> = [];
+
+  // Hook title card: big uppercase line over the opening seconds so the
+  // viewer gets the promise of the video before scrolling on.
+  const hook = hookTitle(input.hookText);
+  if (hook) {
+    tracks.push({
+      clips: [
+        {
+          asset: {
+            type: "rich-text",
+            text: hook,
+            font: {
+              family: "Montserrat ExtraBold",
+              size: orientation === "vertical" ? 84 : 64,
+              color: "#FFFFFF",
+              weight: 800,
+            },
+            style: { lineHeight: 1.05, textTransform: "uppercase" },
+            stroke: { color: "#000000", width: 6, opacity: 1 },
+            shadow: { offsetX: 0, offsetY: 6, blur: 18, color: "#000000", opacity: 0.6 },
+            background: { color: "#000000", opacity: 0.45, borderRadius: 24, wrap: true },
+            padding: 28,
+            align: { horizontal: "center", vertical: "middle" },
+            animation: { preset: "slideIn", style: "word", direction: "up", duration: 0.8 },
+          },
+          start: 0,
+          length: Math.min(HOOK_CARD_SECONDS, Math.max(1, totalSeconds)),
+          width: Math.round(size.width * 0.86),
+          height: Math.round(size.height * (orientation === "vertical" ? 0.28 : 0.4)),
+          // offset.y > 0 moves UP: upper-middle of the frame, clear of the captions band.
+          position: "center",
+          offset: { x: 0, y: orientation === "vertical" ? 0.16 : 0.08 },
+          transition: { in: "fade", out: "fade" },
+        },
+      ],
+    });
+  }
+
   if (input.subtitlesUrl) {
     tracks.push({
       clips: [
@@ -167,14 +221,18 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
             // Viral-shorts style: the spoken word lights up yellow.
             animation: { style: "karaoke" },
             active: { font: { color: "#FFD60A" } },
-            align: { vertical: "bottom" },
+            align: { vertical: "middle" },
             style: { textTransform: "uppercase" },
           },
           start: 0,
           length: "end",
+          // A short band pinned to the lower part of the frame (clear of the
+          // platform UI at the very bottom, well below the hook card).
           width: Math.round(size.width * 0.86),
-          height: Math.round(size.height * 0.3),
-          offset: { x: 0, y: orientation === "vertical" ? -0.12 : -0.05 },
+          height: Math.round(size.height * (orientation === "vertical" ? 0.16 : 0.2)),
+          // offset.y > 0 moves UP: band sits 14 % above the bottom edge.
+          position: "bottom",
+          offset: { x: 0, y: orientation === "vertical" ? 0.14 : 0.07 },
         },
       ],
     });

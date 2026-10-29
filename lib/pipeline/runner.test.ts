@@ -506,9 +506,13 @@ test("full video (hybrid, 60 s): 12 slots, 3 Kling + stills, render to final MP4
   assert.equal(await runner.runNextStep(id), "advanced"); // render: submit
   const e = edit()!;
   const tl = e.timeline as any;
-  assert.equal(tl.tracks.length, 2, "captions track + visuals track");
-  assert.equal(tl.tracks[0].clips[0].asset.type, "rich-caption");
-  assert.equal(tl.tracks[1].clips.length, 12, "every slot has a visual (failed one falls back to a neighbour)");
+  assert.equal(tl.tracks.length, 3, "hook card + captions track + visuals track");
+  assert.equal(tl.tracks[0].clips[0].asset.type, "rich-text");
+  assert.equal(tl.tracks[0].clips[0].asset.text, "H");
+  assert.equal(tl.tracks[0].clips[0].start, 0);
+  assert.ok(tl.tracks[0].clips[0].length > 0 && tl.tracks[0].clips[0].length <= 4, "hook card covers the first seconds (≤ 4 s)");
+  assert.equal(tl.tracks[1].clips[0].asset.type, "rich-caption");
+  assert.equal(tl.tracks[2].clips.length, 12, "every slot has a visual (failed one falls back to a neighbour)");
   assert.equal((e.output as any).size.width, 1080);
   assert.equal(tl.soundtrack.src.startsWith("https://cdn/"), true);
 

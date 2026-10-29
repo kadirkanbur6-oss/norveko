@@ -144,7 +144,11 @@ karşılaştırması yapılır.
   `steps.video.plan` ve `steps.render.plan`'a yazılır, kredi peşin.
   `lib/pipeline/timeline.ts`: `planSlots()` (sahneleri sıralı slotlara
   dağıtır, Kling slotları eşit aralıklı), `buildEdit()` (Shotstack edit JSON:
-  rich-caption SRT URL'den, Kling klibi slotu dolduracak şekilde `speed`
+  **hook kartı** (29 Ekim: `rich-text`, ilk 4 sn, `hookTitle()` ilk cümle ≤9
+  kelime UPPERCASE, Montserrat ExtraBold 84, kelime kelime slideIn, ekranın
+  üst-ortası `position:center offset.y +0.16`), rich-caption SRT URL'den
+  (**alt bant**: `position:bottom offset.y +0.14`, yükseklik %16 — Shotstack'te
+  offset.y pozitif = YUKARI), Kling klibi slotu dolduracak şekilde `speed`
   ≥0.5, görsellere Ken Burns `effect`, soundtrack = voiceover, 1080×1920 /
   1920×1080, 30 fps, `range` anlatım süresi). Runner: görseller adımı async —
   ilk çağrıda Kling slotları gönderilir, her poll'da Kling sorgulanır + en

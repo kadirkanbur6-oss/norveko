@@ -155,3 +155,10 @@ test("sanitizeClipPrompt strips orientation and camera-rotation words that make 
   );
   assert.equal(sanitizeClipPrompt("A quiet harbor at dawn"), "A quiet harbor at dawn");
 });
+
+test("hookTitle keeps the first sentence, caps it at 9 words and uppercases it", async () => {
+  const { hookTitle } = await import("./timeline");
+  assert.equal(hookTitle("Penguenler neden uçamaz? Kanatları yüzgece dönüştü."), "PENGUENLER NEDEN UÇAMAZ?");
+  assert.equal(hookTitle("one two three four five six seven eight nine ten eleven"), "ONE TWO THREE FOUR FIVE SIX SEVEN EIGHT NINE…");
+  assert.equal(hookTitle("  "), null);
+});

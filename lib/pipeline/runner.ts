@@ -815,6 +815,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
       orientation: orientationOf(job),
       totalSeconds: total,
       fallbackImageUrl: typeof job.steps?.thumbnail?.image_url === "string" ? job.steps.thumbnail.image_url : undefined,
+      hookText: typeof job.steps?.script?.hook === "string" ? job.steps.script.hook : undefined,
     });
 
     const renderId = await providers.submitRender(edit);
