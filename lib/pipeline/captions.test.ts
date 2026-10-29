@@ -146,3 +146,12 @@ test("narration: word range tracks the selected duration at ~2.1 words/s", async
   assert.equal(wordRange("3 minutes").seconds, 180);
   assert.equal(narrationWordCount("Bir iki.", "üç  dört\nbeş"), 5);
 });
+
+test("sanitizeClipPrompt strips orientation and camera-rotation words that make Kling rotate the frame", async () => {
+  const { sanitizeClipPrompt } = await import("./kling-prompt");
+  assert.equal(
+    sanitizeClipPrompt("Vertical cinematic aerial sunrise over the Giza plateau, tall framing, golden light, slow dolly-in, 9:16, camera orbiting the pyramids"),
+    "aerial sunrise over the Giza plateau, golden light, slow dolly-in, the pyramids"
+  );
+  assert.equal(sanitizeClipPrompt("A quiet harbor at dawn"), "A quiet harbor at dawn");
+});

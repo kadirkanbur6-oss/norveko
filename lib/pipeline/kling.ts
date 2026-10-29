@@ -13,6 +13,8 @@
 // KLING_SECRET_KEY — and optional KLING_API_BASE
 // (default https://api-singapore.klingai.com).
 
+import { CAMERA_RULE, sanitizeClipPrompt } from "./kling-prompt";
+
 import "server-only";
 import { createHmac } from "node:crypto";
 
@@ -118,7 +120,7 @@ async function klingFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
 /** Submit a text-to-video task. Returns the provider task id. */
 export async function submitTextToVideo(params: KlingSubmitParams): Promise<string> {
   const model = params.model ?? KLING_DEFAULT_MODEL;
-  const prompt = [params.prompt, params.negativePrompt ? `Avoid: ${params.negativePrompt}` : ""]
+  const prompt = [sanitizeClipPrompt(params.prompt), CAMERA_RULE, params.negativePrompt ? `Avoid: ${params.negativePrompt}` : ""]
     .filter(Boolean)
     .join(" ")
     .slice(0, 2500);
