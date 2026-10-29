@@ -10,6 +10,10 @@ import {
   type CharacterAlignment,
 } from "./captions";
 
+// Loose shape of the Shotstack edit for assertions (tests only).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type EditJson = any;
+
 function align(text: string, secondsPerChar = 0.08): CharacterAlignment {
   const characters = text.split("");
   return {
@@ -114,13 +118,13 @@ test("timeline: planSlots spreads Kling slots evenly and maps scenes in order", 
     s.url = `https://cdn/${s.index}`;
     if (s.kind === "kling") s.sourceSeconds = 5;
   });
-  const edit = buildEdit({ slots, voiceoverUrl: "https://cdn/v.mp3", subtitlesUrl: "https://cdn/c.srt", orientation: "vertical", totalSeconds: 58.2 }) as any;
+  const edit = buildEdit({ slots, voiceoverUrl: "https://cdn/v.mp3", subtitlesUrl: "https://cdn/c.srt", orientation: "vertical", totalSeconds: 58.2 }) as EditJson;
   // Slots here are 4.85 s, shorter than the 5 s clip → trimmed at normal speed.
   assert.equal(edit.timeline.tracks[1].clips[0].asset.speed, 1);
   // A longer narration (70 s / 12 = 5.83 s slots) slows the clip to fill the slot.
   const longSlots = planSlots(scenes, 70, 12, 3);
   longSlots.forEach((s) => { s.status = "succeed"; s.url = "u"; if (s.kind === "kling") s.sourceSeconds = 5; });
-  const longEdit = buildEdit({ slots: longSlots, voiceoverUrl: "v", orientation: "horizontal", totalSeconds: 70 }) as any;
+  const longEdit = buildEdit({ slots: longSlots, voiceoverUrl: "v", orientation: "horizontal", totalSeconds: 70 }) as EditJson;
   assert.ok(longEdit.timeline.tracks[0].clips[0].asset.speed < 1 && longEdit.timeline.tracks[0].clips[0].asset.speed >= 0.5);
   assert.equal(longEdit.timeline.tracks.length, 1, "no subtitles → no caption track");
   const visual = edit.timeline.tracks[1].clips;

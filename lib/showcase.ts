@@ -1,0 +1,79 @@
+// lib/showcase.ts
+// Real videos rendered by the Norveko pipeline, shown on the landing page.
+// Every entry points at an actual job output in the public `videos` bucket
+// (`{user}/{job}/final.mp4`) and its generated thumbnail — nothing here is a
+// mock. Add an entry after a run you are happy with; remove it when the file
+// is deleted. URLs are built from NEXT_PUBLIC_SUPABASE_URL so the list works
+// against any Supabase project that holds the same objects.
+
+export interface ShowcaseVideo {
+  id: string;
+  title: string;
+  /** The single sentence the creator typed. */
+  idea: string;
+  language: string;
+  style: string;
+  seconds: number;
+  orientation: "vertical" | "horizontal";
+  /** Storage paths inside the public buckets. */
+  videoPath: string;
+  thumbnailPath: string;
+  /** Which full-video footage mode produced it. */
+  footage: "hybrid" | "cinematic" | "stills";
+}
+
+const OWNER = "92779a9c-cb1c-47a8-bcc8-e07f4de6dc56";
+
+export const SHOWCASE_VIDEOS: ShowcaseVideo[] = [
+  {
+    id: "06d78aba-f9a9-4a72-a4fc-36b0682039a9",
+    title: "Penguenler Neden Uçamaz?",
+    idea: "Penguenler neden uçamaz?",
+    language: "Türkçe",
+    style: "Educational",
+    seconds: 30,
+    orientation: "vertical",
+    videoPath: `${OWNER}/06d78aba-f9a9-4a72-a4fc-36b0682039a9/final.mp4`,
+    thumbnailPath: "06d78aba-f9a9-4a72-a4fc-36b0682039a9.jpg",
+    footage: "hybrid",
+  },
+  {
+    id: "f7d77bdb-7f41-4188-ba90-0bf261ba2c98",
+    title: "Kapadokya'nın Yeraltı Sırrı",
+    idea: "Kapadokya'nın yeraltı şehirleri neden inşa edildi?",
+    language: "Türkçe",
+    style: "Mystery",
+    seconds: 30,
+    orientation: "vertical",
+    videoPath: `${OWNER}/f7d77bdb-7f41-4188-ba90-0bf261ba2c98/final.mp4`,
+    thumbnailPath: "f7d77bdb-7f41-4188-ba90-0bf261ba2c98.jpg",
+    footage: "hybrid",
+  },
+  {
+    id: "53010faf-a6fe-463d-b49c-76e81edf1ca5",
+    title: "Hamamböceklerinden Kalıcı Kurtulmanın 6 Yolu",
+    idea: "Türkiye'de viral olan hamamböceği videoları",
+    language: "Türkçe",
+    style: "Educational",
+    seconds: 60,
+    orientation: "vertical",
+    videoPath: `${OWNER}/53010faf-a6fe-463d-b49c-76e81edf1ca5/final.mp4`,
+    thumbnailPath: "53010faf-a6fe-463d-b49c-76e81edf1ca5.jpg",
+    footage: "hybrid",
+  },
+];
+
+function storageBase(): string | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
+  return url ? `${url}/storage/v1/object/public` : null;
+}
+
+export function showcaseVideoUrl(v: ShowcaseVideo): string | null {
+  const base = storageBase();
+  return base ? `${base}/videos/${v.videoPath}` : null;
+}
+
+export function showcaseThumbnailUrl(v: ShowcaseVideo): string | null {
+  const base = storageBase();
+  return base ? `${base}/thumbnails/${v.thumbnailPath}` : null;
+}

@@ -140,6 +140,15 @@ function ChatContent() {
         setOrientationTouched(true);
       }
       if (typeof draft.template === "string") setTemplateId(draft.template);
+      // Landing-page template links: /chat?template=<id> wins over the draft.
+      const fromUrl = NICHE_TEMPLATES.find((x) => x.id === searchParams.get("template"));
+      if (fromUrl) {
+        setTemplateId(fromUrl.id);
+        setPlatform(fromUrl.platform);
+        setStyle(fromUrl.style);
+        setDuration(fromUrl.duration);
+        setOrientation(defaultOrientation(fromUrl.platform));
+      }
       if (job && /^[0-9a-f-]{36}$/i.test(job)) {
         setJobId(job);
         setFormOpen(false);

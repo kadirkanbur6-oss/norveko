@@ -5,6 +5,8 @@ import { LANGUAGE_OPTIONS } from "@/lib/pipeline/options";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import HeroDemo from "./HeroDemo";
+import ShowcaseGallery from "./ShowcaseGallery";
+import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
 import SignOutButton from "./SignOutButton";
 import BrandMark from "./BrandMark";
 import { CREDIT_PACKAGES } from "@/lib/packages";
@@ -19,6 +21,7 @@ import {
   Layers,
   Lightbulb,
   Menu,
+  PlayCircle,
   MessageSquare,
   Search,
   Wand2,
@@ -153,11 +156,11 @@ const FAQS = [
   },
   {
     q: "Does Norveko generate the video files?",
-    a: "Every generation gives you the script, scene plan, cinematic video prompts, a generated thumbnail image and full SEO metadata. AI voiceover (ElevenLabs) is available as an add-on today, and per-scene AI video clips are rolling out next.",
+    a: "Every generation gives you the script, scene plan, cinematic video prompts, a generated thumbnail image and full SEO metadata. Add AI voiceover and word-timed subtitles (.srt/.vtt) with one toggle. Full MP4 rendering — AI visuals, voice and subtitles cut to a 30 or 60 second video like the examples above — is rolling out in beta.",
   },
   {
     q: "How does the credit system work?",
-    a: "You get 50 free credits on signup. A full generation (content package + thumbnail image) costs 15 credits, adding a voiceover costs 15 more. Credits never expire, and failed generations are refunded automatically.",
+    a: "You get 50 free credits on signup. A content package with thumbnail costs 15 credits; web research adds 5, voiceover 15 and subtitles 10. The exact total is shown before you click Generate. Credits never expire, and if a step fails, the unfinished steps are refunded automatically while everything already produced is kept in your project.",
   },
 ];
 
@@ -178,8 +181,9 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           </Link>
 
           <nav className="hidden items-center gap-8 text-sm text-gray-400 md:flex">
+            <a href="#examples" className="transition hover:text-white">Examples</a>
             <a href="#workflow" className="transition hover:text-white">Workflow</a>
-            <a href="#workspace" className="transition hover:text-white">AI Workspace</a>
+            <a href="#templates" className="transition hover:text-white">Templates</a>
             <a href="#pricing" className="transition hover:text-white">Pricing</a>
             <a href="#faq" className="transition hover:text-white">FAQ</a>
           </nav>
@@ -230,8 +234,9 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           <nav className="border-t border-white/5 bg-[#0a0a12]/95 px-4 py-3 md:hidden">
             <div className="flex flex-col gap-1 text-sm text-gray-300">
               {[
+                ["#examples", "Examples"],
                 ["#workflow", "Workflow"],
-                ["#workspace", "AI Workspace"],
+                ["#templates", "Templates"],
                 ["#pricing", "Pricing"],
                 ["#faq", "FAQ"],
               ].map(([href, label]) => (
@@ -325,7 +330,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           <div className="mx-auto grid max-w-6xl gap-3 px-4 sm:grid-cols-3 sm:px-6">
             {[
               ["Credits never expire", "Buy once, use whenever. No monthly reset."],
-              ["Failed = refunded", "If a generation fails, every credit comes back automatically."],
+              ["Failed = refunded", "If a step fails, its credits come back automatically and the finished parts are kept."],
               ["See the cost first", "The exact credit price is shown before you click Generate."],
             ].map(([title, desc]) => (
               <div key={title} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
@@ -350,6 +355,26 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
               </span>
             ))}
           </div>
+        </Reveal>
+      </section>
+
+      {/* 2b. EXAMPLES — real outputs, untouched */}
+      <section id="examples" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6">
+        <Reveal>
+          <SectionTitle
+            eyebrow="Made with Norveko"
+            title="One sentence in. A finished video out."
+            subtitle="Real renders straight from the pipeline — AI visuals, voiceover and word-timed subtitles, no manual editing. Press play."
+          />
+        </Reveal>
+        <Reveal delay={100} className="mt-8">
+          <ShowcaseGallery />
+        </Reveal>
+        <Reveal delay={200}>
+          <p className="mt-5 flex items-center justify-center gap-2 text-center text-xs text-gray-500">
+            <PlayCircle size={14} className="text-blue-300" />
+            Full video rendering is rolling out in beta. Every account already gets the script, scene plan, thumbnail, voiceover and subtitles.
+          </p>
         </Reveal>
       </section>
 
@@ -438,6 +463,39 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
               </Reveal>
             );
           })}
+        </div>
+      </section>
+
+      {/* 4b. NICHE TEMPLATES */}
+      <section id="templates" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6">
+        <Reveal>
+          <SectionTitle
+            eyebrow="Templates"
+            title="Start from a niche that already works."
+            subtitle="Each template pre-fills the platform, style and length and tunes the script to the genre's conventions."
+          />
+        </Reveal>
+        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {NICHE_TEMPLATES.map((t, i) => (
+            <Reveal key={t.id} delay={i * 50}>
+              <Link
+                href={isLoggedIn ? `/chat?template=${t.id}` : "/signup"}
+                className="block h-full rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-blue-400/40 hover:bg-blue-500/[0.06]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="font-bold text-white">{t.name}</h3>
+                  <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] text-gray-400">
+                    {t.duration}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-gray-400">{t.tagline}</p>
+                <p className="mt-3 text-xs text-gray-500">
+                  {t.platform} · {t.style}
+                </p>
+                <p className="mt-3 line-clamp-2 text-xs italic text-gray-500">e.g. “{t.examples[0]}”</p>
+              </Link>
+            </Reveal>
+          ))}
         </div>
       </section>
 
@@ -691,6 +749,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             <span className="font-bold">NORVEKO</span>
           </Link>
           <nav className="flex flex-wrap justify-center gap-6 gap-y-2 text-sm text-gray-500">
+            <a href="#examples" className="transition hover:text-gray-300">Examples</a>
             <a href="#workflow" className="transition hover:text-gray-300">Workflow</a>
             <a href="#pricing" className="transition hover:text-gray-300">Pricing</a>
             <a href="#faq" className="transition hover:text-gray-300">FAQ</a>
