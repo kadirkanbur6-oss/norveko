@@ -51,7 +51,16 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   annotation'larından kaynak listesi. `steps.research.brief/sources` →
   senaryo prompt'una "VERIFIED RESEARCH BRIEF — tek gerçek kaynak" olarak
   girer; `projects.content.research` olarak saklanır, ilerleme kartında ve
-  proje sayfasında "Research brief" (kaynak linkleri) gösterilir. Senaryo
+  proje sayfasında "Research brief" (kaynak linkleri) gösterilir.
+  **Research opsiyoneldir (29 Ekim):** `researchTopic` 40 sn `AbortSignal`
+  timeout + `reasoning.effort=low` + `search_context_size=low`; hata/timeout
+  olursa runner `skipResearch()` ile adımı `skipped` yapar, 5 krediyi iade
+  eder (`steps.research.refunded`) ve senaryo araştırmasız devam eder.
+  Worker ölürse (`/api/pipeline/run` `maxDuration` 120 sn) `reconcileJob` 2 dk
+  sonra research'ü skip edip işi devam ettirir (`RESEARCH_STEP_TIMEOUT_MS`);
+  diğer senkron adımlar için 8 dk timeout → failJob. UI sarı "skipped" rozeti
+  + açıklama gösterir. (29 Ekim'de piramit testi research'te 60 sn'lik
+  function limitine takılıp 8 dk beklemişti.) Senaryo
   prompt'unda ayrıca gerçek kişi/marka kuralı: videoPrompt'lar yüz, arma,
   forma ismi, skor tabelası, okunur yazı istemez (AI görseller bunları
   uyduruyor).

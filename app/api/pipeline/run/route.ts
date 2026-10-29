@@ -8,7 +8,7 @@ import { getWorkerSecret, kickJob, runNextStep } from "@/lib/pipeline/runner";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 // One external provider call per invocation; 60s is plenty.
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
   const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");

@@ -274,6 +274,9 @@ interface ResearchParams {
  * Returns a brief the script step must treat as the only source of truth for
  * claims about real events, people, numbers and dates.
  */
+/** Hard cap for one research call (the worker function itself is capped). */
+export const RESEARCH_TIMEOUT_MS = 40_000;
+
 export async function researchTopic(params: ResearchParams): Promise<ResearchResult> {
   const { idea, outputLanguage, model } = params;
   const today = params.today ?? new Date().toISOString().slice(0, 10);
@@ -287,6 +290,9 @@ Write the brief in ${language}. Rules:
 - Include the concrete details a script needs: who, what, when (exact dates), where, numbers, outcomes, quotes if notable.
 - 120–220 words, plain paragraphs or short bullets, no headings, no markdown links in the text.`;
 
+  // The worker function has a hard time limit, so a slow search must give up
+  // early: the runner then skips research (refunding it) instead of letting
+  // the whole job die with the function.
   const res = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
@@ -297,9 +303,18 @@ Write the brief in ${language}. Rules:
       model,
       instructions,
       input: `Topic: ${idea}`,
-      tools: [{ type: "web_search" }],
+      tools: [{ type: "web_search", search_context_size: "low" }],
       tool_choice: "auto",
+      reasoning: { effort: "low" },
+      max_output_tokens: 900,
     }),
+    signal: AbortSignal.timeout(RESEARCH_TIMEOUT_MS),
+  }).catch((err: unknown) => {
+    const name = err instanceof Error ? err.name : "";
+    if (name === "TimeoutError" || name === "AbortError") {
+      throw new Error(`Web research timed out after ${Math.round(RESEARCH_TIMEOUT_MS / 1000)} s.`);
+    }
+    throw err;
   });
   if (!res.ok) {
     const errBody = await res.text();

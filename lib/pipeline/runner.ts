@@ -35,6 +35,7 @@ import {
   optionsFromSteps,
   VIDEO_CLIP_CREDITS,
   STILL_SCENE_CREDITS,
+  RESEARCH_CREDITS,
   creditBreakdown,
   type FullVideoPlan,
   VIDEO_CLIP_SECONDS,
@@ -54,6 +55,8 @@ import { captureError } from "@/lib/observability";
 
 /** A step that has been running longer than this is considered dead. */
 export const STEP_TIMEOUT_MS = 8 * 60 * 1000;
+/** Research is optional: a dead research step is skipped (not failed) after this. */
+export const RESEARCH_STEP_TIMEOUT_MS = 2 * 60 * 1000;
 /** Async (provider-side) steps may legitimately take much longer. */
 export const ASYNC_STEP_TIMEOUT_MS = 40 * 60 * 1000;
 /** A pending step that nobody picked up for this long gets re-kicked. */
@@ -73,7 +76,7 @@ export interface VideoClipState {
 }
 
 type StepRecord = Record<string, unknown> & {
-  status?: "pending" | "running" | "completed" | "failed";
+  status?: "pending" | "running" | "completed" | "failed" | "skipped";
   started_at?: string;
   queued_at?: string;
   error?: string | null;
@@ -285,6 +288,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
     if (!steps) return 0;
     const items = creditBreakdown(optionsFromSteps(steps));
     const done = (id: string) => steps[id]?.status === "completed";
+    // (a skipped research step was already refunded — see skipResearch)
     let total = 0;
     for (const item of items) {
       switch (item.id) {
@@ -344,7 +348,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
 
     const steps = (claimed.steps as Record<string, StepRecord> | null) ?? {};
     const charged = Number(claimed.credits_charged ?? 0);
-    const alreadyRefunded = Number(steps.video?.refunded ?? 0);
+    const alreadyRefunded = Number(steps.video?.refunded ?? 0) + Number(steps.research?.refunded ?? 0);
     const refund = Math.max(0, charged - consumedCredits(steps) - alreadyRefunded);
     if (refund > 0) {
       const { error } = await db.rpc("add_credits", {
@@ -373,6 +377,10 @@ export function createPipelineRunner(deps: RunnerDeps) {
       }
     }
     return true;
+  }
+
+  function isDone(status: StepRecord["status"] | undefined): boolean {
+    return status === "completed" || status === "skipped";
   }
 
   function stepOrder(job: Pick<JobRow, "steps">): PipelineStepId[] {
@@ -553,6 +561,26 @@ export function createPipelineRunner(deps: RunnerDeps) {
     return (job.options?.orientation ?? defaultOrientation(job.platform ?? "")) === "vertical"
       ? "vertical"
       : "horizontal";
+  }
+
+  /**
+   * Skip the optional research step (timeout / provider error): mark it
+   * skipped, refund its credits once, and let the pipeline continue.
+   */
+  async function skipResearch(job: JobRow, reason: string): Promise<void> {
+    const already = Number(job.steps?.research?.refunded ?? 0);
+    let refunded = already;
+    if (already <= 0) {
+      const { error } = await db.rpc("add_credits", {
+        p_user_id: job.user_id,
+        p_amount: RESEARCH_CREDITS,
+        p_type: "refund",
+        p_reason: `Refund: web research skipped (${reason.slice(0, 100)})`,
+      });
+      if (error) console.error(`[pipeline] ${job.id} research refund failed:`, error);
+      else refunded = RESEARCH_CREDITS;
+    }
+    await patchStep(job, "research", { status: "skipped", error: reason.slice(0, 300), refunded, brief: null, sources: [] });
   }
 
   /** Give back credits for planned visuals that were never produced. */
@@ -884,14 +912,18 @@ export function createPipelineRunner(deps: RunnerDeps) {
           today: new Date(now()).toISOString().slice(0, 10),
         });
       } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
         await logUsage(job, "research", {
           unit: "tokens",
           quantity: 0,
           durationMs: now() - startedAt,
           status: "failed",
-          error: err instanceof Error ? err.message : String(err),
+          error: message,
         });
-        throw err;
+        // Research is a nice-to-have: skip it, give the credits back and let
+        // the script run on the model's own knowledge.
+        await skipResearch(job, message);
+        return;
       }
       await logUsage(job, "research", {
         unit: "tokens",
@@ -1219,7 +1251,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
     const stepId = order.find((id) => (job.steps?.[id]?.status ?? "pending") === "pending");
 
     if (!stepId) {
-      if (order.every((id) => job.steps?.[id]?.status === "completed")) {
+      if (order.every((id) => isDone(job.steps?.[id]?.status))) {
         await finalizeJob(job);
         return "completed";
       }
@@ -1228,7 +1260,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
 
     // Steps run strictly in order: wait while an earlier one is still running.
     const idx = order.indexOf(stepId);
-    if (idx > 0 && job.steps?.[order[idx - 1]]?.status !== "completed") {
+    if (idx > 0 && !isDone(job.steps?.[order[idx - 1]]?.status)) {
       return "noop";
     }
 
@@ -1286,6 +1318,22 @@ export function createPipelineRunner(deps: RunnerDeps) {
     if (runningId) {
       const isAsync = Boolean(getPipelineStepDefinition(runningId).async);
       const started = Date.parse(steps[runningId]?.started_at ?? job.created_at);
+      if (runningId === "research" && current - started > RESEARCH_STEP_TIMEOUT_MS) {
+        // The worker died mid-search (function time limit). Research is
+        // optional, so skip + refund it and move the job on.
+        const full = await loadJob(job.id);
+        if (full) {
+          await skipResearch(full, "Web research took too long and was skipped.");
+          const next = nextStep("research", optionsFromSteps(full.steps));
+          if (next) {
+            const fresh = await loadJob(job.id);
+            if (fresh) await patchStep(fresh, next.id, { queued_at: new Date(current).toISOString() });
+            await db.from("pipeline_jobs").update({ current_step: next.id }).eq("id", job.id);
+          }
+          await kick(job.id);
+          return "kicked";
+        }
+      }
       if (current - started > (isAsync ? ASYNC_STEP_TIMEOUT_MS : STEP_TIMEOUT_MS)) {
         await failJob(job.id, `Step "${runningId}" timed out.`);
         return "failed";

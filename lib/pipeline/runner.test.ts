@@ -561,12 +561,38 @@ test("research step runs first and its brief is handed to the script", async () 
   assert.equal(job.status, "completed");
 });
 
-test("research failure fails the job with a full refund", async () => {
-  const { runner, rows, seedJob, rpc } = makeRunner({ failAt: "research" });
+test("research failure skips the step, refunds 5 credits and the job still completes", async () => {
+  const { runner, rows, seedJob, rpc, calls } = makeRunner({ failAt: "research" });
   const steps = initialStepsState({ research: true }) as Record<string, any>;
   steps.research.queued_at = new Date(0).toISOString();
   const id = seedJob(false, { steps, current_step: "research", credits_charged: 20 });
-  assert.equal(await runner.runNextStep(id), "failed");
-  assert.equal(rows.get(id)!.status, "failed");
-  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [20]);
+  assert.equal(await runner.runNextStep(id), "advanced");
+  let job = rows.get(id)!;
+  assert.equal(job.steps.research.status, "skipped");
+  assert.equal(job.steps.research.refunded, 5);
+  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [5]);
+  assert.equal(await runner.runNextStep(id), "advanced"); // script
+  assert.equal(await runner.runNextStep(id), "completed"); // thumbnail → finalize
+  job = rows.get(id)!;
+  assert.equal(job.status, "completed");
+  assert.deepEqual(calls, ["research", "script", "thumbnail"]);
+  assert.equal(rpc.length, 1, "research refunded exactly once");
+});
+
+test("a research step whose worker died is skipped by reconcile after 2 minutes, not failed after 8", async () => {
+  let clock = 0;
+  const { runner, rows, seedJob, rpc, kicked } = makeRunner({ now: () => clock });
+  const steps = initialStepsState({ research: true }) as Record<string, any>;
+  steps.research = { ...steps.research, status: "running", started_at: new Date(0).toISOString() };
+  const id = seedJob(false, { steps, current_step: "research", credits_charged: 20 });
+  clock = 60 * 1000;
+  assert.equal(await runner.reconcileJob(rows.get(id)! as JobRow), "ok");
+  clock = 3 * 60 * 1000;
+  assert.equal(await runner.reconcileJob(rows.get(id)! as JobRow), "kicked");
+  const job = rows.get(id)!;
+  assert.equal(job.status, "running");
+  assert.equal(job.steps.research.status, "skipped");
+  assert.equal(job.current_step, "script");
+  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [5]);
+  assert.deepEqual(kicked, [id]);
 });

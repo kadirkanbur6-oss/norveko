@@ -12,7 +12,7 @@ import VoiceoverDownloads from "./VoiceoverDownloads";
 import GenerationStage, { type StageStep } from "./GenerationStage";
 
 interface StepInfo {
-  status: "pending" | "running" | "completed" | "failed";
+  status: "pending" | "running" | "completed" | "failed" | "skipped";
   error?: string | null;
   started_at?: string;
   hook?: string;
@@ -188,6 +188,7 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
             {status === "running" && <Loader2 size={14} className="animate-spin text-blue-300" />}
             {status === "failed" && <XCircle size={14} className="text-red-400" />}
             {status === "pending" && <Circle size={14} className="text-gray-500" />}
+            {status === "skipped" && <Circle size={14} className="text-amber-300" />}
             {label}
           </div>
         ))}
@@ -342,6 +343,11 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
       )}
 
       {/* Results */}
+      {job.steps?.research?.status === "skipped" && (
+        <p className="rounded-xl border border-amber-400/20 bg-amber-500/[0.06] px-4 py-3 text-xs text-amber-100">
+          Web research was skipped ({String(job.steps.research.error ?? "provider error")}) — its 5 credits were refunded and the script was written from the model&apos;s own knowledge.
+        </p>
+      )}
       {job.steps?.research?.status === "completed" && job.steps.research.brief && (
         <details className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] p-4">
           <summary className="cursor-pointer text-sm font-semibold text-gray-300">

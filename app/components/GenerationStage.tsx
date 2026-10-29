@@ -14,7 +14,7 @@ import type { PipelineStepId } from "@/lib/pipeline/steps";
 export interface StageStep {
   id: PipelineStepId;
   label: string;
-  status: "pending" | "running" | "completed" | "failed";
+  status: "pending" | "running" | "completed" | "failed" | "skipped";
   startedAt?: string;
 }
 
@@ -110,7 +110,7 @@ export default function GenerationStage({
   let done = 0;
   for (const s of steps) {
     const w = EXPECTED_SECONDS[s.id];
-    if (s.status === "completed") done += w;
+    if (s.status === "completed" || s.status === "skipped") done += w;
     else if (s.status === "running") {
       const started = s.startedAt ? Date.parse(s.startedAt) : now;
       const elapsed = Math.max(0, (now - started) / 1000);
@@ -163,6 +163,8 @@ export default function GenerationStage({
                 className={`relative h-1.5 flex-1 overflow-hidden rounded-full ${
                   s.status === "completed"
                     ? "bg-gradient-to-r from-blue-400 to-purple-400"
+                    : s.status === "skipped"
+                    ? "bg-amber-300/60"
                     : s.status === "failed"
                     ? "bg-red-400/70"
                     : "bg-white/10"
