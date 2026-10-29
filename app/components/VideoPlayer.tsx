@@ -206,7 +206,7 @@ export default function VideoPlayer({
       onMouseMove={poke}
       onTouchStart={poke}
       onMouseLeave={() => playing && setControlsVisible(false)}
-      className={`nv-video group relative mx-auto overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_20px_60px_rgba(0,0,0,0.45)] outline-none ${fullscreen ? "flex h-full w-full items-center justify-center rounded-none border-0" : aspectClass} ${className}`}
+      className={`nv-video group relative mx-auto @container overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_20px_60px_rgba(0,0,0,0.45)] outline-none ${fullscreen ? "flex h-full w-full items-center justify-center rounded-none border-0" : aspectClass} ${className}`}
     >
       <video
         ref={videoRef}
@@ -285,22 +285,22 @@ export default function VideoPlayer({
           <button type="button" onClick={toggle} aria-label={playing ? "Pause" : "Play"} className={btn}>
             {playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-0.5" />}
           </button>
-          <button type="button" onClick={() => seekBy(-5)} aria-label="Back 5 seconds" className={`${btn} hidden sm:flex`}>
+          <button type="button" onClick={() => seekBy(-5)} aria-label="Back 5 seconds" className={`${btn} hidden @[420px]:flex`}>
             <RotateCcw size={16} />
           </button>
-          <button type="button" onClick={() => seekBy(5)} aria-label="Forward 5 seconds" className={`${btn} hidden sm:flex`}>
+          <button type="button" onClick={() => seekBy(5)} aria-label="Forward 5 seconds" className={`${btn} hidden @[420px]:flex`}>
             <RotateCw size={16} />
           </button>
           <button type="button" onClick={() => setMuted((m) => !m)} aria-label={muted ? "Unmute" : "Mute"} className={btn}>
             {muted ? <VolumeX size={17} /> : <Volume2 size={17} />}
           </button>
-          <span className="ml-1 font-mono text-xs tabular-nums text-gray-300">
+          <span className="ml-1 whitespace-nowrap font-mono text-xs tabular-nums text-gray-300">
             <span className="text-white">{fmt(time)}</span> / {fmt(duration)}
           </span>
 
           <span className="flex-1" />
 
-          <div className="hidden items-center rounded-full bg-white/10 p-0.5 sm:flex" role="group" aria-label="Playback speed">
+          <div className="hidden items-center rounded-full bg-white/10 p-0.5 @[480px]:flex" role="group" aria-label="Playback speed">
             {SPEEDS.map((s) => (
               <button
                 key={s}
@@ -315,6 +315,14 @@ export default function VideoPlayer({
               </button>
             ))}
           </div>
+          <button
+            type="button"
+            onClick={() => setSpeed(SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length])}
+            aria-label="Playback speed"
+            className="rounded-full bg-white/10 px-2 py-1 text-[11px] font-medium text-white @[480px]:hidden"
+          >
+            {speed}×
+          </button>
           <button
             type="button"
             onClick={toggleFullscreen}
