@@ -194,9 +194,19 @@ function timestamp(sec: number, msSeparator: "," | "."): string {
   return `${pad(h)}:${pad(m)}:${pad(s)}${msSeparator}${pad(ms, 3)}`;
 }
 
-export function cuesToSrt(cues: CaptionCue[]): string {
+/** Locale-aware uppercase (Turkish i → İ, ı → I; Shotstack's own transform gets this wrong). */
+export function upper(text: string, locale?: string): string {
+  try {
+    return locale ? text.toLocaleUpperCase(locale) : text.toUpperCase();
+  } catch {
+    return text.toUpperCase();
+  }
+}
+
+export function cuesToSrt(cues: CaptionCue[], options: { uppercase?: string | false } = {}): string {
+  const tx = (t: string) => (options.uppercase ? upper(t, options.uppercase) : t);
   return cues
-    .map((c, i) => `${i + 1}\n${timestamp(c.start, ",")} --> ${timestamp(c.end, ",")}\n${c.text}\n`)
+    .map((c, i) => `${i + 1}\n${timestamp(c.start, ",")} --> ${timestamp(c.end, ",")}\n${tx(c.text)}\n`)
     .join("\n");
 }
 

@@ -209,7 +209,15 @@ export async function generateSpeech(
       body: JSON.stringify({
         text,
         model_id: ELEVENLABS_MODEL_ID,
-        ...(speed !== undefined && speed !== 1 ? { voice_settings: { speed } } : {}),
+        // Lower stability + some style = more natural intonation for narration
+        // (the default 0.5/0.75/0 reads flat). Speaker boost keeps clarity.
+        voice_settings: {
+          stability: 0.38,
+          similarity_boost: 0.8,
+          style: 0.35,
+          use_speaker_boost: true,
+          ...(speed !== undefined && speed !== 1 ? { speed } : {}),
+        },
       }),
     }
   );

@@ -11,7 +11,7 @@
 // Fixed-length slots make the plan (and the bill) predictable; a Kling clip
 // is slowed/trimmed to its slot, stills get a Ken Burns move.
 
-import type { CaptionCue } from "./captions";
+import { upper, type CaptionCue } from "./captions";
 import { SLOT_SECONDS } from "./steps";
 
 export type SlotKind = "kling" | "still";
@@ -105,20 +105,24 @@ export interface EditInput {
   fallbackImageUrl?: string;
   /** Short on-screen hook shown over the first seconds (viral-shorts style). */
   hookText?: string;
+  /** ISO code of the narration language — drives locale-aware uppercase. */
+  languageCode?: string;
 }
 
 /** Seconds the hook title stays on screen. */
-export const HOOK_CARD_SECONDS = 4;
+export const HOOK_CARD_SECONDS = 3;
+/** Max words on the hook card — it has to be read in one glance. */
+export const HOOK_MAX_WORDS = 7;
 
-/** Keep the on-screen hook short enough to read in a glance (≤ ~9 words). */
-export function hookTitle(hook: string | undefined | null): string | null {
+/** Keep the on-screen hook short enough to read in a glance. */
+export function hookTitle(hook: string | undefined | null, locale?: string): string | null {
   const text = (hook ?? "").replace(/\s+/g, " ").trim();
   if (!text) return null;
   // First sentence only, then cap the word count.
   const first = text.split(/(?<=[.!?…])\s+/)[0] ?? text;
   const words = first.split(" ");
-  const short = words.length > 9 ? `${words.slice(0, 9).join(" ")}…` : first;
-  return short.replace(/[.]+$/, "").toUpperCase();
+  const short = words.length > HOOK_MAX_WORDS ? `${words.slice(0, HOOK_MAX_WORDS).join(" ")}…` : first;
+  return upper(short.replace(/[.]+$/, ""), locale);
 }
 
 /** Build the Shotstack edit. Failed slots fall back to a neighbour's visual. */
@@ -169,7 +173,7 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
 
   // Hook title card: big uppercase line over the opening seconds so the
   // viewer gets the promise of the video before scrolling on.
-  const hook = hookTitle(input.hookText);
+  const hook = hookTitle(input.hookText, input.languageCode);
   if (hook) {
     tracks.push({
       clips: [
@@ -179,17 +183,18 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
             text: hook,
             font: {
               family: "Montserrat ExtraBold",
-              size: orientation === "vertical" ? 84 : 64,
+              size: orientation === "vertical" ? 92 : 68,
               color: "#FFFFFF",
               weight: 800,
             },
-            style: { lineHeight: 1.05, textTransform: "uppercase" },
+            style: { lineHeight: 1.05 },
             stroke: { color: "#000000", width: 6, opacity: 1 },
             shadow: { offsetX: 0, offsetY: 6, blur: 18, color: "#000000", opacity: 0.6 },
             background: { color: "#000000", opacity: 0.45, borderRadius: 24, wrap: true },
             padding: 28,
             align: { horizontal: "center", vertical: "middle" },
-            animation: { preset: "slideIn", style: "word", direction: "up", duration: 0.8 },
+            // Snappy: the whole line lands in a third of a second.
+            animation: { preset: "slideIn", style: "word", direction: "up", duration: 0.35 },
           },
           start: 0,
           length: Math.min(HOOK_CARD_SECONDS, Math.max(1, totalSeconds)),
@@ -222,7 +227,7 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
             animation: { style: "karaoke" },
             active: { font: { color: "#FFD60A" } },
             align: { vertical: "middle" },
-            style: { textTransform: "uppercase" },
+            // Uppercase is applied in the SRT itself (locale-aware), not here.
           },
           start: 0,
           length: "end",

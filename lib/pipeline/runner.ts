@@ -44,7 +44,7 @@ import {
 } from "@/lib/pipeline/steps";
 import type { KlingTaskResult } from "@/lib/pipeline/kling";
 import { getTemplate } from "@/lib/pipeline/templates";
-import { defaultOrientation } from "@/lib/pipeline/options";
+import { defaultOrientation, languageCode } from "@/lib/pipeline/options";
 import {
   estimateCostUsd,
   recordProviderUsage,
@@ -807,7 +807,10 @@ export function createPipelineRunner(deps: RunnerDeps) {
       const path = `${job.user_id}/${job.id}/captions.srt`;
       const { error } = await db.storage
         .from("videos")
-        .upload(path, Buffer.from(cuesToSrt(cues), "utf8"), { contentType: "application/x-subrip", upsert: true });
+        // Burned-in captions are uppercase; do it here with the output
+        // language's rules (Turkish İ/ı) — the renderer's textTransform is
+        // locale-blind and turned "piramidi" into "PIRAMIDI".
+        .upload(path, Buffer.from(cuesToSrt(cues, { uppercase: languageCode(job.output_language ?? "English") }), "utf8"), { contentType: "application/x-subrip", upsert: true });
       if (error) {
         console.warn(`[pipeline] ${job.id} srt upload failed, rendering without subtitles:`, error.message);
       } else {
@@ -823,6 +826,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
       totalSeconds: total,
       fallbackImageUrl: typeof job.steps?.thumbnail?.image_url === "string" ? job.steps.thumbnail.image_url : undefined,
       hookText: typeof job.steps?.script?.hook === "string" ? job.steps.script.hook : undefined,
+      languageCode: languageCode(job.output_language ?? "English"),
     });
 
     const renderId = await providers.submitRender(edit);
@@ -1039,7 +1043,9 @@ export function createPipelineRunner(deps: RunnerDeps) {
       if (isFullVideo(job) && targetSeconds > 0 && measured > 0) {
         const ratio = measured / targetSeconds;
         if (ratio < 0.9 || ratio > 1.1) {
-          const wanted = Math.min(1.2, Math.max(0.7, Math.round(ratio * 100) / 100));
+          // Cap the correction at ±12 %: beyond that the delivery sounds
+          // rushed/dragged, and the timeline follows the real length anyway.
+          const wanted = Math.min(1.12, Math.max(0.88, Math.round(ratio * 100) / 100));
           const retryAt = now();
           try {
             const retake = await providers.generateSpeech(script, voiceId, { speed: wanted });

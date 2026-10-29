@@ -72,7 +72,11 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   tek başına yetmez → (2) **tam video modunda** voiceover adımı ilk kaydın
   süresini alignment'tan ölçer (`spokenSeconds`), hedeften %10+ sapıyorsa
   ElevenLabs `voice_settings.speed` (0,7–1,2, oran = ölçülen/hedef) ile bir
-  kez yeniden üretir; `steps.voiceover.speed` ve `duration_seconds` yazılır.
+  kez yeniden üretir (**29 Ekim: 0,88–1,12 ile sınırlı**, daha fazlası
+  doğal durmuyor; zaman çizelgesi zaten gerçek süreye uyar);
+  `steps.voiceover.speed` ve `duration_seconds` yazılır. ElevenLabs
+  `voice_settings`: stability 0.38, similarity 0.8, style 0.35, speaker boost
+  (düz okumayı azaltmak için).
   Zaman çizelgesi her durumda gerçek anlatım süresine göre kurulur.
 - Kredi maliyetleri **tek kaynak**: `lib/pipeline/steps.ts` (research 5, script 5, voiceover
   15, **altyazı eklentisi 10** (`SUBTITLES_CREDITS`, sadece voiceover ile;
@@ -144,11 +148,15 @@ karşılaştırması yapılır.
   `steps.video.plan` ve `steps.render.plan`'a yazılır, kredi peşin.
   `lib/pipeline/timeline.ts`: `planSlots()` (sahneleri sıralı slotlara
   dağıtır, Kling slotları eşit aralıklı), `buildEdit()` (Shotstack edit JSON:
-  **hook kartı** (29 Ekim: `rich-text`, ilk 4 sn, `hookTitle()` ilk cümle ≤9
-  kelime UPPERCASE, Montserrat ExtraBold 84, kelime kelime slideIn, ekranın
+  **hook kartı** (29 Ekim: `rich-text`, ilk 3 sn, `hookTitle()` ilk cümle ≤7
+  kelime, Montserrat ExtraBold 92, kelime kelime slideIn 0,35 sn, ekranın
   üst-ortası `position:center offset.y +0.16`), rich-caption SRT URL'den
   (**alt bant**: `position:bottom offset.y +0.14`, yükseklik %16 — Shotstack'te
-  offset.y pozitif = YUKARI), Kling klibi slotu dolduracak şekilde `speed`
+  offset.y pozitif = YUKARI). **Büyük harf locale-aware** (29 Ekim): Shotstack
+  `textTransform:uppercase` Türkçe İ/ı'yı bozuyordu ("PIRAMIDI") → render
+  SRT'si `cuesToSrt(cues,{uppercase:<ISO>})` ile sunucuda büyütülür
+  (`captions.ts` `upper()`), hook da aynı; indirilen .srt/.vtt orijinal
+  kalır. Kling klibi slotu dolduracak şekilde `speed`
   ≥0.5, görsellere Ken Burns `effect`, soundtrack = voiceover, 1080×1920 /
   1920×1080, 30 fps, `range` anlatım süresi). Runner: görseller adımı async —
   ilk çağrıda Kling slotları gönderilir, her poll'da Kling sorgulanır + en

@@ -473,9 +473,9 @@ test("full video (hybrid, 60 s): 12 slots, 3 Kling + stills, render to final MP4
 
   assert.equal(await runner.runNextStep(id), "advanced"); // script
   assert.equal(await runner.runNextStep(id), "advanced"); // voiceover (+captions)
-  // 0.9 s of speech for a 60 s target → retake at the slowest allowed speed (0.7)
-  assert.deepEqual(calls.filter((c) => c.startsWith("voiceover")), ["voiceover", "voiceover@0.7"]);
-  assert.equal(rows.get(id)!.steps.voiceover.speed, 0.7);
+  // 0.9 s of speech for a 60 s target → retake at the slowest natural-sounding speed (0.88)
+  assert.deepEqual(calls.filter((c) => c.startsWith("voiceover")), ["voiceover", "voiceover@0.88"]);
+  assert.equal(rows.get(id)!.steps.voiceover.speed, 0.88);
   assert.equal(await runner.runNextStep(id), "advanced"); // thumbnail
   assert.equal(await runner.runNextStep(id), "advanced"); // visuals: submit
   let job = rows.get(id)!;
