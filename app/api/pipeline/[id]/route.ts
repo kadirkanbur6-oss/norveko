@@ -25,7 +25,7 @@ export async function GET(
   // RLS applies too, but filter by user_id explicitly.
   const { data: job, error } = await supabase
     .from("pipeline_jobs")
-    .select("id, status, current_step, steps, error, created_at, credits_charged, credits_refunded")
+    .select("id, status, current_step, steps, error, created_at, credits_charged, credits_refunded, options")
     .eq("id", id)
     .eq("user_id", user.id)
     .single();
@@ -44,7 +44,7 @@ export async function GET(
     if (action === "failed") {
       const { data: refreshed } = await supabase
         .from("pipeline_jobs")
-        .select("id, status, current_step, steps, error, created_at, credits_charged, credits_refunded")
+        .select("id, status, current_step, steps, error, created_at, credits_charged, credits_refunded, options")
         .eq("id", id)
         .single();
       return NextResponse.json({ success: true, job: refreshed ?? job });

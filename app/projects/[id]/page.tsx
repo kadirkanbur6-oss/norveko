@@ -18,6 +18,7 @@ import {
 import Sidebar from "../../components/Sidebar";
 import ExportMenu from "../../components/ExportMenu";
 import AudioPlayer from "../../components/AudioPlayer";
+import VideoPlayer from "@/app/components/VideoPlayer";
 import VoiceoverDownloads from "../../components/VoiceoverDownloads";
 
 function slugify(s: string): string {
@@ -662,12 +663,11 @@ export default function ProjectDetailPage() {
                         Download MP4
                       </a>
                     </div>
-                    <video
-                      controls
-                      playsInline
-                      preload="metadata"
+                    <VideoPlayer
                       src={normalizedProjectContent.finalVideoUrl}
-                      className="mx-auto mt-4 max-h-[70vh] w-auto max-w-full rounded-xl border border-white/10 bg-black"
+                      poster={normalizedProjectContent.thumbnailUrl ?? undefined}
+                      aspect={project.platform === "YouTube Long-form" ? "horizontal" : "vertical"}
+                      className="mt-4"
                     />
                   </div>
                 )}
@@ -773,12 +773,7 @@ export default function ProjectDetailPage() {
                               Scene {scene.sceneNumber}
                               {scene.videoDuration ? ` · ${scene.videoDuration}s` : ""}
                             </p>
-                            <video
-                              controls
-                              preload="metadata"
-                              src={scene.videoUrl}
-                              className="w-full rounded-lg border border-white/10 bg-black"
-                            />
+                            <VideoPlayer src={scene.videoUrl!} />
                             <a
                               href={scene.videoUrl}
                               download

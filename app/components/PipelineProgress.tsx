@@ -8,6 +8,7 @@ import Link from "next/link";
 import { CheckCircle2, Circle, Clapperboard, Download, Loader2, XCircle, Copy } from "lucide-react";
 import { PIPELINE_STEP_ORDER, type PipelineStepId } from "@/lib/pipeline/steps";
 import AudioPlayer from "./AudioPlayer";
+import VideoPlayer from "./VideoPlayer";
 import VoiceoverDownloads from "./VoiceoverDownloads";
 import GenerationStage, { type StageStep } from "./GenerationStage";
 
@@ -65,6 +66,7 @@ interface JobData {
   created_at?: string;
   credits_charged?: number | null;
   credits_refunded?: number | null;
+  options?: { orientation?: "vertical" | "horizontal" } | null;
 }
 
 interface PipelineResultStep {
@@ -248,12 +250,11 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
               Download MP4
             </a>
           </div>
-          <video
-            controls
-            playsInline
-            preload="metadata"
+          <VideoPlayer
             src={job.steps.render.video_url}
-            className="mx-auto mt-3 max-h-[70vh] w-auto max-w-full rounded-xl border border-white/10 bg-black"
+            poster={typeof job.steps?.thumbnail?.image_url === "string" ? job.steps.thumbnail.image_url : undefined}
+            aspect={job.options?.orientation === "horizontal" ? "horizontal" : "vertical"}
+            className="mt-3"
           />
         </div>
       )}
@@ -324,12 +325,7 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
                   )}
                 </div>
                 {clip.status === "succeed" && clip.video_url && (
-                  <video
-                    controls
-                    preload="metadata"
-                    src={clip.video_url}
-                    className="mt-2 w-full rounded-md border border-white/10 bg-black"
-                  />
+                  <VideoPlayer src={clip.video_url} className="mt-2" />
                 )}
                 {clip.status === "failed" && (
                   <p className="mt-2 text-xs text-red-300">
