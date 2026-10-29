@@ -223,7 +223,12 @@ karşılaştırması yapılır.
   `pipeline_jobs.credits_refunded` DB'de **0** varsayılanlı (NULL değil);
   `failJob` guard'ı `is.null OR eq.0` kullanır — 25 Ekim'e kadar sadece IS NULL
   bakıldığı için başarısız işler "running"de takılıp iade almıyordu. Testler
-  artık 0 ile seed eder.
+  artık 0 ile seed eder. **Kısmi iade (29 Ekim):** `failJob` yalnızca
+  tamamlanmamış adımların kredisini iade eder (`consumedCredits()`: biten
+  adımlar + başarılı Kling/görsel slotları ödenmiş sayılır; `steps.video.refunded`
+  daha önce slot bazında iade edileni tutar) ve senaryo bittiyse üretilenleri
+  `saveProject()` ile proje olarak kaydeder (`steps.result.status="partial"`);
+  UI "Open the partial project" linki + iade miktarını gösterir.
 - **Fake/hardcoded veri yasak**; her metrik gerçek kaynaktan gelir.
 - Next.js route params: `Promise<{ id: string }>` — `await` edilir.
 - Provider lib'leri (`lib/pipeline/openai|elevenlabs|gemini-image|kling.ts`)

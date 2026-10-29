@@ -276,7 +276,7 @@ test("without voiceover the voiceover step is skipped", async () => {
   assert.deepEqual(calls, ["script", "thumbnail"]);
 });
 
-test("a failing step fails the job and refunds exactly once", async () => {
+test("a failing step fails the job, refunds only the unfinished steps, keeps the finished work as a project", async () => {
   const { runner, rows, rpc, seedJob } = makeRunner({ failAt: "thumbnail" });
   const id = seedJob(false);
   assert.equal(await runner.runNextStep(id), "advanced");
@@ -286,10 +286,13 @@ test("a failing step fails the job and refunds exactly once", async () => {
   assert.equal(job.status, "failed");
   assert.equal(job.error, "gemini down");
   assert.equal(job.steps.thumbnail.status, "failed");
-  assert.equal(job.credits_refunded, 15);
+  // 15 charged: script (5) completed and is kept, thumbnail (10) refunded.
+  assert.equal(job.credits_refunded, 10);
   assert.equal(rpc.length, 1);
   assert.equal(rpc[0][0], "add_credits");
-  assert.equal(rpc[0][1].p_amount, 15);
+  assert.equal(rpc[0][1].p_amount, 10);
+  assert.equal(job.steps.result?.status, "partial");
+  assert.match(job.steps.result?.project_id, /^proj_/, "script saved as a project");
 
   // Any later attempt must not refund again.
   assert.equal(await runner.failJob(id, "again"), false);
@@ -371,7 +374,7 @@ test("video step: submits one task per scene, refunds unused clips, polls until 
   assert.equal(job.steps.result.project_id.startsWith("proj_"), true);
 });
 
-test("video step: every submit failing fails the job with a full refund", async () => {
+test("video step: every submit failing fails the job, refunding the clips but keeping the package", async () => {
   const { runner, rows, rpc, seedJob } = makeRunner({ failAt: "video-submit" });
   const id = seedVideoJob(seedJob);
   assert.equal(await runner.runNextStep(id), "advanced");
@@ -379,8 +382,10 @@ test("video step: every submit failing fails the job with a full refund", async 
   assert.equal(await runner.runNextStep(id), "failed");
   const job = rows.get(id)!;
   assert.equal(job.status, "failed");
-  assert.equal(job.credits_refunded, 665);
-  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [665]);
+  // 665 charged = script 5 + thumbnail 10 (kept) + 5 clips × 130 (refunded)
+  assert.equal(job.credits_refunded, 650);
+  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [650]);
+  assert.equal(job.steps.result?.status, "partial");
 });
 
 test("reconcile: an in-flight video step is re-kicked for polling, not timed out at 8 minutes", async () => {

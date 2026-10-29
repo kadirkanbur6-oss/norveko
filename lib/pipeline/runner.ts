@@ -35,6 +35,7 @@ import {
   optionsFromSteps,
   VIDEO_CLIP_CREDITS,
   STILL_SCENE_CREDITS,
+  creditBreakdown,
   type FullVideoPlan,
   VIDEO_CLIP_SECONDS,
   VIDEO_MAX_CLIPS,
@@ -276,6 +277,55 @@ export function createPipelineRunner(deps: RunnerDeps) {
    * both count as "not refunded" — filtering on IS NULL alone silently
    * skipped every refund and left jobs stuck in "running".
    */
+  /**
+   * Credits consumed by work that completed (and is delivered to the user).
+   * Everything else is refunded when a job fails.
+   */
+  function consumedCredits(steps: Record<string, StepRecord> | null | undefined): number {
+    if (!steps) return 0;
+    const items = creditBreakdown(optionsFromSteps(steps));
+    const done = (id: string) => steps[id]?.status === "completed";
+    let total = 0;
+    for (const item of items) {
+      switch (item.id) {
+        case "research":
+        case "script":
+        case "thumbnail":
+        case "render":
+          if (done(item.id)) total += item.credits;
+          break;
+        case "voiceover":
+        case "subtitles":
+          if (done("voiceover")) total += item.credits;
+          break;
+        case "kling": {
+          const slots = (steps.video?.slots as TimelineSlot[] | undefined) ?? [];
+          const clips = (steps.video?.clips as VideoClipState[] | undefined) ?? [];
+          const ok = slots.filter((x) => x.kind === "kling" && x.status === "succeed").length +
+            clips.filter((c) => c.status === "succeed").length;
+          total += ok * VIDEO_CLIP_CREDITS;
+          break;
+        }
+        case "stills": {
+          const slots = (steps.video?.slots as TimelineSlot[] | undefined) ?? [];
+          total += slots.filter((x) => x.kind === "still" && x.status === "succeed").length * STILL_SCENE_CREDITS;
+          break;
+        }
+        case "video": // legacy clips-only option: paid per succeeded clip
+          total += ((steps.video?.clips as VideoClipState[] | undefined) ?? []).filter((c) => c.status === "succeed").length * VIDEO_CLIP_CREDITS;
+          break;
+      }
+    }
+    return total;
+  }
+
+  /**
+   * Mark the job failed, refund the credits for everything that did NOT
+   * complete (finished steps stay paid — their output is saved as a project),
+   * exactly once. The conditional update (status = running AND nothing
+   * refunded yet) is the guard. `credits_refunded` defaults to 0 in the DB
+   * (older rows may be NULL), so both count as "not refunded".
+   */
   async function failJob(jobId: string, message: string): Promise<boolean> {
     const { data: claimed, error: claimError } = await db
       .from("pipeline_jobs")
@@ -283,7 +333,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
       .eq("id", jobId)
       .eq("status", "running")
       .or("credits_refunded.is.null,credits_refunded.eq.0")
-      .select("id, user_id, credits_charged")
+      .select("id, user_id, credits_charged, steps")
       .maybeSingle();
 
     if (claimError) {
@@ -292,22 +342,35 @@ export function createPipelineRunner(deps: RunnerDeps) {
     }
     if (!claimed) return false;
 
-    const cost = Number(claimed.credits_charged ?? 0);
-    if (cost > 0) {
+    const steps = (claimed.steps as Record<string, StepRecord> | null) ?? {};
+    const charged = Number(claimed.credits_charged ?? 0);
+    const alreadyRefunded = Number(steps.video?.refunded ?? 0);
+    const refund = Math.max(0, charged - consumedCredits(steps) - alreadyRefunded);
+    if (refund > 0) {
       const { error } = await db.rpc("add_credits", {
         p_user_id: claimed.user_id,
-        p_amount: cost,
+        p_amount: refund,
         p_type: "refund",
-        p_reason: `Refund: pipeline job failed (${message.slice(0, 120)})`,
+        p_reason: `Refund: unfinished steps of a failed generation (${message.slice(0, 100)})`,
       });
       if (error) {
         console.error(`[pipeline] refund failed for ${jobId}:`, error);
         return true;
       }
-      await db
-        .from("pipeline_jobs")
-        .update({ credits_refunded: cost })
-        .eq("id", jobId);
+      await db.from("pipeline_jobs").update({ credits_refunded: refund }).eq("id", jobId);
+    }
+
+    // Keep what was produced: a finished script becomes a project so the
+    // user can still use the package, voiceover or thumbnail they paid for.
+    if (steps.script?.status === "completed") {
+      const fresh = await loadJob(jobId);
+      if (fresh) {
+        const projectId = await saveProject(fresh);
+        if (projectId) {
+          const patched = { ...(fresh.steps ?? {}), result: { status: "partial", project_id: projectId } };
+          await db.from("pipeline_jobs").update({ steps: patched }).eq("id", jobId);
+        }
+      }
     }
     return true;
   }
@@ -328,7 +391,9 @@ export function createPipelineRunner(deps: RunnerDeps) {
     });
     if (error) {
       console.error(`[pipeline] ${job.id} clip refund failed:`, error);
+      return;
     }
+    await patchStep(job, "video", { refunded: Number(job.steps?.video?.refunded ?? 0) + amount });
   }
 
   /* ---------------- Video (async) step ---------------- */
@@ -500,7 +565,11 @@ export function createPipelineRunner(deps: RunnerDeps) {
       p_type: "refund",
       p_reason: `Refund: unused visuals (${klingUnused} clip${klingUnused === 1 ? "" : "s"}, ${stillUnused} scene${stillUnused === 1 ? "" : "s"})`,
     });
-    if (error) console.error(`[pipeline] ${job.id} visuals refund failed:`, error);
+    if (error) {
+      console.error(`[pipeline] ${job.id} visuals refund failed:`, error);
+      return;
+    }
+    await patchStep(job, "video", { refunded: Number(job.steps?.video?.refunded ?? 0) + amount });
   }
 
   /**
@@ -1028,8 +1097,8 @@ export function createPipelineRunner(deps: RunnerDeps) {
   }
 
   /** Save the finished package as a project and mark the job completed. */
-  async function finalizeJob(job: JobRow): Promise<void> {
-    const fresh = (await loadJob(job.id)) ?? job;
+  /** Insert a project from whatever the job has produced. Returns its id. */
+  async function saveProject(fresh: JobRow): Promise<string | null> {
     const script = fresh.steps?.script ?? {};
     const thumb = fresh.steps?.thumbnail ?? {};
     const voice = fresh.steps?.voiceover ?? {};
@@ -1049,7 +1118,6 @@ export function createPipelineRunner(deps: RunnerDeps) {
         })
       : script.scenes;
 
-    let projectId: string | null = null;
     try {
       const { data: project, error } = await db
         .from("projects")
@@ -1081,18 +1149,23 @@ export function createPipelineRunner(deps: RunnerDeps) {
         .single();
       if (error) {
         console.error(`[pipeline] ${fresh.id} project insert failed:`, error.message);
-      } else {
-        projectId = project?.id ?? null;
+        return null;
       }
+      return project?.id ?? null;
     } catch (err) {
       console.error(`[pipeline] ${fresh.id} project save exception:`, err);
+      return null;
     }
+  }
 
+  /** Save the finished package as a project and mark the job completed. */
+  async function finalizeJob(job: JobRow): Promise<void> {
+    const fresh = (await loadJob(job.id)) ?? job;
+    const projectId = await saveProject(fresh);
     const steps = { ...(fresh.steps ?? {}) };
     if (projectId) {
       steps.result = { status: "completed", project_id: projectId };
     }
-
     await db
       .from("pipeline_jobs")
       .update({ status: "completed", current_step: null, steps })

@@ -63,6 +63,8 @@ interface JobData {
   steps: Record<string, StepInfo>;
   error: string | null;
   created_at?: string;
+  credits_charged?: number | null;
+  credits_refunded?: number | null;
 }
 
 interface PipelineResultStep {
@@ -202,8 +204,21 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
       {/* Error state */}
       {job.status === "failed" && (
         <div className="mt-4 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-300">
-          Something went wrong: {job.error ?? "Unknown error"}. Your credits
-          have been refunded.
+          <p>Something went wrong: {job.error ?? "Unknown error"}.</p>
+          <p className="mt-1 text-red-200/80">
+            {typeof job.credits_refunded === "number" && job.credits_refunded > 0
+              ? `${job.credits_refunded} credits for the unfinished steps were refunded.`
+              : "Credits for any unfinished steps are refunded automatically."}
+            {projectId ? " What was already produced is saved as a project." : ""}
+          </p>
+          {projectId && (
+            <Link
+              href={`/projects/${projectId}`}
+              className="mt-3 inline-block rounded-lg bg-red-500/20 px-3 py-1.5 font-semibold text-red-50 transition hover:bg-red-500/30"
+            >
+              Open the partial project →
+            </Link>
+          )}
         </div>
       )}
 
