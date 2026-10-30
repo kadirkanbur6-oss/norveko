@@ -77,3 +77,19 @@ export function showcaseThumbnailUrl(v: ShowcaseVideo): string | null {
   const base = storageBase();
   return base ? `${base}/thumbnails/${v.thumbnailPath}` : null;
 }
+
+/**
+ * Short (5 s, 720×1280, ~3–4 MB) Kling clips from real runs, used as the
+ * muted looping background of the landing hero. Only ever-upright clips
+ * (generated after the 29 Oct camera-level fix).
+ */
+export const HERO_LOOP_CLIPS: string[] = [
+  `${OWNER}/159af1f9-8823-4bdb-8e1b-1c88f0073669/slot-0.mp4`, // pyramids at dusk
+  `${OWNER}/54173f2f-cb6b-4997-aa85-e6522b1b7dc9/slot-0.mp4`, // Belmez: face in the concrete
+  `${OWNER}/83322c8f-a030-4f85-96f1-5182a686fd25/slot-8.mp4`, // city crowd at night
+];
+
+export function heroClipUrl(path: string): string | null {
+  const base = storageBase();
+  return base ? `${base}/videos/${path}` : null;
+}

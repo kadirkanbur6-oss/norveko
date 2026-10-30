@@ -229,3 +229,8 @@ body {
     50% { opacity: 0.9; }
   }
 }
+
+/* Landing hero background wall: fade in once the first clip can play. */
+.nv-hero-wall { transition: opacity 1.2s ease; }
+.nv-hero-wall.nv-hero-wall-ready { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .nv-hero-wall { display: none; } }

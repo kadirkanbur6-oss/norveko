@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import HeroDemo from "./HeroDemo";
 import ShowcaseGallery from "./ShowcaseGallery";
+import HeroBackground from "./HeroBackground";
 import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
 import SignOutButton from "./SignOutButton";
 import BrandMark from "./BrandMark";
@@ -193,9 +194,9 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
 
           <nav className="hidden items-center gap-8 text-sm text-gray-400 md:flex">
             <a href="#examples" className="transition hover:text-white">Examples</a>
+            <a href="#pricing" className="transition hover:text-white">Pricing</a>
             <a href="#workflow" className="transition hover:text-white">Workflow</a>
             <a href="#templates" className="transition hover:text-white">Templates</a>
-            <a href="#pricing" className="transition hover:text-white">Pricing</a>
             <a href="#faq" className="transition hover:text-white">FAQ</a>
           </nav>
 
@@ -246,9 +247,9 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             <div className="flex flex-col gap-1 text-sm text-gray-300">
               {[
                 ["#examples", "Examples"],
+                ["#pricing", "Pricing"],
                 ["#workflow", "Workflow"],
                 ["#templates", "Templates"],
-                ["#pricing", "Pricing"],
                 ["#faq", "FAQ"],
               ].map(([href, label]) => (
                 <a
@@ -281,9 +282,10 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
 
       {/* 1. HERO */}
       <section id="main-content" className="relative overflow-hidden">
+        <HeroBackground />
         <div className="pointer-events-none absolute -top-40 left-1/2 h-[500px] w-[min(800px,120vw)] -translate-x-1/2 rounded-full bg-gradient-to-r from-blue-600/20 to-purple-600/20 blur-3xl" />
 
-        <div className="mx-auto grid max-w-6xl grid-cols-1 items-start gap-10 px-4 py-10 sm:px-6 sm:py-12 lg:grid-cols-2">
+        <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-start gap-10 px-4 py-10 sm:px-6 sm:py-12 lg:grid-cols-2">
           <Reveal>
             <div>
               <span className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-4 py-1.5 text-xs text-blue-200">
@@ -387,6 +389,68 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             Full video rendering is rolling out in beta. Every account already gets the script, scene plan, thumbnail, voiceover and subtitles.
           </p>
         </Reveal>
+      </section>
+
+      {/* 2c. PRICING — kept high: visitors look for the price right after the examples */}
+      <section id="pricing" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6">
+        <Reveal>
+          <SectionTitle
+            eyebrow="Pricing"
+            title="Start free. Scale when you're ready."
+            subtitle="Every account starts with 50 free credits. Top up any time — credits never expire."
+          />
+        </Reveal>
+
+        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {PRICING.map((plan, i) => (
+            <Reveal key={plan.name} delay={i * 60}>
+              <GlassCard
+                className={`flex h-full flex-col p-5 ${
+                  plan.featured ? "border-blue-400/40 bg-blue-500/[0.06]" : ""
+                }`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="font-bold">{plan.name}</h3>
+                    <p className="mt-1 text-sm text-gray-400">{plan.desc}</p>
+                  </div>
+                  {plan.featured && (
+                    <span className="rounded-full border border-blue-400/30 bg-blue-500/10 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-blue-200">
+                      Popular
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-4 flex items-end gap-2">
+                  <span className="text-3xl font-black tracking-tight text-white">
+                    ${plan.priceUsd}
+                  </span>
+                  <span className="pb-1 text-sm text-gray-500">one-time</span>
+                </div>
+
+                <p className="mt-2 text-sm font-medium text-gray-300">
+                  {plan.credits.toLocaleString()} credits
+                </p>
+                <ul className="mt-2 space-y-1 text-xs text-gray-500">
+                  {plan.buys.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+
+                <Link
+                  href="/signup"
+                  className={`mt-5 inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold transition hover:opacity-90 ${
+                    plan.featured
+                      ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white"
+                      : "border border-white/10 bg-white/[0.03] text-gray-200 hover:border-white/20 hover:text-white"
+                  }`}
+                >
+                  Get started
+                </Link>
+              </GlassCard>
+            </Reveal>
+          ))}
+        </div>
       </section>
 
       {/* 3. PROBLEM */}
@@ -637,68 +701,6 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             ))}
           </div>
         </Reveal>
-      </section>
-
-      {/* 9. PRICING */}
-      <section id="pricing" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6">
-        <Reveal>
-          <SectionTitle
-            eyebrow="Pricing"
-            title="Start free. Scale when you're ready."
-            subtitle="Every account starts with 50 free credits. Top up any time — credits never expire."
-          />
-        </Reveal>
-
-        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {PRICING.map((plan, i) => (
-            <Reveal key={plan.name} delay={i * 60}>
-              <GlassCard
-                className={`flex h-full flex-col p-5 ${
-                  plan.featured ? "border-blue-400/40 bg-blue-500/[0.06]" : ""
-                }`}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h3 className="font-bold">{plan.name}</h3>
-                    <p className="mt-1 text-sm text-gray-400">{plan.desc}</p>
-                  </div>
-                  {plan.featured && (
-                    <span className="rounded-full border border-blue-400/30 bg-blue-500/10 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-blue-200">
-                      Popular
-                    </span>
-                  )}
-                </div>
-
-                <div className="mt-4 flex items-end gap-2">
-                  <span className="text-3xl font-black tracking-tight text-white">
-                    ${plan.priceUsd}
-                  </span>
-                  <span className="pb-1 text-sm text-gray-500">one-time</span>
-                </div>
-
-                <p className="mt-2 text-sm font-medium text-gray-300">
-                  {plan.credits.toLocaleString()} credits
-                </p>
-                <ul className="mt-2 space-y-1 text-xs text-gray-500">
-                  {plan.buys.map((line) => (
-                    <li key={line}>{line}</li>
-                  ))}
-                </ul>
-
-                <Link
-                  href="/signup"
-                  className={`mt-5 inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold transition hover:opacity-90 ${
-                    plan.featured
-                      ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white"
-                      : "border border-white/10 bg-white/[0.03] text-gray-200 hover:border-white/20 hover:text-white"
-                  }`}
-                >
-                  Get started
-                </Link>
-              </GlassCard>
-            </Reveal>
-          ))}
-        </div>
       </section>
 
       {/* 10. FAQ */}
