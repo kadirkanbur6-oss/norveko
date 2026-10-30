@@ -54,8 +54,8 @@ export default function HeroBackground() {
         </div>
       )}
       {/* Readability: darken, tint and blend into the page */}
-      <div className="absolute inset-0 bg-[#0a0a12]/75" />
-      <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a12] via-[#0a0a12]/70 to-transparent" />
+      <div className="absolute inset-0 bg-[#0a0a12]/45" />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a12]/95 via-[#0a0a12]/55 to-[#0a0a12]/20" />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#0a0a12] to-transparent" />
       <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[#0a0a12] to-transparent" />
     </div>
