@@ -191,7 +191,7 @@ export interface SpeechResult {
 export async function generateSpeech(
   text: string,
   voiceId: string,
-  options: { speed?: number } = {}
+  options: { speed?: number; modelId?: string } = {}
 ): Promise<SpeechResult> {
   // ElevenLabs accepts 0.7–1.2; outside that the API rejects the request.
   const speed =
@@ -208,7 +208,7 @@ export async function generateSpeech(
       },
       body: JSON.stringify({
         text,
-        model_id: ELEVENLABS_MODEL_ID,
+        model_id: options.modelId ?? ELEVENLABS_MODEL_ID,
         // Lower stability + some style = more natural intonation for narration
         // (the default 0.5/0.75/0 reads flat). Speaker boost keeps clarity.
         voice_settings: {
