@@ -46,6 +46,7 @@ import type { KlingTaskResult } from "@/lib/pipeline/kling";
 import { getTemplate } from "@/lib/pipeline/templates";
 import { musicCredit, pickMusicTrack, type MusicTrack } from "@/lib/pipeline/music";
 import { defaultOrientation, languageCode } from "@/lib/pipeline/options";
+import { narrationWordCount, rangeForMeasuredRatio } from "@/lib/pipeline/narration";
 import {
   estimateCostUsd,
   recordProviderUsage,
@@ -114,6 +115,7 @@ export interface RunnerDeps {
     generateScript: typeof import("@/lib/pipeline/openai").generateScript;
     researchTopic: typeof import("@/lib/pipeline/openai").researchTopic;
     generateSpeech: typeof import("@/lib/pipeline/elevenlabs").generateSpeech;
+    reviseNarration: typeof import("@/lib/pipeline/openai").reviseNarrationLength;
     generateThumbnail: typeof import("@/lib/pipeline/gemini-image").generateThumbnail;
     submitTextToVideo: typeof import("@/lib/pipeline/kling").submitTextToVideo;
     getTextToVideoTask: typeof import("@/lib/pipeline/kling").getTextToVideoTask;
@@ -1037,11 +1039,12 @@ export function createPipelineRunner(deps: RunnerDeps) {
     }
 
     if (stepId === "voiceover") {
-      const script = job.steps?.script?.script;
+      const scriptRaw = job.steps?.script?.script;
       const voiceId = job.steps?.voiceover?.voice_id;
-      if (typeof script !== "string" || !script) {
+      if (typeof scriptRaw !== "string" || !scriptRaw) {
         throw new Error("Script is missing; cannot generate voiceover.");
       }
+      let script: string = scriptRaw;
       if (typeof voiceId !== "string" || !voiceId) {
         throw new Error("Voice is missing; cannot generate voiceover.");
       }
@@ -1072,10 +1075,47 @@ export function createPipelineRunner(deps: RunnerDeps) {
       // by more than 10%, re-synthesise once with ElevenLabs' speed setting
       // (0.7–1.2). Costs one extra TTS call only when needed.
       let speed = 1;
+      let rewritten = false;
       const targetSeconds = Number((job.steps?.render?.plan as { seconds?: number } | undefined)?.seconds);
-      const measured = spokenSeconds(speech.alignment);
+      let measured = spokenSeconds(speech.alignment);
       if (isFullVideo(job) && targetSeconds > 0 && measured > 0) {
-        const ratio = measured / targetSeconds;
+        let ratio = measured / targetSeconds;
+
+        // Way off (>15 %): the text itself is the wrong length for this
+        // language/voice. Rewrite it to the word count the measured rate
+        // implies, re-synthesise, then fall through to the gentle speed fix.
+        if (ratio > 1.15 || ratio < 0.85) {
+          const hook = typeof job.steps?.script?.hook === "string" ? job.steps.script.hook : "";
+          const count = narrationWordCount("", script);
+          const range = rangeForMeasuredRatio(count, ratio, targetSeconds);
+          const model = getPipelineStepDefinition("script").provider.split(":")[1] ?? "gpt-5-mini";
+          const rewriteAt = now();
+          try {
+            const fixed = await providers.reviseNarration({
+              hook,
+              script,
+              range,
+              outputLanguage: job.output_language ?? "EN",
+              model,
+              count,
+            });
+            if (fixed?.script?.trim()) {
+              const retake = await providers.generateSpeech(fixed.script, voiceId);
+              await logUsage(job, "voiceover", { unit: "characters", quantity: fixed.script.length, durationMs: now() - rewriteAt, status: "ok" });
+              if (retake.alignment) {
+                script = fixed.script;
+                speech = retake;
+                rewritten = true;
+                measured = spokenSeconds(retake.alignment) || measured;
+                ratio = measured / targetSeconds;
+                await patchStep(job, "script", { hook: fixed.hook || hook, script: fixed.script, length_fixed_from_words: count });
+              }
+            }
+          } catch (err) {
+            console.warn(`[pipeline] ${job.id} length rewrite failed, keeping first take:`, err);
+          }
+        }
+
         if (ratio < 0.9 || ratio > 1.1) {
           // Cap the correction at ±12 %: beyond that the delivery sounds
           // rushed/dragged, and the timeline follows the real length anyway.
@@ -1118,6 +1158,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
       const captions = wantsSubtitles && speech.alignment ? alignmentToCues(speech.alignment) : undefined;
       await patchStep(job, "voiceover", {
         status: "completed",
+        rewritten_for_length: rewritten || undefined,
         audio_url: urlData.publicUrl,
         storage_path: storagePath,
         speed,
@@ -1466,6 +1507,8 @@ function getRunner() {
           (await import("@/lib/pipeline/openai")).generateScript(...args),
         researchTopic: async (...args) =>
           (await import("@/lib/pipeline/openai")).researchTopic(...args),
+        reviseNarration: async (...args) =>
+          (await import("@/lib/pipeline/openai")).reviseNarrationLength(...args),
         generateSpeech: async (...args) =>
           (await import("@/lib/pipeline/elevenlabs")).generateSpeech(...args),
         generateThumbnail: async (...args) =>

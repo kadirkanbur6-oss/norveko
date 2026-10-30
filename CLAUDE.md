@@ -64,13 +64,16 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   prompt'unda ayrıca gerçek kişi/marka kuralı: videoPrompt'lar yüz, arma,
   forma ismi, skor tabelası, okunur yazı istemez (AI görseller bunları
   uyduruyor).
-- **Süre tutarlılığı** (iki katman): (1) `lib/pipeline/narration.ts` —
-  `WORDS_PER_SECOND` 2,3; `wordRange(duration)` hedef ±%8 aralık (30 sn →
-  63–75 kelime); senaryo prompt'u zorunlu kılar, kaçırırsa
-  `reviseNarrationLength()` hook+script'i bir kez yeniden yazdırır. Ölçülen
-  gerçek hız metne göre 2,0–2,6 kelime/sn (13–19 karakter/sn) oynadığı için
-  tek başına yetmez → (2) **tam video modunda** voiceover adımı ilk kaydın
-  süresini alignment'tan ölçer (`spokenSeconds`), hedeften %10+ sapıyorsa
+- **Süre tutarlılığı** (üç katman): (1) `lib/pipeline/narration.ts` —
+  **dil bazlı** kelime hızı `wordsPerSecond(code)` (en 2,4 · tr 1,85 · de
+  1,9 · fi 1,7 …; 30 Ekim: Türkçe 142–144 kelime 71–81 sn çıkınca eklendi);
+  `wordRange(duration, code)` hedef ±%8 (60 sn TR → ~111 kelime, EN → 144);
+  senaryo prompt'u zorunlu kılar, kaçırırsa `reviseNarrationLength()`
+  hook+script'i bir kez yeniden yazdırır. → (2) **tam video modunda** voiceover
+  adımı ilk kaydı ölçer; sapma **%15'ten büyükse** ölçülen orana göre
+  (`rangeForMeasuredRatio`) metni LLM'e kısalttırıp/uzattırıp yeniden
+  seslendirir (`steps.script.hook/script` güncellenir,
+  `steps.voiceover.rewritten_for_length`); ardından (3) hâlâ %10+ sapıyorsa
   ElevenLabs `voice_settings.speed` (0,7–1,2, oran = ölçülen/hedef) ile bir
   kez yeniden üretir (**29 Ekim: 0,88–1,12 ile sınırlı**, daha fazlası
   doğal durmuyor; zaman çizelgesi zaten gerçek süreye uyar);

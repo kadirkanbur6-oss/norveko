@@ -168,6 +168,11 @@ function makeRunner(
           usage: { inputTokens: 1200, outputTokens: 800 },
         };
       },
+      reviseNarration: async ({ script, range }) => {
+        calls.push(`revise@${range.target}`);
+        // Pretend the editor trimmed/expanded to the asked word count.
+        return { hook: "h", script: Array.from({ length: range.target }, (_, i) => `w${i}`).join(" ") || script };
+      },
       generateSpeech: async (_text, _voice, options) => {
         calls.push(options?.speed ? `voiceover@${options.speed}` : "voiceover");
         if (opts.failAt === "voiceover") throw new Error("eleven down");
@@ -479,9 +484,15 @@ test("full video (hybrid, 60 s): 12 slots, 3 Kling + stills, render to final MP4
 
   assert.equal(await runner.runNextStep(id), "advanced"); // script
   assert.equal(await runner.runNextStep(id), "advanced"); // voiceover (+captions)
-  // 0.9 s of speech for a 60 s target → retake at the slowest natural-sounding speed (0.88)
-  assert.deepEqual(calls.filter((c) => c.startsWith("voiceover")), ["voiceover", "voiceover@0.88"]);
+  // 0.9 s of speech for a 60 s target: far off → the narration is rewritten to
+  // the word count the measured rate implies and re-synthesised, then the
+  // (still short) take gets the slowest natural-sounding speed (0.88).
+  assert.deepEqual(
+    calls.filter((c) => c.startsWith("voiceover") || c.startsWith("revise")),
+    ["voiceover", "revise@" + Math.round(1 / (0.9 / 60)), "voiceover", "voiceover@0.88"]
+  );
   assert.equal(rows.get(id)!.steps.voiceover.speed, 0.88);
+  assert.equal(rows.get(id)!.steps.voiceover.rewritten_for_length, true);
   assert.equal(await runner.runNextStep(id), "advanced"); // thumbnail
   assert.equal(await runner.runNextStep(id), "advanced"); // visuals: submit
   let job = rows.get(id)!;

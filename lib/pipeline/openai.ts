@@ -1,8 +1,8 @@
 // lib/pipeline/openai.ts
 // OpenAI ile full content package üretimi (server-side only).
 
-import { languagePromptName } from "./options";
-import { WORDS_PER_SECOND, narrationWordCount, wordRange } from "./narration";
+import { languageCode, languagePromptName } from "./options";
+import { narrationWordCount, wordRange, wordsPerSecond } from "./narration";
 
 if (!process.env.OPENAI_API_KEY) {
   throw new Error("OPENAI_API_KEY is not set.");
@@ -43,7 +43,7 @@ interface ScriptParams {
 export async function generateScript(params: ScriptParams): Promise<ScriptResult> {
   const { idea, platform, style, duration, outputLanguage, model, orientation, brief, research } = params;
   const aspect = orientation === "vertical" ? "9:16 vertical" : "16:9 horizontal";
-  const range = wordRange(duration);
+  const range = wordRange(duration, languageCode(outputLanguage));
 
   const systemPrompt = `You are a senior writer-director for faceless YouTube and Shorts channels (documentary, mystery, history, educational). Your scripts are the kind that keep 70%+ of viewers to the end: specific, visual, surprising, never generic.
 Respond ONLY with a valid JSON object, no markdown, no extra text. Schema:
@@ -73,7 +73,7 @@ Rules:
 - SCRIPT CRAFT (retention structure for Shorts): (1) HOOK 0–3 s: the hook sentence. (2) PROMISE 3–6 s: one sentence that opens a curiosity loop and says what the viewer will get ("Ve cevap, 4.500 yıllık bir limanda saklı."). (3) CONTEXT: at most 2 sentences. (4) PAYOFF: 2–3 concrete beats (names, numbers, dates, places, mechanisms — never "many experts believe" / "throughout history"), each beat a new image; halfway through insert ONE re-hook that opens a second loop ("Ama asıl ilginç olanı şu:" / "But that's not the strangest part."). (5) CLOSE every loop you opened — never leave the promised answer unanswered — then one final line that lands an emotion or a question for the comments. Rhythm: vary sentence length sharply (3-word punch, then 12–16 words, then short again); no sentence over 18 words; no nested clauses; present tense; no filler transitions ("so basically", "as you can see", "now moving on"), no greetings, no "in this video", no restating. Every sentence must add new information or new tension.
 - WRITE FOR THE VOICE: this text is read by a TTS narrator. Use commas and full stops to create natural breaths, an ellipsis "…" for a dramatic pause before a reveal, and spell numbers the way they are spoken in the output language when ambiguous. Proofread spelling and diacritics carefully (for Turkish: ç ğ ı İ ö ş ü, apostrophes in proper-noun suffixes like "Keops'un"); a single typo is burned into the subtitles.
 - VISUAL PROMPT rules — each videoPrompt is a complete shot description for a photoreal AI video/image model, 35–60 words, in this order: (1) shot type and lens (e.g. "extreme close-up, 85mm" / "wide aerial establishing shot"), (2) the single clear subject and what it is doing, (3) environment and era-accurate details, (4) lighting and time of day, (5) colour palette/mood, (6) one slow steady camera move. Every scene must show a DIFFERENT subject or location — never two scenes of the same thing; alternate wide and close shots; keep one consistent palette across the video. Prefer physical, filmable things (objects, places, hands, textures, weather, crowds from behind) over abstract concepts. No text, signs, maps with labels, diagrams, or UI in any shot.
-- STRICT LENGTH: the hook + script together are read aloud at ~${WORDS_PER_SECOND} words per second. For the target duration they MUST total between ${range.min} and ${range.max} words (aim for ${range.target}). Count the words before answering; do not go under or over.
+- STRICT LENGTH: the hook + script together are read aloud at ~${wordsPerSecond(languageCode(outputLanguage))} words per second in ${languagePromptName(outputLanguage)}. For the target duration they MUST total between ${range.min} and ${range.max} words (aim for ${range.target}). Count the words before answering; do not go under or over.
 - The video is ${aspect}; compose every videoPrompt and the thumbnail for that framing (subjects centred, room above and below the subject for vertical). Do NOT write the words "vertical", "portrait", "tall framing", "9:16", "horizontal" or "16:9" inside a videoPrompt — the aspect ratio is set separately, and those words make the video model rotate the picture. Describe a steady, level camera (slow push-in, gentle pan, static); never ask for camera roll, spinning, flipping or orbiting.
 - If the topic involves real people, teams, companies or brands: videoPrompts must NOT depict identifiable real people, faces, logos, crests or jersey names. Show atmosphere, places, objects, crowds and colours instead (e.g. "fans in red-and-yellow striped shirts"), and never ask for readable text, scoreboards or signs — generated text is always wrong.${brief ? `\n- ${brief}` : ""}${research ? `\n\nVERIFIED RESEARCH BRIEF — the ONLY source of truth for any claim about real events, people, numbers, dates or outcomes. Build the script on these facts, do not invent or "remember" others, and do not contradict them:\n${research}` : ""}`;
 
@@ -209,7 +209,7 @@ Target duration: ${duration ?? "60 seconds"}`;
   };
 }
 
-async function reviseNarrationLength(args: {
+export async function reviseNarrationLength(args: {
   hook: string;
   script: string;
   range: { min: number; target: number; max: number; seconds: number };

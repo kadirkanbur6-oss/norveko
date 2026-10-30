@@ -169,3 +169,14 @@ test("cuesToSrt can uppercase with Turkish rules for burned-in captions", () => 
   assert.match(srt, /PİRAMİDİ ILIK/);
   assert.match(cuesToSrt([{ start: 0, end: 1, text: "piramidi" }]), /piramidi/);
 });
+
+test("word budget is language-aware and the measured-ratio range shrinks a long script", async () => {
+  const { wordRange, rangeForMeasuredRatio } = await import("./narration");
+  assert.equal(wordRange("60 seconds", "en").target, 144);
+  assert.equal(wordRange("60 seconds", "tr").target, 111);
+  assert.equal(wordRange("30 seconds").target, 69); // default rate
+  // 144 words came out at 81 s for a 60 s target → ~107 words would fit.
+  const r = rangeForMeasuredRatio(144, 81 / 60, 60);
+  assert.equal(r.target, 107);
+  assert.ok(r.min < r.target && r.max > r.target);
+});
