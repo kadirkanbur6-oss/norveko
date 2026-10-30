@@ -66,7 +66,10 @@ export default function VideoPlayer({
       }
     };
     const onPlay = () => setPlaying(true);
-    const onPause = () => setPlaying(false);
+    const onPause = () => {
+      setPlaying(false);
+      setControlsVisible(true);
+    };
     const onEnd = () => {
       setPlaying(false);
       setControlsVisible(true);
@@ -118,13 +121,17 @@ export default function VideoPlayer({
       if (videoRef.current && !videoRef.current.paused) setControlsVisible(false);
     }, 2200);
   }, []);
+  // Start the hide timer when playback starts (paused state always shows the
+  // bar via `|| !playing` in render; onPause also resets visibility).
   useEffect(() => {
-    if (playing) poke();
-    else setControlsVisible(true);
+    if (!playing) return;
+    hideTimer.current = window.setTimeout(() => {
+      if (videoRef.current && !videoRef.current.paused) setControlsVisible(false);
+    }, 2200);
     return () => {
       if (hideTimer.current) window.clearTimeout(hideTimer.current);
     };
-  }, [playing, poke]);
+  }, [playing]);
 
   const toggle = useCallback(() => {
     const v = videoRef.current;
