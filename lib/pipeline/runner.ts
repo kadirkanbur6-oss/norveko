@@ -119,6 +119,8 @@ export interface RunnerDeps {
     generateThumbnail: typeof import("@/lib/pipeline/gemini-image").generateThumbnail;
     submitTextToVideo: typeof import("@/lib/pipeline/kling").submitTextToVideo;
     getTextToVideoTask: typeof import("@/lib/pipeline/kling").getTextToVideoTask;
+    submitImageToVideo: typeof import("@/lib/pipeline/fal-video").submitImageToVideo;
+    getImageToVideo: typeof import("@/lib/pipeline/fal-video").getImageToVideo;
     downloadVideo: typeof import("@/lib/pipeline/kling").downloadVideo;
     generateSceneImage: typeof import("@/lib/pipeline/gemini-image").generateSceneImage;
     submitRender: typeof import("@/lib/pipeline/shotstack").submitRender;
@@ -314,9 +316,9 @@ export function createPipelineRunner(deps: RunnerDeps) {
         case "kling": {
           const slots = (steps.video?.slots as TimelineSlot[] | undefined) ?? [];
           const clips = (steps.video?.clips as VideoClipState[] | undefined) ?? [];
-          const ok = slots.filter((x) => x.kind === "kling" && x.status === "succeed").length +
-            clips.filter((c) => c.status === "succeed").length;
-          total += ok * VIDEO_CLIP_CREDITS;
+          const planClip = (steps.video?.plan as Partial<FullVideoPlan> | undefined)?.clipCredits;
+          total += slots.filter((x) => x.kind === "kling" && x.status === "succeed").length * (typeof planClip === "number" ? planClip : VIDEO_CLIP_CREDITS);
+          total += clips.filter((c) => c.status === "succeed").length * VIDEO_CLIP_CREDITS;
           break;
         }
         case "stills": {
@@ -600,8 +602,19 @@ export function createPipelineRunner(deps: RunnerDeps) {
   }
 
   /** Give back credits for planned visuals that were never produced. */
+  /** Credits per AI clip for this job (image→video and text→video differ). */
+  function clipCreditsOf(job: Pick<JobRow, "steps">): number {
+    const plan = job.steps?.video?.plan as Partial<FullVideoPlan> | undefined;
+    return typeof plan?.clipCredits === "number" ? plan.clipCredits : VIDEO_CLIP_CREDITS;
+  }
+
+  function clipModeOf(job: Pick<JobRow, "steps">): "image" | "text" {
+    const plan = job.steps?.video?.plan as Partial<FullVideoPlan> | undefined;
+    return plan?.clipMode === "image" ? "image" : "text";
+  }
+
   async function refundVisuals(job: JobRow, klingUnused: number, stillUnused: number): Promise<void> {
-    const amount = Math.max(0, klingUnused) * VIDEO_CLIP_CREDITS + Math.max(0, stillUnused) * STILL_SCENE_CREDITS;
+    const amount = Math.max(0, klingUnused) * clipCreditsOf(job) + Math.max(0, stillUnused) * STILL_SCENE_CREDITS;
     if (amount <= 0) return;
     const { error } = await db.rpc("add_credits", {
       p_user_id: job.user_id,
@@ -641,8 +654,10 @@ export function createPipelineRunner(deps: RunnerDeps) {
     if (!slots.length) throw new Error("No scene prompts available for the video.");
 
     const aspectRatio: "9:16" | "16:9" = orientationOf(job) === "vertical" ? "9:16" : "16:9";
+    // Image→video clips are started later, once their still exists (poll).
+    const textClips = clipModeOf(job) === "text";
     for (const slot of slots) {
-      if (slot.kind !== "kling") continue;
+      if (slot.kind !== "kling" || !textClips) continue;
       try {
         slot.taskId = await providers.submitTextToVideo({
           prompt: slot.prompt,
@@ -653,6 +668,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
         slot.status = "processing";
       } catch (err) {
         slot.status = "failed";
+        slot.refunded = true; // refunded just below
         slot.error = err instanceof Error ? err.message : "Submit failed";
         await logUsage(job, "video", {
           unit: "seconds",
@@ -689,24 +705,33 @@ export function createPipelineRunner(deps: RunnerDeps) {
 
     // 1) Kling polls.
     for (const slot of slots) {
-      if (slot.kind !== "kling" || slot.status !== "processing" || !slot.taskId) continue;
+      if (slot.kind !== "kling" || slot.status !== "processing" || (!slot.taskId && !slot.fal)) continue;
       let result: KlingTaskResult;
       try {
-        result = await providers.getTextToVideoTask(slot.taskId);
+        if (slot.fal) {
+          const r = await providers.getImageToVideo(slot.fal);
+          result = { taskId: slot.fal.requestId, status: r.status, videoUrl: r.videoUrl, durationSeconds: r.durationSeconds, statusMessage: r.statusMessage } as KlingTaskResult;
+        } else {
+          result = await providers.getTextToVideoTask(slot.taskId!);
+        }
       } catch (err) {
-        console.error(`[pipeline] ${job.id} poll ${slot.taskId} failed:`, err);
+        console.error(`[pipeline] ${job.id} poll ${slot.taskId ?? slot.fal?.requestId} failed:`, err);
         continue;
       }
-      // A clip stuck in Kling's queue must not hold the whole video hostage:
-      // give it up, refund it, and let the render fill the slot from a neighbour.
-      if (result.status !== "succeed" && result.status !== "failed" && submittedAgoMs(job) > KLING_CLIP_TIMEOUT_MS) {
+      // A clip stuck in the provider's queue must not hold the whole video
+      // hostage: give it up, refund it, and fill the slot (its own still for
+      // image→video, else a neighbour).
+      const clipAge = slot.submittedAt ? now() - Date.parse(slot.submittedAt) : submittedAgoMs(job);
+      if (result.status !== "succeed" && result.status !== "failed" && clipAge > KLING_CLIP_TIMEOUT_MS) {
         result = { ...result, status: "failed", statusMessage: `Clip took longer than ${Math.round(KLING_CLIP_TIMEOUT_MS / 60000)} minutes` };
       }
+      const clipUsageKey = slot.fal ? `fal:${process.env.FAL_VIDEO_MODEL || "fal-ai/bytedance/seedance/v1.5/pro/image-to-video"}` : undefined;
       if (result.status === "failed") {
         slot.status = "failed";
         slot.error = result.statusMessage ?? "Provider reported failure";
         changed = true;
         await logUsage(job, "video", {
+          usageKey: clipUsageKey,
           unit: "seconds",
           quantity: VIDEO_CLIP_SECONDS,
           durationMs: submittedAgoMs(job),
@@ -715,6 +740,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
         });
       } else if (result.status === "succeed" && result.videoUrl) {
         await logUsage(job, "video", {
+          usageKey: clipUsageKey,
           unit: "seconds",
           quantity: result.durationSeconds ?? VIDEO_CLIP_SECONDS,
           durationMs: submittedAgoMs(job),
@@ -740,10 +766,48 @@ export function createPipelineRunner(deps: RunnerDeps) {
       }
     }
 
-    // 2) Stills: a few per invocation, one image per slot. Slots that share a
+    // 2) Image→video clips: draw the slot's still, then hand it to the video
+    // model. Clips go first (they take longest); they share the per-poll
+    // image budget with plain stills.
+    let generated = 0;
+    if (clipModeOf(job) === "image") {
+      const aspectRatio: "9:16" | "16:9" = orientationOf(job) === "vertical" ? "9:16" : "16:9";
+      for (const slot of slots) {
+        if (slot.kind !== "kling" || slot.status !== "pending") continue;
+        if (generated >= STILLS_PER_POLL) break;
+        generated += 1;
+        changed = true;
+        const startedAt = now();
+        try {
+          const img = await providers.generateSceneImage(slot.prompt, job.id, job.user_id, slot.index + 1, orientationOf(job));
+          slot.imageUrl = img.imageUrl;
+          await logUsage(job, "thumbnail", {
+            usageKey: `gemini:${process.env.GEMINI_SCENE_IMAGE_MODEL || "gemini-nano-banana-2.1"}`,
+            unit: "images",
+            quantity: 1,
+            durationMs: now() - startedAt,
+            status: "ok",
+          });
+        } catch (err) {
+          slot.status = "failed";
+          slot.error = err instanceof Error ? err.message : "Image failed";
+          continue;
+        }
+        try {
+          slot.fal = await providers.submitImageToVideo({ prompt: slot.prompt, imageUrl: slot.imageUrl, aspectRatio });
+          slot.submittedAt = new Date(now()).toISOString();
+          slot.status = "processing";
+        } catch (err) {
+          // Keep the still as this slot's visual; the clip credits are refunded at settle.
+          slot.status = "failed";
+          slot.error = err instanceof Error ? err.message : "Submit failed";
+        }
+      }
+    }
+
+    // 3) Stills: a few per invocation, one image per slot. Slots that share a
     // scene get a varied camera angle so the picture visibly changes.
     const ANGLES = ["wide establishing shot", "close-up detail", "low angle", "over-the-shoulder view", "aerial view", "dramatic side light"];
-    let generated = 0;
     for (const slot of slots) {
       if (slot.kind !== "still" || slot.status !== "pending") continue;
       const key = `slot-${slot.index}`;
@@ -798,9 +862,15 @@ export function createPipelineRunner(deps: RunnerDeps) {
         await patchStep(job, "video", patch);
         throw new Error(`No visuals could be generated: ${slots[0]?.error ?? "unknown error"}`);
       }
-      // Kling slots that failed after submission get their credits back now.
-      const klingFailedLate = slots.filter((s) => s.kind === "kling" && s.status === "failed" && s.taskId).length;
-      await refundVisuals(job, klingFailedLate, 0);
+      // Clips that failed after submission (or, for image→video, at any
+      // point) get their credits back now — once per slot.
+      const imageClips = clipModeOf(job) === "image";
+      const lateFailed = slots.filter(
+        (s) => s.kind === "kling" && s.status === "failed" && !s.refunded && (imageClips || s.taskId)
+      );
+      lateFailed.forEach((s) => (s.refunded = true));
+      patch.slots = slots;
+      await refundVisuals(job, lateFailed.length, 0);
       patch.status = "completed";
     }
     await patchStep(job, "video", patch);
@@ -1526,6 +1596,10 @@ function getRunner() {
           (await import("@/lib/pipeline/kling")).submitTextToVideo(...args),
         getTextToVideoTask: async (...args) =>
           (await import("@/lib/pipeline/kling")).getTextToVideoTask(...args),
+        submitImageToVideo: async (...args) =>
+          (await import("@/lib/pipeline/fal-video")).submitImageToVideo(...args),
+        getImageToVideo: async (...args) =>
+          (await import("@/lib/pipeline/fal-video")).getImageToVideo(...args),
         downloadVideo: async (...args) =>
           (await import("@/lib/pipeline/kling")).downloadVideo(...args),
         generateSceneImage: async (...args) =>

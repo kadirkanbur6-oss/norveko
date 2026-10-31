@@ -16,6 +16,7 @@ import {
   SUBTITLES_CREDITS,
   totalPipelineCredits,
   type FootageMode,
+  type ClipMode,
   VIDEO_CLIP_CREDITS,
   VIDEO_CLIP_SECONDS,
   VIDEO_MAX_CLIPS,
@@ -55,6 +56,7 @@ interface Draft {
   includeSubtitles?: boolean;
   includeFullVideo?: boolean;
   footage?: FootageMode;
+  clipMode?: ClipMode;
   voiceId: string;
   orientation?: OrientationId;
   template?: string | null;
@@ -87,6 +89,7 @@ function ChatContent() {
   const [videoAvailable, setVideoAvailable] = useState(false);
   const [includeFullVideo, setIncludeFullVideo] = useState(false);
   const [footage, setFootage] = useState<FootageMode>("hybrid");
+  const [clipMode, setClipMode] = useState<ClipMode>("image");
   const [fullVideoAvailable, setFullVideoAvailable] = useState(false);
   const [generationAvailable, setGenerationAvailable] = useState(true);
   const [balance, setBalance] = useState<number | null>(null);
@@ -113,6 +116,7 @@ function ChatContent() {
     video: !fullVideoOn && includeVideo && videoAvailable,
     fullVideo: fullVideoOn,
     footage,
+    clipMode,
     duration,
   });
   const fullVideoSupported = Boolean(FULL_VIDEO_DURATIONS[duration]);
@@ -134,6 +138,7 @@ function ChatContent() {
       if (typeof draft.includeResearch === "boolean") setIncludeResearch(draft.includeResearch);
       if (typeof draft.includeFullVideo === "boolean") setIncludeFullVideo(draft.includeFullVideo);
       if (draft.footage === "hybrid" || draft.footage === "cinematic" || draft.footage === "stills") setFootage(draft.footage);
+      if (draft.clipMode === "image" || draft.clipMode === "text") setClipMode(draft.clipMode);
       if (typeof draft.voiceId === "string") setVoiceId(draft.voiceId);
       if (draft.orientation === "vertical" || draft.orientation === "horizontal") {
         setOrientation(draft.orientation);
@@ -160,12 +165,12 @@ function ChatContent() {
 
   useEffect(() => {
     try {
-      const draft: Draft = { idea, platform, style, duration, language, includeVoiceover, includeResearch, includeSubtitles, includeFullVideo, footage, voiceId, orientation, template: templateId };
+      const draft: Draft = { idea, platform, style, duration, language, includeVoiceover, includeResearch, includeSubtitles, includeFullVideo, footage, clipMode, voiceId, orientation, template: templateId };
       sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     } catch {
       // storage unavailable
     }
-  }, [idea, platform, style, duration, language, includeVoiceover, includeResearch, includeSubtitles, includeFullVideo, footage, voiceId, orientation, templateId]);
+  }, [idea, platform, style, duration, language, includeVoiceover, includeResearch, includeSubtitles, includeFullVideo, footage, clipMode, voiceId, orientation, templateId]);
 
   // Keep orientation in step with the platform until the user picks one explicitly.
   function choosePlatform(next: string) {
@@ -358,6 +363,7 @@ function ChatContent() {
           includeVideo: !fullVideoOn && includeVideo && videoAvailable,
           includeFullVideo: fullVideoOn,
           footage,
+          clipMode,
           orientation,
           template: templateId,
         }),
@@ -416,7 +422,7 @@ function ChatContent() {
                   {includeResearch ? " · research" : ""}
                   {includeVoiceover ? " · voiceover" : ""}
                   {includeVoiceover && includeSubtitles ? " · subtitles" : ""}
-                  {fullVideoOn ? ` · full video (${footage})` : ""}
+                  {fullVideoOn ? ` · full video (${footage}${footage === "stills" ? "" : clipMode === "text" ? ", text→video" : ", image→video"})` : ""}
                   {templateId ? ` · ${NICHE_TEMPLATES.find((t) => t.id === templateId)?.name}` : ""}
                 </span>
               </span>
@@ -932,7 +938,7 @@ function ChatContent() {
                         { id: "stills", name: "Stills", hint: "Cinematic AI stills with camera motion, no video clips" },
                       ] as Array<{ id: FootageMode; name: string; hint: string }>
                     ).map((m) => {
-                      const plan = fullVideoPlan(duration, m.id);
+                      const plan = fullVideoPlan(duration, m.id, clipMode);
                       const active = footage === m.id;
                       return (
                         <button
@@ -962,6 +968,53 @@ function ChatContent() {
                         </button>
                       );
                     })}
+                  </div>
+                )}
+
+                {fullVideoOn && footage !== "stills" && (
+                  <div className="mt-3">
+                    <p className="mb-2 text-xs font-medium text-gray-400">How AI clips are made</p>
+                    <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Clip type">
+                      {(
+                        [
+                          {
+                            id: "image",
+                            name: "Image → video",
+                            hint: "Each clip animates its own AI scene image, so clips match the stills. Faster and cheaper.",
+                          },
+                          {
+                            id: "text",
+                            name: "Text → video",
+                            hint: "Clips are generated straight from the scene prompt with free composition.",
+                          },
+                        ] as Array<{ id: ClipMode; name: string; hint: string }>
+                      ).map((m) => {
+                        const active = clipMode === m.id;
+                        const plan = fullVideoPlan(duration, footage, m.id);
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            role="radio"
+                            aria-checked={active}
+                            onClick={() => setClipMode(m.id)}
+                            className={`rounded-xl border p-3 text-left transition ${
+                              active ? "border-blue-400/60 bg-blue-500/10" : "border-white/10 bg-white/[0.02] hover:border-white/20"
+                            }`}
+                          >
+                            <span className="flex items-center justify-between gap-2">
+                              <span className="text-sm font-semibold text-white">{m.name}</span>
+                              {plan && (
+                                <span className="text-[11px] text-gray-400">
+                                  {plan.clipCredits} credits / clip
+                                </span>
+                              )}
+                            </span>
+                            <span className="mt-1 block text-xs text-gray-500">{m.hint}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>

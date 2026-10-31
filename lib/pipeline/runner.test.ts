@@ -212,6 +212,21 @@ function makeRunner(
           statusMessage: status === "failed" ? "nsfw" : undefined,
         };
       },
+      submitImageToVideo: async ({ imageUrl }) => {
+        const id = `fal_${++taskSeq}`;
+        calls.push(`i2v:${id}:${imageUrl}`);
+        return { requestId: id, statusUrl: `https://fal/${id}/status`, responseUrl: `https://fal/${id}` };
+      },
+      getImageToVideo: async (h) => {
+        calls.push(`falpoll:${h.requestId}`);
+        const status = klingStatuses[h.requestId] ?? "processing";
+        return {
+          status: status === "succeed" ? "succeed" : status === "failed" ? "failed" : "processing",
+          videoUrl: status === "succeed" ? `https://fal/${h.requestId}.mp4` : undefined,
+          durationSeconds: 5,
+          statusMessage: status === "failed" ? "fal error" : undefined,
+        };
+      },
       downloadVideo: async () => Buffer.from("mp4"),
       generateSceneImage: async (_prompt, _jobId, _userId, sceneNumber) => {
         calls.push(`still:${sceneNumber}`);
@@ -468,8 +483,12 @@ test("subtitles add-on off: voiceover completes without caption cues", async () 
   assert.equal(job.steps.voiceover.captions, undefined);
 });
 
-function seedFullVideoJob(seedJob: ReturnType<typeof makeDb>["seedJob"], footage: "hybrid" | "cinematic" | "stills" = "hybrid") {
-  const opts = { fullVideo: true, footage, duration: "60 seconds" as const };
+function seedFullVideoJob(
+  seedJob: ReturnType<typeof makeDb>["seedJob"],
+  footage: "hybrid" | "cinematic" | "stills" = "hybrid",
+  clipMode: "text" | "image" = "text"
+) {
+  const opts = { fullVideo: true, footage, clipMode, duration: "60 seconds" as const };
   const steps = initialStepsState(opts) as Record<string, any>;
   steps.script.queued_at = new Date(0).toISOString();
   steps.voiceover.voice_id = "v1";
@@ -477,8 +496,10 @@ function seedFullVideoJob(seedJob: ReturnType<typeof makeDb>["seedJob"], footage
 }
 
 test("full video (hybrid, 60 s): 12 slots, 3 Kling + stills, render to final MP4, 70%-margin pricing", async () => {
-  assert.equal(totalPipelineCredits({ fullVideo: true, footage: "hybrid", duration: "60 seconds" }), 5 + 15 + 10 + 10 + 3 * 130 + 9 * 12 + 2 * 30);
-  assert.equal(totalPipelineCredits({ fullVideo: true, footage: "cinematic", duration: "60 seconds" }), 40 + 12 * 130 + 60);
+  assert.equal(totalPipelineCredits({ fullVideo: true, footage: "hybrid", clipMode: "text", duration: "60 seconds" }), 5 + 15 + 10 + 10 + 3 * 130 + 9 * 12 + 2 * 30);
+  assert.equal(totalPipelineCredits({ fullVideo: true, footage: "cinematic", clipMode: "text", duration: "60 seconds" }), 40 + 12 * 130 + 60);
+  // Image→video (Seedance) is the default clip mode and much cheaper per clip.
+  assert.equal(totalPipelineCredits({ fullVideo: true, footage: "hybrid", duration: "60 seconds" }), 40 + 3 * 50 + 9 * 12 + 60);
   assert.equal(totalPipelineCredits({ fullVideo: true, footage: "stills", duration: "30 seconds" }), 40 + 6 * 12 + 30);
   assert.equal(totalPipelineCredits({ fullVideo: true, duration: "8 minutes" }), 15, "unsupported duration → plain package");
 
@@ -625,4 +646,44 @@ test("a research step whose worker died is skipped by reconcile after 2 minutes,
   assert.equal(job.current_step, "script");
   assert.deepEqual(rpc.map(([, a]) => a.p_amount), [5]);
   assert.deepEqual(kicked, [id]);
+});
+
+
+test("full video, image→video clips: still first, then the video model; a failed clip keeps its still and is refunded", async () => {
+  const { runner, rows, rpc, seedJob, calls, klingStatuses, renderStatus, edit } = makeRunner();
+  const id = seedFullVideoJob(seedJob, "hybrid", "image");
+  for (let i = 0; i < 3; i++) await runner.runNextStep(id); // script, voiceover, thumbnail
+  assert.equal(await runner.runNextStep(id), "advanced"); // visuals: plan only (no Kling submit)
+  assert.equal(calls.filter((c) => c.startsWith("kling")).length, 0);
+  let job = rows.get(id)!;
+  assert.equal(job.steps.video.plan.clipMode, "image");
+  assert.equal(job.steps.video.slots.filter((s: any) => s.kind === "kling").length, 3);
+
+  // Polls: clips get a still and are handed to fal before plain stills.
+  for (let i = 0; i < 12 && rows.get(id)!.steps.video.slots.some((s: any) => s.kind === "kling" && s.status === "pending"); i++) {
+    await runner.runNextStep(id);
+  }
+  job = rows.get(id)!;
+  const clipSlots = job.steps.video.slots.filter((s: any) => s.kind === "kling");
+  assert.ok(clipSlots.every((s: any) => s.status === "processing" && s.imageUrl && s.fal), "every clip slot has a still and a fal request");
+  assert.ok(calls.some((c) => c.startsWith("i2v:") && c.includes("still-")), "the still is what gets animated");
+
+  // Two clips succeed, one fails.
+  const [a, b, c] = clipSlots.map((s: any) => s.fal.requestId);
+  klingStatuses[a] = "succeed";
+  klingStatuses[b] = "succeed";
+  klingStatuses[c] = "failed";
+  for (let i = 0; i < 12 && rows.get(id)!.steps.video.status !== "completed"; i++) await runner.runNextStep(id);
+  job = rows.get(id)!;
+  assert.equal(job.steps.video.status, "completed");
+  assert.deepEqual(rpc.map(([, x]) => x.p_amount), [50], "only the failed clip's 50 credits come back");
+
+  await runner.runNextStep(id); // render submit
+  const clips = (edit()!.timeline as any).tracks.find((t: any) => t.clips?.length >= 12).clips;
+  const failedSlot = job.steps.video.slots.find((s: any) => s.fal?.requestId === c);
+  const atFailed = clips.find((x: any) => Math.abs(x.start - failedSlot.start) < 0.01);
+  assert.equal(atFailed.asset.type, "image", "the failed clip's own still fills its slot");
+  assert.equal(atFailed.asset.src, failedSlot.imageUrl);
+  assert.equal(clips.filter((x: any) => x.asset.type === "video").length, 2);
+  renderStatus.value = "done";
 });

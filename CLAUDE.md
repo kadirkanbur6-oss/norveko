@@ -236,8 +236,21 @@ karşılaştırması yapılır.
   `background:true`, poll `GET /interactions/{id}`, video base64 `steps[]`
   içinde; 720p $0.10/sn, 10 sn klip). fal `FAL_KEY` ✅ (31 Ekim); MiniMax H3
   fal uç noktaları `minimax/h3-max(-turbo)/image-to-video` (fal-ai/ öneki
-  YOK), `prompt_expansion_mode` zorunlu; testte hareket çok az kaldı. Video
-  modeli kararı bekleniyor (Omni önerildi).
+  YOK), `prompt_expansion_mode` zorunlu; testte hareket çok az kaldı.
+- **Klip türü seçeneği (31 Ekim, Kadir: "seçeneklerde olsun")**: tam videoda
+  `PipelineOptions.clipMode` = `"image"` (varsayılan) | `"text"`. **image →**
+  slot için önce Nano Banana 2.1 görseli, sonra **Seedance 1.5 Pro** (fal,
+  `lib/pipeline/fal-video.ts`, `FAL_VIDEO_MODEL`, sessiz 720p 5 sn ≈ $0.13)
+  görseli canlandırır; `IMAGE_CLIP_CREDITS = 50`/klip. **text →** Kling 3.0
+  (130/klip, eski akış). Plan `steps.video.plan.clipMode/clipCredits`'i
+  tutar; iade/tüketim bu sayıyı kullanır; eski planlar `text` sayılır.
+  Runner: image modunda klip slotları poll sırasında (görsel bütçesinden,
+  önce klipler) görsel → `submitImageToVideo` → `slot.fal` handle; klip başarısız
+  olursa `slot.imageUrl` render'da Ken Burns görsel olarak kullanılır ve klip
+  kredisi bir kez iade edilir (`slot.refunded`). Seedance testleri: 2.0 Mini en
+  detaylı ama $0.77/5 sn; 1.0 Pro Fast $0.11; 2.5 $2.37/5 sn. UI: `/chat`
+  footage kartlarının altında "How AI clips are made" (Image → video / Text →
+  video, klip başına kredi).
 
 ### ElevenLabs sesleri (önemli)
 - `lib/pipeline/elevenlabs.ts`: `listVoices()` (hesap sesleri, `languages`

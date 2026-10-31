@@ -35,6 +35,14 @@ export interface TimelineSlot {
   /** Source clip seconds (kling) — used to compute playback speed. */
   sourceSeconds?: number;
   error?: string;
+  /** Image→video clips: the scene still that gets animated (also the fallback visual). */
+  imageUrl?: string;
+  /** Image→video clips: fal queue handle while processing. */
+  fal?: { requestId: string; statusUrl: string; responseUrl: string };
+  /** When this clip was submitted (per-clip timeout). */
+  submittedAt?: string;
+  /** Clip credits already given back for this slot. */
+  refunded?: boolean;
 }
 
 export interface SceneInput {
@@ -137,6 +145,8 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
   const ready = slots.filter((s) => s.status === "succeed" && s.url);
   const visualFor = (slot: TimelineSlot): TimelineSlot | null => {
     if (slot.status === "succeed" && slot.url) return slot;
+    // A failed image→video clip still has its own scene still: use it.
+    if (slot.imageUrl) return { ...slot, kind: "still", status: "succeed", url: slot.imageUrl };
     let best: TimelineSlot | null = null;
     for (const r of ready) {
       if (!best || Math.abs(r.index - slot.index) < Math.abs(best.index - slot.index)) best = r;

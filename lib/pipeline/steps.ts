@@ -29,6 +29,15 @@ export interface StepDefinition {
 export type FootageMode = "hybrid" | "cinematic" | "stills";
 export const FOOTAGE_MODES: FootageMode[] = ["hybrid", "cinematic", "stills"];
 
+/**
+ * How AI clips are made (31 Oct 2026, chosen in the model lab):
+ *   "image" — the slot's scene still (Nano Banana 2.1) is animated by
+ *             Seedance 1.5 Pro on fal: clips match the stills, ~$0.16 a clip.
+ *   "text"  — Kling 3.0 text-to-video: free composition, ~$0.42 a clip.
+ */
+export type ClipMode = "image" | "text";
+export const CLIP_MODES: ClipMode[] = ["image", "text"];
+
 /** Options that decide which optional steps a job includes. */
 export interface PipelineOptions {
   /** Web research before the script (current events, real people, numbers). */
@@ -44,6 +53,8 @@ export interface PipelineOptions {
    */
   fullVideo?: boolean;
   footage?: FootageMode;
+  /** Image→video (Seedance) or text→video (Kling) for the AI clips. */
+  clipMode?: ClipMode;
   /** Duration label from lib/pipeline/options.ts (needed to size the plan). */
   duration?: string;
 }
@@ -62,6 +73,15 @@ export const SUBTITLES_CREDITS = 10;
 
 /** Credits per 5-second Kling 3.0 clip, 720p, no audio (3 units ≈ $0.42 list → ≈$1.43 revenue, 70% margin). */
 export const VIDEO_CLIP_CREDITS = 130;
+/**
+ * Credits per 5-second image→video clip: Nano Banana 2.1 still ($0.034) +
+ * Seedance 1.5 Pro silent 720p (~$0.13) ≈ $0.16 → ×300 for ≥70% margin.
+ */
+export const IMAGE_CLIP_CREDITS = 50;
+
+export function clipCredits(mode: ClipMode | undefined): number {
+  return mode === "text" ? VIDEO_CLIP_CREDITS : IMAGE_CLIP_CREDITS;
+}
 /** Legacy clips-only option: clips generated per job (one per scene, capped). */
 export const VIDEO_MAX_CLIPS = 5;
 /** Seconds per Kling clip requested from the provider. */
@@ -87,6 +107,9 @@ export interface FullVideoPlan {
   klingSlots: number;
   stillSlots: number;
   renderBlocks: number;
+  clipMode: ClipMode;
+  /** Credits per AI clip for this plan (refunds use the same number). */
+  clipCredits: number;
   credits: { kling: number; stills: number; render: number; total: number };
 }
 
@@ -94,14 +117,19 @@ export interface FullVideoPlan {
  * Size the visuals + render for a full video. Hybrid uses a Kling clip in
  * every 4th slot (3 of 12 for 60 s), cinematic in all, stills in none.
  */
-export function fullVideoPlan(duration: string | undefined, footage: FootageMode = "hybrid"): FullVideoPlan | null {
+export function fullVideoPlan(
+  duration: string | undefined,
+  footage: FootageMode = "hybrid",
+  clipMode: ClipMode = "image"
+): FullVideoPlan | null {
   const seconds = FULL_VIDEO_DURATIONS[duration ?? ""];
   if (!seconds) return null;
   const slots = Math.ceil(seconds / SLOT_SECONDS);
   const klingSlots = footage === "cinematic" ? slots : footage === "stills" ? 0 : Math.ceil(slots / 4);
   const stillSlots = slots - klingSlots;
   const renderBlocks = Math.ceil(seconds / 30);
-  const kling = klingSlots * VIDEO_CLIP_CREDITS;
+  const perClip = clipCredits(clipMode);
+  const kling = klingSlots * perClip;
   const stills = stillSlots * STILL_SCENE_CREDITS;
   const render = renderBlocks * RENDER_CREDITS_PER_30S;
   return {
@@ -110,6 +138,8 @@ export function fullVideoPlan(duration: string | undefined, footage: FootageMode
     klingSlots,
     stillSlots,
     renderBlocks,
+    clipMode,
+    clipCredits: perClip,
     credits: { kling, stills, render, total: kling + stills + render },
   };
 }
@@ -167,12 +197,13 @@ type Normalized = {
   video: boolean;
   fullVideo: boolean;
   footage: FootageMode;
+  clipMode: ClipMode;
   duration: string | undefined;
 };
 
 function normalize(opts: boolean | PipelineOptions | undefined): Normalized {
   if (typeof opts === "boolean") {
-    return { research: false, voiceover: opts, subtitles: false, video: false, fullVideo: false, footage: "hybrid", duration: undefined };
+    return { research: false, voiceover: opts, subtitles: false, video: false, fullVideo: false, footage: "hybrid", clipMode: "image", duration: undefined };
   }
   const fullVideo = Boolean(opts?.fullVideo) && Boolean(fullVideoPlan(opts?.duration, opts?.footage));
   // A full video always narrates and burns in subtitles.
@@ -184,6 +215,7 @@ function normalize(opts: boolean | PipelineOptions | undefined): Normalized {
     video: fullVideo || Boolean(opts?.video),
     fullVideo,
     footage: FOOTAGE_MODES.includes(opts?.footage as FootageMode) ? (opts!.footage as FootageMode) : "hybrid",
+    clipMode: CLIP_MODES.includes(opts?.clipMode as ClipMode) ? (opts!.clipMode as ClipMode) : "image",
     duration: opts?.duration,
   };
 }
@@ -201,11 +233,16 @@ export function addonCredits(opts: boolean | PipelineOptions = false): number {
 /** Itemised credits for the billing UI and the charge reason. */
 export function creditBreakdown(opts: boolean | PipelineOptions = false): Array<{ id: string; label: string; credits: number }> {
   const n = normalize(opts);
-  const plan = n.fullVideo ? fullVideoPlan(n.duration, n.footage) : null;
+  const plan = n.fullVideo ? fullVideoPlan(n.duration, n.footage, n.clipMode) : null;
   const items: Array<{ id: string; label: string; credits: number }> = [];
   for (const step of buildPipelineSteps(opts)) {
     if (step.id === "video" && plan) {
-      if (plan.klingSlots) items.push({ id: "kling", label: `AI video clips × ${plan.klingSlots}`, credits: plan.credits.kling });
+      if (plan.klingSlots)
+        items.push({
+          id: "kling",
+          label: `AI video clips × ${plan.klingSlots} (${plan.clipMode === "text" ? "text → video" : "image → video"})`,
+          credits: plan.credits.kling,
+        });
       if (plan.stillSlots) items.push({ id: "stills", label: `AI scenes × ${plan.stillSlots}`, credits: plan.credits.stills });
       continue;
     }
@@ -269,7 +306,7 @@ export function initialStepsState(
   const n = normalize(opts);
   if (n.subtitles && state.voiceover) state.voiceover.subtitles = true;
   if (n.fullVideo) {
-    const plan = fullVideoPlan(n.duration, n.footage)!;
+    const plan = fullVideoPlan(n.duration, n.footage, n.clipMode)!;
     state.video.plan = { ...plan, footage: n.footage, duration: n.duration };
     state.render.plan = { seconds: plan.seconds, renderBlocks: plan.renderBlocks };
   }
@@ -280,7 +317,7 @@ export function initialStepsState(
 export function optionsFromSteps(steps: Record<string, unknown> | null | undefined): PipelineOptions {
   const voiceover = steps?.voiceover as Record<string, unknown> | undefined;
   const video = steps?.video as Record<string, unknown> | undefined;
-  const plan = (video?.plan ?? null) as (FullVideoPlan & { footage?: FootageMode; duration?: string }) | null;
+  const plan = (video?.plan ?? null) as (Partial<FullVideoPlan> & { footage?: FootageMode; duration?: string }) | null;
   return {
     research: Boolean(steps?.research),
     voiceover: Boolean(voiceover),
@@ -288,6 +325,8 @@ export function optionsFromSteps(steps: Record<string, unknown> | null | undefin
     video: Boolean(video),
     fullVideo: Boolean(steps?.render) && Boolean(plan),
     footage: plan?.footage,
+    // Plans created before clip modes existed were Kling text→video.
+    clipMode: plan ? (plan.clipMode ?? "text") : undefined,
     duration: plan?.duration,
   };
 }

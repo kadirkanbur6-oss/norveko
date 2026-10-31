@@ -9,6 +9,8 @@ import { createClient } from "@supabase/supabase-js";
 import {
   buildPipelineSteps,
   FOOTAGE_MODES,
+  CLIP_MODES,
+  type ClipMode,
   fullVideoPlan,
   resolvePipelineOptions,
   totalPipelineCredits,
@@ -115,6 +117,7 @@ export async function POST(req: NextRequest) {
     const footage: FootageMode = FOOTAGE_MODES.includes(body.footage as FootageMode)
       ? (body.footage as FootageMode)
       : "hybrid";
+    const clipMode: ClipMode = CLIP_MODES.includes(body.clipMode as ClipMode) ? (body.clipMode as ClipMode) : "image";
     const videoRequested = !fullVideoRequested && body.includeVideo === true;
     const subtitlesRequested = voiceoverEnabled && body.includeSubtitles === true;
 
@@ -145,6 +148,7 @@ export async function POST(req: NextRequest) {
       video: videoRequested,
       fullVideo: fullVideoRequested,
       footage,
+      clipMode,
       duration,
     };
     const resolved = resolvePipelineOptions(options);
@@ -256,7 +260,7 @@ export async function POST(req: NextRequest) {
       {
         p_user_id: user.id,
         p_amount: cost,
-        p_reason: `AI pipeline generation (${resolved.research ? "research + " : ""}content package + thumbnail${resolved.voiceover ? " + voiceover" : ""}${resolved.subtitles ? " + subtitles" : ""}${resolved.fullVideo ? ` + full video (${footage})` : ""}${videoRequested ? " + video clips" : ""})`,
+        p_reason: `AI pipeline generation (${resolved.research ? "research + " : ""}content package + thumbnail${resolved.voiceover ? " + voiceover" : ""}${resolved.subtitles ? " + subtitles" : ""}${resolved.fullVideo ? ` + full video (${footage}${footage === "stills" ? "" : `, ${clipMode === "text" ? "text→video" : "image→video"}`})` : ""}${videoRequested ? " + video clips" : ""})`,
       }
     );
 
@@ -291,7 +295,7 @@ export async function POST(req: NextRequest) {
         style,
         duration,
         output_language: outputLanguage,
-        options: { orientation, template, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined },
+        options: { orientation, template, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined, clipMode: resolved.fullVideo ? clipMode : undefined },
         status: "running",
         current_step: firstStep.id,
         steps,
