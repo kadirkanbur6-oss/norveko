@@ -54,8 +54,8 @@ const CANDIDATES: Candidate[] = [
   // Video
   { key: "vid-kling", kind: "video", label: "Kling 3.0 (text→video)", provider: "kling", model: "kling-3.0", cost: "$0.42–0.50", current: true },
   { key: "vid-omni", kind: "video", label: "Gemini Omni 1.1 Flash (image→video)", provider: "omni", model: "gemini-omni-1.1-flash", cost: "?", fromImage: true },
-  { key: "vid-h3-turbo", kind: "video", label: "MiniMax H3 Max Turbo (fal)", provider: "fal", model: "fal-ai/minimax/h3-max-turbo/image-to-video", cost: "$0.20", fromImage: true },
-  { key: "vid-h3", kind: "video", label: "MiniMax H3 Max (fal)", provider: "fal", model: "fal-ai/minimax/h3-max/image-to-video", cost: "$0.40", fromImage: true },
+  { key: "vid-h3-turbo", kind: "video", label: "MiniMax H3 Max Turbo (fal)", provider: "fal", model: "minimax/h3-max-turbo/image-to-video", cost: "$0.20", fromImage: true },
+  { key: "vid-h3", kind: "video", label: "MiniMax H3 Max (fal)", provider: "fal", model: "minimax/h3-max/image-to-video", cost: "$0.40", fromImage: true },
 ];
 
 const DEFAULT_IMAGE_PROMPT =
@@ -124,7 +124,8 @@ export default function LabPage() {
       for (let i = 0; i < 90; i++) {
         await new Promise((r) => setTimeout(r, 10_000));
         const p = await call({ action: "poll", handle: sub.handle, name: c.key });
-        if (p.done) {
+        // A failed poll (provider error) is terminal too — don't keep waiting.
+        if (p.done || p.success === false) {
           set(c.key, p.success ? { status: "done", url: p.url, ms: Date.now() - started } : { status: "error", error: p.error, ms: Date.now() - started });
           return;
         }

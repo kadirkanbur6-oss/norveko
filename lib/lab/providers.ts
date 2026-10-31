@@ -222,10 +222,16 @@ export async function labVideoSubmit(
     if (!data?.name) throw new Error(`${model}: no operation name`);
     return { provider, id: data.name };
   }
+  // MiniMax H3 on fal: canvas follows the first-frame image, duration is a
+  // number and prompt_expansion_mode is required. Other fal video models take
+  // the common aspect_ratio / string duration shape.
+  const body = model.startsWith("minimax/")
+    ? { prompt, ...(imageUrl ? { image_url: imageUrl } : {}), duration: 5, resolution: "768P", prompt_expansion_mode: "disabled" }
+    : { prompt, ...(imageUrl ? { image_url: imageUrl } : {}), aspect_ratio: "9:16", duration: "5" };
   const res = await fetch(`https://queue.fal.run/${model}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Key ${need("FAL_KEY")}` },
-    body: JSON.stringify({ prompt, ...(imageUrl ? { image_url: imageUrl } : {}), aspect_ratio: "9:16", duration: "5" }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) await failText(res, model);
   const data = await res.json();
