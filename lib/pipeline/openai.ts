@@ -70,7 +70,10 @@ Rules:
 - return 5-8 scenes suitable for the target duration; scene 1 is the hook moment.
 - "tags" should be concise SEO tags without # symbols.
 - Match the tone to the platform and style.
-- SCRIPT CRAFT (retention structure for Shorts): (1) HOOK 0–3 s: the hook sentence. (2) PROMISE 3–6 s: one sentence that opens a curiosity loop and says what the viewer will get ("Ve cevap, 4.500 yıllık bir limanda saklı."). (3) CONTEXT: at most 2 sentences. (4) PAYOFF: 2–3 concrete beats (names, numbers, dates, places, mechanisms — never "many experts believe" / "throughout history"), each beat a new image; halfway through insert ONE re-hook that opens a second loop ("Ama asıl ilginç olanı şu:" / "But that's not the strangest part."). (5) CLOSE every loop you opened — never leave the promised answer unanswered — then one final line that lands an emotion or a question for the comments. Rhythm: vary sentence length sharply (3-word punch, then 12–16 words, then short again); no sentence over 18 words; no nested clauses; present tense; no filler transitions ("so basically", "as you can see", "now moving on"), no greetings, no "in this video", no restating. Every sentence must add new information or new tension.
+- STORY FIRST: the script tells ONE story as a single connected thread — chronological or cause → effect. Each sentence must follow logically from the one before it; a listener who hears only the audio must always know who and what is being talked about. Never a list of disconnected claims.
+- SCRIPT CRAFT (retention structure for Shorts, written in your own words — do not copy stock phrases): (1) HOOK 0–3 s: the hook sentence. (2) PROMISE: one sentence that opens a curiosity loop about THIS story. (3) CONTEXT: at most 2 sentences — who, where, when. (4) PAYOFF: 2–3 concrete beats (names, dates, places, what actually happened), each a new image; optionally one mid-point re-hook if the story genuinely has a second twist. (5) CLOSE every loop you opened, then one final line that lands an emotion or a question for the comments. Rhythm: vary sentence length (short punch, then 12–16 words, then short again); no sentence over 18 words; no nested clauses; no filler transitions, no greetings, no "in this video", no restating.
+- CONSISTENCY: the hook, body and ending must agree. Do not state something as certain in the hook and then call it doubtful later; if the story is a legend or disputed, the hook frames it that way too.
+- NO FILLER, NO META: never write sentences about the video, the footage, archive photos, "documents", "sources" or "the clipping" themselves (e.g. "archive photos show the streets", "the documents are partly contradictory") unless a specific document IS the story. Never repeat a fact in new words to gain length. If facts are thin, reach the length with true, vivid context (the place, the era, the people's situation) — never with invented details or empty sentences.
 - WRITE FOR THE VOICE: this text is read by a TTS narrator. Use commas and full stops to create natural breaths, an ellipsis "…" for a dramatic pause before a reveal, and spell numbers the way they are spoken in the output language when ambiguous. Proofread spelling and diacritics carefully (for Turkish: ç ğ ı İ ö ş ü, apostrophes in proper-noun suffixes like "Keops'un"); a single typo is burned into the subtitles.
 - VISUAL PROMPT rules — each videoPrompt is a complete shot description for a photoreal AI video/image model, 35–60 words, in this order: (1) shot type and lens (e.g. "extreme close-up, 85mm" / "wide aerial establishing shot"), (2) the single clear subject and what it is doing, (3) environment and era-accurate details, (4) lighting and time of day, (5) colour palette/mood, (6) one slow steady camera move. Every scene must show a DIFFERENT subject or location — never two scenes of the same thing; alternate wide and close shots; keep one consistent palette across the video. Prefer physical, filmable things (objects, places, hands, textures, weather, crowds from behind) over abstract concepts. No text, signs, maps with labels, diagrams, or UI in any shot.
 - STRICT LENGTH: the hook + script together are read aloud at ~${wordsPerSecond(languageCode(outputLanguage))} words per second in ${languagePromptName(outputLanguage)}. For the target duration they MUST total between ${range.min} and ${range.max} words (aim for ${range.target}). Count the words before answering; do not go under or over.
@@ -176,23 +179,34 @@ Target duration: ${duration ?? "60 seconds"}`;
     .filter((tag) => tag.length > 0)
     .slice(0, 12);
 
-  // Length guard: if the narration misses the range, ask for one rewrite of
-  // hook + script only (scenes etc. stay), then accept whatever comes back.
   let hook = String(parsed.hook);
   let script = String(parsed.script);
   let usageTotal = usage;
+  const addUsage = (u?: { inputTokens: number; outputTokens: number }) => {
+    if (!u) return;
+    usageTotal = usageTotal
+      ? { inputTokens: usageTotal.inputTokens + u.inputTokens, outputTokens: usageTotal.outputTokens + u.outputTokens }
+      : u;
+  };
+
+  // Editor pass (31 Oct): a second read that fixes incoherent, contradictory,
+  // padded or invented sentences. Skipped silently if it fails.
+  const edited = await editNarration({ hook, script, idea, research, range, outputLanguage, model }).catch(() => null);
+  if (edited) {
+    hook = edited.hook;
+    script = edited.script;
+    addUsage(edited.usage);
+  }
+
+  // Length guard: if the narration misses the range, ask for one rewrite of
+  // hook + script only (scenes etc. stay), then accept whatever comes back.
   const count = narrationWordCount(hook, script);
   if (count < range.min || count > range.max) {
     const fixed = await reviseNarrationLength({ hook, script, range, outputLanguage, model, count });
     if (fixed) {
       hook = fixed.hook;
       script = fixed.script;
-      if (fixed.usage && usageTotal) {
-        usageTotal = {
-          inputTokens: usageTotal.inputTokens + fixed.usage.inputTokens,
-          outputTokens: usageTotal.outputTokens + fixed.usage.outputTokens,
-        };
-      }
+      addUsage(fixed.usage);
     }
   }
 
@@ -209,6 +223,64 @@ Target duration: ${duration ?? "60 seconds"}`;
   };
 }
 
+/**
+ * Editor pass: re-reads hook + script like a story editor and fixes
+ * incoherent, contradictory, padded, meta or invented sentences, keeping the
+ * same length range. Returns null if the call fails (caller keeps the draft).
+ */
+async function editNarration(args: {
+  hook: string;
+  script: string;
+  idea: string;
+  research?: string | null;
+  range: { min: number; target: number; max: number; seconds: number };
+  outputLanguage: string;
+  model: string;
+}): Promise<{ hook: string; script: string; usage?: { inputTokens: number; outputTokens: number } } | null> {
+  const { hook, script, idea, research, range, outputLanguage, model } = args;
+  const language = languagePromptName(outputLanguage);
+  const facts = research
+    ? `VERIFIED RESEARCH (the only allowed source for real-world facts):\n${research}`
+    : "NO VERIFIED RESEARCH: remove or hedge ('anlatılana göre' / 'according to reports') any specific claim about real people or events that is not widely documented; never add new specifics.";
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+    body: JSON.stringify({
+      model,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: `You are the story editor of a documentary Shorts channel and a native ${language} speaker. You receive a voice-over draft. Read it sentence by sentence as a listener who only hears the audio, and rewrite it so that:
+1. It is ONE connected story: every sentence follows logically from the previous one; it is always clear who/what is meant; no jumps, no disconnected statements.
+2. Nothing contradicts anything else (the hook must agree with the ending; a claim stated as fact is not doubted later, and vice versa).
+3. There are no filler or meta sentences (about the video, footage, archive photos, documents, sources, "the clipping") and no repetitions of the same point.
+4. No fact is invented. ${research ? "Every real-world claim must be supported by the research below; remove or correct anything that is not." : "Unverifiable specifics are removed or clearly hedged."}
+5. It sounds natural and fluent in ${language}, with correct grammar, spelling and diacritics — like a professional narrator wrote it, not a translation.
+Keep the strongest hook possible (one sentence, 4–8 words, consistent with the rest), keep the script starting with the hook sentence verbatim, and keep hook + script together between ${range.min} and ${range.max} words (aim for ${range.target}). Respond ONLY with JSON {"hook": "...", "script": "..."} in ${language}.`,
+        },
+        {
+          role: "user",
+          content: `Video idea: ${idea}\n\n${facts}\n\nHOOK:\n${hook}\n\nSCRIPT:\n${script}`,
+        },
+      ],
+    }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  try {
+    const out = JSON.parse(data?.choices?.[0]?.message?.content ?? "");
+    if (typeof out?.hook !== "string" || typeof out?.script !== "string" || !out.hook.trim() || !out.script.trim()) return null;
+    const usage = data?.usage
+      ? { inputTokens: Number(data.usage.prompt_tokens ?? 0), outputTokens: Number(data.usage.completion_tokens ?? 0) }
+      : undefined;
+    return { hook: out.hook.trim(), script: out.script.trim(), usage };
+  } catch {
+    return null;
+  }
+}
+
 export async function reviseNarrationLength(args: {
   hook: string;
   script: string;
@@ -218,7 +290,10 @@ export async function reviseNarrationLength(args: {
   count: number;
 }): Promise<{ hook: string; script: string; usage?: { inputTokens: number; outputTokens: number } } | null> {
   const { hook, script, range, outputLanguage, model, count } = args;
-  const direction = count < range.min ? "too short — expand it with concrete details" : "too long — tighten it";
+  const direction =
+    count < range.min
+      ? "too short — expand it by developing the existing story (more vivid context about the same people, place and moment); never invent new facts, names, numbers or quotes, and never add filler or sentences about the video/sources"
+      : "too long — tighten it, cutting the weakest sentences first";
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },

@@ -56,7 +56,7 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   timeout + `reasoning.effort=low` + `search_context_size=low`; hata/timeout
   olursa runner `skipResearch()` ile adımı `skipped` yapar, 5 krediyi iade
   eder (`steps.research.refunded`) ve senaryo araştırmasız devam eder.
-  Worker ölürse (`/api/pipeline/run` `maxDuration` 120 sn) `reconcileJob` 2 dk
+  Worker ölürse (`/api/pipeline/run` `maxDuration` 300 sn) `reconcileJob` 2 dk
   sonra research'ü skip edip işi devam ettirir (`RESEARCH_STEP_TIMEOUT_MS`);
   diğer senkron adımlar için 8 dk timeout → failJob. UI sarı "skipped" rozeti
   + açıklama gösterir. (29 Ekim'de piramit testi research'te 60 sn'lik
@@ -65,7 +65,7 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   metin yazamadan bitiyordu → "Research returned no text"). Araştırma yoksa
   senaryo prompt'u gerçek kişi/olay için yalnızca yaygın belgelenmiş bilgiyi
   kullanmayı, meslek/ölüm nedeni/yer/alıntı uydurmamayı ve efsane/gazete
-  iddiasını "anlatılana göre" diye belirtmeyi zorunlu kılar. Senaryo
+  iddiasını "anlatılana göre" diye belirtmeyi zorunlu kılar. **31 Ekim (saçma cümleler):** prompt artık tek bağlantılı hikâye, hook–son tutarlılığı, dolgu/meta cümle yasağı ("arşiv fotoğrafları gösterir" vb.) ister; kalıp Türkçe örnek ifadeler kaldırıldı; taslaktan sonra `editNarration()` editör geçişi (tutarlılık/uydurma/akıcılık, aynı kelime aralığı) çalışır; `reviseNarrationLength` uzatırken yeni bilgi uydurmaz. `/api/pipeline/run` `maxDuration` 300 sn. Senaryo
   prompt'unda ayrıca gerçek kişi/marka kuralı: videoPrompt'lar yüz, arma,
   forma ismi, skor tabelası, okunur yazı istemez (AI görseller bunları
   uyduruyor).
