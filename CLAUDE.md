@@ -229,7 +229,8 @@ Business 5000/$59.
   `/api/brand` (GET/PUT renk-outro-logo yerleri, POST multipart logo → sharp PNG ≤512 px `videos/brand/<user>/logo-<uuid>.png`,
   DELETE `?part=logo`). Ayarlar `BrandKitCard` (logo, 8 renk + özel, end card ≤60 kr, canlı önizleme). Start route ve seri
   bölümü kiti `options.brand` snapshot'ı olarak işe kopyalar (`brandSnapshot`/`readSnapshot`; `/chat` "Apply my brand kit",
-  `useBrandKit`). `buildEdit({brand})`: logo sol üst (`fit contain`, scale 0.17/0.12), hook kartı arka planı marka rengi
+  `useBrandKit`). ✅ 31 Ekim canlı test (Dancing Plague, Norveko logosu + #7C3AED + "Follow for more mysteries"): thumbnail
+  logosu, video logosu, mor hook kartı/altyazı vurgusu ve end card render'da doğru. `buildEdit({brand})`: logo sol üst (`fit contain`, scale 0.17/0.12), hook kartı arka planı marka rengi
   (yazı `contrastText`), altyazı vurgu rengi marka rengi, son 2,5 sn end card. Thumbnail: `brandStoredThumbnail` logo sol üst
   (filigrandan ÖNCE → temiz kopyada da logo var). Hesap silmede tablo + logolar silinir.
 - **TikTok inceleme uyumu (31 Ekim akşam)**: `TikTokPublish` ticari içerik bildirimi (Your brand/Branded content, etiket metni,
