@@ -87,6 +87,7 @@ export const FREE_TRIAL_RULES = [
   `${FREE_TRIAL_CREDITS} free credits on signup — no card needed`,
   ...(TRIAL_VIDEO_PUBLIC ? ["One finished 30-second video, free — once per account"] : []),
   "Every feature unlocked so you can judge the quality",
+  "One free trial per person — temporary emails aren't eligible",
   "Thumbnails and videos carry a small Norveko watermark",
   "Buy any pack and the watermark disappears — also from what you already made",
 ];

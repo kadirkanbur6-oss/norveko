@@ -1,7 +1,7 @@
 // app/api/features/route.ts
 // Tells the UI which optional features are available to the current user.
 
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { requireUser } from "@/lib/supabase-server";
 import {
   isFullVideoEnabled,
@@ -12,7 +12,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const { user } = await requireUser();
   // One free 30 s video for accounts that haven't bought a pack (full-video access required).
   let trialVideo = false;
@@ -22,7 +22,8 @@ export async function GET() {
     const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
       auth: { persistSession: false },
     });
-    trialVideo = await trialVideoAvailable(admin, user.id);
+    const { clientIp } = await import("@/lib/pipeline/abuse");
+    trialVideo = await trialVideoAvailable(admin, user.id, { email: user.email, ip: clientIp(req.headers) });
   }
 
   return NextResponse.json({

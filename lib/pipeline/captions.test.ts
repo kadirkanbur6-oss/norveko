@@ -297,3 +297,34 @@ test("free-trial video: 30 s hybrid image→video costs 0 and records 0 everywhe
   assert.equal(s.optionsFromSteps(steps).trialVideo, true);
   assert.equal(s.totalPipelineCredits({ ...opts, fullVideo: false, trialVideo: true }) > 0, true, "trial flag means nothing without a full video");
 });
+
+// --- Free-tier abuse protection (lib/pipeline/abuse.ts) ---
+import { isDisposableEmail, normalizeEmail, abuseHash, clientIp, freeJobMarkers } from "./abuse";
+
+test("abuse: throwaway inboxes are detected, real providers are not", () => {
+  assert.equal(isDisposableEmail("x@mailinator.com"), true);
+  assert.equal(isDisposableEmail("x@sub.mailinator.com"), true);
+  assert.equal(isDisposableEmail("X@MAILINATOR.COM"), true);
+  for (const ok of ["a@gmail.com", "a@outlook.com", "a@icloud.com", "a@yahoo.com", "a@hotmail.com", "a@proton.me", "a@norveko.app", "a@company.com.tr"]) {
+    assert.equal(isDisposableEmail(ok), false, ok);
+  }
+  assert.equal(isDisposableEmail(""), false);
+  assert.equal(isDisposableEmail(null), false);
+});
+
+test("abuse: e-mail aliases normalise to one person", () => {
+  assert.equal(normalizeEmail("Ka.Dir+test1@Gmail.com"), "kadir@gmail.com");
+  assert.equal(normalizeEmail("kadir@googlemail.com"), "kadir@gmail.com");
+  assert.equal(normalizeEmail("ka.dir+x@outlook.com"), "ka.dir@outlook.com");
+  assert.equal(abuseHash("email", normalizeEmail("k.a+1@gmail.com")), abuseHash("email", normalizeEmail("ka@gmail.com")));
+  assert.notEqual(abuseHash("ip", "1.2.3.4"), abuseHash("email", "1.2.3.4"));
+});
+
+test("abuse: client IP comes from the first forwarded hop and is stored hashed", () => {
+  assert.equal(clientIp(new Headers({ "x-forwarded-for": "5.6.7.8, 10.0.0.1" })), "5.6.7.8");
+  assert.equal(clientIp(new Headers()), null);
+  const m = freeJobMarkers({ email: "a@gmail.com", ip: "5.6.7.8" });
+  assert.equal(m.freeIp?.length, 32);
+  assert.ok(!JSON.stringify(m).includes("5.6.7.8"));
+  assert.ok(!JSON.stringify(m).includes("gmail"));
+});

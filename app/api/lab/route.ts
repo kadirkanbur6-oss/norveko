@@ -148,7 +148,8 @@ export async function POST(req: Request) {
         const language = String(body.language ?? "English");
         const style = String(body.style ?? "Documentary");
         const duration = String(body.duration ?? "60 seconds");
-        const model = String(body.model ?? "gpt-5-mini");
+        const { SCRIPT_MODEL } = await import("@/lib/pipeline/llm");
+        const model = String(body.model ?? SCRIPT_MODEL);
         let research: string | null = typeof body.research === "string" && body.research.trim() ? body.research : null;
         if (!research && body.withResearch === true) {
           research = (await labResearch(idea, language, typeof body.cacheId === "string" ? body.cacheId : undefined)).brief;

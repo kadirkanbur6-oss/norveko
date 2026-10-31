@@ -1,7 +1,7 @@
 # CLAUDE.md — Norveko Project Context
 
 > Bu dosya, yeni bir Claude oturumu başladığında proje bağlamını geri yüklemek içindir.
-> Her büyük milestone sonrası güncellenmelidir. Son güncelleme: 2026-10-25 (gece)
+> Her büyük milestone sonrası güncellenmelidir. Son güncelleme: 2026-10-31
 
 ## 1. Proje Nedir?
 
@@ -152,6 +152,7 @@ Business 5000/$59.
   free video" kutusu + "Free — trial video" toplamı. Maliyet ~$0.80/hesap. Landing/
   billing metni yalnız `NEXT_PUBLIC_FULL_VIDEO_ENABLED=true` iken gösterilir (lansmanda
   `FULL_VIDEO_ENABLED` ile birlikte aç).
+- **Ücretsiz katman suistimal koruması (31 Ekim)**: `lib/pipeline/abuse.ts`, sadece paket almamış hesaplara uygulanır (`isFreeAccount` trial.ts), kontrol `/api/pipeline/start`'ta kredi düşmeden önce yapılır (kayıt tarayıcıdan doğrudan Supabase'e gittiği için orada engel atlatılabilir). (1) Geçici e-posta (`disposable-email-domains` ~120k alan + wildcard) → üretim yok, 403 `free_tier_blocked`. (2) Aynı IP'den 7 günde en çok 3 farklı ücretsiz hesap (`FREE_ACCOUNTS_PER_IP`). (3) Deneme videosu kişi başına bir: normalize e-posta (+etiket, Gmail noktaları) bir kez, IP 30 günde bir. IP/e-posta ham saklanmaz: tuzlu SHA-256 (`PIPELINE_WORKER_SECRET`) `pipeline_jobs.options.freeIp/freeEmail`. Arama hatasında genel kullanım açık kalır (fail open), deneme videosu kapalı kalır (fail closed). Kayıt formu `/api/signup-check` ile geçici e-postayı önceden uyarır.
 - Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
 - Bitince sonuç `projects.content` JSONB'ye yazılır; başlık = AI'nin ilk title'ı.
 

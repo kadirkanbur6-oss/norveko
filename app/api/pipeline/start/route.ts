@@ -259,10 +259,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4) Free-trial video: one 30 s video per account before any purchase.
-    if (resolved.fullVideo && isTrialVideoShape(options)) {
-      const { trialVideoAvailable } = await import("@/lib/pipeline/trial");
-      if (await trialVideoAvailable(supabaseAdmin, user.id)) options.trialVideo = true;
+    // 4) Free accounts (no pack bought yet): abuse checks before any free
+    //    credit or the free trial video is spent (lib/pipeline/abuse.ts).
+    const { isFreeAccount, trialVideoAvailable } = await import("@/lib/pipeline/trial");
+    const freeAccount = await isFreeAccount(supabaseAdmin, user.id);
+    let freeMarkers: { freeIp?: string; freeEmail?: string } = {};
+    if (freeAccount) {
+      const { clientIp, freeJobMarkers, freeUsageBlock } = await import("@/lib/pipeline/abuse");
+      const abuseCtx = { email: user.email, ip: clientIp(req.headers) };
+      const blocked = await freeUsageBlock(supabaseAdmin, user.id, abuseCtx);
+      if (blocked) {
+        return NextResponse.json({ success: false, error: blocked, code: "free_tier_blocked" }, { status: 403 });
+      }
+      freeMarkers = freeJobMarkers(abuseCtx);
+      // Free-trial video: one 30 s video per person before any purchase.
+      if (resolved.fullVideo && isTrialVideoShape(options) && (await trialVideoAvailable(supabaseAdmin, user.id, abuseCtx))) {
+        options.trialVideo = true;
+      }
     }
 
     // Charge credits (nothing for the free-trial video)
@@ -309,7 +322,7 @@ export async function POST(req: NextRequest) {
         style,
         duration,
         output_language: outputLanguage,
-        options: { orientation, template, notes, trialVideo: options.trialVideo === true || undefined, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined, clipMode: resolved.fullVideo ? clipMode : undefined },
+        options: { orientation, template, notes, ...freeMarkers, trialVideo: options.trialVideo === true || undefined, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined, clipMode: resolved.fullVideo ? clipMode : undefined },
         status: "running",
         current_step: firstStep.id,
         steps,

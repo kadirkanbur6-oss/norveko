@@ -55,11 +55,11 @@ interface PastRun {
   costUsd?: number;
 }
 
+// gpt-5-mini retires 11 Dec 2026 and was dropped from the defaults (the model id stays editable).
 const WRITERS = [
-  { key: "w1", label: "GPT-5 mini · $0.25/$2", model: "gpt-5-mini" },
-  { key: "w2", label: "GPT-6.1 Terra · $1/$5", model: "gpt-6.1-terra", current: true },
-  { key: "w3", label: "GPT-6.1 Sol · $2/$10", model: "gpt-6.1-sol" },
-  { key: "w4", label: "Gemini 3.8 Flash · $0.75/$3.75", model: "gemini:gemini-3.8-flash" },
+  { key: "w1", label: "GPT-6.1 Terra · $1/$5", model: "gpt-6.1-terra", current: true },
+  { key: "w2", label: "GPT-6.1 Sol · $2/$10", model: "gpt-6.1-sol" },
+  { key: "w3", label: "Gemini 3.8 Flash · $0.75/$3.75", model: "gemini:gemini-3.8-flash" },
 ];
 
 async function lab<T = ScriptRun>(body: Record<string, unknown>): Promise<T> {
@@ -171,7 +171,7 @@ export default function ScriptLab() {
   // Eval
   const [topics, setTopics] = useState<Topic[]>([]);
   const [meta, setMeta] = useState<{ judge?: string; current?: string; promptVersion?: string }>({});
-  const [evalModel, setEvalModel] = useState("gpt-5-mini");
+  const [evalModel, setEvalModel] = useState("gpt-6.1-terra");
   const [evalRows, setEvalRows] = useState<Record<string, ScriptRun | "running">>({});
   const [evalBusy, setEvalBusy] = useState(false);
   const [past, setPast] = useState<PastRun[]>([]);
@@ -334,7 +334,7 @@ export default function ScriptLab() {
         </details>
       )}
 
-      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {WRITERS.map((w) => {
           const r = runs[w.key];
           return (

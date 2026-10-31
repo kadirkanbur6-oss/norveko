@@ -25,6 +25,20 @@ function SignupContent() {
     setSuccessMessage("");
     setIsLoading(true);
 
+    // Throwaway inboxes get no free credits — say so before creating the account.
+    const check = await fetch("/api/signup-check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    })
+      .then((r) => r.json())
+      .catch(() => ({ ok: true }));
+    if (check && check.ok === false) {
+      setIsLoading(false);
+      setErrorMessage(String(check.error));
+      return;
+    }
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
