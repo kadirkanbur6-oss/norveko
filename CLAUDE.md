@@ -169,6 +169,7 @@ Business 5000/$59.
   videolar YouTube'da private'a kilitlenir (UI `privacyApplied=false` uyarısı) → canlıda herkese açık
   yükleme için Google OAuth doğrulaması + YouTube API denetimi gerekir. Testing modundaki OAuth
   uygulamasında refresh token 7 günde düşer. Yükleme kotası ~100 birim (Aralık 2025'ten beri), ayrı havuz.
+  **Kurulum ✅ 31 Ekim:** Google "Norveko Web" istemcisi (yönlendirme `/api/youtube/callback`, yeni secret), Data access'e iki kapsam + gerekçe, uygulama "In production" (doğrulanmamış: 100 kullanıcı sınırı + uyarı ekranı), Vercel `GOOGLE_OAUTH_CLIENT_ID/SECRET`, Supabase tablo. Canlı test: "Kara Delikler" private yüklendi (`REFtvoBF2FI`, thumbnail da set edildi). Google izin ekranı kutuları ayrı ayrı gösterir; "YouTube videolarınızı yönetin" işaretlenmezse bağlantı reddedilir (`missing_permission`).
 - Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
 - Bitince sonuç `projects.content` JSONB'ye yazılır; başlık = AI'nin ilk title'ı.
 
