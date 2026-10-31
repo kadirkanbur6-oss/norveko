@@ -33,6 +33,21 @@ Son güncelleme: 31 Ekim 2026.
 - [ ] **Terms / Privacy URL:** `https://norveko.app/terms`, `https://norveko.app/privacy`
 - [ ] **Category:** Productivity / Content creation
 
+### 1.1b Durum (31 Ekim akşam) — SONRA YAPILACAK
+- ✅ App icon yüklendi (Kadir). URL prefix `https://norveko.app/` Production'da doğrulanmış.
+- ⏳ **Demo video henüz çekilmedi.** TikTok, demo video yüklenmeden Production formunu KAYDETMİYOR; bu yüzden
+  aşağıdaki alanlar video yüklenirken aynı oturumda yeniden girilmeli (Claude doldurur):
+  - Category: **Photo & Video**
+  - Description: `AI video studio: turn one idea into a finished short video and post it to your own TikTok account.`
+  - Terms: `https://norveko.app/terms` · Privacy: `https://norveko.app/privacy`
+  - Platforms: **Web** → Web/Desktop URL `https://norveko.app/` (sondaki `/` şart, doğrulanmış önekle aynı olmalı)
+  - App review açıklaması: aşağıdaki 1.3 "video.publish" + "user.info.basic" metinlerinin birleşimi (≤1000 kr)
+  - Products: **Login Kit** (Redirect URI `https://norveko.app/api/tiktok/callback`) + **Content Posting API**
+    (**Direct Post** açık; Verify domains = zaten doğrulanmış önek)
+  - Scopes: `user.info.basic`, `video.publish` (`video.upload` otomatik geliyor, silinemiyor)
+- Çekim öncesi: Redkalien TikTok hesabını **gizliye** al (Sandbox yalnız gizli hesaba paylaşır), çekimden sonra
+  tekrar herkese açık yap.
+
 ### 1.2 Demo video çekim senaryosu (Sandbox anahtarlarıyla, ~2 dk)
 TikTok, yetkilendirme adımı olmayan veya "tek tıkla paylaş" gösteren demoları reddediyor.
 Ekranda İngilizce kısa açıklamalar (veya sesli anlatım) olsun.

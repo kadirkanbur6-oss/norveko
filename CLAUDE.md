@@ -464,7 +464,10 @@ Business 5000/$59.
 
 ## 7. Bekleyen İşler (öncelik sırasıyla)
 
-Kod dışı (Kadir): **tam video betası için Vercel env**: `SHOTSTACK_API_KEY`
+Kod dışı (Kadir): **TikTok demo videosu (SONRA)** — Production formu demo video olmadan kaydedilmiyor; video çekilince
+Claude formu yeniden doldurur (değerler `docs/app-reviews.md` 1.1b), Kadir yükleyip Submit for review. Sonra Google
+doğrulaması (Branding → Data access), YouTube API audit formu, Paddle live, Vercel/Supabase Pro (rehber aynı dosyada).
+**tam video betası için Vercel env**: `SHOTSTACK_API_KEY`
 + `SHOTSTACK_ENV=stage` (test; `v1` = filigransız prod, PAYG $10),
 ~~`KLING_API_KEY`~~ ✅ 28 Ekim: Vercel'de (`norveko-prod`, deneme paketi 100
 unit/30 gün). **Kling yeni platform API'si** (`lib/pipeline/kling.ts`): `POST
