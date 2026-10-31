@@ -71,6 +71,22 @@ export async function POST(req: Request) {
         if (r.error || !r.media) return NextResponse.json({ success: false, done: true, error: r.error ?? "failed" });
         return NextResponse.json({ success: true, done: true, url: await store(run, name, r.media), bytes: r.media.buffer.length });
       }
+      case "align": {
+        // Debug: run ElevenLabs forced alignment on a stored narration.
+        const audioUrl = String(body.audioUrl ?? "");
+        const audioRes = await fetch(audioUrl);
+        if (!audioRes.ok) throw new Error(`audio fetch HTTP ${audioRes.status}`);
+        const buf = Buffer.from(await audioRes.arrayBuffer());
+        const { forceAlign } = await import("@/lib/pipeline/elevenlabs");
+        const a = await forceAlign(buf, String(body.text ?? ""), audioRes.headers.get("content-type") ?? "audio/wav");
+        return NextResponse.json({
+          success: true,
+          ms: Date.now() - started,
+          bytes: buf.length,
+          chars: a?.characters.length ?? 0,
+          last: a ? a.character_end_times_seconds[a.character_end_times_seconds.length - 1] : null,
+        });
+      }
       case "models":
         return NextResponse.json({ success: true, models: await listGoogleModels() });
       default:
