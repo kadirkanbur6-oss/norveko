@@ -272,7 +272,11 @@ export default function YouTubePublish({
             </label>
           </fieldset>
           <p className="text-xs text-gray-500">
-            Norveko marks the upload as AI-generated content, as YouTube requires for realistic AI visuals and voices.
+            Norveko marks the upload as AI-generated content, as YouTube requires for realistic AI visuals and voices. By uploading, you agree to the{" "}
+            <a href="https://www.youtube.com/t/terms" target="_blank" rel="noreferrer" className="text-red-300 underline">
+              YouTube Terms of Service
+            </a>
+            .
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <button

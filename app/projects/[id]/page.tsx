@@ -693,6 +693,8 @@ export default function ProjectDetailPage() {
                       normalizedProjectContent.tags.slice(0, 5).map((t) => `#${t.replace(/[^\p{L}\p{N}_]/gu, "")}`).filter((t) => t.length > 1).join(" "),
                     ].filter(Boolean).join("\n\n")}
                     initial={(project.content as { tiktok?: Parameters<typeof TikTokPublish>[0]["initial"] } | null)?.tiktok ?? null}
+                    videoUrl={normalizedProjectContent.finalVideoUrl}
+                    watermarked={(project.content as { watermarked?: boolean } | null)?.watermarked === true}
                   />
                 )}
                 {normalizedProjectContent?.finalVideoUrl && (

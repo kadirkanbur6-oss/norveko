@@ -200,6 +200,10 @@ export interface TikTokPostInput {
   allowComment: boolean;
   allowDuet: boolean;
   allowStitch: boolean;
+  /** Commercial content disclosure: promotes the creator's own business ("Promotional content"). */
+  brandOrganic?: boolean;
+  /** Commercial content disclosure: paid partnership with a third party ("Paid partnership"). */
+  brandContent?: boolean;
 }
 
 /** Caption ≤ 2200 UTF-16 units. */
@@ -208,21 +212,43 @@ export function tiktokCaption(text: string): string {
   return t.length <= 2200 ? t : `${t.slice(0, 2199)}…`;
 }
 
+/** Our own public media URL (verified URL prefix in the TikTok portal) for PULL_FROM_URL. */
+export function pullUrlFor(storageUrl: string): string | null {
+  const m = storageUrl.match(/\/storage\/v1\/object\/public\/videos\/(.+)$/);
+  return m ? `${siteUrl()}/media/videos/${m[1]}` : null;
+}
+
+function postInfo(input: TikTokPostInput) {
+  return {
+    title: tiktokCaption(input.caption),
+    privacy_level: input.privacy,
+    disable_comment: !input.allowComment,
+    disable_duet: !input.allowDuet,
+    disable_stitch: !input.allowStitch,
+    brand_content_toggle: Boolean(input.brandContent),
+    brand_organic_toggle: Boolean(input.brandOrganic),
+    // Norveko videos are AI-generated: TikTok shows its "AI-generated" label.
+    is_aigc: true,
+  };
+}
+
+/**
+ * Direct-post a video TikTok downloads from our own verified domain (PULL_FROM_URL —
+ * what TikTok's guidelines ask for files already on a server). Returns publish_id.
+ */
+export async function postVideoFromUrl(token: string, videoUrl: string, input: TikTokPostInput): Promise<string> {
+  const init = await api<{ publish_id: string }>("/v2/post/publish/video/init/", token, {
+    post_info: postInfo(input),
+    source_info: { source: "PULL_FROM_URL", video_url: videoUrl },
+  });
+  return init.publish_id;
+}
+
 /** Direct-post an MP4 (single chunk; Norveko videos are well under 64 MB). Returns publish_id. */
 export async function postVideo(token: string, video: Buffer, input: TikTokPostInput): Promise<string> {
   if (video.length > 64 * 1024 * 1024) throw new Error("The video is too large for TikTok (max 64 MB here).");
   const init = await api<{ publish_id: string; upload_url: string }>("/v2/post/publish/video/init/", token, {
-    post_info: {
-      title: tiktokCaption(input.caption),
-      privacy_level: input.privacy,
-      disable_comment: !input.allowComment,
-      disable_duet: !input.allowDuet,
-      disable_stitch: !input.allowStitch,
-      brand_content_toggle: false,
-      brand_organic_toggle: false,
-      // Norveko videos are AI-generated: TikTok shows its "AI-generated" label.
-      is_aigc: true,
-    },
+    post_info: postInfo(input),
     source_info: { source: "FILE_UPLOAD", video_size: video.length, chunk_size: video.length, total_chunk_count: 1 },
   });
   const put = await fetch(init.upload_url, {
@@ -257,6 +283,9 @@ export function friendlyTikTokError(err: unknown): string {
     return "TikTok is limiting posts from this account right now. Please try again later.";
   if (code === "privacy_level_option_mismatch") return "That visibility isn't available for this TikTok account. Pick another one.";
   if (code === "access_token_invalid" || code === "scope_not_authorized") return "Your TikTok connection expired. Please reconnect TikTok.";
+  if (code === "brand_content_private")
+    return "Branded content can't be private on TikTok. Choose another visibility.";
+  if (code === "watermarked") return "Free-trial videos carry a Norveko badge and can't be posted to TikTok. Remove it with any credit pack, then post.";
   if (code === "rate_limit_exceeded") return "Too many TikTok requests — wait a minute and try again.";
   return "Posting to TikTok failed. Please try again in a minute.";
 }

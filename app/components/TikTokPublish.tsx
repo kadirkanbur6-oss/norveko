@@ -3,7 +3,9 @@
 // Post a finished video to the creator's TikTok account (Content Posting API,
 // direct post). Follows TikTok's posting-UX rules: show the creator, let them
 // pick visibility (no default), interaction toggles off by default and greyed
-// out when the account disables them, music-usage consent before posting.
+// out when the account disables them, commercial-content disclosure, a
+// preview, music-usage (and branded-content) consent before posting.
+// https://developers.tiktok.com/doc/content-sharing-guidelines
 
 import { useEffect, useState } from "react";
 import { CheckCircle2, Loader2, Music2, Send } from "lucide-react";
@@ -46,10 +48,14 @@ export default function TikTokPublish({
   projectId,
   defaultCaption,
   initial,
+  videoUrl,
+  watermarked = false,
 }: {
   projectId: string;
   defaultCaption: string;
   initial: Post | null;
+  videoUrl: string;
+  watermarked?: boolean;
 }) {
   const [available, setAvailable] = useState<boolean | null>(null);
   const [connected, setConnected] = useState<{ displayName: string | null } | null>(null);
@@ -61,6 +67,11 @@ export default function TikTokPublish({
   const [allowDuet, setAllowDuet] = useState(false);
   const [allowStitch, setAllowStitch] = useState(false);
   const [consent, setConsent] = useState(false);
+  const [disclose, setDisclose] = useState(false);
+  const [yourBrand, setYourBrand] = useState(false);
+  const [branded, setBranded] = useState(false);
+  const [videoSeconds, setVideoSeconds] = useState<number | null>(null);
+  const [checking, setChecking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [post, setPost] = useState<Post | null>(initial);
   const [error, setError] = useState("");
@@ -103,7 +114,16 @@ export default function TikTokPublish({
       const res = await fetch(`/api/projects/${projectId}/tiktok`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ caption, privacy, allowComment, allowDuet, allowStitch, consent }),
+        body: JSON.stringify({
+          caption,
+          privacy,
+          allowComment,
+          allowDuet,
+          allowStitch,
+          consent,
+          brandOrganic: disclose && yourBrand,
+          brandContent: disclose && branded,
+        }),
       });
       const data = await res.json();
       if (!data.success) {
@@ -118,6 +138,42 @@ export default function TikTokPublish({
       setBusy(false);
     }
   }
+
+  async function checkStatus() {
+    setChecking(true);
+    const d = await fetch(`/api/projects/${projectId}/tiktok`).then((r) => r.json()).catch(() => null);
+    if (d?.tiktok) setPost(d.tiktok);
+    setChecking(false);
+  }
+
+  function toggleBranded(on: boolean) {
+    setBranded(on);
+    // Branded content can't be private on TikTok.
+    if (on && privacy === "SELF_ONLY") {
+      setPrivacy("");
+      setNotice("Branded content can't be private, so pick who can view it.");
+    }
+  }
+
+  const discloseIncomplete = disclose && !yourBrand && !branded;
+  const tooLong = creator && videoSeconds !== null && videoSeconds > creator.max_video_post_duration_sec;
+  const labelNote = !disclose
+    ? null
+    : branded
+      ? "Your video will be labeled as 'Paid partnership'"
+      : yourBrand
+        ? "Your video will be labeled as 'Promotional content'"
+        : null;
+  const policyLink = (
+    <a href="https://www.tiktok.com/legal/page/global/bc-policy/en" target="_blank" rel="noreferrer" className="text-pink-300 underline">
+      Branded Content Policy
+    </a>
+  );
+  const musicLink = (
+    <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noreferrer" className="text-pink-300 underline">
+      Music Usage Confirmation
+    </a>
+  );
 
   const connectHref = `/api/tiktok/connect?returnTo=${encodeURIComponent(`/projects/${projectId}`)}`;
   const toggle = (label: string, value: boolean, set: (v: boolean) => void, disabled: boolean) => (
@@ -146,12 +202,18 @@ export default function TikTokPublish({
           <a href={connectHref} className="inline-flex items-center gap-2 rounded-xl bg-pink-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-pink-500">
             <Music2 size={15} aria-hidden /> Connect TikTok
           </a>
-        ) : !open ? (
+        ) : watermarked ? null : !open ? (
           <button type="button" onClick={openForm} className="inline-flex items-center gap-2 rounded-xl bg-pink-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-pink-500">
             <Send size={15} aria-hidden /> {post ? "Post again" : "Post"}
           </button>
         ) : null}
       </div>
+
+      {connected && watermarked && (
+        <p className="mt-3 text-xs text-gray-400">
+          Free-trial videos carry a Norveko badge, and TikTok doesn&apos;t allow promotional badges on posts. Remove it with any credit pack, then post here.
+        </p>
+      )}
 
       {notice && <p className="mt-3 rounded-xl border border-green-400/30 bg-green-500/10 p-3 text-sm text-green-300">{notice}</p>}
 
@@ -163,6 +225,12 @@ export default function TikTokPublish({
             {" · "}
             {PRIVACY_LABEL[post.privacy] ?? post.privacy}
           </span>
+          {post.status !== "PUBLISH_COMPLETE" && post.status !== "FAILED" && (
+            <button type="button" onClick={checkStatus} disabled={checking} className="mt-2 text-xs text-pink-300 hover:text-white disabled:opacity-50">
+              {checking ? "Checking…" : "Check status"}
+            </button>
+          )}
+          {post.status === "FAILED" && <p className="mt-2 text-xs text-red-300">TikTok couldn&apos;t publish this post. Try posting again.</p>}
         </div>
       )}
 
@@ -187,6 +255,20 @@ export default function TikTokPublish({
                   {creator.creator_username && <p className="text-xs text-gray-500">@{creator.creator_username}</p>}
                 </div>
               </div>
+              <div className="flex justify-center rounded-xl border border-white/10 bg-black/40 p-2">
+                <video
+                  src={videoUrl}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  onLoadedMetadata={(e) => setVideoSeconds(e.currentTarget.duration || null)}
+                  className="max-h-80 rounded-lg"
+                  aria-label="Preview of the video that will be posted"
+                />
+              </div>
+              {tooLong && (
+                <p className="text-xs text-red-300">This video is longer than your account can post ({creator.max_video_post_duration_sec} s max).</p>
+              )}
               <div>
                 <label htmlFor="tt-caption" className="mb-1 block text-xs uppercase tracking-wider text-gray-500">Caption</label>
                 <textarea
@@ -210,8 +292,14 @@ export default function TikTokPublish({
                     Choose…
                   </option>
                   {creator.privacy_level_options.map((p) => (
-                    <option key={p} value={p}>
+                    <option
+                      key={p}
+                      value={p}
+                      disabled={branded && p === "SELF_ONLY"}
+                      title={branded && p === "SELF_ONLY" ? "Branded content visibility cannot be set to private." : undefined}
+                    >
                       {PRIVACY_LABEL[p] ?? p}
+                      {branded && p === "SELF_ONLY" ? " (not for branded content)" : ""}
                     </option>
                   ))}
                 </select>
@@ -221,21 +309,53 @@ export default function TikTokPublish({
                 {toggle("Allow Duet", allowDuet, setAllowDuet, creator.duet_disabled)}
                 {toggle("Allow Stitch", allowStitch, setAllowStitch, creator.stitch_disabled)}
               </div>
-              <p className="text-xs text-gray-500">The post is labelled as AI-generated content on TikTok.</p>
+              <div className="rounded-xl border border-white/10 bg-[#0d0d16] p-3">
+                <label className="flex items-center justify-between gap-3 text-sm text-gray-200">
+                  <span>
+                    Disclose video content
+                    <span className="block text-xs text-gray-500">Turn on if this video promotes yourself, a brand, product or service.</span>
+                  </span>
+                  <input type="checkbox" checked={disclose} onChange={(e) => setDisclose(e.target.checked)} className="h-4 w-4 accent-pink-500" />
+                </label>
+                {disclose && (
+                  <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
+                    <label className="flex items-start gap-2 text-sm text-gray-300">
+                      <input type="checkbox" checked={yourBrand} onChange={(e) => setYourBrand(e.target.checked)} className="mt-0.5 h-4 w-4 accent-pink-500" />
+                      <span>
+                        Your brand
+                        <span className="block text-xs text-gray-500">You are promoting yourself or your own business.</span>
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-2 text-sm text-gray-300">
+                      <input type="checkbox" checked={branded} onChange={(e) => toggleBranded(e.target.checked)} className="mt-0.5 h-4 w-4 accent-pink-500" />
+                      <span>
+                        Branded content
+                        <span className="block text-xs text-gray-500">You are promoting another brand or a third party.</span>
+                      </span>
+                    </label>
+                    {labelNote && <p className="text-xs text-amber-200">{labelNote}</p>}
+                    {discloseIncomplete && (
+                      <p className="text-xs text-gray-400">You need to indicate if your content promotes yourself, a third party, or both.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-gray-500">The post is labelled as AI-generated content on TikTok. After posting, it may take a few minutes to appear on your profile.</p>
               <label className="flex items-start gap-2 text-xs text-gray-300">
                 <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 h-4 w-4 accent-pink-500" />
                 <span>
-                  By posting, you agree to TikTok&apos;s{" "}
-                  <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noreferrer" className="text-pink-300 underline">
-                    Music Usage Confirmation
-                  </a>
-                  .
+                  {disclose && branded ? (
+                    <>By posting, you agree to TikTok&apos;s {policyLink} and {musicLink}.</>
+                  ) : (
+                    <>By posting, you agree to TikTok&apos;s {musicLink}.</>
+                  )}
                 </span>
               </label>
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
-                  disabled={busy || !privacy || !consent}
+                  disabled={busy || !privacy || !consent || discloseIncomplete || Boolean(tooLong)}
+                  title={discloseIncomplete ? "You need to indicate if your content promotes yourself, a third party, or both." : undefined}
                   onClick={submit}
                   className="inline-flex items-center gap-2 rounded-xl bg-pink-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-pink-500 disabled:opacity-50"
                 >

@@ -4,13 +4,22 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireUser } from "@/lib/supabase-server";
 import { adminDb } from "@/lib/youtube/oauth";
 import { TIKTOK_PRIVACY, type TikTokPrivacy } from "@/lib/tiktok/client";
-import { publishProjectToTikTok } from "@/lib/tiktok/publish";
+import { publishProjectToTikTok, refreshTikTokStatus } from "@/lib/tiktok/publish";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-const STATUS = { not_found: 404, no_video: 400, not_connected: 409, bad_privacy: 400, failed: 502 } as const;
+const STATUS = { not_found: 404, no_video: 400, not_connected: 409, bad_privacy: 400, watermarked: 403, failed: 502 } as const;
+
+/** Current status of the last post (TikTok publishes asynchronously). */
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const { user } = await requireUser();
+  if (!user) return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
+  const tiktok = await refreshTikTokStatus(adminDb(), user.id, id);
+  return NextResponse.json({ success: true, tiktok });
+}
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -35,6 +44,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     allowComment: body.allowComment === true,
     allowDuet: body.allowDuet === true,
     allowStitch: body.allowStitch === true,
+    brandOrganic: body.brandOrganic === true,
+    brandContent: body.brandContent === true,
   });
   if (!result.ok) return NextResponse.json({ success: false, error: result.error, code: result.code }, { status: STATUS[result.code] });
   return NextResponse.json({ success: true, tiktok: result.tiktok });

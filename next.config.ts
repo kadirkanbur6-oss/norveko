@@ -74,6 +74,13 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "*.supabase.co" },
     ],
   },
+  // Public video files on our own domain (TikTok PULL_FROM_URL needs a URL
+  // prefix verified for the app: https://norveko.app/media/videos/).
+  async rewrites() {
+    return supabaseHost
+      ? [{ source: "/media/videos/:path*", destination: `https://${supabaseHost}/storage/v1/object/public/videos/:path*` }]
+      : [];
+  },
   async headers() {
     return [
       {
