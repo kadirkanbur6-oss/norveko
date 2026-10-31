@@ -342,7 +342,7 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
       {/* Results */}
       {job.steps?.research?.status === "skipped" && (
         <p className="rounded-xl border border-amber-400/20 bg-amber-500/[0.06] px-4 py-3 text-xs text-amber-100">
-          Web research was skipped ({String(job.steps.research.error ?? "provider error")}) — its 5 credits were refunded and the script was written from the model&apos;s own knowledge.
+          Web research was skipped ({String(job.steps.research.error ?? "provider error")}) — its credits were refunded and the script was written from the model&apos;s own knowledge.
         </p>
       )}
       {job.steps?.research?.status === "completed" && job.steps.research.brief && (

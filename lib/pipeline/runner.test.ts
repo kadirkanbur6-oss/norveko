@@ -508,7 +508,7 @@ function seedFullVideoJob(
   return seedJob(false, { steps, credits_charged: totalPipelineCredits(opts), options: { orientation: "vertical" } });
 }
 
-test("full video (hybrid, 60 s): 12 slots, 3 Kling + stills, render to final MP4, 60%-margin pricing", async () => {
+test("full video (hybrid, 60 s): 12 slots, 3 Kling + stills, render to final MP4, 40%-margin pricing", async () => {
   const base60 = scriptCredits("60 seconds") + voiceoverCredits("gemini", "60 seconds") + subtitlesCredits("60 seconds") + THUMBNAIL_CREDITS;
   const base30 = scriptCredits("30 seconds") + voiceoverCredits("gemini", "30 seconds") + subtitlesCredits("30 seconds") + THUMBNAIL_CREDITS;
   assert.equal(totalPipelineCredits({ fullVideo: true, footage: "hybrid", clipMode: "text", duration: "60 seconds" }), base60 + 3 * VIDEO_CLIP_CREDITS + 9 * STILL_SCENE_CREDITS + 2 * RENDER_CREDITS_PER_30S);

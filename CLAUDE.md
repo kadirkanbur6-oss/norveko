@@ -111,7 +111,9 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   **AI görsel sahne 12**, **render 30 / 30 sn**). `creditBreakdown(opts)` UI
   ve fatura metni için kalemleri verir; kullanılmayan/başarısız görsel iade.
 
-### Fiyatlandırma mantığı (31 Ekim 2026, hedef **%60 brüt kâr** — Kadir)
+### Fiyatlandırma mantığı (31 Ekim 2026 akşam: hedef **%40 brüt kâr** — Kadir "daha fazla video üretebilsinler"; aşağıdaki eski %60 rakamları ×2/3)
+**Güncel (%40, ×150):** araştırma 7 · senaryo 30 sn 5 / 60 sn 7 · Gemini ses 4/30 sn · ElevenLabs 16/30 sn · thumbnail 11 · AI görsel 7 · image→video 26 · Kling 64 · render 16/30 sn. 60 sn tam video hybrid **210** (30 sn 125), stills 153, cinematic 381 → Starter 500 = 4×30 sn / 2×60 sn, Business 5000 ≈ 23×60 sn. Test: "every item keeps ≥ 40% margin".
+
 Tek kaynak `lib/pipeline/steps.ts`: `creditsForCost(usd) = ceil(usd / (0,40 ×
 $0.01111))` ≈ maliyet × 225 (Business paketi Paddle sonrası en kötü gelir/kredi).
 Maliyetler `provider_usage` gerçek ortalamaları (lab `usage-report`) + liste fiyatları:
@@ -182,7 +184,7 @@ Business 5000/$59.
   (lab `style-previews`, Gemini, 3:4 480 px); yoksa gradient.
 - **Edit video (üretim sonrası düzenleme, 31 Ekim)**: proje sayfası `VideoEditor` (yalnız bir kez
   render edilmiş tam videolar). `GET/POST /api/projects/[id]/edit` — iş, `steps.result.project_id` ile
-  bulunur. `regenerate` {index, prompt?}: `STILL_SCENE_CREDITS` (10) peşin düşülür, işin görsel stiliyle
+  bulunur. `regenerate` {index, prompt?}: `STILL_SCENE_CREDITS` (7) peşin düşülür, işin görsel stiliyle
   yeni görsel (`still-<1000+index*100+n>`, CDN önbelleği için benzersiz), hata olursa iade; slot'a
   `editedStillUrl` yazılır (kind/url DEĞİŞMEZ → `consumedCredits` muhasebesi bozulmaz; `buildEdit` bu
   alanı her şeyin önüne koyar, klip slotu hareketli görsele döner), `steps.render.edits_pending/edit_count/

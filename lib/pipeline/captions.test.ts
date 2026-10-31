@@ -107,7 +107,7 @@ test("pricing: subtitles are charged only together with a voiceover; voice price
   assert.equal(steps.thumbnail.credits, THUMBNAIL_CREDITS);
 });
 
-test("pricing: every item keeps ≥ 60% margin at the Business-pack revenue per credit", async () => {
+test("pricing: every item keeps ≥ 40% margin at the Business-pack revenue per credit", async () => {
   const s = await import("./steps");
   const margin = (credits: number, usd: number) => 1 - usd / (credits * s.REVENUE_PER_CREDIT_USD);
   const checks: Array<[string, number, number]> = [
@@ -125,7 +125,7 @@ test("pricing: every item keeps ≥ 60% margin at the Business-pack revenue per 
     ["kling clip", s.VIDEO_CLIP_CREDITS, 0.42],
     ["render / 30 s", s.RENDER_CREDITS_PER_30S, 0.1],
   ];
-  for (const [name, credits, usd] of checks) assert.ok(margin(credits, usd) >= 0.6, `${name}: ${(margin(credits, usd) * 100).toFixed(1)}%`);
+  for (const [name, credits, usd] of checks) assert.ok(margin(credits, usd) >= 0.4, `${name}: ${(margin(credits, usd) * 100).toFixed(1)}%`);
 });
 
 test("timeline: planSlots spreads Kling slots evenly and maps scenes in order", async () => {

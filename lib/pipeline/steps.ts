@@ -82,14 +82,15 @@ export function isTrialVideoShape(opts: PipelineOptions): boolean {
 
 export type VoiceEngine = "gemini" | "elevenlabs";
 
-/* ---------------- Pricing (31 Oct 2026: 60% gross margin) ----------------
+/* ---------------- Pricing (31 Oct 2026: 40% gross margin — Kadir: more videos per pack) ----------------
  * Revenue per credit after Paddle (5% + $0.50) is lowest on the Business
- * pack: ($59 × 0.95 − 0.50) / 5000 ≈ $0.0111. A 60% margin means
- *     credits ≥ provider cost / (0.40 × $0.0111) = provider cost × 225.
+ * pack: ($59 × 0.95 − 0.50) / 5000 ≈ $0.0111. A 40% margin means
+ *     credits ≥ provider cost / (0.60 × $0.0111) = provider cost × 150.
+ * (Was 60% / × 225 until the evening of 31 Oct.)
  * Costs below are the REAL averages from provider_usage (lab "usage-report",
  * 31 Oct runs) plus the provider price lists; see CLAUDE.md §Fiyatlandırma.
  */
-export const TARGET_MARGIN = 0.6;
+export const TARGET_MARGIN = 0.4;
 /** Worst-case net revenue per credit (Business pack after Paddle fees). */
 export const REVENUE_PER_CREDIT_USD = (59 * 0.95 - 0.5) / 5000;
 /** Credits needed to sell `usd` of provider cost at the target margin. */
@@ -114,10 +115,10 @@ function startedHalfMinutes(label: string | undefined): number {
  */
 export function scriptCredits(duration: string | undefined): number {
   const s = durationSeconds(duration);
-  if (s <= 30) return creditsForCost(0.03); // 7
-  if (s <= 60) return creditsForCost(0.04); // 10
-  if (s <= 180) return creditsForCost(0.07); // 16
-  return creditsForCost(0.12); // 28
+  if (s <= 30) return creditsForCost(0.03); // 5
+  if (s <= 60) return creditsForCost(0.04); // 7
+  if (s <= 180) return creditsForCost(0.07); // 11
+  return creditsForCost(0.12); // 19
 }
 
 /**
@@ -126,13 +127,13 @@ export function scriptCredits(duration: string | undefined): number {
  * a minute × $0.18/1K + retake ≈ $0.20/min.
  */
 export const VOICE_CREDITS_PER_30S: Record<VoiceEngine, number> = {
-  gemini: creditsForCost(0.025), // 6
-  elevenlabs: creditsForCost(0.1), // 23
+  gemini: creditsForCost(0.025), // 4
+  elevenlabs: creditsForCost(0.1), // 16
 };
 /** Per-minute figures for display (2 × the 30 s price). */
 export const VOICE_CREDITS_PER_MIN: Record<VoiceEngine, number> = {
-  gemini: VOICE_CREDITS_PER_30S.gemini * 2, // 12
-  elevenlabs: VOICE_CREDITS_PER_30S.elevenlabs * 2, // 46
+  gemini: VOICE_CREDITS_PER_30S.gemini * 2, // 8
+  elevenlabs: VOICE_CREDITS_PER_30S.elevenlabs * 2, // 32
 };
 export function voiceoverCredits(engine: VoiceEngine | undefined, duration: string | undefined): number {
   return VOICE_CREDITS_PER_30S[engine === "elevenlabs" ? "elevenlabs" : "gemini"] * startedHalfMinutes(duration);
@@ -158,12 +159,12 @@ export const SUBTITLES_CREDITS = SUBTITLES_CREDITS_PER_30S;
  */
 
 /** Credits per 5-second Kling 3.0 clip, 720p, no audio (3 units ≈ $0.42). */
-export const VIDEO_CLIP_CREDITS = creditsForCost(0.42); // 95
+export const VIDEO_CLIP_CREDITS = creditsForCost(0.42); // 64
 /**
  * Credits per 5-second image→video clip: Nano Banana 2.1 still ($0.034, ~1.17
  * calls per still incl. retries) + Seedance 1.5 Pro silent 720p (~$0.13).
  */
-export const IMAGE_CLIP_CREDITS = creditsForCost(0.17); // 39
+export const IMAGE_CLIP_CREDITS = creditsForCost(0.17); // 26
 
 export function clipCredits(mode: ClipMode | undefined): number {
   return mode === "text" ? VIDEO_CLIP_CREDITS : IMAGE_CLIP_CREDITS;
@@ -173,11 +174,11 @@ export const VIDEO_MAX_CLIPS = 5;
 /** Seconds per Kling clip requested from the provider. */
 export const VIDEO_CLIP_SECONDS = 5;
 /** Credits per AI still scene (Nano Banana 2.1 $0.034 × ~1.17 calls incl. retries). */
-export const STILL_SCENE_CREDITS = creditsForCost(0.04); // 10
+export const STILL_SCENE_CREDITS = creditsForCost(0.04); // 7
 /** Credits per started 30 s of rendered output (Shotstack $0.20/min, billed per second). */
-export const RENDER_CREDITS_PER_30S = creditsForCost(0.1); // 23
+export const RENDER_CREDITS_PER_30S = creditsForCost(0.1); // 16
 /** Thumbnail: Gemini 3.1 Flash Image ≈ $0.067. */
-export const THUMBNAIL_CREDITS = creditsForCost(0.067); // 16
+export const THUMBNAIL_CREDITS = creditsForCost(0.067); // 11
 /** Timeline slot length a full video is planned in (one visual per slot). */
 export const SLOT_SECONDS = 5;
 
@@ -236,7 +237,7 @@ export function fullVideoPlan(
 }
 
 /** Research: gpt-6.1-terra tokens (~$0.016) + 2–3 web-search calls at $10/1K ≈ $0.045. */
-export const RESEARCH_CREDITS = creditsForCost(0.045); // 11
+export const RESEARCH_CREDITS = creditsForCost(0.045); // 7
 
 export const PIPELINE_STEP_ORDER: StepDefinition[] = [
   {
