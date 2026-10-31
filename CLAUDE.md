@@ -180,6 +180,17 @@ Business 5000/$59.
   `pipeline_jobs.options.visualStyle/captionStyle` (start route doğrular). UI `app/components/StylePickers.tsx`
   (görsel stil her zaman, altyazı stili tam videoda). Önizleme görselleri `videos/previews/styles/<id>.jpg`
   (lab `style-previews`, Gemini, 3:4 480 px); yoksa gradient.
+- **Edit video (üretim sonrası düzenleme, 31 Ekim)**: proje sayfası `VideoEditor` (yalnız bir kez
+  render edilmiş tam videolar). `GET/POST /api/projects/[id]/edit` — iş, `steps.result.project_id` ile
+  bulunur. `regenerate` {index, prompt?}: `STILL_SCENE_CREDITS` (10) peşin düşülür, işin görsel stiliyle
+  yeni görsel (`still-<1000+index*100+n>`, CDN önbelleği için benzersiz), hata olursa iade; slot'a
+  `editedStillUrl` yazılır (kind/url DEĞİŞMEZ → `consumedCredits` muhasebesi bozulmaz; `buildEdit` bu
+  alanı her şeyin önüne koyar, klip slotu hareketli görsele döner), `steps.render.edits_pending/edit_count/
+  edit_credits`. `rerender` {musicId?, captionStyle?}: `lib/pipeline/rerender.ts` `queueRerender()`
+  (lab da bunu kullanır) — ücretsiz, iş başına en çok `MAX_RERENDERS`=10, `options.captionStyle`
+  güncellenir, render `version+1` → `final-v<n>.mp4`, bitince `refreshProjectVideo`. UI 6 sn'de bir
+  `/api/pipeline/[jobId]` poll eder, bitince sayfayı yeniler. **failJob**: işin zaten projesi varsa
+  (başarısız yeniden render) yeni proje AÇMAZ, eski video kalır.
 - Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
 - Bitince sonuç `projects.content` JSONB'ye yazılır; başlık = AI'nin ilk title'ı.
 

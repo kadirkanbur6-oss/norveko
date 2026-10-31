@@ -242,36 +242,15 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true, since, jobs: out });
       }
       case "rerender": {
-        // Re-render a finished full video with a different background track.
-        // Only the render step runs again (no new script/voice/visuals, no charge).
-        const jobId = String(body.jobId ?? "");
-        const db = admin();
-        const { data: job } = await db.from("pipeline_jobs").select("*").eq("id", jobId).maybeSingle();
-        if (!job || job.user_id !== user.id) throw new Error("Job not found.");
-        if (job.status === "running") throw new Error("Job is still running.");
-        const steps = (job.steps ?? {}) as Record<string, Record<string, unknown>>;
-        if (!steps.render) throw new Error("Not a full-video job.");
-        const { MUSIC_TRACKS } = await import("@/lib/pipeline/music");
-        const musicId = String(body.musicId ?? "");
-        if (!MUSIC_TRACKS.some((t) => t.id === musicId)) throw new Error(`Unknown music id: ${musicId}`);
-        steps.render = {
-          ...steps.render,
-          status: "pending",
-          render_id: null,
-          provider_status: null,
-          error: null,
-          music_id: musicId,
-          version: (Number(steps.render.version) || 0) + 1,
-          queued_at: new Date().toISOString(),
-        };
-        const { error } = await db
-          .from("pipeline_jobs")
-          .update({ steps, status: "running", current_step: "render", error: null })
-          .eq("id", jobId);
-        if (error) throw new Error(error.message);
-        const { kickJob } = await import("@/lib/pipeline/runner");
-        await kickJob(jobId);
-        return NextResponse.json({ success: true, version: steps.render.version });
+        // Re-render a finished full video with a different background track
+        // (and/or subtitle style). Only the render step runs again, no charge.
+        const { queueRerender } = await import("@/lib/pipeline/rerender");
+        const r = await queueRerender(admin(), String(body.jobId ?? ""), user.id, {
+          musicId: typeof body.musicId === "string" ? body.musicId : null,
+          captionStyle: typeof body.captionStyle === "string" ? body.captionStyle : null,
+          reason: "lab",
+        });
+        return NextResponse.json({ success: true, version: r.version });
       }
       case "style-previews": {
         // One sample still per visual style for the /chat picker:

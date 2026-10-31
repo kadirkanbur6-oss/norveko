@@ -399,7 +399,9 @@ export function createPipelineRunner(deps: RunnerDeps) {
 
     // Keep what was produced: a finished script becomes a project so the
     // user can still use the package, voiceover or thumbnail they paid for.
-    if (steps.script?.status === "completed") {
+    // A failed re-render of a finished video keeps its project (and the previous MP4).
+    const hasProject = typeof (steps.result as { project_id?: unknown } | undefined)?.project_id === "string";
+    if (steps.script?.status === "completed" && !hasProject) {
       const fresh = await loadJob(jobId);
       if (fresh) {
         const projectId = await saveProject(fresh);

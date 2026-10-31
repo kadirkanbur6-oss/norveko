@@ -404,3 +404,23 @@ test("styles: caption style shapes the burned-in subtitles", () => {
   assert.equal(captionStyle("clean").uppercase, false);
   assert.equal(captionStyle(undefined).id, "bold");
 });
+
+test("edit video: a regenerated still replaces the slot's clip in the render", () => {
+  const slots = [
+    { index: 0, sceneNumber: 1, kind: "kling", start: 0, length: 5, prompt: "a", status: "succeed", url: "https://x/clip.mp4", sourceSeconds: 5 },
+    { index: 1, sceneNumber: 2, kind: "still", start: 5, length: 5, prompt: "b", status: "succeed", url: "https://x/old.png", editedStillUrl: "https://x/new.png" },
+  ] as never;
+  const edit = buildEdit({ slots, voiceoverUrl: "https://x/v.wav", orientation: "vertical", totalSeconds: 10 }) as EditJson;
+  const srcs = JSON.stringify(edit);
+  assert.ok(srcs.includes("https://x/clip.mp4"));
+  assert.ok(srcs.includes("https://x/new.png"));
+  assert.ok(!srcs.includes("https://x/old.png"));
+  const edited = buildEdit({
+    slots: [{ ...(slots as unknown as Array<Record<string, unknown>>)[0], editedStillUrl: "https://x/swap.png" }] as never,
+    voiceoverUrl: "https://x/v.wav",
+    orientation: "vertical",
+    totalSeconds: 5,
+  }) as EditJson;
+  assert.ok(JSON.stringify(edited).includes("https://x/swap.png"));
+  assert.ok(!JSON.stringify(edited).includes("clip.mp4"));
+});

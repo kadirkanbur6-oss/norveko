@@ -42,6 +42,12 @@ export interface TimelineSlot {
   fal?: { requestId: string; statusUrl: string; responseUrl: string };
   /** When this clip was submitted (per-clip timeout). */
   submittedAt?: string;
+  /**
+   * Set by "edit video" (POST /api/projects/[id]/edit): a regenerated still
+   * that replaces whatever this slot showed. Kept separate from url/kind so
+   * the original purchase accounting (consumedCredits) is untouched.
+   */
+  editedStillUrl?: string;
   /** Clip credits already given back for this slot. */
   refunded?: boolean;
 }
@@ -149,6 +155,7 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
   // Visual to show for each slot: its own if ready, else the nearest ready one.
   const ready = slots.filter((s) => s.status === "succeed" && s.url);
   const visualFor = (slot: TimelineSlot): TimelineSlot | null => {
+    if (slot.editedStillUrl) return { ...slot, kind: "still", status: "succeed", url: slot.editedStillUrl };
     if (slot.status === "succeed" && slot.url) return slot;
     // A failed image→video clip still has its own scene still: use it.
     if (slot.imageUrl) return { ...slot, kind: "still", status: "succeed", url: slot.imageUrl };
