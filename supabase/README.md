@@ -227,24 +227,28 @@ every minute `/api/pipeline/reap` (reconcile running jobs: poll async steps,
 re-kick forgotten steps) and hourly `/api/series/tick?lookahead=2`.
 `HEARTBEAT_SECRET` must match the Vercel env var of the same name.
 
+The secret lives in **Supabase Vault** (Integrations → Vault → secret named
+`heartbeat_secret`, same value as Vercel `HEARTBEAT_SECRET`) so it never appears
+in SQL. (31 Oct: pasting the secret into the SQL broke the quoting twice.)
+
 ```sql
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
-select cron.schedule('norveko-heartbeat', '* * * * *', $$
+select cron.schedule('norveko-heartbeat', '* * * * *', $job$
   select net.http_get(
     url := 'https://norveko.app/api/pipeline/reap',
-    headers := jsonb_build_object('Authorization', 'Bearer <HEARTBEAT_SECRET>'),
+    headers := jsonb_build_object('Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'heartbeat_secret' limit 1)),
     timeout_milliseconds := 5000
   );
-$$);
+$job$);
 
-select cron.schedule('norveko-series-tick', '5 * * * *', $$
+select cron.schedule('norveko-series-tick', '5 * * * *', $job$
   select net.http_get(
     url := 'https://norveko.app/api/series/tick?lookahead=2',
-    headers := jsonb_build_object('Authorization', 'Bearer <HEARTBEAT_SECRET>'),
+    headers := jsonb_build_object('Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'heartbeat_secret' limit 1)),
     timeout_milliseconds := 5000
   );
-$$);
--- check: select * from cron.job; select * from cron.job_run_details order by start_time desc limit 10;
+$job$);
+-- check: select created, status_code, left(content,100) from net._http_response order by created desc limit 5;
 ```

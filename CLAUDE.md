@@ -220,6 +220,7 @@ Business 5000/$59.
   **508 INFINITE_LOOP_DETECTED** ile kesiliyor (seri bölümü thumbnail→video geçişinde takıldı). Çözüm:
   **Supabase pg_cron kalp atışı** (SQL `supabase/README.md` "Heartbeat") dakikada bir `/api/pipeline/reap`,
   saatte bir `/api/series/tick?lookahead=2`; yetki `lib/cron-auth.ts` (`CRON_SECRET` veya `HEARTBEAT_SECRET`).
+  ✅ 31 Ekim canlıda 200; şifre Supabase **Vault** `heartbeat_secret`'tan okunur (SQL'e yapıştırmak tırnakları iki kez bozdu).
   (Kısa süre denenen `watchJob` kaldırıldı: zincir içinden kick ettiği için aynı 508'e takılıyordu.) TikTok geliştirici uygulaması "Norveko" (Bireysel) + Sandbox "Norveko test"; site doğrulama
   dosyası `public/tiktok2Vlc4spidXzS1mcfLwXijkpCKUcnVKNi.txt`; 1024 px ikon `public/brand/norveko-icon-1024.png`.
 - Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
