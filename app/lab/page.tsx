@@ -40,7 +40,7 @@ const CANDIDATES: Candidate[] = [
   { key: "img-now", kind: "image", label: "Gemini 3.1 Flash Image", provider: "gemini", model: "gemini-3.1-flash-image", cost: "$0.067", current: true },
   { key: "img-nb21", kind: "image", label: "Nano Banana 2.1", provider: "gemini", model: "gemini-nano-banana-2.1", cost: "$0.034" },
   { key: "img-lite", kind: "image", label: "Nano Banana 2 Lite", provider: "gemini", model: "gemini-3.1-flash-lite-image", cost: "$0.034" },
-  { key: "img-imagen-fast", kind: "image", label: "Imagen (see model list)", provider: "imagen", model: "imagen-4.0-fast-generate-001", cost: "~$0.02–0.03" },
+  { key: "img-3pro", kind: "image", label: "Gemini 3 Pro Image", provider: "gemini", model: "gemini-3-pro-image", cost: "?" },
   { key: "img-gpt2", kind: "image", label: "GPT Image 2 (medium)", provider: "openai", model: "gpt-image-2", cost: "$0.041" },
   { key: "img-seedream", kind: "image", label: "Seedream 5.0 Lite (fal)", provider: "fal", model: "fal-ai/bytedance/seedream/v5/lite/text-to-image", cost: "$0.035" },
   // Voices (Daniel — the Turkish narrator used in production)
@@ -49,7 +49,8 @@ const CANDIDATES: Candidate[] = [
   { key: "tts-v3", kind: "tts", label: "ElevenLabs v3", provider: "elevenlabs", model: "eleven_v3", cost: "$0.08 / 1K", voice: "onwK4e9ZLuTAKqWW03F9" },
   { key: "tts-flash", kind: "tts", label: "ElevenLabs Flash v2.5", provider: "elevenlabs", model: "eleven_flash_v2_5", cost: "$0.04 / 1K", voice: "onwK4e9ZLuTAKqWW03F9" },
   { key: "tts-gemini", kind: "tts", label: "Gemini Flash TTS", provider: "gemini", model: "gemini-2.5-flash-preview-tts", cost: "~$0.016 / 1K", voice: "Charon" },
-  { key: "tts-gemini-pro", kind: "tts", label: "Gemini Pro TTS", provider: "gemini", model: "gemini-2.5-pro-preview-tts", cost: "?", voice: "Charon" },
+  { key: "tts-gemini-pro", kind: "tts", label: "Gemini Pro TTS (production)", provider: "gemini", model: "gemini-2.5-pro-preview-tts", cost: "~$0.033 / 1K", voice: "Charon" },
+  { key: "tts-gemini-38", kind: "tts", label: "Gemini 3.8 Flash TTS", provider: "gemini", model: "gemini-3.8-flash-tts", cost: "~$0.016 / 1K", voice: "Charon" },
   // Video
   { key: "vid-kling", kind: "video", label: "Kling 3.0 (text→video)", provider: "kling", model: "kling-3.0", cost: "$0.42–0.50", current: true },
   { key: "vid-omni", kind: "video", label: "Gemini Omni 1.1 Flash (image→video)", provider: "omni", model: "gemini-omni-1.1-flash", cost: "?", fromImage: true },
