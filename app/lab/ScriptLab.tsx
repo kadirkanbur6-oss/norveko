@@ -56,10 +56,10 @@ interface PastRun {
 }
 
 const WRITERS = [
-  { key: "w1", label: "GPT-5 mini", model: "gpt-5-mini", current: true },
-  { key: "w2", label: "GPT-5", model: "gpt-5" },
-  { key: "w3", label: "Gemini 2.5 Pro", model: "gemini:gemini-2.5-pro" },
-  { key: "w4", label: "Gemini 3 Pro (preview)", model: "gemini:gemini-3-pro-preview" },
+  { key: "w1", label: "GPT-5 mini · $0.25/$2", model: "gpt-5-mini", current: true },
+  { key: "w2", label: "GPT-6.1 Terra · $1/$5", model: "gpt-6.1-terra" },
+  { key: "w3", label: "GPT-6.1 Sol · $2/$10", model: "gpt-6.1-sol" },
+  { key: "w4", label: "Gemini 3.8 Flash · $0.75/$3.75", model: "gemini:gemini-3.8-flash" },
 ];
 
 async function lab<T = ScriptRun>(body: Record<string, unknown>): Promise<T> {

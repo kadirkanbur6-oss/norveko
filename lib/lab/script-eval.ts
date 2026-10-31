@@ -42,7 +42,7 @@ export interface JudgeScores {
 }
 
 /** Judge model; env SCRIPT_JUDGE_MODEL (defaults to a strong general model). */
-export const JUDGE_MODEL = process.env.SCRIPT_JUDGE_MODEL || "gpt-5";
+export const JUDGE_MODEL = process.env.SCRIPT_JUDGE_MODEL || "gpt-6.1-sol";
 
 export async function judgeScript(args: {
   idea: string;

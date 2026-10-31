@@ -83,7 +83,7 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   proje `content.scriptMeta`. **Lab "0 · Script writer"** (`app/lab/ScriptLab.tsx`): aynı fikir +
   aynı araştırma 4 modelle (düzenlenebilir id), yargıç puanı; **test seti** 10 sabit konu
   (`lib/lab/script-eval.ts` `EVAL_TOPICS`, TR+EN, araştırma `videos/lab/eval/research/` önbellekte),
-  yargıç `SCRIPT_JUDGE_MODEL` (varsayılan `gpt-5`), doğruluk ×2 + uzunluk %10 → 0–100; sonuçlar
+  yargıç `SCRIPT_JUDGE_MODEL` (varsayılan `gpt-6.1-sol`); lab adayları gpt-5-mini / gpt-6.1-terra ($1/$5) / gpt-6.1-sol ($2/$10) / gemini-3.8-flash ($0.75/$3.75, 2027'de 2×), doğruluk ×2 + uzunluk %10 → 0–100; sonuçlar
   `videos/lab/eval/runs/` (Save + geçmiş tablosu). **👍/👎**: proje sayfasında `ScriptFeedback`,
   `POST /api/projects/[id]/feedback` → `content.feedback`; PATCH `feedback`/`scriptMeta`'yı
   sunucudan korur (`SERVER_OWNED_CONTENT_KEYS`). `/api/lab` `maxDuration` 300.
