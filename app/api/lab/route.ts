@@ -197,6 +197,49 @@ export async function POST(req: Request) {
           judge,
         });
       }
+      case "usage-report": {
+        // Read-only: real provider cost per job/step (provider_usage) to price credits.
+        const db = admin();
+        const since = String(body.since ?? new Date(Date.now() - 2 * 86400_000).toISOString());
+        const { data: rows, error } = await db
+          .from("provider_usage")
+          .select("job_id, step, provider, model, unit, quantity, input_tokens, output_tokens, estimated_cost_usd, status, created_at")
+          .gte("created_at", since)
+          .order("created_at", { ascending: true })
+          .limit(5000);
+        if (error) throw new Error(error.message);
+        const ids = [...new Set((rows ?? []).map((r) => r.job_id))];
+        const { data: jobs } = ids.length
+          ? await db.from("pipeline_jobs").select("id, idea, status, credits_charged, credits_refunded, output_language, options, steps").in("id", ids)
+          : { data: [] as Array<Record<string, unknown>> };
+        const out = (jobs ?? []).map((j) => {
+          const steps = (j.steps ?? {}) as Record<string, Record<string, unknown>>;
+          const plan = steps.video?.plan as Record<string, unknown> | undefined;
+          const usage = (rows ?? []).filter((r) => r.job_id === j.id);
+          return {
+            id: j.id,
+            idea: String(j.idea).slice(0, 60),
+            status: j.status,
+            lang: j.output_language,
+            charged: j.credits_charged,
+            refunded: j.credits_refunded,
+            footage: plan?.footage,
+            clipMode: plan?.clipMode,
+            seconds: steps.voiceover?.duration_seconds,
+            calls: usage.map((u) => ({
+              step: u.step,
+              model: `${u.provider}:${u.model}`,
+              unit: u.unit,
+              qty: u.quantity,
+              inTok: u.input_tokens,
+              outTok: u.output_tokens,
+              usd: Number(u.estimated_cost_usd),
+              ok: u.status === "ok",
+            })),
+          };
+        });
+        return NextResponse.json({ success: true, since, jobs: out });
+      }
       case "rerender": {
         // Re-render a finished full video with a different background track.
         // Only the render step runs again (no new script/voice/visuals, no charge).
