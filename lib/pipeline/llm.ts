@@ -28,8 +28,13 @@ export interface ChatJsonResult<T> {
   usageKey: string;
 }
 
-/** Script writer model; env SCRIPT_MODEL overrides (e.g. "gemini:gemini-3-pro-preview"). */
-export const SCRIPT_MODEL = process.env.SCRIPT_MODEL || "gpt-5-mini";
+/**
+ * Script writer model; env SCRIPT_MODEL overrides (e.g. "gemini:gemini-3.8-flash").
+ * 31 Oct 2026, 10-topic judged test set (prompt 2026-10-31.plan-factcheck):
+ * gpt-6.1-terra 78/100 ($0.028/script, ~70 s) vs gpt-5-mini 63/100 ($0.020, ~120 s).
+ * gpt-5-mini also retires on 11 Dec 2026.
+ */
+export const SCRIPT_MODEL = process.env.SCRIPT_MODEL || "gpt-6.1-terra";
 
 export function llmProvider(model: string): { provider: "openai" | "gemini"; id: string } {
   const m = model.trim();

@@ -56,8 +56,8 @@ interface PastRun {
 }
 
 const WRITERS = [
-  { key: "w1", label: "GPT-5 mini · $0.25/$2", model: "gpt-5-mini", current: true },
-  { key: "w2", label: "GPT-6.1 Terra · $1/$5", model: "gpt-6.1-terra" },
+  { key: "w1", label: "GPT-5 mini · $0.25/$2", model: "gpt-5-mini" },
+  { key: "w2", label: "GPT-6.1 Terra · $1/$5", model: "gpt-6.1-terra", current: true },
   { key: "w3", label: "GPT-6.1 Sol · $2/$10", model: "gpt-6.1-sol" },
   { key: "w4", label: "Gemini 3.8 Flash · $0.75/$3.75", model: "gemini:gemini-3.8-flash" },
 ];

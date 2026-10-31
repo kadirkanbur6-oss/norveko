@@ -78,8 +78,7 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   cümle brief'e karşı, sorunlar `steps.script.fact_check.issues`), sonra uzunluk düzeltmesi
   (hook'u korur). Süre bütçesi 250 sn: süre azsa opsiyonel geçişler atlanır. Tüm LLM çağrıları
   `lib/pipeline/llm.ts` `chatJSON()` üzerinden — model id `gpt-…`/`openai:…` → OpenAI,
-  `gemini:…`/`gemini-…` → Gemini. Yazar modeli env **`SCRIPT_MODEL`** (varsayılan `gpt-5-mini`;
-  11 Aralık'ta kapanacak → lab'da seçilecek). `steps.script.model/prompt_version/plan/fact_check`;
+  `gemini:…`/`gemini-…` → Gemini. Yazar modeli env **`SCRIPT_MODEL`** (varsayılan **`gpt-6.1-terra`** — 31 Ekim test seti: Terra 78/100 ~$0.028/senaryo ~70 sn, gpt-5-mini 63/100 $0.020 ~120 sn; gpt-5-mini 11 Aralık'ta kapanıyor. Araştırma adımı hâlâ gpt-5-mini → 11 Aralık'tan önce değiştir). `steps.script.model/prompt_version/plan/fact_check`;
   proje `content.scriptMeta`. **Lab "0 · Script writer"** (`app/lab/ScriptLab.tsx`): aynı fikir +
   aynı araştırma 4 modelle (düzenlenebilir id), yargıç puanı; **test seti** 10 sabit konu
   (`lib/lab/script-eval.ts` `EVAL_TOPICS`, TR+EN, araştırma `videos/lab/eval/research/` önbellekte),
