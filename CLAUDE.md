@@ -65,7 +65,7 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   metin yazamadan bitiyordu → "Research returned no text"). Araştırma yoksa
   senaryo prompt'u gerçek kişi/olay için yalnızca yaygın belgelenmiş bilgiyi
   kullanmayı, meslek/ölüm nedeni/yer/alıntı uydurmamayı ve efsane/gazete
-  iddiasını "anlatılana göre" diye belirtmeyi zorunlu kılar. **31 Ekim (saçma cümleler):** prompt artık tek bağlantılı hikâye, hook–son tutarlılığı, dolgu/meta cümle yasağı ("arşiv fotoğrafları gösterir" vb.) ister; kalıp Türkçe örnek ifadeler kaldırıldı; taslaktan sonra `editNarration()` editör geçişi (tutarlılık/uydurma/akıcılık, aynı kelime aralığı) çalışır; `reviseNarrationLength` uzatırken yeni bilgi uydurmaz. `/api/pipeline/run` `maxDuration` 300 sn. Senaryo
+  iddiasını "anlatılana göre" diye belirtmeyi zorunlu kılar. **31 Ekim (saçma cümleler):** prompt artık tek bağlantılı hikâye, hook spoiler vermez ama sonda çürütülecek şeyi kesin gerçek gibi de söylemez, dolgu/meta cümle yasağı ("arşiv fotoğrafları gösterir" vb.) ister; kalıp Türkçe örnek ifadeler kaldırıldı; taslaktan sonra `editNarration()` editör geçişi (tutarlılık/uydurma/akıcılık, aynı kelime aralığı) çalışır; `reviseNarrationLength` uzatırken yeni bilgi uydurmaz. `/api/pipeline/run` `maxDuration` 300 sn. Senaryo
   prompt'unda ayrıca gerçek kişi/marka kuralı: videoPrompt'lar yüz, arma,
   forma ismi, skor tabelası, okunur yazı istemez (AI görseller bunları
   uyduruyor).
