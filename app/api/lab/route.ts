@@ -197,6 +197,10 @@ export async function POST(req: Request) {
           judge,
         });
       }
+      case "music-analyze": {
+        const { analyzeTrack } = await import("@/lib/lab/music-analyze");
+        return NextResponse.json({ success: true, result: await analyzeTrack(String(body.title ?? "")), ms: Date.now() - started });
+      }
       case "save-eval": {
         const id = `${new Date().toISOString().replace(/[:.]/g, "-")}-${String(body.model ?? "model").replace(/[^a-z0-9.-]/gi, "_")}`;
         const url = await writeJson(`lab/eval/runs/${id}.json`, { savedAt: new Date().toISOString(), ...(body.result as object) });
