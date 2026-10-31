@@ -5,7 +5,7 @@
 
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { hasPurchased, isWatermarkExempt } from "./watermark-policy";
+import { hasPurchased, isForcedTrialUser, isWatermarkExempt } from "./watermark-policy";
 
 export async function hasUsedTrialVideo(db: SupabaseClient, userId: string): Promise<boolean> {
   const { count, error } = await db
@@ -21,6 +21,7 @@ export async function hasUsedTrialVideo(db: SupabaseClient, userId: string): Pro
 }
 
 export async function trialVideoAvailable(db: SupabaseClient, userId: string): Promise<boolean> {
+  if (isForcedTrialUser(userId)) return !(await hasUsedTrialVideo(db, userId));
   if (isWatermarkExempt(userId)) return false;
   if (await hasPurchased(db, userId)) return false;
   return !(await hasUsedTrialVideo(db, userId));

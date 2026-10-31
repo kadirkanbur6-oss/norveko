@@ -18,6 +18,14 @@ function ids(value: string | undefined): string[] {
  * become landing-page examples. WATERMARK_FORCE_USER_IDS forces it back on
  * for one of them to test the free-trial experience.
  */
+/**
+ * Test switch: these accounts behave exactly like a free-trial user (badge +
+ * free trial video), even if they are beta users or have bought a pack.
+ */
+export function isForcedTrialUser(userId: string): boolean {
+  return ids(process.env.WATERMARK_FORCE_USER_IDS).includes(userId);
+}
+
 export function isWatermarkExempt(userId: string): boolean {
   if (ids(process.env.WATERMARK_FORCE_USER_IDS).includes(userId)) return false;
   return ids(process.env.BETA_USER_IDS).includes(userId);
@@ -40,6 +48,7 @@ export async function hasPurchased(db: SupabaseClient, userId: string): Promise<
 }
 
 export async function needsWatermark(db: SupabaseClient, userId: string): Promise<boolean> {
+  if (isForcedTrialUser(userId)) return true;
   if (isWatermarkExempt(userId)) return false;
   return !(await hasPurchased(db, userId));
 }

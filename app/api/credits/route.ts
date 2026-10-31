@@ -32,13 +32,13 @@ export async function GET() {
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
       .eq("type", "purchase");
-    const { isWatermarkExempt } = await import("@/lib/pipeline/watermark-policy");
+    const { isForcedTrialUser, isWatermarkExempt } = await import("@/lib/pipeline/watermark-policy");
 
     return NextResponse.json({
       success: true,
       credits: creditData?.credits ?? 0,
       transactions: transactions ?? [],
-      freeTrial: !isWatermarkExempt(user.id) && (purchases ?? 0) === 0,
+      freeTrial: isForcedTrialUser(user.id) || (!isWatermarkExempt(user.id) && (purchases ?? 0) === 0),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

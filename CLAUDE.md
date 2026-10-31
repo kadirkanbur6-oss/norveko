@@ -138,7 +138,7 @@ Business 5000/$59.
   `public/brand/watermark.png` rozeti (`lib/pipeline/watermark.ts`, sharp; temiz kopya
   `thumbnails/clean/<job>-<uuid>`), videoya Shotstack üst katman (`buildEdit
   watermarkUrl`, sağ üst, fit none). Kural `watermark-policy.ts`: `BETA_USER_IDS`
-  muaf (`WATERMARK_FORCE_USER_IDS` test için zorlar). Proje `content.watermarked/
+  muaf (`WATERMARK_FORCE_USER_IDS` test için: satın alma/beta olsa bile hesap deneme kullanıcısı gibi davranır, `isForcedTrialUser`). Proje `content.watermarked/
   cleanAssets` (server-owned). Paddle webhook ilk satın almada
   `removeWatermarksForUser()` → thumbnail'lar temize döner, filigranlı videolar
   (en çok 20) temiz yeniden render edilir. `/api/credits` `freeTrial` döner.
