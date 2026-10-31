@@ -180,10 +180,17 @@ export async function POST(req: NextRequest) {
         const { listVoices, addLibraryVoice, getSubscriptionTier } = await import(
           "@/lib/pipeline/elevenlabs"
         );
-        if (voicePublicOwnerId) {
+        // Creators' cloned voices: only the owner may use one; never evicted.
+        const { cloneOwners } = await import("@/lib/voice/clones");
+        const owners = await cloneOwners(supabaseAdmin).catch(() => new Map<string, string>());
+        const cloneOwner = owners.get(voiceId);
+        if (cloneOwner && cloneOwner !== user.id) {
+          return NextResponse.json({ success: false, error: "Selected voice is not available." }, { status: 400 });
+        }
+        if (voicePublicOwnerId && !cloneOwner) {
           // A Voice Library pick: make it usable for TTS before charging anything.
           try {
-            voiceId = await addLibraryVoice(voicePublicOwnerId, voiceId, voiceName || "Norveko voice");
+            voiceId = await addLibraryVoice(voicePublicOwnerId, voiceId, voiceName || "Norveko voice", new Set(owners.keys()));
           } catch (err) {
             console.error("[pipeline] library voice add failed:", err);
             const detail = err instanceof Error ? err.message : "";
@@ -201,6 +208,10 @@ export async function POST(req: NextRequest) {
         }
         const voices = await listVoices();
         const chosen = voices.find((voice) => voice.voice_id === voiceId);
+        // A Norveko clone that isn't in voice_clones for this user (defence in depth).
+        if (chosen && !cloneOwner && chosen.name.startsWith("Norveko · ")) {
+          return NextResponse.json({ success: false, error: "Selected voice is not available." }, { status: 400 });
+        }
         if (!chosen) {
           return NextResponse.json(
             { success: false, error: "Selected voice is not available." },
@@ -210,7 +221,7 @@ export async function POST(req: NextRequest) {
         // Library-origin voices (anything not "premade") fail at TTS time on the
         // ElevenLabs free tier (402 paid_plan_required). Refuse BEFORE charging
         // credits rather than failing the job later.
-        if (chosen.category !== "premade") {
+        if (chosen.category !== "premade" && !cloneOwner) {
           const tier = await getSubscriptionTier().catch(() => null);
           const libraryAllowed = tier
             ? tier !== "free"

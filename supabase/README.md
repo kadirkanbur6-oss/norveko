@@ -197,6 +197,21 @@ create table if not exists public.brand_kits (
 alter table public.brand_kits enable row level security;
 ```
 
+## Cloned voices (`voice_clones`, 31 Oct 2026)
+
+One per user, written only by `/api/voices/clone` (service role). The voice itself lives in the
+shared ElevenLabs account (name `Norveko · <name> · <user8>`); only its owner may list or use it.
+
+```sql
+create table if not exists public.voice_clones (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  voice_id text not null unique,
+  name text not null,
+  created_at timestamptz not null default now()
+);
+alter table public.voice_clones enable row level security;
+```
+
 ## Series autopilot (`series`, `series_episodes`, 31 Oct 2026)
 
 ```sql

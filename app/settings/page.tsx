@@ -15,6 +15,7 @@ import AccountSecurity from "../components/AccountSecurity";
 import YouTubeConnectionCard from "../components/YouTubeConnectionCard";
 import TikTokConnectionCard from "../components/TikTokConnectionCard";
 import BrandKitCard from "../components/BrandKitCard";
+import VoiceCloneCard from "../components/VoiceCloneCard";
 
 interface UserSettings {
   email: string;
@@ -218,6 +219,8 @@ export default function SettingsPage() {
               </div>
 
               <BrandKitCard />
+
+              <VoiceCloneCard />
 
               <YouTubeConnectionCard />
 

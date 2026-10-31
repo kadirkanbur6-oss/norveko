@@ -33,7 +33,7 @@ interface VoiceOption {
   labels: Record<string, string>;
   preview_url: string | null;
   languages?: string[];
-  source?: "account" | "library" | "gemini";
+  source?: "account" | "library" | "gemini" | "clone";
   public_owner_id?: string;
 }
 
@@ -286,11 +286,13 @@ function ChatContent() {
           // default pick sounds local; English keeps the account defaults first.
           // Gemini narrators (the default engine) come first for every
           // language; ElevenLabs voices stay available below them.
+          const mine: VoiceOption[] = data.mine ?? [];
           const gemini: VoiceOption[] = data.gemini ?? [];
           const account: VoiceOption[] = data.voices ?? [];
           const library: VoiceOption[] = data.library ?? [];
           const loaded: VoiceOption[] = [
             ...gemini,
+            ...mine,
             ...(data.languageCode === "en" ? [...account, ...library] : [...library, ...account]),
           ];
           setVoices(loaded);
@@ -853,9 +855,9 @@ function ChatContent() {
                         <p className="p-3 text-xs text-gray-500 sm:col-span-2 lg:col-span-3">No voices match “{voiceQuery}”.</p>
                       )}
                       {filteredVoices.map((voice, index) => {
-                        const group = voice.source === "gemini" ? "gemini" : "native";
-                        const prevGroup =
-                          index > 0 ? (filteredVoices[index - 1].source === "gemini" ? "gemini" : "native") : null;
+                        const groupOf = (v: VoiceOption) => (v.source === "gemini" ? "gemini" : v.source === "clone" ? "mine" : "native");
+                        const group = groupOf(voice);
+                        const prevGroup = index > 0 ? groupOf(filteredVoices[index - 1]) : null;
                         const groupHeader =
                           group !== prevGroup ? (
                             <p
@@ -866,6 +868,8 @@ function ChatContent() {
                             >
                               {group === "gemini"
                                 ? "Norveko narrators · speak every language"
+                                : group === "mine"
+                                ? "Your voice"
                                 : nativeMatch
                                 ? `Native ${language} voice artists`
                                 : "More voices · multilingual"}

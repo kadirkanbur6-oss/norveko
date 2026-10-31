@@ -238,6 +238,14 @@ Business 5000/$59.
   video paylaşılamaz (TikTok promosyon filigranı yasak). Gönderim **PULL_FROM_URL** `https://norveko.app/media/videos/...`
   (`next.config.ts` rewrite → Supabase public `videos`), URL öneki doğrulanmamışsa FILE_UPLOAD'a düşer. Başvuru rehberi:
   `docs/app-reviews.md`.
+- **Ses klonlama (31 Ekim akşam)**: `lib/voice/clones.ts` + `voice_clones` (kullanıcı başına 1, service role) +
+  `/api/voices/clone` (GET/POST multipart ≤3 dosya ≤4 MB toplam + zorunlu onay/DELETE) → ElevenLabs Instant Voice Clone
+  (`cloneVoice`, ses adı `Norveko · <ad> · <user8>`, gürültü temizleme). Yalnız paket almış/beta. Ayarlar `VoiceCloneCard`
+  (tarayıcıda MediaRecorder webm kaydı + okuma metni veya dosya yükleme; `Permissions-Policy microphone=(self)`).
+  Gizlilik: `/api/voices` başkalarının klonlarını asla listelemez, sahibine `mine` döner ("Your voice" grubu); start route
+  başkasının klonunu reddeder; `addLibraryVoice(..., protectedIds)` klonları slot boşaltmak için SİLMEZ. Fiyat ElevenLabs
+  sesi gibi. **Kısıt:** ElevenLabs Starter 10 özel ses yuvası (kütüphane sesleri + klonlar) → kullanıcı arttıkça
+  Creator (30) / Pro (160) plan gerekir. Seriler yalnız Gemini sesleri (klon yok). Hesap silmede ElevenLabs'te de silinir.
 - Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
 - Bitince sonuç `projects.content` JSONB'ye yazılır; başlık = AI'nin ilk title'ı.
 
@@ -471,7 +479,7 @@ galeri~~ (29 Ekim: landing `#examples` gerçek render'lar `lib/showcase.ts`
 X video" satırı `steps.ts`'ten hesaplanır. **Paket kredileri/fiyatları 29
 Ekim'de gözden geçirildi, Kadir "şimdilik değiştirme" dedi** — Starter 500 ile
 yalnızca 1×30 sn video çıkıyor; ileride tekrar bakılacak) →
-~~YouTube'a doğrudan yükleme~~ (31 Ekim, Google kurulumu + denetim bekliyor) → ~~seri modu/zamanlama~~ + ~~TikTok~~ (31 Ekim; TikTok uygulaması + denetim bekliyor) → ~~brand kit~~ → ses klonlama →
+~~YouTube'a doğrudan yükleme~~ (31 Ekim, Google kurulumu + denetim bekliyor) → ~~seri modu/zamanlama~~ + ~~TikTok~~ (31 Ekim; TikTok uygulaması + denetim bekliyor) → ~~brand kit~~ → ~~ses klonlama~~ →
 affiliate. Ertelenen: timeline editör, AI avatar, mobil app.
 
 Teknik borç: sahne düzeyinde yeniden üretim + versiyon geçmişi +

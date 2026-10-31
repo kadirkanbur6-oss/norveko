@@ -18,6 +18,7 @@ const USER_TABLES = [
   "tiktok_connections",
   "series",
   "brand_kits",
+  "voice_clones",
   "credit_transactions",
   "credit_purchases",
   "pipeline_jobs",
@@ -125,6 +126,13 @@ export async function DELETE(req: Request) {
       } catch (err) {
         console.error(`[account] storage cleanup ${bucket} failed:`, err);
       }
+    }
+    // The cloned voice lives in the shared ElevenLabs account: remove it there.
+    try {
+      const { data: clone } = await client.from("voice_clones").select("voice_id").eq("user_id", user.id).maybeSingle();
+      if (clone?.voice_id) await (await import("@/lib/pipeline/elevenlabs")).deleteVoice(clone.voice_id);
+    } catch (err) {
+      console.error("[account] voice clone cleanup failed:", err);
     }
     // Brand kit logos live under videos/brand/<user>/.
     try {

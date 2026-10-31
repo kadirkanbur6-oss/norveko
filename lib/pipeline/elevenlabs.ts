@@ -147,7 +147,9 @@ export async function listLibraryVoices(
 export async function addLibraryVoice(
   publicOwnerId: string,
   voiceId: string,
-  name: string
+  name: string,
+  /** Voices that must never be evicted (creators' own cloned voices). */
+  protectedIds: ReadonlySet<string> = new Set()
 ): Promise<string> {
   const existing = await listVoices();
   const already = existing.find((v) => v.voice_id === voiceId);
@@ -167,7 +169,7 @@ export async function addLibraryVoice(
   if (!res.ok) {
     let body = await res.text();
     const slotsFull = /voice_limit|limit_reached|maximum|quota/i.test(body) || res.status === 400;
-    const removable = existing.filter((v) => v.category !== "premade");
+    const removable = existing.filter((v) => v.category !== "premade" && !protectedIds.has(v.voice_id));
     if (slotsFull && removable.length > 0) {
       await fetch(`${ELEVENLABS_BASE_URL}/v1/voices/${encodeURIComponent(removable[0].voice_id)}`, {
         method: "DELETE",
@@ -182,6 +184,47 @@ export async function addLibraryVoice(
   }
   const data = (await res.json()) as { voice_id?: string };
   return data.voice_id || voiceId;
+}
+
+/**
+ * Instant voice clone from the creator's own samples (POST /v1/voices/add).
+ * Uses one of the plan's custom-voice slots. Returns the new voice id.
+ */
+export async function cloneVoice(args: { name: string; files: Array<{ data: Blob; filename: string }>; description?: string }): Promise<string> {
+  const form = new FormData();
+  form.append("name", args.name.slice(0, 80));
+  form.append("remove_background_noise", "true");
+  if (args.description) form.append("description", args.description.slice(0, 300));
+  for (const f of args.files) form.append("files", f.data, f.filename);
+  const res = await fetch(`${ELEVENLABS_BASE_URL}/v1/voices/add`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: form,
+    signal: AbortSignal.timeout(90_000),
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    const err = new Error(`ElevenLabs voice clone failed (${res.status}): ${text.slice(0, 300)}`);
+    (err as Error & { code?: string }).code = /voice_limit|limit_reached|maximum/i.test(text)
+      ? "slots_full"
+      : /paid|subscription|can_not_use_instant_voice_cloning|not allowed/i.test(text)
+        ? "plan"
+        : res.status === 400 || res.status === 422
+          ? "bad_audio"
+          : "failed";
+    throw err;
+  }
+  const data = JSON.parse(text) as { voice_id?: string };
+  if (!data.voice_id) throw new Error("ElevenLabs returned no voice id.");
+  return data.voice_id;
+}
+
+export async function deleteVoice(voiceId: string): Promise<void> {
+  await fetch(`${ELEVENLABS_BASE_URL}/v1/voices/${encodeURIComponent(voiceId)}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+    signal: AbortSignal.timeout(20_000),
+  }).catch(() => undefined);
 }
 
 export interface SpeechResult {

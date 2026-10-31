@@ -12,6 +12,8 @@ import { getSubscriptionTier, listLibraryVoices, listVoices } from "@/lib/pipeli
 import { isGenerationEnabled, LAUNCH_LOCK_MESSAGE } from "@/lib/pipeline/features";
 import { LANGUAGES, isOneOf, languageCode } from "@/lib/pipeline/options";
 import { GEMINI_VOICES, GEMINI_VOICE_PREFIX } from "@/lib/pipeline/gemini-tts";
+import { adminDb } from "@/lib/youtube/oauth";
+import { cloneOwners } from "@/lib/voice/clones";
 
 export const dynamic = "force-dynamic";
 
@@ -74,7 +76,12 @@ export async function GET(req: NextRequest) {
     // Voices previously added to the account FROM the library still count as
     // library voices for billing (category != "premade"), so on a free plan
     // they must be hidden too — otherwise the picker offers a voice that fails.
-    const allAccount = await getAccountVoices();
+    // Creators' cloned voices are private: never list anyone's clone here;
+    // the owner's own clone comes back separately as "mine".
+    const owners = await cloneOwners(adminDb()).catch(() => new Map<string, string>());
+    const everyAccount = await getAccountVoices();
+    const mineId = [...owners].find(([, owner]) => owner === user.id)?.[0] ?? null;
+    const allAccount = everyAccount.filter((v) => !owners.has(v.voice_id) && !v.name.startsWith("Norveko · "));
     const account = libraryAllowed ? allAccount : allAccount.filter((v) => v.category === "premade");
     const tagged = account.filter((v) => v.languages.includes(code));
 
@@ -112,6 +119,18 @@ export async function GET(req: NextRequest) {
         languages: [code],
         source: "gemini" as const,
       })),
+      mine: mineId
+        ? [
+            {
+              voice_id: mineId,
+              name: "Your voice - Cloned from your recording",
+              labels: {},
+              preview_url: null,
+              languages: [code],
+              source: "clone" as const,
+            },
+          ]
+        : [],
       voices: voices.map((voice) => ({
         voice_id: voice.voice_id,
         name: voice.name,
