@@ -214,7 +214,12 @@ Business 5000/$59.
   (iş başarısızsa GET'te failed gösterilir). Seri yalnız paket almış (veya beta) + tam video erişimi olan
   hesaplara (`seriesAllowed`), kullanıcı başına 5 seri, ses yalnız Gemini anlatıcıları. Cron
   `/api/series/tick` 04:00 UTC (`vercel.json`), "Make one now" → `/api/series/[id]/run`.
-  **CRON_SECRET Vercel'de tanımlı olmalı** (yoksa reap ve tick 401 döner).
+  CRON_SECRET Vercel'de tanımlı ✅ (31 Ekim, tick elle çalıştırıldı → 200). **İzleyicisiz işler (31 Ekim):**
+  async adımlar (görseller/render) eskiden yalnız UI `GET /api/pipeline/[id]` poll edince ilerliyordu → seri
+  bölümü takıldı. Artık `/api/pipeline/run` sonucu `noop` ise `after(() => watchJob(jobId))`: ~22 sn'de bir
+  `reconcileJob` (sağlayıcıyı poll et / unutulan adımı tekrar tetikle), kick olunca yeni çağrı izlemeyi devralır
+  (bütçe 240 sn). TikTok geliştirici uygulaması "Norveko" (Bireysel) + Sandbox "Norveko test"; site doğrulama
+  dosyası `public/tiktok2Vlc4spidXzS1mcfLwXijkpCKUcnVKNi.txt`; 1024 px ikon `public/brand/norveko-icon-1024.png`.
 - Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
 - Bitince sonuç `projects.content` JSONB'ye yazılır; başlık = AI'nin ilk title'ı.
 

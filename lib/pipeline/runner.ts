@@ -1757,4 +1757,29 @@ export const runNextStep = (jobId: string) => getRunner().runNextStep(jobId);
 export const reconcileJob = (job: Pick<JobRow, "id" | "status" | "steps" | "created_at">) =>
   getRunner().reconcileJob(job);
 export const reapStuckJobs = () => getRunner().reapStuckJobs();
+
+/**
+ * Keep a job moving when nobody is watching it (series episodes, closed tabs).
+ * Async steps (images/clips, render) and forgotten kicks used to advance only
+ * when the UI polled GET /api/pipeline/[id]. The worker now watches its own
+ * job for a few minutes after each invocation and reconciles it (poll the
+ * provider / re-kick) — the next invocation takes over the watch.
+ */
+export async function watchJob(jobId: string, opts: { intervalMs?: number; budgetMs?: number } = {}): Promise<void> {
+  const interval = opts.intervalMs ?? ASYNC_POLL_INTERVAL_MS + 2_000;
+  const budget = opts.budgetMs ?? 240_000;
+  const started = Date.now();
+  while (Date.now() - started + interval < budget) {
+    await new Promise((r) => setTimeout(r, interval));
+    const { data: job } = await productionDb()
+      .from("pipeline_jobs")
+      .select("id, status, steps, created_at")
+      .eq("id", jobId)
+      .maybeSingle();
+    if (!job || job.status !== "running") return;
+    const action = await getRunner().reconcileJob(job as Pick<JobRow, "id" | "status" | "steps" | "created_at">);
+    // A kick starts a new worker invocation, which watches from there.
+    if (action !== "ok") return;
+  }
+}
 export const failJob = (jobId: string, message: string) => getRunner().failJob(jobId, message);
