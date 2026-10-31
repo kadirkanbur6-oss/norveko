@@ -2,8 +2,8 @@
 
 // app/components/HeroBackground.tsx
 // Muted, looping "wall of Shorts" behind the landing hero, made of real
-// Kling clips from Norveko runs (lib/showcase.ts HERO_LOOP_CLIPS). Desktop
-// shows three columns, phones one; nothing loads for visitors who ask for
+// AI clips from Norveko runs (lib/showcase.ts HERO_LOOP_CLIPS). Desktop
+// shows every clip as a column, phones only the first; nothing loads for visitors who ask for
 // reduced motion or data saving. Purely decorative (aria-hidden).
 
 import { useEffect, useState } from "react";
@@ -47,7 +47,7 @@ export default function HeroBackground() {
               disablePictureInPicture
               onCanPlay={(e) => e.currentTarget.parentElement?.classList.add("nv-hero-wall-ready")}
               className={`h-full w-full object-cover lg:w-auto lg:flex-1 lg:aspect-[9/16] lg:rounded-3xl ${
-                i === 1 ? "lg:translate-y-10" : "lg:-translate-y-6"
+                i % 2 === 1 ? "lg:translate-y-10" : "lg:-translate-y-6"
               }`}
             />
           ))}
