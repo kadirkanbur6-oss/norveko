@@ -5,5 +5,5 @@
 export function isCronRequest(request: Request): boolean {
   const token = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
   if (!token) return false;
-  return [process.env.CRON_SECRET, process.env.HEARTBEAT_SECRET].some((s) => Boolean(s) && s === token);
+  return [process.env.CRON_SECRET, process.env.HEARTBEAT_SECRET].some((s) => Boolean(s?.trim()) && s!.trim() === token.trim());
 }

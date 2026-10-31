@@ -20,8 +20,12 @@ export const TIKTOK_SCOPES = ["user.info.basic", "video.publish"];
 export const TIKTOK_STATE_COOKIE = "nv_tt_state";
 const API = "https://open.tiktokapis.com";
 
+// Env values pasted into dashboards often carry a trailing newline/space.
+const clientKey = () => (process.env.TIKTOK_CLIENT_KEY ?? "").trim();
+const clientSecret = () => (process.env.TIKTOK_CLIENT_SECRET ?? "").trim();
+
 export function tiktokConfigured(): boolean {
-  return Boolean(process.env.TIKTOK_CLIENT_KEY && process.env.TIKTOK_CLIENT_SECRET);
+  return Boolean(clientKey() && clientSecret());
 }
 
 export function tiktokRedirectUri(): string {
@@ -30,7 +34,7 @@ export function tiktokRedirectUri(): string {
 
 export function tiktokAuthorizationUrl(state: string): string {
   const params = new URLSearchParams({
-    client_key: process.env.TIKTOK_CLIENT_KEY ?? "",
+    client_key: clientKey(),
     response_type: "code",
     scope: TIKTOK_SCOPES.join(","),
     redirect_uri: tiktokRedirectUri(),
@@ -53,8 +57,8 @@ async function tokenRequest(body: Record<string, string>): Promise<TokenResponse
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded", "Cache-Control": "no-cache" },
     body: new URLSearchParams({
-      client_key: process.env.TIKTOK_CLIENT_KEY ?? "",
-      client_secret: process.env.TIKTOK_CLIENT_SECRET ?? "",
+      client_key: clientKey(),
+      client_secret: clientSecret(),
       ...body,
     }),
     signal: AbortSignal.timeout(20_000),
@@ -77,8 +81,8 @@ export async function revokeTikTok(accessToken: string): Promise<void> {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      client_key: process.env.TIKTOK_CLIENT_KEY ?? "",
-      client_secret: process.env.TIKTOK_CLIENT_SECRET ?? "",
+      client_key: clientKey(),
+      client_secret: clientSecret(),
       token: accessToken,
     }),
     signal: AbortSignal.timeout(10_000),

@@ -79,7 +79,7 @@ export function decryptToken(enc: string): string {
 
 export function authorizationUrl(state: string): string {
   const params = new URLSearchParams({
-    client_id: process.env.GOOGLE_OAUTH_CLIENT_ID ?? "",
+    client_id: (process.env.GOOGLE_OAUTH_CLIENT_ID ?? "").trim(),
     redirect_uri: redirectUri(),
     response_type: "code",
     scope: YOUTUBE_SCOPES.join(" "),
@@ -104,8 +104,8 @@ async function tokenRequest(body: Record<string, string>): Promise<TokenResponse
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      client_id: process.env.GOOGLE_OAUTH_CLIENT_ID ?? "",
-      client_secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? "",
+      client_id: (process.env.GOOGLE_OAUTH_CLIENT_ID ?? "").trim(),
+      client_secret: (process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? "").trim(),
       ...body,
     }),
     signal: AbortSignal.timeout(20_000),
