@@ -75,7 +75,7 @@ Rules:
 - VISUAL PROMPT rules — each videoPrompt is a complete shot description for a photoreal AI video/image model, 35–60 words, in this order: (1) shot type and lens (e.g. "extreme close-up, 85mm" / "wide aerial establishing shot"), (2) the single clear subject and what it is doing, (3) environment and era-accurate details, (4) lighting and time of day, (5) colour palette/mood, (6) one slow steady camera move. Every scene must show a DIFFERENT subject or location — never two scenes of the same thing; alternate wide and close shots; keep one consistent palette across the video. Prefer physical, filmable things (objects, places, hands, textures, weather, crowds from behind) over abstract concepts. No text, signs, maps with labels, diagrams, or UI in any shot.
 - STRICT LENGTH: the hook + script together are read aloud at ~${wordsPerSecond(languageCode(outputLanguage))} words per second in ${languagePromptName(outputLanguage)}. For the target duration they MUST total between ${range.min} and ${range.max} words (aim for ${range.target}). Count the words before answering; do not go under or over.
 - The video is ${aspect}; compose every videoPrompt and the thumbnail for that framing (subjects centred, room above and below the subject for vertical). Do NOT write the words "vertical", "portrait", "tall framing", "9:16", "horizontal" or "16:9" inside a videoPrompt — the aspect ratio is set separately, and those words make the video model rotate the picture. Describe a steady, level camera (slow push-in, gentle pan, static); never ask for camera roll, spinning, flipping or orbiting.
-- If the topic involves real people, teams, companies or brands: videoPrompts must NOT depict identifiable real people, faces, logos, crests or jersey names. Show atmosphere, places, objects, crowds and colours instead (e.g. "fans in red-and-yellow striped shirts"), and never ask for readable text, scoreboards or signs — generated text is always wrong.${brief ? `\n- ${brief}` : ""}${research ? `\n\nVERIFIED RESEARCH BRIEF — the ONLY source of truth for any claim about real events, people, numbers, dates or outcomes. Build the script on these facts, do not invent or "remember" others, and do not contradict them:\n${research}` : ""}`;
+- If the topic involves real people, teams, companies or brands: videoPrompts must NOT depict identifiable real people, faces, logos, crests or jersey names. Show atmosphere, places, objects, crowds and colours instead (e.g. "fans in red-and-yellow striped shirts"), and never ask for readable text, scoreboards or signs — generated text is always wrong.${brief ? `\n- ${brief}` : ""}${research ? "" : "\n- NO VERIFIED RESEARCH IS AVAILABLE for this video. If it is about real people or historical events, only state facts you are highly confident are widely documented (well-known names, dates, places). Do NOT invent occupations, causes of death, locations, quotes, numbers or document details. When a story is a legend, a newspaper claim or disputed, say so explicitly (e.g. 'anlatılana göre', 'dönemin gazetelerine göre', 'according to the newspapers of the time'). Accuracy beats drama."}${research ? `\n\nVERIFIED RESEARCH BRIEF — the ONLY source of truth for any claim about real events, people, numbers, dates or outcomes. Build the script on these facts, do not invent or "remember" others, and do not contradict them:\n${research}` : ""}`;
 
   const userPrompt = `Video idea: ${idea}
 Platform: ${platform}
@@ -309,7 +309,10 @@ Write the brief in ${language}. Rules:
       tools: [{ type: "web_search", search_context_size: "low" }],
       tool_choice: "auto",
       reasoning: { effort: "low" },
-      max_output_tokens: 900,
+      // Reasoning tokens count toward this cap. At 900 the model sometimes
+      // spent it all thinking after the search and returned no text
+      // (31 Oct: "Research returned no text" on a history topic).
+      max_output_tokens: 6000,
     }),
     signal: AbortSignal.timeout(RESEARCH_TIMEOUT_MS),
   }).catch((err: unknown) => {
@@ -346,7 +349,10 @@ Write the brief in ${language}. Rules:
     }
   }
   if (!brief.trim() && typeof data?.output_text === "string") brief = data.output_text;
-  if (!brief.trim()) throw new Error("Research returned no text.");
+  if (!brief.trim()) {
+    const why = data?.status === "incomplete" ? ` (incomplete: ${data?.incomplete_details?.reason ?? "unknown"})` : "";
+    throw new Error(`Research returned no text${why}.`);
+  }
 
   const usage =
     data?.usage && typeof data.usage === "object"

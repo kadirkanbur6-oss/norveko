@@ -60,7 +60,12 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   sonra research'ü skip edip işi devam ettirir (`RESEARCH_STEP_TIMEOUT_MS`);
   diğer senkron adımlar için 8 dk timeout → failJob. UI sarı "skipped" rozeti
   + açıklama gösterir. (29 Ekim'de piramit testi research'te 60 sn'lik
-  function limitine takılıp 8 dk beklemişti.) Senaryo
+  function limitine takılıp 8 dk beklemişti.) **31 Ekim:** `max_output_tokens`
+  900 → 6000 (reasoning token'ları da sayılıyor; 900'de model aramadan sonra
+  metin yazamadan bitiyordu → "Research returned no text"). Araştırma yoksa
+  senaryo prompt'u gerçek kişi/olay için yalnızca yaygın belgelenmiş bilgiyi
+  kullanmayı, meslek/ölüm nedeni/yer/alıntı uydurmamayı ve efsane/gazete
+  iddiasını "anlatılana göre" diye belirtmeyi zorunlu kılar. Senaryo
   prompt'unda ayrıca gerçek kişi/marka kuralı: videoPrompt'lar yüz, arma,
   forma ismi, skor tabelası, okunur yazı istemez (AI görseller bunları
   uyduruyor).
