@@ -10,7 +10,7 @@ import HeroBackground from "./HeroBackground";
 import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
 import SignOutButton from "./SignOutButton";
 import BrandMark from "./BrandMark";
-import { COMPARISON, FREE_TRIAL_CREDITS, PAID_INCLUDES, planDetails } from "@/lib/plans";
+import { COMPARISON, FREE_TRIAL_CREDITS, PAID_INCLUDES, TRIAL_VIDEO_PUBLIC, planDetails } from "@/lib/plans";
 import {
   RESEARCH_CREDITS,
   SUBTITLES_CREDITS_PER_MIN,
@@ -320,7 +320,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
               </div>
 
               <p className="mt-3 text-xs text-gray-500">
-                No credit card required · 50 free credits on signup
+                No credit card required · {FREE_TRIAL_CREDITS} free credits{TRIAL_VIDEO_PUBLIC ? " + a free video" : ""} on signup
               </p>
             </div>
           </Reveal>
@@ -394,7 +394,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           <SectionTitle
             eyebrow="Pricing"
             title="Start free. Scale when you're ready."
-            subtitle={`Every account starts with ${FREE_TRIAL_CREDITS} free credits. One-time packs, no subscription — credits never expire.`}
+            subtitle={`Every account starts with ${FREE_TRIAL_CREDITS} free credits${TRIAL_VIDEO_PUBLIC ? " and one free 30-second video" : ""}. One-time packs, no subscription — credits never expire.`}
           />
         </Reveal>
 

@@ -14,6 +14,7 @@ import {
   fullVideoPlan,
   resolvePipelineOptions,
   totalPipelineCredits,
+  isTrialVideoShape,
   type FootageMode,
   type PipelineOptions,
   initialStepsState,
@@ -258,9 +259,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4) Charge credits
+    // 4) Free-trial video: one 30 s video per account before any purchase.
+    if (resolved.fullVideo && isTrialVideoShape(options)) {
+      const { trialVideoAvailable } = await import("@/lib/pipeline/trial");
+      if (await trialVideoAvailable(supabaseAdmin, user.id)) options.trialVideo = true;
+    }
+
+    // Charge credits (nothing for the free-trial video)
     const cost = totalPipelineCredits(options);
-    const { data: deducted, error: deductError } = await supabaseAdmin.rpc(
+    const { data: deducted, error: deductError } = cost === 0
+      ? { data: true, error: null }
+      : await supabaseAdmin.rpc(
       "deduct_credits",
       {
         p_user_id: user.id,
@@ -300,7 +309,7 @@ export async function POST(req: NextRequest) {
         style,
         duration,
         output_language: outputLanguage,
-        options: { orientation, template, notes, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined, clipMode: resolved.fullVideo ? clipMode : undefined },
+        options: { orientation, template, notes, trialVideo: options.trialVideo === true || undefined, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined, clipMode: resolved.fullVideo ? clipMode : undefined },
         status: "running",
         current_step: firstStep.id,
         steps,

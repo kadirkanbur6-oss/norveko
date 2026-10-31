@@ -14,6 +14,8 @@ import {
   FULL_VIDEO_DURATIONS,
   RESEARCH_CREDITS,
   subtitlesCredits,
+  isTrialVideoShape,
+  TRIAL_VIDEO,
   voiceoverCredits,
   totalPipelineCredits,
   type FootageMode,
@@ -95,6 +97,7 @@ function ChatContent() {
   const [footage, setFootage] = useState<FootageMode>("hybrid");
   const [clipMode, setClipMode] = useState<ClipMode>("image");
   const [fullVideoAvailable, setFullVideoAvailable] = useState(false);
+  const [trialVideoAvailable, setTrialVideoAvailable] = useState(false);
   const [generationAvailable, setGenerationAvailable] = useState(true);
   const [balance, setBalance] = useState<number | null>(null);
   const [launchLockMessage, setLaunchLockMessage] = useState<string | null>(null);
@@ -113,7 +116,7 @@ function ChatContent() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const fullVideoOn = includeFullVideo && fullVideoAvailable && Boolean(fullVideoPlan(duration, footage));
-  const totalCost = totalPipelineCredits({
+  const costOptions = {
     research: includeResearch,
     voiceover: includeVoiceover || fullVideoOn,
     subtitles: (includeVoiceover && includeSubtitles) || fullVideoOn,
@@ -123,8 +126,12 @@ function ChatContent() {
     clipMode,
     duration,
     // An ElevenLabs voice costs more per minute than a built-in Gemini narrator.
-    voiceEngine: voiceId && !voiceId.startsWith("gemini:") ? "elevenlabs" : "gemini",
-  });
+    voiceEngine: (voiceId && !voiceId.startsWith("gemini:") ? "elevenlabs" : "gemini") as "elevenlabs" | "gemini",
+  };
+  // The free-trial video (one 30 s hybrid video per account) costs nothing.
+  const isTrialVideo = trialVideoAvailable && fullVideoOn && isTrialVideoShape(costOptions);
+  const totalCost = isTrialVideo ? 0 : totalPipelineCredits(costOptions);
+
   const fullVideoSupported = Boolean(FULL_VIDEO_DURATIONS[duration]);
   const videoCost = VIDEO_CLIP_CREDITS * VIDEO_MAX_CLIPS;
 
@@ -223,6 +230,7 @@ function ChatContent() {
         if (active && data?.success) {
           setVideoAvailable(Boolean(data.features?.videoGeneration));
           setFullVideoAvailable(Boolean(data.features?.fullVideo));
+          setTrialVideoAvailable(Boolean(data.features?.trialVideo));
           setGenerationAvailable(data.features?.generation !== false);
           setLaunchLockMessage(data.launchLockMessage ?? null);
         }
@@ -987,6 +995,30 @@ function ChatContent() {
                   </label>
                 </div>
 
+                {trialVideoAvailable && (
+                  <div className="mt-4 flex flex-col gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2.5 text-xs sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-emerald-100">
+                      <span className="font-semibold">Your free trial includes one 30-second video.</span>{" "}
+                      Hybrid footage, image → video clips, with a small Norveko watermark.
+                    </p>
+                    {!isTrialVideo && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDuration(TRIAL_VIDEO.duration);
+                          setFootage(TRIAL_VIDEO.footage);
+                          setClipMode(TRIAL_VIDEO.clipMode);
+                          setIncludeFullVideo(true);
+                          setIncludeVoiceover(true);
+                        }}
+                        className="shrink-0 rounded-lg bg-emerald-500/80 px-3 py-1.5 font-semibold text-white hover:bg-emerald-500"
+                      >
+                        Use my free video
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {fullVideoOn && (
                   <div className="mt-4 grid gap-2 sm:grid-cols-3">
                     {(
@@ -1130,7 +1162,14 @@ function ChatContent() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   <span className="text-gray-400">
-                    Total <span className="font-semibold text-white">{totalCost} credits</span>
+                    Total{" "}
+                    <span className="font-semibold text-white">
+                      {isTrialVideo ? (
+                        <span className="text-emerald-300">Free — trial video</span>
+                      ) : (
+                        `${totalCost} credits`
+                      )}
+                    </span>
                   </span>
                   {balance !== null && (
                     <span

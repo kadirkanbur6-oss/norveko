@@ -14,6 +14,16 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const { user } = await requireUser();
+  // One free 30 s video for accounts that haven't bought a pack (full-video access required).
+  let trialVideo = false;
+  if (user && isFullVideoEnabled(user.id)) {
+    const { createClient } = await import("@supabase/supabase-js");
+    const { trialVideoAvailable } = await import("@/lib/pipeline/trial");
+    const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+      auth: { persistSession: false },
+    });
+    trialVideo = await trialVideoAvailable(admin, user.id);
+  }
 
   return NextResponse.json({
     success: true,
@@ -21,6 +31,7 @@ export async function GET() {
       generation: isGenerationEnabled(user?.id),
       videoGeneration: isVideoGenerationEnabled(user?.id),
       fullVideo: isFullVideoEnabled(user?.id),
+      trialVideo,
     },
     launchLockMessage: isGenerationEnabled(user?.id) ? null : LAUNCH_LOCK_MESSAGE,
   });

@@ -142,6 +142,16 @@ Business 5000/$59.
   cleanAssets` (server-owned). Paddle webhook ilk satın almada
   `removeWatermarksForUser()` → thumbnail'lar temize döner, filigranlı videolar
   (en çok 20) temiz yeniden render edilir. `/api/credits` `freeTrial` döner.
+- **Ücretsiz deneme videosu (31 Ekim, Kadir)**: paket almamış (ve beta-muaf olmayan)
+  hesap başına **bir** 30 sn video, hybrid + image→video, filigranlı, **0 kredi**
+  (`TRIAL_VIDEO`, `isTrialVideoShape()` steps.ts; uygunluk `lib/pipeline/trial.ts`
+  `trialVideoAvailable()` = satın alma yok + daha önce `pipeline_jobs.options.trialVideo`
+  yok). Start route uygunsa `options.trialVideo=true` → `creditBreakdown` her kalemi 0
+  yapar, plan `clipCredits/stillCredits` 0 → iade de 0; `deduct_credits` çağrılmaz.
+  `/api/features` `trialVideo` döner (tam video erişimi gerekir); `/chat` yeşil "Use my
+  free video" kutusu + "Free — trial video" toplamı. Maliyet ~$0.80/hesap. Landing/
+  billing metni yalnız `NEXT_PUBLIC_FULL_VIDEO_ENABLED=true` iken gösterilir (lansmanda
+  `FULL_VIDEO_ENABLED` ile birlikte aç).
 - Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
 - Bitince sonuç `projects.content` JSONB'ye yazılır; başlık = AI'nin ilk title'ı.
 

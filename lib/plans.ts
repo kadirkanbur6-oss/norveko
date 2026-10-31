@@ -76,8 +76,16 @@ export const PAID_INCLUDES = [
   "Credits never expire — failed steps are refunded automatically",
 ];
 
+/**
+ * Full videos are still a private beta; only advertise the free trial video
+ * once they are public (set NEXT_PUBLIC_FULL_VIDEO_ENABLED=true together with
+ * FULL_VIDEO_ENABLED=true at launch).
+ */
+export const TRIAL_VIDEO_PUBLIC = process.env.NEXT_PUBLIC_FULL_VIDEO_ENABLED === "true";
+
 export const FREE_TRIAL_RULES = [
   `${FREE_TRIAL_CREDITS} free credits on signup — no card needed`,
+  ...(TRIAL_VIDEO_PUBLIC ? ["One finished 30-second video, free — once per account"] : []),
   "Every feature unlocked so you can judge the quality",
   "Thumbnails and videos carry a small Norveko watermark",
   "Buy any pack and the watermark disappears — also from what you already made",

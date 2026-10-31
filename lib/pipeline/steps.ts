@@ -59,6 +59,25 @@ export interface PipelineOptions {
   duration?: string;
   /** Which TTS engine reads the narration — priced differently (Gemini ≪ ElevenLabs). */
   voiceEngine?: VoiceEngine;
+  /** The free-trial video (one per account): every item costs 0 credits. */
+  trialVideo?: boolean;
+}
+
+/**
+ * Free trial (31 Oct 2026, Kadir: "deneme de bir video üretebilsin"): one
+ * 30-second video per account, hybrid footage with image→video clips and the
+ * Norveko watermark. Provider cost ≈ $0.80; credits are not involved.
+ */
+export const TRIAL_VIDEO = { duration: "30 seconds", footage: "hybrid", clipMode: "image" } as const;
+
+/** Does this request match the free-trial video format? */
+export function isTrialVideoShape(opts: PipelineOptions): boolean {
+  return (
+    Boolean(opts.fullVideo) &&
+    opts.duration === TRIAL_VIDEO.duration &&
+    (opts.footage ?? "hybrid") === TRIAL_VIDEO.footage &&
+    (opts.clipMode ?? "image") === TRIAL_VIDEO.clipMode
+  );
 }
 
 export type VoiceEngine = "gemini" | "elevenlabs";
@@ -264,11 +283,12 @@ type Normalized = {
   clipMode: ClipMode;
   duration: string | undefined;
   voiceEngine: VoiceEngine;
+  trialVideo: boolean;
 };
 
 function normalize(opts: boolean | PipelineOptions | undefined): Normalized {
   if (typeof opts === "boolean") {
-    return { research: false, voiceover: opts, subtitles: false, video: false, fullVideo: false, footage: "hybrid", clipMode: "image", duration: undefined, voiceEngine: "gemini" };
+    return { research: false, voiceover: opts, subtitles: false, video: false, fullVideo: false, footage: "hybrid", clipMode: "image", duration: undefined, voiceEngine: "gemini", trialVideo: false };
   }
   const fullVideo = Boolean(opts?.fullVideo) && Boolean(fullVideoPlan(opts?.duration, opts?.footage));
   // A full video always narrates and burns in subtitles.
@@ -283,6 +303,7 @@ function normalize(opts: boolean | PipelineOptions | undefined): Normalized {
     clipMode: CLIP_MODES.includes(opts?.clipMode as ClipMode) ? (opts!.clipMode as ClipMode) : "image",
     duration: opts?.duration,
     voiceEngine: opts?.voiceEngine === "elevenlabs" ? "elevenlabs" : "gemini",
+    trialVideo: fullVideo && Boolean(opts?.trialVideo),
   };
 }
 
@@ -333,6 +354,8 @@ export function creditBreakdown(opts: boolean | PipelineOptions = false): Array<
     }
     items.push({ id: step.id, label: step.label, credits: step.credits });
   }
+  // Free-trial video: same work, nothing charged (and so nothing to refund).
+  if (n.trialVideo) return items.map((item) => ({ ...item, credits: 0 }));
   return items;
 }
 
@@ -394,8 +417,11 @@ export function initialStepsState(
   if (state.script) state.script.duration = n.duration ?? null;
   if (state.voiceover) state.voiceover.engine = n.voiceEngine;
   if (n.fullVideo) {
-    const plan = fullVideoPlan(n.duration, n.footage, n.clipMode)!;
-    state.video.plan = { ...plan, footage: n.footage, duration: n.duration };
+    const full = fullVideoPlan(n.duration, n.footage, n.clipMode)!;
+    const plan = n.trialVideo
+      ? { ...full, clipCredits: 0, stillCredits: 0, credits: { kling: 0, stills: 0, render: 0, total: 0 } }
+      : full;
+    state.video.plan = { ...plan, footage: n.footage, duration: n.duration, ...(n.trialVideo ? { trial: true } : {}) };
     state.render.plan = { seconds: plan.seconds, renderBlocks: plan.renderBlocks };
   }
   return state;
@@ -416,6 +442,7 @@ export function optionsFromSteps(steps: Record<string, unknown> | null | undefin
     // Plans created before clip modes existed were Kling text→video.
     clipMode: plan ? (plan.clipMode ?? "text") : undefined,
     duration: plan?.duration ?? ((steps?.script as Record<string, unknown> | undefined)?.duration as string | undefined) ?? undefined,
+    trialVideo: Boolean((plan as { trial?: boolean } | null)?.trial),
     voiceEngine:
       voiceover?.engine === "elevenlabs" ||
       (voiceover?.engine === undefined && typeof voiceover?.voice_id === "string" && !String(voiceover.voice_id).startsWith("gemini:"))

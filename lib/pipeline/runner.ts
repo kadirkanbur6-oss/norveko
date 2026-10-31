@@ -603,7 +603,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
     const already = Number(job.steps?.research?.refunded ?? 0);
     let refunded = already;
     const paid = typeof job.steps?.research?.credits === "number" ? (job.steps.research.credits as number) : RESEARCH_CREDITS;
-    if (already <= 0) {
+    if (already <= 0 && paid > 0) {
       const { error } = await db.rpc("add_credits", {
         p_user_id: job.user_id,
         p_amount: paid,

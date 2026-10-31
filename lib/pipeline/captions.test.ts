@@ -276,3 +276,20 @@ test("watermark: free-trial badge is the top layer only when requested; beta use
     else process.env[k] = v;
   }
 });
+
+test("free-trial video: 30 s hybrid image→video costs 0 and records 0 everywhere refunds look", async () => {
+  const s = await import("./steps");
+  const opts = { research: true, fullVideo: true, footage: "hybrid", clipMode: "image", duration: "30 seconds" } as const;
+  assert.equal(s.isTrialVideoShape(opts), true);
+  assert.equal(s.isTrialVideoShape({ ...opts, duration: "60 seconds" }), false);
+  assert.equal(s.isTrialVideoShape({ ...opts, footage: "cinematic" }), false);
+  assert.ok(s.totalPipelineCredits(opts) > 0, "same video normally costs credits");
+  assert.equal(s.totalPipelineCredits({ ...opts, trialVideo: true }), 0);
+  const steps = s.initialStepsState({ ...opts, trialVideo: true }) as Record<string, Record<string, unknown>>;
+  assert.equal((steps.video.plan as { clipCredits: number }).clipCredits, 0);
+  assert.equal((steps.video.plan as { stillCredits: number }).stillCredits, 0);
+  assert.equal(steps.research.credits, 0);
+  assert.equal(steps.render.credits, 0);
+  assert.equal(s.optionsFromSteps(steps).trialVideo, true);
+  assert.equal(s.totalPipelineCredits({ ...opts, fullVideo: false, trialVideo: true }) > 0, true, "trial flag means nothing without a full video");
+});
