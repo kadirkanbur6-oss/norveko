@@ -26,10 +26,19 @@ export async function GET() {
       .order("created_at", { ascending: false })
       .limit(20);
 
+    // Free trial = no purchase yet → generated thumbnails/videos carry the badge.
+    const { count: purchases } = await supabase
+      .from("credit_transactions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("type", "purchase");
+    const { isWatermarkExempt } = await import("@/lib/pipeline/watermark-policy");
+
     return NextResponse.json({
       success: true,
       credits: creditData?.credits ?? 0,
       transactions: transactions ?? [],
+      freeTrial: !isWatermarkExempt(user.id) && (purchases ?? 0) === 0,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

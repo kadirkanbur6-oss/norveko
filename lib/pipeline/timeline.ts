@@ -118,6 +118,8 @@ export interface EditInput {
   languageCode?: string;
   /** Background music (already ≥ the video length); mixed well under the voice. */
   musicUrl?: string;
+  /** Free-trial "Made with Norveko" badge (PNG URL), top-right for the whole video. */
+  watermarkUrl?: string;
 }
 
 /** Seconds the hook title stays on screen. */
@@ -266,6 +268,26 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
           asset: { type: "audio", src: input.musicUrl, volume: MUSIC_VOLUME, effect: "fadeInFadeOut" },
           start: 0,
           length: Math.round(totalSeconds * 100) / 100,
+        },
+      ],
+    });
+  }
+
+  // Topmost layer (Shotstack draws track 0 on top), inside the safe area:
+  // above the hook card and clear of the captions band.
+  if (input.watermarkUrl) {
+    tracks.unshift({
+      clips: [
+        {
+          asset: { type: "image", src: input.watermarkUrl },
+          start: 0,
+          length: totalSeconds,
+          // Native size (353×108 px) instead of the default crop-to-fill.
+          fit: "none",
+          position: "topRight",
+          offset: { x: -0.04, y: orientation === "vertical" ? -0.06 : -0.04 },
+          scale: orientation === "vertical" ? 0.8 : 0.9,
+          opacity: 0.85,
         },
       ],
     });

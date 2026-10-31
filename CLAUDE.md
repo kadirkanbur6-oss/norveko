@@ -128,6 +128,20 @@ Sabit aylık giderler (lansmanda): Vercel Pro $20, Supabase Pro $25, ElevenLabs
 Starter $5, alan adı ~$1 → ~$51/ay ≈ ayda ~7.700 kredi (≈1,5 Business paketi)
 satışla başa baş. Paket fiyatları (Paddle) değişmedi: Starter 500/$9, Pro 2000/$29,
 Business 5000/$59.
+- **Planlar & ücretsiz deneme filigranı (31 Ekim)**: `lib/plans.ts` her paketin ne
+  aldırdığını `steps.ts` fiyatlarından hesaplar (`planDetails`, `JOB_COSTS`,
+  `PAID_INCLUDES`, `FREE_TRIAL_RULES`, `COMPARISON`) → `/billing` ayrıntılı paket
+  kartları + "Every pack includes" + "What things cost" + free-trial kutusu;
+  landing fiyat kartları + **"Why Norveko"** premium karşılaştırma (`#compare`, yeşil
+  tik = bizde gerçekten olanlar, sağ sütun genel "Typical AI tool"). **Filigran**:
+  satın alma yoksa (`credit_purchases` completed) thumbnail sağ-alt köşeye
+  `public/brand/watermark.png` rozeti (`lib/pipeline/watermark.ts`, sharp; temiz kopya
+  `thumbnails/clean/<job>-<uuid>`), videoya Shotstack üst katman (`buildEdit
+  watermarkUrl`, sağ üst, fit none). Kural `watermark-policy.ts`: `BETA_USER_IDS`
+  muaf (`WATERMARK_FORCE_USER_IDS` test için zorlar). Proje `content.watermarked/
+  cleanAssets` (server-owned). Paddle webhook ilk satın almada
+  `removeWatermarksForUser()` → thumbnail'lar temize döner, filigranlı videolar
+  (en çok 20) temiz yeniden render edilir. `/api/credits` `freeTrial` döner.
 - Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
 - Bitince sonuç `projects.content` JSONB'ye yazılır; başlık = AI'nin ilk title'ı.
 

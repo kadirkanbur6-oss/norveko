@@ -10,11 +10,20 @@ import {
   Loader2,
   RotateCcw,
   Sparkles,
+  Stamp,
+  CheckCircle2,
 } from "lucide-react";
 import Sidebar from "../components/Sidebar";
-import { CREDIT_PACKAGES } from "@/lib/packages";
+import { FREE_TRIAL_RULES, JOB_COSTS, PAID_INCLUDES, planDetails } from "@/lib/plans";
 import { usePaddle } from "@/lib/usePaddle";
-import { totalPipelineCredits } from "@/lib/pipeline/steps";
+import {
+  RESEARCH_CREDITS,
+  SUBTITLES_CREDITS_PER_MIN,
+  THUMBNAIL_CREDITS,
+  VOICE_CREDITS_PER_MIN,
+  scriptCredits,
+  totalPipelineCredits,
+} from "@/lib/pipeline/steps";
 import { supabase } from "../lib/supabase";
 
 interface Transaction {
@@ -29,20 +38,17 @@ const PIPELINE_COST = totalPipelineCredits(false);
 const PIPELINE_COST_WITH_VOICEOVER = totalPipelineCredits(true);
 const PIPELINE_COST_WITH_SUBTITLES = totalPipelineCredits({ voiceover: true, subtitles: true });
 
-const PACKAGE_DETAILS = {
-  starter: {
-    description: "For creators just getting started.",
-    highlight: false,
-  },
-  pro: {
-    description: "For channels publishing every week.",
-    highlight: true,
-  },
-  business: {
-    description: "For teams and daily publishers.",
-    highlight: false,
-  },
-};
+const PLANS = planDetails();
+
+const COST_ROWS: Array<[string, string]> = [
+  ["60 s script package + thumbnail", `${scriptCredits("60 seconds") + THUMBNAIL_CREDITS} credits`],
+  ["Web research with sources", `+${RESEARCH_CREDITS}`],
+  ["Norveko narrator", `+${VOICE_CREDITS_PER_MIN.gemini} / min`],
+  ["ElevenLabs voice artist", `+${VOICE_CREDITS_PER_MIN.elevenlabs} / min`],
+  ["Word-timed subtitles", `+${SUBTITLES_CREDITS_PER_MIN} / min`],
+  ["Finished 30 s video (beta)", `${JOB_COSTS.video30} credits`],
+  ["Finished 60 s video (beta)", `${JOB_COSTS.video60} credits`],
+];
 
 export default function BillingPage() {
   const [credits, setCredits] = useState<number | null>(null);
@@ -51,6 +57,7 @@ export default function BillingPage() {
   const [error, setError] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [purchaseNotice, setPurchaseNotice] = useState("");
+  const [freeTrial, setFreeTrial] = useState(false);
   // Latest balance for the Paddle callback (which is created once).
   const creditsRef = useRef<number | null>(null);
 
@@ -64,6 +71,7 @@ export default function BillingPage() {
       }
 
       setCredits(data.credits);
+      setFreeTrial(data.freeTrial === true);
       creditsRef.current = data.credits;
       setTransactions(data.transactions);
       return data.credits as number;
@@ -208,60 +216,121 @@ export default function BillingPage() {
                 </p>
               )}
 
-              {/* Packages */}
-              <h2 className="mt-12 text-xl font-bold">Credit packages</h2>
+              {/* Free trial status */}
+              {freeTrial && (
+                <div className="mt-8 flex flex-col gap-3 rounded-2xl border border-purple-400/30 bg-gradient-to-r from-purple-500/10 to-blue-500/5 p-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <Stamp size={20} className="mt-0.5 shrink-0 text-purple-300" />
+                    <div>
+                      <p className="text-sm font-semibold text-white">You&apos;re on the free trial</p>
+                      <p className="mt-0.5 text-xs text-gray-400">
+                        Thumbnails and videos you make now carry a small &ldquo;Made with Norveko&rdquo; badge. Buy any pack and it
+                        disappears — also from everything you already made.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {CREDIT_PACKAGES.map((pkg) => (
+              {/* Packages */}
+              <h2 className="mt-12 text-xl font-bold">Credit packs</h2>
+              <p className="mt-1 text-sm text-gray-400">
+                One-time purchases, no subscription. Every pack unlocks every feature — packs differ only in how much you can make.
+              </p>
+
+              <div className="mt-6 grid gap-4 lg:grid-cols-3">
+                {PLANS.map(({ pack, tagline, idealFor, buys, featured }) => (
                   <div
-                    key={pkg.id}
-                    className={`relative rounded-2xl border p-6 ${
-                      PACKAGE_DETAILS[pkg.id].highlight
-                        ? "border-blue-400/50 bg-blue-500/10"
-                        : "border-white/10 bg-white/[0.03]"
+                    key={pack.id}
+                    className={`relative flex flex-col rounded-2xl border p-6 ${
+                      featured ? "border-blue-400/50 bg-blue-500/10 shadow-[0_0_40px_-12px_rgba(96,165,250,0.45)]" : "border-white/10 bg-white/[0.03]"
                     }`}
                   >
-                    {PACKAGE_DETAILS[pkg.id].highlight && (
+                    {featured && (
                       <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 px-3 py-1 text-xs font-semibold">
                         Most popular
                       </span>
                     )}
 
-                    <h3 className="text-lg font-semibold">{pkg.name}</h3>
-                    <p className="mt-1 text-sm text-gray-400">
-                      {PACKAGE_DETAILS[pkg.id].description}
-                    </p>
+                    <h3 className="text-lg font-semibold">{pack.name}</h3>
+                    <p className="mt-1 text-sm text-gray-400">{tagline}</p>
 
                     <div className="mt-4 flex items-baseline gap-2">
-                      <span className="text-3xl font-bold">${pkg.priceUsd}</span>
+                      <span className="text-3xl font-bold">${pack.priceUsd}</span>
                       <span className="text-sm text-gray-400">one-time</span>
                     </div>
-
-                    <div className="mt-3 flex items-center gap-2 text-sm text-yellow-300">
+                    <div className="mt-2 flex items-center gap-2 text-sm text-yellow-300">
                       <Coins size={16} />
-                      {pkg.credits.toLocaleString()} credits
+                      {pack.credits.toLocaleString()} credits
+                      <span className="text-xs text-gray-500">· ${((pack.priceUsd / pack.credits) * 100).toFixed(2)} per 100</span>
                     </div>
 
-                    <p className="mt-1 text-xs text-gray-500">
-                      ≈ {Math.floor(pkg.credits / PIPELINE_COST)} full generations
-                    </p>
+                    <p className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-gray-500">What you can make</p>
+                    <ul className="mt-2 space-y-1.5 text-sm text-gray-200">
+                      {buys.map((line) => (
+                        <li key={line} className="flex gap-2">
+                          <Sparkles size={14} className="mt-0.5 shrink-0 text-blue-300" />
+                          <span>{line}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <p className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-gray-500">Ideal for</p>
+                    <p className="mt-1 text-sm text-gray-300">{idealFor}</p>
 
                     <button
-                      onClick={() => handlePurchase(pkg.paddlePriceId)}
+                      onClick={() => handlePurchase(pack.paddlePriceId)}
                       disabled={!paddle || !userId}
                       className={`mt-6 w-full rounded-xl py-3 text-sm font-semibold disabled:opacity-60 ${
-                        PACKAGE_DETAILS[pkg.id].highlight
-                          ? "bg-gradient-to-r from-blue-500 to-purple-600"
-                          : "border border-white/10 bg-white/[0.03] text-gray-300"
+                        featured ? "bg-gradient-to-r from-blue-500 to-purple-600" : "border border-white/10 bg-white/[0.03] text-gray-300"
                       }`}
                     >
                       <span className="flex items-center justify-center gap-2">
                         <Sparkles size={16} />
-                        Purchase
+                        Buy {pack.name}
                       </span>
                     </button>
                   </div>
                 ))}
+              </div>
+
+              {/* What every pack includes + how credits are spent */}
+              <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+                  <h3 className="font-semibold">Every pack includes</h3>
+                  <ul className="mt-3 space-y-2 text-sm text-gray-300">
+                    {PAID_INCLUDES.map((line) => (
+                      <li key={line} className="flex gap-2">
+                        <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-400" />
+                        <span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+                  <h3 className="font-semibold">What things cost</h3>
+                  <p className="mt-1 text-xs text-gray-500">The exact total is always shown before you click Generate.</p>
+                  <dl className="mt-3 space-y-1.5 text-sm">
+                    {COST_ROWS.map(([label, value]) => (
+                      <div key={label} className="flex justify-between gap-3 border-b border-white/5 pb-1.5 last:border-0">
+                        <dt className="text-gray-400">{label}</dt>
+                        <dd className="shrink-0 font-medium text-white">{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+                <h3 className="text-sm font-semibold">Free trial</h3>
+                <ul className="mt-2 grid gap-1.5 text-xs text-gray-400 sm:grid-cols-2">
+                  {FREE_TRIAL_RULES.map((line) => (
+                    <li key={line} className="flex gap-2">
+                      <Gift size={13} className="mt-0.5 shrink-0 text-green-400" />
+                      <span>{line}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
 
               {/* Transaction history */}

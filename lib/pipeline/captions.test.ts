@@ -254,3 +254,25 @@ test("music: story mood wins over style, forced track wins over both, every trac
   assert.ok(!MUSIC_TRACKS.some((t) => ["Hidden Agenda", "Thinking Music"].includes(t.title)), "humorous cues must not return");
   assert.equal(new Set(MUSIC_TRACKS.map((t) => t.id)).size, MUSIC_TRACKS.length);
 });
+
+test("watermark: free-trial badge is the top layer only when requested; beta users are exempt", async () => {
+  const { buildEdit } = await import("./timeline");
+  const slots = [{ index: 0, start: 0, length: 5, kind: "still", status: "succeed", url: "https://x/a.jpg", sceneNumber: 1, prompt: "p" }] as never;
+  const plain = buildEdit({ slots, voiceoverUrl: "https://x/v.wav", orientation: "vertical", totalSeconds: 5 }) as { timeline: { tracks: Array<{ clips: Array<{ asset: { type: string; src?: string } }> }> } };
+  assert.ok(!plain.timeline.tracks.some((t) => t.clips.some((c) => c.asset.src?.includes("watermark"))));
+  const marked = buildEdit({ slots, voiceoverUrl: "https://x/v.wav", orientation: "vertical", totalSeconds: 5, watermarkUrl: "https://norveko.app/brand/watermark.png" }) as typeof plain;
+  assert.equal(marked.timeline.tracks[0].clips[0].asset.src, "https://norveko.app/brand/watermark.png", "badge is track 0 (drawn on top)");
+  assert.equal(marked.timeline.tracks.length, plain.timeline.tracks.length + 1);
+
+  const { isWatermarkExempt } = await import("./watermark-policy");
+  const before = { beta: process.env.BETA_USER_IDS, force: process.env.WATERMARK_FORCE_USER_IDS };
+  process.env.BETA_USER_IDS = "kadir, other";
+  process.env.WATERMARK_FORCE_USER_IDS = "other";
+  assert.equal(isWatermarkExempt("kadir"), true);
+  assert.equal(isWatermarkExempt("other"), false, "forced back on for testing");
+  assert.equal(isWatermarkExempt("stranger"), false);
+  for (const [k, v] of [["BETA_USER_IDS", before.beta], ["WATERMARK_FORCE_USER_IDS", before.force]] as const) {
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = v;
+  }
+});

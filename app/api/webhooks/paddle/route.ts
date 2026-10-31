@@ -150,6 +150,16 @@ async function handleTransactionCompleted(event: TransactionCompletedEvent) {
   console.log(
     `[paddle-webhook] ${txnId}: +${pkg.credits} credits -> user ${userId}`
   );
+
+  // First purchase lifts the free-trial watermark, also on earlier work.
+  // Never fail the webhook over it (credits are already granted).
+  try {
+    const { removeWatermarksForUser } = await import("@/lib/pipeline/unwatermark");
+    const result = await removeWatermarksForUser(userId);
+    console.log(`[paddle-webhook] ${txnId}: watermark removed from ${result.projects} projects, ${result.rerenders} clean re-renders`);
+  } catch (err) {
+    console.error(`[paddle-webhook] ${txnId}: watermark removal failed:`, err);
+  }
 }
 
 /**

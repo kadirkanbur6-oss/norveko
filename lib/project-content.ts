@@ -44,6 +44,10 @@ export interface ProjectContent {
    */
   feedback?: ProjectFeedback;
   scriptMeta?: { model?: string; promptVersion?: string; factCheckIssues?: number };
+  /** Free-trial badge on the thumbnail/video; cleared by the first purchase. */
+  watermarked?: boolean;
+  /** Clean originals swapped in after the first purchase. */
+  cleanAssets?: { thumbnailUrl?: string };
 }
 
 export interface ProjectFeedback {
@@ -53,7 +57,7 @@ export interface ProjectFeedback {
 }
 
 /** Keys PATCH must carry over from the stored row instead of the request body. */
-export const SERVER_OWNED_CONTENT_KEYS = ["feedback", "scriptMeta"] as const;
+export const SERVER_OWNED_CONTENT_KEYS = ["feedback", "scriptMeta", "watermarked", "cleanAssets"] as const;
 
 const LIMITS = {
   hook: 1_000,

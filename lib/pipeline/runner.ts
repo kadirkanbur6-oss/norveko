@@ -48,6 +48,7 @@ import { musicCredit, pickMusicTrack, type MusicTrack } from "@/lib/pipeline/mus
 import { defaultOrientation, languageCode } from "@/lib/pipeline/options";
 import { narrationWordCount, rangeForMeasuredRatio } from "@/lib/pipeline/narration";
 import { RESEARCH_MODEL, SCRIPT_MODEL, llmUsageKey } from "@/lib/pipeline/llm";
+import { WATERMARK_PUBLIC_PATH } from "@/lib/pipeline/watermark-policy";
 import {
   estimateCostUsd,
   recordProviderUsage,
@@ -127,6 +128,9 @@ export interface RunnerDeps {
     submitRender: typeof import("@/lib/pipeline/shotstack").submitRender;
     getRender: typeof import("@/lib/pipeline/shotstack").getRender;
     downloadRender: typeof import("@/lib/pipeline/shotstack").downloadRender;
+    /** Free-trial watermark (optional so tests can leave it out → never watermark). */
+    needsWatermark?: (userId: string) => Promise<boolean>;
+    watermarkThumbnail?: typeof import("@/lib/pipeline/watermark").watermarkStoredThumbnail;
   };
   kick: (jobId: string) => Promise<void>;
   now: () => number;
@@ -944,7 +948,10 @@ export function createPipelineRunner(deps: RunnerDeps) {
       console.warn(`[pipeline] ${job.id} music unavailable, rendering without it:`, err instanceof Error ? err.message : err);
     }
 
+    // Free trial: "Made with Norveko" badge on the video (removed by a re-render after purchase).
+    const watermarked = Boolean(providers.needsWatermark && (await providers.needsWatermark(job.user_id)));
     const edit = buildEdit({
+      watermarkUrl: watermarked ? `${getBaseUrl()}${WATERMARK_PUBLIC_PATH}` : undefined,
       slots,
       voiceoverUrl,
       subtitlesUrl,
@@ -959,6 +966,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
     const renderId = await providers.submitRender(edit);
     await patchStep(job, "render", {
       render_id: renderId,
+      watermarked,
       subtitles_url: subtitlesUrl,
       music: musicUrl ? { id: music.id, title: music.title, mood: music.mood, credit: musicCredit(music) } : null,
       total_seconds: total,
@@ -1312,15 +1320,38 @@ export function createPipelineRunner(deps: RunnerDeps) {
         durationMs: now() - startedAt,
         status: "ok",
       });
+      // Free trial: badge the thumbnail, keep the clean copy for after the first purchase.
+      let watermark: { watermarked: boolean; clean_url?: string; clean_path?: string } = { watermarked: false };
+      if (providers.needsWatermark && providers.watermarkThumbnail && (await providers.needsWatermark(job.user_id))) {
+        try {
+          const clean = await providers.watermarkThumbnail({ storagePath: result.storagePath, jobId: job.id, baseUrl: getBaseUrl() });
+          watermark = { watermarked: true, clean_url: clean.cleanUrl, clean_path: clean.cleanPath };
+        } catch (err) {
+          console.warn(`[pipeline] ${job.id} thumbnail watermark failed, delivering it clean:`, err);
+          await captureError(err, { jobId: job.id, step: "thumbnail", area: "pipeline.watermark" });
+        }
+      }
       await patchStep(job, "thumbnail", {
         status: "completed",
         image_url: result.imageUrl,
         storage_path: result.storagePath,
+        ...watermark,
       });
       return;
     }
 
     throw new Error(`Unknown pipeline step: ${stepId}`);
+  }
+
+  /** Free-trial watermark state for projects.content (server-owned keys). */
+  function projectWatermark(fresh: JobRow): { watermarked?: boolean; cleanAssets?: { thumbnailUrl?: string } } {
+    const thumbMarked = fresh.steps?.thumbnail?.watermarked === true;
+    const videoMarked = fresh.steps?.render?.watermarked === true;
+    if (!thumbMarked && !videoMarked) return { watermarked: false };
+    return {
+      watermarked: true,
+      cleanAssets: thumbMarked ? { thumbnailUrl: fresh.steps?.thumbnail?.clean_url as string | undefined } : undefined,
+    };
   }
 
   /** After a re-render: point the project at the new MP4 and the new music credit. */
@@ -1333,6 +1364,8 @@ export function createPipelineRunner(deps: RunnerDeps) {
       ...((project.content ?? {}) as Record<string, unknown>),
       finalVideoUrl,
       description: withMusicCredit(fresh.steps?.script?.description, fresh.steps?.render?.music),
+      // A clean re-render after the first purchase clears the badge.
+      ...(fresh.steps?.render?.watermarked === true ? {} : { watermarked: fresh.steps?.thumbnail?.watermarked === true }),
     };
     const { error } = await db.from("projects").update({ content }).eq("id", projectId);
     if (error) console.error(`[pipeline] ${fresh.id} project refresh failed:`, error.message);
@@ -1386,6 +1419,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
             captions,
             finalVideoUrl,
             research,
+            ...projectWatermark(fresh),
             scriptMeta: {
               model: typeof script.model === "string" ? script.model : undefined,
               promptVersion: typeof script.prompt_version === "string" ? script.prompt_version : undefined,
@@ -1665,6 +1699,10 @@ function getRunner() {
           (await import("@/lib/pipeline/shotstack")).getRender(...args),
         downloadRender: async (...args) =>
           (await import("@/lib/pipeline/shotstack")).downloadRender(...args),
+        needsWatermark: async (userId) =>
+          (await import("@/lib/pipeline/watermark-policy")).needsWatermark(productionDb(), userId),
+        watermarkThumbnail: async (...args) =>
+          (await import("@/lib/pipeline/watermark")).watermarkStoredThumbnail(...args),
       },
       kick: kickJob,
       now: Date.now,

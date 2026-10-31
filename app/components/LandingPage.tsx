@@ -10,18 +10,20 @@ import HeroBackground from "./HeroBackground";
 import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
 import SignOutButton from "./SignOutButton";
 import BrandMark from "./BrandMark";
-import { CREDIT_PACKAGES } from "@/lib/packages";
+import { COMPARISON, FREE_TRIAL_CREDITS, PAID_INCLUDES, planDetails } from "@/lib/plans";
 import {
   RESEARCH_CREDITS,
   SUBTITLES_CREDITS_PER_MIN,
   THUMBNAIL_CREDITS,
   VOICE_CREDITS_PER_MIN,
   scriptCredits,
-  totalPipelineCredits,
 } from "@/lib/pipeline/steps";
 import {
   ArrowRight,
   Check,
+  CheckCircle2,
+  Crown,
+  Minus,
   ChevronDown,
   Clapperboard,
   FileText,
@@ -144,24 +146,12 @@ const FORMATS = [
 const LANGUAGES = LANGUAGE_OPTIONS.map((l) => l.label);
 
 // What a pack buys, from the single source of credit prices (steps.ts).
-const PACKAGE_CREDITS = totalPipelineCredits({ research: true, voiceover: true, subtitles: true });
-const VIDEO_30S_CREDITS = totalPipelineCredits({ research: true, fullVideo: true, footage: "hybrid", duration: "30 seconds" });
 
-const PRICING = CREDIT_PACKAGES.map((pack) => ({
+const PRICING = planDetails().map(({ pack, tagline, buys, featured }) => ({
   ...pack,
-  buys: [
-    `≈ ${Math.floor(pack.credits / PACKAGE_CREDITS)} content packages with voiceover & subtitles`,
-    Math.floor(pack.credits / VIDEO_30S_CREDITS) > 0
-      ? `or ≈ ${Math.floor(pack.credits / VIDEO_30S_CREDITS)} fully rendered 30 s video${Math.floor(pack.credits / VIDEO_30S_CREDITS) === 1 ? "" : "s"} (beta)`
-      : null,
-  ].filter((x): x is string => Boolean(x)),
-  desc:
-    pack.id === "starter"
-      ? "A simple credit pack for creators getting started."
-      : pack.id === "pro"
-        ? "Our most popular pack for steady publishing workflows."
-        : "The best value pack for teams and high-volume creators.",
-  featured: pack.id === "pro",
+  buys,
+  desc: tagline,
+  featured,
 }));
 
 const FAQS = [
@@ -404,7 +394,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           <SectionTitle
             eyebrow="Pricing"
             title="Start free. Scale when you're ready."
-            subtitle="Every account starts with 50 free credits. Top up any time — credits never expire."
+            subtitle={`Every account starts with ${FREE_TRIAL_CREDITS} free credits. One-time packs, no subscription — credits never expire.`}
           />
         </Reveal>
 
@@ -438,9 +428,12 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                 <p className="mt-2 text-sm font-medium text-gray-300">
                   {plan.credits.toLocaleString()} credits
                 </p>
-                <ul className="mt-2 space-y-1 text-xs text-gray-500">
+                <ul className="mt-3 space-y-1.5 text-xs text-gray-300">
                   {plan.buys.map((line) => (
-                    <li key={line}>{line}</li>
+                    <li key={line} className="flex gap-1.5">
+                      <Check size={13} className="mt-0.5 shrink-0 text-blue-300" />
+                      <span>{line}</span>
+                    </li>
                   ))}
                 </ul>
 
@@ -458,6 +451,73 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             </Reveal>
           ))}
         </div>
+      </section>
+
+      {/* 2d. WHY NORVEKO — premium comparison (ticks only for what we actually ship) */}
+      <section id="compare" className="mx-auto max-w-6xl scroll-mt-20 px-4 pb-12 sm:px-6">
+        <Reveal>
+          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[#14142a] via-[#0e0e1c] to-[#0a0a12] p-5 shadow-[0_30px_80px_-30px_rgba(99,102,241,0.45)] sm:p-8">
+            <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-purple-600/20 blur-3xl" />
+            <div aria-hidden className="pointer-events-none absolute -bottom-28 -left-20 h-72 w-72 rounded-full bg-blue-600/15 blur-3xl" />
+
+            <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-yellow-400/30 bg-yellow-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-yellow-200">
+                  <Crown size={12} /> Why Norveko
+                </span>
+                <h2 className="mt-3 text-2xl font-black tracking-tight text-white sm:text-3xl">
+                  Built for videos people trust — and finish.
+                </h2>
+                <p className="mt-2 max-w-xl text-sm text-gray-400">
+                  Most AI video generators stop at &ldquo;a script and some stock clips&rdquo;. Norveko researches, checks and edits the story before a single frame is made.
+                </p>
+              </div>
+            </div>
+
+            <div className="relative mt-6 overflow-hidden rounded-2xl border border-white/10">
+              <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 border-b border-white/10 bg-white/[0.04] px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400 sm:gap-x-6 sm:px-6">
+                <span>Feature</span>
+                <span className="flex w-16 items-center justify-center gap-1 text-white sm:w-24">
+                  <BrandMark size={16} /> Norveko
+                </span>
+                <span className="w-16 text-center sm:w-28">Typical AI tool</span>
+              </div>
+              {COMPARISON.map((row, i) => (
+                <div
+                  key={row.feature}
+                  className={`grid grid-cols-[1fr_auto_auto] items-center gap-x-3 px-4 py-3 sm:gap-x-6 sm:px-6 ${
+                    i % 2 ? "bg-white/[0.015]" : ""
+                  }`}
+                >
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-white">{row.feature}</span>
+                    <span className="block text-xs text-gray-500">{row.detail}</span>
+                  </span>
+                  <span className="flex w-16 justify-center sm:w-24">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/15 ring-1 ring-emerald-400/40">
+                      <CheckCircle2 size={18} className="text-emerald-400" aria-label="Included in Norveko" />
+                    </span>
+                  </span>
+                  <span className="flex w-16 justify-center sm:w-28">
+                    <Minus size={16} className="text-gray-600" aria-label="Usually not included" />
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="relative mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {PAID_INCLUDES.slice(0, 3).map((line) => (
+                <p key={line} className="flex gap-2 text-xs text-gray-300">
+                  <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-emerald-400" />
+                  {line}
+                </p>
+              ))}
+            </div>
+            <p className="relative mt-4 text-[11px] text-gray-500">
+              &ldquo;Typical AI tool&rdquo; reflects what is commonly offered by script-to-video generators; individual tools vary.
+            </p>
+          </div>
+        </Reveal>
       </section>
 
       {/* 3. PROBLEM */}

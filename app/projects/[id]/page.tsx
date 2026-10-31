@@ -673,6 +673,16 @@ export default function ProjectDetailPage() {
                     />
                   </div>
                 )}
+                {(project.content as { watermarked?: boolean } | null)?.watermarked === true && (
+                  <div className="mt-6 flex flex-col gap-2 rounded-xl border border-purple-400/30 bg-purple-500/10 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-gray-200">
+                      Made on the free trial: the thumbnail and video carry a small &ldquo;Made with Norveko&rdquo; badge.
+                    </p>
+                    <Link href="/billing" className="shrink-0 font-semibold text-purple-200 hover:text-white">
+                      Remove it with any pack →
+                    </Link>
+                  </div>
+                )}
                 {normalizedProjectContent?.script && (
                   <ScriptFeedback
                     projectId={projectId}
