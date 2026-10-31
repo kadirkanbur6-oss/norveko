@@ -54,6 +54,9 @@ const CANDIDATES: Candidate[] = [
   // Video
   { key: "vid-kling", kind: "video", label: "Kling 3.0 (text→video)", provider: "kling", model: "kling-3.0", cost: "$0.42–0.50", current: true },
   { key: "vid-omni", kind: "video", label: "Gemini Omni 1.1 Flash (image→video)", provider: "omni", model: "gemini-omni-1.1-flash", cost: "?", fromImage: true },
+  { key: "vid-sd10", kind: "video", label: "Seedance 1.0 Pro Fast (fal)", provider: "fal", model: "fal-ai/bytedance/seedance/v1/pro/fast/image-to-video", cost: "~$0.11", fromImage: true },
+  { key: "vid-sd15", kind: "video", label: "Seedance 1.5 Pro, silent (fal)", provider: "fal", model: "fal-ai/bytedance/seedance/v1.5/pro/image-to-video", cost: "~$0.13", fromImage: true },
+  { key: "vid-sd20mini", kind: "video", label: "Seedance 2.0 Mini (fal)", provider: "fal", model: "bytedance/seedance-2.0/mini/image-to-video", cost: "~$0.77", fromImage: true },
   { key: "vid-h3-turbo", kind: "video", label: "MiniMax H3 Max Turbo (fal)", provider: "fal", model: "minimax/h3-max-turbo/image-to-video", cost: "$0.20", fromImage: true },
   { key: "vid-h3", kind: "video", label: "MiniMax H3 Max (fal)", provider: "fal", model: "minimax/h3-max/image-to-video", cost: "$0.40", fromImage: true },
 ];

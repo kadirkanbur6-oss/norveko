@@ -227,7 +227,10 @@ export async function labVideoSubmit(
   // the common aspect_ratio / string duration shape.
   const body = model.startsWith("minimax/")
     ? { prompt, ...(imageUrl ? { image_url: imageUrl } : {}), duration: 5, resolution: "768P", prompt_expansion_mode: process.env.FAL_MINIMAX_EXPANSION || "balanced" }
-    : { prompt, ...(imageUrl ? { image_url: imageUrl } : {}), aspect_ratio: "9:16", duration: "5" };
+    : /bytedance|seedance/.test(model)
+      ? // Seedance: silent 720p (our voiceover is the soundtrack; audio doubles the price).
+        { prompt, ...(imageUrl ? { image_url: imageUrl } : {}), aspect_ratio: "9:16", resolution: "720p", duration: "5", generate_audio: false }
+      : { prompt, ...(imageUrl ? { image_url: imageUrl } : {}), aspect_ratio: "9:16", duration: "5" };
   const res = await fetch(`https://queue.fal.run/${model}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Key ${need("FAL_KEY")}` },
