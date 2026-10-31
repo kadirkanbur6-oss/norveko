@@ -22,7 +22,7 @@ Detaylı vizyon belgesi: proje devir dokümanı (Ekim 2026).
 ## 2. Tech Stack
 
 Next.js 16 App Router + TypeScript + Tailwind v4 · Supabase (DB, Auth, Storage;
-RLS her tabloda) · Vercel (hosting + cron) · OpenAI `gpt-5-mini` (script) ·
+RLS her tabloda) · Vercel (hosting + cron) · OpenAI `gpt-6.1-terra` (araştırma + senaryo) ·
 ElevenLabs (voiceover) · Gemini image (thumbnail) · Kling (video klip, kapılı) ·
 Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel)
 
@@ -52,8 +52,8 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   senaryo prompt'una "VERIFIED RESEARCH BRIEF — tek gerçek kaynak" olarak
   girer; `projects.content.research` olarak saklanır, ilerleme kartında ve
   proje sayfasında "Research brief" (kaynak linkleri) gösterilir.
-  **Research opsiyoneldir (29 Ekim):** `researchTopic` 40 sn `AbortSignal`
-  timeout + `reasoning.effort=low` + `search_context_size=low`; hata/timeout
+  **Research opsiyoneldir (29 Ekim):** `researchTopic` 80 sn `AbortSignal`
+  timeout (31 Ekim: 40→80) + `reasoning.effort=low` + `search_context_size=medium`; hata/timeout
   olursa runner `skipResearch()` ile adımı `skipped` yapar, 5 krediyi iade
   eder (`steps.research.refunded`) ve senaryo araştırmasız devam eder.
   Worker ölürse (`/api/pipeline/run` `maxDuration` 300 sn) `reconcileJob` 2 dk
@@ -78,7 +78,7 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   cümle brief'e karşı, sorunlar `steps.script.fact_check.issues`), sonra uzunluk düzeltmesi
   (hook'u korur). Süre bütçesi 250 sn: süre azsa opsiyonel geçişler atlanır. Tüm LLM çağrıları
   `lib/pipeline/llm.ts` `chatJSON()` üzerinden — model id `gpt-…`/`openai:…` → OpenAI,
-  `gemini:…`/`gemini-…` → Gemini. Yazar modeli env **`SCRIPT_MODEL`** (varsayılan **`gpt-6.1-terra`** — 31 Ekim test seti: Terra 78/100 ~$0.028/senaryo ~70 sn, gpt-5-mini 63/100 $0.020 ~120 sn; gpt-5-mini 11 Aralık'ta kapanıyor. Araştırma adımı hâlâ gpt-5-mini → 11 Aralık'tan önce değiştir). `steps.script.model/prompt_version/plan/fact_check`;
+  `gemini:…`/`gemini-…` → Gemini. Yazar modeli env **`SCRIPT_MODEL`** (varsayılan **`gpt-6.1-terra`** — 31 Ekim test seti: Terra 78/100 ~$0.028/senaryo ~70 sn, gpt-5-mini 63/100 $0.020 ~120 sn; gpt-5-mini 11 Aralık'ta kapanıyor. **31 Ekim: araştırma da `gpt-6.1-terra`** (env `RESEARCH_MODEL`); brief artık konunun en bilinen ayrıntılarını (ikonik olgular, kesin yer/mesafe) zorunlu içerir, İngilizce + yerel dilde arar). `steps.script.model/prompt_version/plan/fact_check`;
   proje `content.scriptMeta`. **Lab "0 · Script writer"** (`app/lab/ScriptLab.tsx`): aynı fikir +
   aynı araştırma 4 modelle (düzenlenebilir id), yargıç puanı; **test seti** 10 sabit konu
   (`lib/lab/script-eval.ts` `EVAL_TOPICS`, TR+EN, araştırma `videos/lab/eval/research/` önbellekte),

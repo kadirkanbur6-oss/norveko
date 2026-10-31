@@ -36,6 +36,9 @@ export interface ChatJsonResult<T> {
  */
 export const SCRIPT_MODEL = process.env.SCRIPT_MODEL || "gpt-6.1-terra";
 
+/** Web-research model (OpenAI Responses API + web_search); env RESEARCH_MODEL overrides. */
+export const RESEARCH_MODEL = process.env.RESEARCH_MODEL || "gpt-6.1-terra";
+
 export function llmProvider(model: string): { provider: "openai" | "gemini"; id: string } {
   const m = model.trim();
   if (m.startsWith("gemini:")) return { provider: "gemini", id: m.slice(7) };

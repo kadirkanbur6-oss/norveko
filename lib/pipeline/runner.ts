@@ -47,7 +47,7 @@ import { getTemplate } from "@/lib/pipeline/templates";
 import { musicCredit, pickMusicTrack, type MusicTrack } from "@/lib/pipeline/music";
 import { defaultOrientation, languageCode } from "@/lib/pipeline/options";
 import { narrationWordCount, rangeForMeasuredRatio } from "@/lib/pipeline/narration";
-import { SCRIPT_MODEL, llmUsageKey } from "@/lib/pipeline/llm";
+import { RESEARCH_MODEL, SCRIPT_MODEL, llmUsageKey } from "@/lib/pipeline/llm";
 import {
   estimateCostUsd,
   recordProviderUsage,
@@ -1025,7 +1025,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
     const def = getPipelineStepDefinition(stepId);
 
     if (stepId === "research") {
-      const model = def.provider.split(":")[1] ?? "gpt-5-mini";
+      const model = RESEARCH_MODEL;
       const startedAt = now();
       let result: Awaited<ReturnType<typeof providers.researchTopic>>;
       try {

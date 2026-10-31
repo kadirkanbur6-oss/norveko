@@ -458,7 +458,7 @@ interface ResearchParams {
  * claims about real events, people, numbers and dates.
  */
 /** Hard cap for one research call (the worker function itself is capped). */
-export const RESEARCH_TIMEOUT_MS = 40_000;
+export const RESEARCH_TIMEOUT_MS = 80_000;
 
 export async function researchTopic(params: ResearchParams): Promise<ResearchResult> {
   const { idea, outputLanguage, model } = params;
@@ -472,6 +472,8 @@ Write the brief in ${language}. Rules:
 - Prefer primary and reputable sources (official sites, major news outlets, encyclopedias). For "yesterday"/"last night" style topics, find the exact date and the concrete events.
 - Include the concrete details a script needs: who, what, when (exact dates), where, numbers, outcomes, quotes if notable.
 - Write it as story material: the sequence of events, the single most surprising VERIFIED detail, and the current best explanation or verdict.
+- ALWAYS include the details the story is best known for — the facts every documentary about it mentions (e.g. for a famous case: what was found, where exactly, in what state) — with precise places, distances and numbers. A brief that omits the iconic facts is a failed brief.
+- Search in English and, where relevant, in the language of the country where it happened; prefer encyclopedias, official reports and major outlets.
 - Clearly separate what is documented from what is legend, rumour, disputed or commonly misreported (a short "Disputed/legend:" line), so the script never states myths as facts.
 - 150–280 words, plain paragraphs or short bullets, no headings, no markdown links in the text.`;
 
@@ -488,7 +490,7 @@ Write the brief in ${language}. Rules:
       model,
       instructions,
       input: `Topic: ${idea}${params.notes ? `\nCreator's angle: ${params.notes}` : ""}`,
-      tools: [{ type: "web_search", search_context_size: "low" }],
+      tools: [{ type: "web_search", search_context_size: "medium" }],
       tool_choice: "auto",
       reasoning: { effort: "low" },
       // Reasoning tokens count toward this cap. At 900 the model sometimes

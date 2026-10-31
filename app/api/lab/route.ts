@@ -56,7 +56,8 @@ async function labResearch(idea: string, language: string, cacheId?: string, ref
     if (hit?.brief) return hit;
   }
   const { researchTopic } = await import("@/lib/pipeline/openai");
-  const r = await researchTopic({ idea, outputLanguage: language, model: "gpt-5-mini" });
+  const { RESEARCH_MODEL } = await import("@/lib/pipeline/llm");
+  const r = await researchTopic({ idea, outputLanguage: language, model: RESEARCH_MODEL });
   const out = { brief: r.brief, sources: r.sources };
   if (path) await writeJson(path, out);
   return out;

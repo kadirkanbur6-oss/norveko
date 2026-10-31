@@ -152,13 +152,13 @@ export const PIPELINE_STEP_ORDER: StepDefinition[] = [
     id: "research",
     label: "Research",
     credits: RESEARCH_CREDITS,
-    provider: "openai:gpt-5-mini",
+    provider: "openai:gpt-6.1-terra",
   },
   {
     id: "script",
     label: "Content Package",
     credits: 5,
-    provider: "openai:gpt-5-mini",
+    provider: "openai:gpt-6.1-terra",
   },
   {
     id: "voiceover",
