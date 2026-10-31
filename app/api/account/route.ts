@@ -14,6 +14,7 @@ export const dynamic = "force-dynamic";
 const BUCKETS = ["thumbnails", "voiceovers", "videos"] as const;
 // Deleted in this order so FK-style dependencies (if any) resolve.
 const USER_TABLES = [
+  "youtube_connections",
   "credit_transactions",
   "credit_purchases",
   "pipeline_jobs",
@@ -130,6 +131,15 @@ export async function DELETE(req: Request) {
     const legacy = (jobs ?? []).flatMap((j) => [`${j.id}.png`, `${j.id}.jpg`]);
     if (legacy.length) {
       await client.storage.from("thumbnails").remove(legacy);
+    }
+
+    // Revoke the YouTube upload grant at Google before the row disappears.
+    try {
+      const { getConnection, decryptToken, revokeToken } = await import("@/lib/youtube/oauth");
+      const yt = await getConnection(client, user.id);
+      if (yt) await revokeToken(decryptToken(yt.refresh_token_enc));
+    } catch {
+      // table missing or already revoked
     }
 
     for (const table of USER_TABLES) {

@@ -48,6 +48,20 @@ export interface ProjectContent {
   watermarked?: boolean;
   /** Clean originals swapped in after the first purchase. */
   cleanAssets?: { thumbnailUrl?: string };
+  /** Server-owned: the last direct upload to YouTube (POST /api/projects/[id]/youtube). */
+  youtube?: ProjectYouTubeUpload;
+}
+
+export interface ProjectYouTubeUpload {
+  videoId: string;
+  url: string;
+  privacy: "private" | "unlisted" | "public";
+  channelTitle?: string;
+  publishAt?: string;
+  uploadedAt: string;
+  /** False when YouTube locked the video to private (unaudited API project). */
+  privacyApplied?: boolean;
+  thumbnailSet?: boolean;
 }
 
 export interface ProjectFeedback {
@@ -57,7 +71,7 @@ export interface ProjectFeedback {
 }
 
 /** Keys PATCH must carry over from the stored row instead of the request body. */
-export const SERVER_OWNED_CONTENT_KEYS = ["feedback", "scriptMeta", "watermarked", "cleanAssets"] as const;
+export const SERVER_OWNED_CONTENT_KEYS = ["feedback", "scriptMeta", "watermarked", "cleanAssets", "youtube"] as const;
 
 const LIMITS = {
   hook: 1_000,

@@ -144,3 +144,22 @@ end $$;
 select id, status, credits_charged, credits_refunded
 from public.pipeline_jobs order by created_at desc limit 5;
 ```
+
+## YouTube publishing (`youtube_connections`, 31 Oct 2026)
+
+One row per user who connected a channel for direct uploads. Only the service
+role reads/writes it (RLS on, no policies) — the refresh token is AES-256-GCM
+encrypted by the app (`lib/youtube/oauth.ts`).
+
+```sql
+create table if not exists public.youtube_connections (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  channel_id text not null,
+  channel_title text,
+  channel_thumbnail text,
+  refresh_token_enc text not null,
+  scope text,
+  created_at timestamptz not null default now()
+);
+alter table public.youtube_connections enable row level security;
+```

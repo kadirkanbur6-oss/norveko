@@ -153,6 +153,22 @@ Business 5000/$59.
   billing metni yalnız `NEXT_PUBLIC_FULL_VIDEO_ENABLED=true` iken gösterilir (lansmanda
   `FULL_VIDEO_ENABLED` ile birlikte aç).
 - **Ücretsiz katman suistimal koruması (31 Ekim)**: `lib/pipeline/abuse.ts`, sadece paket almamış hesaplara uygulanır (`isFreeAccount` trial.ts), kontrol `/api/pipeline/start`'ta kredi düşmeden önce yapılır (kayıt tarayıcıdan doğrudan Supabase'e gittiği için orada engel atlatılabilir). (1) Geçici e-posta (`disposable-email-domains` ~120k alan + wildcard) → üretim yok, 403 `free_tier_blocked`. (2) Aynı IP'den 7 günde en çok 3 farklı ücretsiz hesap (`FREE_ACCOUNTS_PER_IP`). (3) Deneme videosu kişi başına bir: normalize e-posta (+etiket, Gmail noktaları) bir kez, IP 30 günde bir. IP/e-posta ham saklanmaz: tuzlu SHA-256 (`PIPELINE_WORKER_SECRET`) `pipeline_jobs.options.freeIp/freeEmail`. Arama hatasında genel kullanım açık kalır (fail open), deneme videosu kapalı kalır (fail closed). Kayıt formu `/api/signup-check` ile geçici e-postayı önceden uyarır.
+- **YouTube'a doğrudan yükleme (31 Ekim)**: Supabase'in Google girişinden AYRI bir OAuth izni
+  (`youtube.upload` + `youtube.readonly`, `lib/youtube/oauth.ts`). `GET /api/youtube/connect?returnTo=`
+  → Google → `/api/youtube/callback` (state çerezi + kullanıcı eşleşmesi) → refresh token
+  AES-256-GCM şifreli `youtube_connections` tablosuna (yalnız service role; SQL `supabase/README.md`).
+  `GET/DELETE /api/youtube` durum/bağlantıyı kes (Google'da da revoke). `POST /api/projects/[id]/youtube`
+  {title, description, tags, privacy, publishAt?, again?}: `finalVideoUrl` yalnız kendi Supabase
+  Storage'ımızdan indirilir (SSRF yok), resumable `videos.insert` (`lib/youtube/upload.ts`), sonra
+  `thumbnails/set` (doğrulanmış kanal ister, hata ölümcül değil). `lib/youtube/metadata.ts`: başlık ≤100,
+  açıklama ≤5000 bayt, `<>` temizlenir, etiketler toplam ≤500, stil→kategori, **`containsSyntheticMedia:
+  true`** (YouTube AI içerik bildirimi), zamanlama = private + `publishAt` (≥15 dk ileri). Sonuç
+  `content.youtube` (server-owned). UI: proje sayfası `YouTubePublish` (Final video altında),
+  Ayarlar `YouTubeConnectionCard`. Env yoksa özellik gizlenir. Gizlilik politikası 4.1 (Limited Use).
+  Hesap silmede grant revoke + satır silinir. **Kısıt:** denetlenmemiş Google projesinden yüklenen
+  videolar YouTube'da private'a kilitlenir (UI `privacyApplied=false` uyarısı) → canlıda herkese açık
+  yükleme için Google OAuth doğrulaması + YouTube API denetimi gerekir. Testing modundaki OAuth
+  uygulamasında refresh token 7 günde düşer. Yükleme kotası ~100 birim (Aralık 2025'ten beri), ayrı havuz.
 - Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
 - Bitince sonuç `projects.content` JSONB'ye yazılır; başlık = AI'nin ilk title'ı.
 
@@ -386,7 +402,7 @@ galeri~~ (29 Ekim: landing `#examples` gerçek render'lar `lib/showcase.ts`
 X video" satırı `steps.ts`'ten hesaplanır. **Paket kredileri/fiyatları 29
 Ekim'de gözden geçirildi, Kadir "şimdilik değiştirme" dedi** — Starter 500 ile
 yalnızca 1×30 sn video çıkıyor; ileride tekrar bakılacak) →
-YouTube'a doğrudan yükleme → seri modu/zamanlama → ses klonlama + brand kit →
+~~YouTube'a doğrudan yükleme~~ (31 Ekim, Google kurulumu + denetim bekliyor) → seri modu/zamanlama → ses klonlama + brand kit →
 affiliate. Ertelenen: timeline editör, AI avatar, mobil app.
 
 Teknik borç: sahne düzeyinde yeniden üretim + versiyon geçmişi +

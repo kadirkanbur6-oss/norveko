@@ -21,6 +21,7 @@ import AudioPlayer from "../../components/AudioPlayer";
 import VideoPlayer from "@/app/components/VideoPlayer";
 import VoiceoverDownloads from "../../components/VoiceoverDownloads";
 import ScriptFeedback from "../../components/ScriptFeedback";
+import YouTubePublish from "../../components/YouTubePublish";
 
 function slugify(s: string): string {
   return (
@@ -672,6 +673,15 @@ export default function ProjectDetailPage() {
                       className="mt-4"
                     />
                   </div>
+                )}
+                {normalizedProjectContent?.finalVideoUrl && (
+                  <YouTubePublish
+                    projectId={projectId}
+                    titles={normalizedProjectContent.titles.length ? normalizedProjectContent.titles : [project.title]}
+                    description={normalizedProjectContent.description}
+                    tags={normalizedProjectContent.tags}
+                    initial={(project.content as { youtube?: Parameters<typeof YouTubePublish>[0]["initial"] } | null)?.youtube ?? null}
+                  />
                 )}
                 {(project.content as { watermarked?: boolean } | null)?.watermarked === true && (
                   <div className="mt-6 flex flex-col gap-2 rounded-xl border border-purple-400/30 bg-purple-500/10 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">

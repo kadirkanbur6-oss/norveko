@@ -12,6 +12,7 @@ import {
 import Sidebar from "../components/Sidebar";
 import SignOutButton from "../components/SignOutButton";
 import AccountSecurity from "../components/AccountSecurity";
+import YouTubeConnectionCard from "../components/YouTubeConnectionCard";
 
 interface UserSettings {
   email: string;
@@ -213,6 +214,8 @@ export default function SettingsPage() {
                   </p>
                 )}
               </div>
+
+              <YouTubeConnectionCard />
 
               <AccountSecurity />
             </div>

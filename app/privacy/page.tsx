@@ -95,6 +95,59 @@ export default function PrivacyPage() {
       </section>
 
       <section>
+        <h2>4.1 YouTube API Services</h2>
+        <p>
+          If you choose to connect a YouTube channel, Norveko uses YouTube API
+          Services to upload the videos you publish and to read your channel&apos;s
+          name and picture. By connecting, you agree to the{" "}
+          <a href="https://www.youtube.com/t/terms" target="_blank" rel="noreferrer">
+            YouTube Terms of Service
+          </a>
+          , and Google&apos;s handling of your data is described in the{" "}
+          <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">
+            Google Privacy Policy
+          </a>
+          .
+        </p>
+        <ul>
+          <li>
+            We request only the permissions to upload videos and to read basic
+            channel information. We cannot delete or edit your existing videos.
+          </li>
+          <li>
+            We store an encrypted access grant, your channel ID, name and
+            picture, and the IDs of videos you uploaded through Norveko. We use
+            this data only to publish videos you ask us to publish.
+          </li>
+          <li>
+            Norveko&apos;s use and transfer of information received from Google
+            APIs adheres to the{" "}
+            <a
+              href="https://developers.google.com/terms/api-services-user-data-policy"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Google API Services User Data Policy
+            </a>
+            , including the Limited Use requirements. We do not sell this data,
+            use it for advertising, or use it to train AI models.
+          </li>
+          <li>
+            You can disconnect at any time in Settings (this deletes the stored
+            grant) or revoke access on the{" "}
+            <a
+              href="https://myaccount.google.com/permissions"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Google security settings page
+            </a>
+            . Deleting your Norveko account also deletes this data.
+          </li>
+        </ul>
+      </section>
+
+      <section>
         <h2>5. Cookies</h2>
         <p>
           We use essential cookies to keep you signed in and to operate core
