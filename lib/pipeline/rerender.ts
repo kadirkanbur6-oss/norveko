@@ -16,6 +16,14 @@ export interface RerenderChanges {
   reason?: string;
 }
 
+export interface RenderVersion {
+  version: number;
+  url: string;
+  at: string;
+  /** Made with the free-trial badge. */
+  watermarked?: boolean;
+}
+
 export async function queueRerender(
   db: SupabaseClient,
   jobId: string,
@@ -40,8 +48,18 @@ export async function queueRerender(
     options.captionStyle = changes.captionStyle;
   }
 
+  // Keep earlier renders (each version has its own file) so the creator can go back.
+  const history = (Array.isArray(steps.render.history) ? (steps.render.history as RenderVersion[]) : []).filter((h) => h.url !== steps.render.video_url);
+  history.unshift({
+    version: Number(steps.render.version) || 0,
+    url: steps.render.video_url as string,
+    at: new Date().toISOString(),
+    ...(steps.render.watermarked === true ? { watermarked: true } : {}),
+  });
+
   steps.render = {
     ...steps.render,
+    history: history.slice(0, MAX_RERENDERS + 1),
     status: "pending",
     render_id: null,
     provider_status: null,

@@ -5,7 +5,7 @@
 // API: /api/projects/[id]/edit (GET timeline, POST regenerate / rerender).
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Clapperboard, Film, ImageIcon, Loader2, Music, RefreshCw, Sparkles, X } from "lucide-react";
+import { Clapperboard, Film, History, ImageIcon, Loader2, Music, RefreshCw, Sparkles, Undo2, X } from "lucide-react";
 import { CaptionStylePicker } from "./StylePickers";
 
 interface SlotView {
@@ -17,6 +17,8 @@ interface SlotView {
   edited: boolean;
   imageUrl: string | null;
   clipUrl: string | null;
+  /** Earlier pictures, newest first ("original" = the scene as first made). */
+  history?: Array<{ url: string; at: string }>;
 }
 
 interface EditState {
@@ -31,6 +33,8 @@ interface EditState {
   stillCredits?: number;
   rerendersLeft?: number;
   pendingEdits?: boolean;
+  videoUrl?: string;
+  versions?: Array<{ version: number; url: string; at: string }>;
 }
 
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
@@ -42,7 +46,7 @@ export default function VideoEditor({ projectId, vertical }: { projectId: string
   const [prompt, setPrompt] = useState("");
   const [musicId, setMusicId] = useState("");
   const [captionId, setCaptionId] = useState("");
-  const [busy, setBusy] = useState<"image" | "render" | null>(null);
+  const [busy, setBusy] = useState<"image" | "render" | "restore" | null>(null);
   const [rendering, setRendering] = useState(false);
   const [error, setError] = useState("");
 
@@ -119,6 +123,46 @@ export default function VideoEditor({ projectId, vertical }: { projectId: string
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not make a new image.");
     } finally {
+      setBusy(null);
+    }
+  }
+
+  async function post(body: Record<string, unknown>) {
+    const res = await fetch(`/api/projects/${projectId}/edit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || "Something went wrong.");
+    return data;
+  }
+
+  async function restoreScene(url: string) {
+    if (!slot) return;
+    setBusy("restore");
+    setError("");
+    try {
+      const data = await post({ action: "restoreScene", index: slot.index, url });
+      setState((prev) =>
+        prev ? { ...prev, pendingEdits: true, slots: prev.slots?.map((s) => (s.index === data.slot.index ? data.slot : s)) } : prev
+      );
+      setPrompt(data.slot.prompt);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not go back.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function switchVersion(url: string) {
+    setBusy("restore");
+    setError("");
+    try {
+      await post({ action: "useVersion", url });
+      window.location.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not switch versions.");
       setBusy(null);
     }
   }
@@ -243,6 +287,32 @@ export default function VideoEditor({ projectId, vertical }: { projectId: string
                   {busy === "image" ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <ImageIcon size={15} aria-hidden />}
                   {busy === "image" ? "Making the image…" : `New image · ${state.stillCredits} credits`}
                 </button>
+                {(slot.history?.length ?? 0) > 0 && (
+                  <div className="mt-4">
+                    <p className="mb-2 flex items-center gap-1.5 text-xs uppercase tracking-wider text-gray-500">
+                      <Undo2 size={12} aria-hidden /> Earlier pictures · free to go back
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {slot.history!.map((h) => (
+                        <button
+                          key={h.url + h.at}
+                          type="button"
+                          onClick={() => restoreScene(h.url)}
+                          disabled={busy !== null}
+                          title={h.url === "original" ? "Go back to the original scene" : `Picture from ${new Date(h.at).toLocaleString()}`}
+                          className={`overflow-hidden rounded-md border border-white/10 transition hover:border-blue-400/60 disabled:opacity-50 ${vertical ? "h-20 w-12" : "h-12 w-20"}`}
+                        >
+                          {h.url === "original" ? (
+                            <span className="flex h-full w-full items-center justify-center bg-white/5 text-[10px] font-semibold text-gray-300">Original</span>
+                          ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={h.url} alt="Earlier picture" className="h-full w-full object-cover" loading="lazy" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -272,6 +342,33 @@ export default function VideoEditor({ projectId, vertical }: { projectId: string
           </div>
 
           <CaptionStylePicker value={captionId} onChange={setCaptionId} />
+
+          {(state.versions?.length ?? 0) > 0 && (
+            <div>
+              <p className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wider text-gray-500">
+                <History size={13} aria-hidden /> Earlier versions
+              </p>
+              <ul className="space-y-2">
+                {state.versions!.map((v) => (
+                  <li key={v.url} className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-[#0d0d16] px-3 py-2 text-sm">
+                    <span className="font-semibold text-white">{v.version === 0 ? "First render" : `Version ${v.version}`}</span>
+                    <span className="text-xs text-gray-500">replaced {new Date(v.at).toLocaleString()}</span>
+                    <a href={v.url} target="_blank" rel="noreferrer" className="ml-auto text-xs text-blue-300 hover:text-white">
+                      Watch
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => switchVersion(v.url)}
+                      disabled={busy !== null}
+                      className="rounded-lg border border-white/15 px-3 py-1 text-xs text-white transition hover:border-blue-400/50 disabled:opacity-50"
+                    >
+                      Use this version
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">
             <button

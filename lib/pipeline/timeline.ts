@@ -49,6 +49,8 @@ export interface TimelineSlot {
    * the original purchase accounting (consumedCredits) is untouched.
    */
   editedStillUrl?: string;
+  /** Earlier pictures of this slot (newest first), for "go back" in the editor. */
+  editHistory?: Array<{ url: string; prompt?: string; at: string }>;
   /** Clip credits already given back for this slot. */
   refunded?: boolean;
 }

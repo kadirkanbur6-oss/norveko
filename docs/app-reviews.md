@@ -167,3 +167,12 @@ yükleme için bu form şart.
    `NEXT_PUBLIC_FULL_VIDEO_ENABLED=true`, TikTok **Production** anahtarları
    (`TIKTOK_CLIENT_KEY/SECRET`).
 3. Redeploy → gizli pencerede yeni hesap → ücretsiz deneme videosu üret → uçtan uca kontrol.
+
+## 6. (İsteğe bağlı) Supabase custom domain
+
+Google giriş ekranında "…supabase.co'ya devam et" yazısı yerine `auth.norveko.app` görünür.
+- Supabase **Pro** + **Custom Domain eklentisi** (~$10/ay) gerekir.
+- Supabase → Project Settings → Custom Domains → `auth.norveko.app` → verilen CNAME + TXT kayıtlarını
+  Vercel DNS'e ekle → doğrula → aktive et.
+- Sonra bana haber ver: `NEXT_PUBLIC_SUPABASE_URL`'i yeni alana çevirip Google OAuth istemcisindeki
+  yönlendirme adreslerini ve `next.config.ts` görsel/medya ayarlarını güncelleyeceğim.

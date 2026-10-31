@@ -489,7 +489,7 @@ yalnızca 1×30 sn video çıkıyor; ileride tekrar bakılacak) →
 ~~YouTube'a doğrudan yükleme~~ (31 Ekim, Google kurulumu + denetim bekliyor) → ~~seri modu/zamanlama~~ + ~~TikTok~~ (31 Ekim; TikTok uygulaması + denetim bekliyor) → ~~brand kit~~ → ~~ses klonlama~~ →
 ~~affiliate~~ (kredi bazlı davet). Ertelenen: timeline editör, AI avatar, mobil app.
 
-Teknik borç: sahne düzeyinde yeniden üretim + versiyon geçmişi +
+Teknik borç: ~~sahne düzeyinde yeniden üretim + versiyon geçmişi~~ (31 Ekim: editörde sahne başına "Earlier pictures" `slot.editHistory` ≤8, `original` işareti, `restoreScene`; render sürümleri `steps.render.history` (queueRerender her yeniden render'da eskiyi saklar, filigranlı sürüm temiz videoya geri getirilmez), `useVersion` ücretsiz) +
 `media_assets`/`projects.job_id` şeması; Supabase custom domain (Google
 ekranındaki supabase.co yazısı için).
 
