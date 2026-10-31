@@ -34,7 +34,7 @@ const PRIVACY: Array<{ id: Privacy; label: string; hint: string }> = [
 const CONNECT_MESSAGES: Record<string, string> = {
   connected: "YouTube connected.",
   cancelled: "Connecting YouTube was cancelled.",
-  missing_permission: "Please allow Norveko to upload videos on the Google screen.",
+  missing_permission: "Norveko needs permission to upload. Connect again and, on Google's screen, tick the box “Manage your YouTube videos”.",
   no_channel: "That Google account has no YouTube channel yet. Create one on youtube.com, then connect again.",
   not_configured: "YouTube publishing isn't enabled on this site yet.",
   error: "Couldn't connect YouTube. Please try again.",
