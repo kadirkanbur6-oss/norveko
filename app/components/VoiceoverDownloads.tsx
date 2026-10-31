@@ -1,7 +1,7 @@
 "use client";
 
 // app/components/VoiceoverDownloads.tsx
-// Action buttons for a finished voiceover: "Download MP3" and, when the job
+// Action buttons for a finished voiceover: download (MP3/WAV) and, when the job
 // paid for subtitles, a "Subtitles" dropdown (.srt / .vtt). Used by the
 // generation progress card and the project page via <AudioPlayer actions>.
 
@@ -53,6 +53,8 @@ export default function VoiceoverDownloads({
   }, [open]);
 
   const hasCaptions = Array.isArray(captions) && captions.length > 0;
+  // Gemini narration is stored as WAV, ElevenLabs as MP3.
+  const audioExt = /\.wav(\?|$)/i.test(audioUrl) ? "wav" : "mp3";
 
   function grab(kind: "srt" | "vtt") {
     if (!hasCaptions) return;
@@ -96,9 +98,9 @@ export default function VoiceoverDownloads({
           )}
         </div>
       )}
-      <a href={audioUrl} download={`${baseName}.mp3`} className={btn}>
+      <a href={audioUrl} download={`${baseName}.${audioExt}`} className={btn}>
         <Download size={14} />
-        MP3
+        {audioExt.toUpperCase()}
       </a>
     </>
   );

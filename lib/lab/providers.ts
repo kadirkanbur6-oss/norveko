@@ -159,7 +159,7 @@ export async function labSpeech(provider: TtsProvider, model: string, text: stri
 
 /* ---------------- Video (async: submit → poll) ---------------- */
 
-export type VideoProvider = "kling" | "veo" | "fal";
+export type VideoProvider = "kling" | "veo" | "fal" | "omni";
 
 export interface VideoHandle {
   provider: VideoProvider;
@@ -179,6 +179,31 @@ export async function labVideoSubmit(
     const { submitTextToVideo } = await import("@/lib/pipeline/kling");
     const id = await submitTextToVideo({ prompt, duration: "5", aspectRatio: "9:16", model });
     return { provider, id };
+  }
+  if (provider === "omni") {
+    // Gemini Omni (Interactions API) — runs in the background, polled below.
+    const input: unknown[] = [];
+    if (imageUrl) {
+      const img = await fetch(imageUrl);
+      const mime = img.headers.get("content-type") ?? "image/png";
+      input.push({ type: "image", data: Buffer.from(await img.arrayBuffer()).toString("base64"), mime_type: mime });
+    }
+    input.push({ type: "text", text: `${prompt} No dialogue, no music.` });
+    const res = await fetch(`${GEMINI}/interactions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": need("GEMINI_API_KEY") },
+      body: JSON.stringify({
+        model,
+        input,
+        background: true,
+        ...(imageUrl ? { generation_config: { video_config: { task: "image_to_video" } } } : {}),
+        response_format: { type: "video", aspect_ratio: "9:16", resolution: "720p" },
+      }),
+    });
+    if (!res.ok) await failText(res, model);
+    const data = await res.json();
+    if (!data?.id) throw new Error(`${model}: no interaction id (${JSON.stringify(data).slice(0, 200)})`);
+    return { provider, id: data.id };
   }
   if (provider === "veo") {
     const instance: Record<string, unknown> = { prompt };
@@ -216,6 +241,21 @@ export async function labVideoPoll(h: VideoHandle): Promise<{ done: boolean; med
     if (t.status !== "succeed" || !t.videoUrl) return { done: false };
     return { done: true, media: { buffer: await download(t.videoUrl), contentType: "video/mp4", ext: "mp4" } };
   }
+  if (h.provider === "omni") {
+    const key = need("GEMINI_API_KEY");
+    const res = await fetch(`${GEMINI}/interactions/${encodeURIComponent(h.id)}`, { headers: { "x-goog-api-key": key }, cache: "no-store" });
+    if (!res.ok) await failText(res, "omni poll");
+    const data = await res.json();
+    if (data?.status === "failed" || data?.status === "cancelled") return { done: true, error: JSON.stringify(data?.error ?? data?.status).slice(0, 300) };
+    if (data?.status !== "completed") return { done: false };
+    for (const step of Array.isArray(data?.steps) ? data.steps : []) {
+      for (const c of Array.isArray(step?.content) ? step.content : []) {
+        if (c?.type === "video" && c?.data) return { done: true, media: { buffer: Buffer.from(c.data, "base64"), contentType: "video/mp4", ext: "mp4" } };
+        if (c?.type === "video" && c?.uri) return { done: true, media: { buffer: await download(c.uri, { "x-goog-api-key": key }), contentType: "video/mp4", ext: "mp4" } };
+      }
+    }
+    return { done: true, error: `no video in interaction: ${JSON.stringify(data).slice(0, 200)}` };
+  }
   if (h.provider === "veo") {
     const key = need("GEMINI_API_KEY");
     const res = await fetch(`${GEMINI}/${h.id}`, { headers: { "x-goog-api-key": key }, cache: "no-store" });
@@ -239,4 +279,26 @@ export async function labVideoPoll(h: VideoHandle): Promise<{ done: boolean; med
   const url = r?.video?.url ?? r?.videos?.[0]?.url;
   if (!url) return { done: true, error: `no video url: ${JSON.stringify(r).slice(0, 200)}` };
   return { done: true, media: { buffer: await download(url), contentType: "video/mp4", ext: "mp4" } };
+}
+
+
+/* ---------------- Discovery ---------------- */
+
+/** Google models available to this key that look relevant (image / video / TTS). */
+export async function listGoogleModels(): Promise<Array<{ name: string; methods: string[] }>> {
+  const key = need("GEMINI_API_KEY");
+  const out: Array<{ name: string; methods: string[] }> = [];
+  let pageToken = "";
+  for (let i = 0; i < 5; i++) {
+    const res = await fetch(`${GEMINI}/models?pageSize=200${pageToken ? `&pageToken=${pageToken}` : ""}`, { headers: { "x-goog-api-key": key }, cache: "no-store" });
+    if (!res.ok) await failText(res, "list models");
+    const data = await res.json();
+    for (const m of data?.models ?? []) {
+      const name = String(m.name ?? "").replace(/^models\//, "");
+      if (/image|imagen|veo|omni|tts|banana|video/i.test(name)) out.push({ name, methods: m.supportedGenerationMethods ?? [] });
+    }
+    pageToken = data?.nextPageToken ?? "";
+    if (!pageToken) break;
+  }
+  return out;
 }

@@ -512,7 +512,7 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
             subtitle={
               job.steps.voiceover.captions?.length
                 ? `${job.steps.voiceover.captions.length} subtitle cues, word-timed to the narration`
-                : "MP3 narration of the full script"
+                : "Narration of the full script"
             }
             actions={
               <VoiceoverDownloads

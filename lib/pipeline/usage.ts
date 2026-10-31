@@ -45,12 +45,19 @@ type Price = TokenPrice | UnitPrice;
  * via PROVIDER_PRICE_OVERRIDES). Keys are "<provider>:<model>".
  */
 export const PRICE_LIST: Record<string, Price> = {
-  // OpenAI — per 1M tokens.
+  // OpenAI — per 1M tokens. (Web search calls, $10/1K, are not token-billed
+  // and not included here.)
   "openai:gpt-5-mini": { inputPer1M: 0.25, outputPer1M: 2.0 },
-  // ElevenLabs — per character (Creator plan ≈ $22 / 100k credits).
-  "elevenlabs:eleven_multilingual_v2": { perUnit: 0.00022 },
-  // Gemini image — per generated image.
-  "gemini:gemini-3.1-flash-image": { perUnit: 0.04 },
+  // ElevenLabs — per character. API rate $0.08/1K on every plan (31 Oct 2026);
+  // plan credits are prepaid, so use the Creator effective rate ≈ $0.18/1K.
+  "elevenlabs:eleven_multilingual_v2": { perUnit: 0.00018 },
+  // Gemini TTS — billed per audio token ($20 / 1M for Pro, $10 for Flash at
+  // 25 tokens/s); ≈ 15 spoken characters per second ⇒ per character:
+  "gemini:gemini-2.5-pro-preview-tts": { perUnit: 0.0000334 },
+  "gemini:gemini-2.5-flash-preview-tts": { perUnit: 0.0000167 },
+  // Gemini image — per generated 1K image (price list 31 Oct 2026).
+  "gemini:gemini-3.1-flash-image": { perUnit: 0.067 },
+  "gemini:gemini-nano-banana-2.1": { perUnit: 0.0336 },
   // Kling 3.0 — per second, 720p, no audio: 0.6 units × $0.14 list.
   "kling:kling-3.0": { perUnit: 0.084 },
   // Legacy model id (kept for old provider_usage rows).

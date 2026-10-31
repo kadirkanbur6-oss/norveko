@@ -11,6 +11,7 @@ import { requireUser } from "@/lib/supabase-server";
 import { getSubscriptionTier, listLibraryVoices, listVoices } from "@/lib/pipeline/elevenlabs";
 import { isGenerationEnabled, LAUNCH_LOCK_MESSAGE } from "@/lib/pipeline/features";
 import { LANGUAGES, isOneOf, languageCode } from "@/lib/pipeline/options";
+import { GEMINI_VOICES, GEMINI_VOICE_PREFIX } from "@/lib/pipeline/gemini-tts";
 
 export const dynamic = "force-dynamic";
 
@@ -101,6 +102,16 @@ export async function GET(req: NextRequest) {
       languageCode: code,
       nativeMatch,
       libraryAllowed,
+      // Default narrators (Gemini TTS) — multilingual, so offered for every
+      // language. Previews are generated once per voice+language and cached.
+      gemini: GEMINI_VOICES.map((v) => ({
+        voice_id: `${GEMINI_VOICE_PREFIX}${v.name}`,
+        name: `${v.name} - ${v.style}`,
+        labels: { gender: v.gender, descriptive: v.style },
+        preview_url: `/api/voices/preview?voice=${encodeURIComponent(v.name)}&language=${encodeURIComponent(language)}`,
+        languages: [code],
+        source: "gemini" as const,
+      })),
       voices: voices.map((voice) => ({
         voice_id: voice.voice_id,
         name: voice.name,

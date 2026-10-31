@@ -114,7 +114,7 @@ export interface RunnerDeps {
   providers: {
     generateScript: typeof import("@/lib/pipeline/openai").generateScript;
     researchTopic: typeof import("@/lib/pipeline/openai").researchTopic;
-    generateSpeech: typeof import("@/lib/pipeline/elevenlabs").generateSpeech;
+    generateSpeech: typeof import("@/lib/pipeline/tts").synthesizeNarration;
     reviseNarration: typeof import("@/lib/pipeline/openai").reviseNarrationLength;
     generateThumbnail: typeof import("@/lib/pipeline/gemini-image").generateThumbnail;
     submitTextToVideo: typeof import("@/lib/pipeline/kling").submitTextToVideo;
@@ -202,10 +202,14 @@ export function createPipelineRunner(deps: RunnerDeps) {
     data: Omit<UsageRecord, "jobId" | "userId" | "step" | "provider" | "model" | "estimatedCostUsd"> & {
       inputTokens?: number;
       outputTokens?: number;
+      /** "provider:model" when it differs from the step default (e.g. Gemini voices). */
+      usageKey?: string;
     }
   ): Promise<void> {
     if (!deps.recordUsage) return;
-    const { provider, model } = splitProvider(getPipelineStepDefinition(stepId).provider);
+    const { usageKey, ...rest } = data;
+    data = rest;
+    const { provider, model } = splitProvider(usageKey ?? getPipelineStepDefinition(stepId).provider);
     try {
       await deps.recordUsage({
         jobId: job.id,
@@ -1048,13 +1052,16 @@ export function createPipelineRunner(deps: RunnerDeps) {
       if (typeof voiceId !== "string" || !voiceId) {
         throw new Error("Voice is missing; cannot generate voiceover.");
       }
+      const voiceUsageKey = voiceId.startsWith("gemini:")
+        ? `gemini:${process.env.GEMINI_TTS_MODEL || "gemini-2.5-pro-preview-tts"}`
+        : "elevenlabs:eleven_multilingual_v2";
 
       const startedAt = now();
       let speech: Awaited<ReturnType<typeof providers.generateSpeech>>;
       try {
         speech = await providers.generateSpeech(script, voiceId);
       } catch (err) {
-        await logUsage(job, "voiceover", {
+        await logUsage(job, "voiceover", { usageKey: voiceUsageKey,
           unit: "characters",
           quantity: script.length,
           durationMs: now() - startedAt,
@@ -1063,7 +1070,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
         });
         throw err;
       }
-      await logUsage(job, "voiceover", {
+      await logUsage(job, "voiceover", { usageKey: voiceUsageKey,
         unit: "characters",
         quantity: script.length,
         durationMs: now() - startedAt,
@@ -1101,7 +1108,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
             });
             if (fixed?.script?.trim()) {
               const retake = await providers.generateSpeech(fixed.script, voiceId);
-              await logUsage(job, "voiceover", { unit: "characters", quantity: fixed.script.length, durationMs: now() - rewriteAt, status: "ok" });
+              await logUsage(job, "voiceover", { usageKey: voiceUsageKey, unit: "characters", quantity: fixed.script.length, durationMs: now() - rewriteAt, status: "ok" });
               if (retake.alignment) {
                 script = fixed.script;
                 speech = retake;
@@ -1127,7 +1134,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
               speech = retake;
               speed = wanted;
             }
-            await logUsage(job, "voiceover", {
+            await logUsage(job, "voiceover", { usageKey: voiceUsageKey,
               unit: "characters",
               quantity: script.length,
               durationMs: now() - retryAt,
@@ -1138,11 +1145,12 @@ export function createPipelineRunner(deps: RunnerDeps) {
           }
         }
       }
-      const storagePath = `${job.user_id}/${job.id}.mp3`;
+      const ext = speech.ext ?? "mp3";
+      const storagePath = `${job.user_id}/${job.id}.${ext}`;
       const { error: uploadError } = await db.storage
         .from("voiceovers")
         .upload(storagePath, speech.audio, {
-          contentType: "audio/mpeg",
+          contentType: speech.contentType ?? "audio/mpeg",
           upsert: true,
         });
       if (uploadError) {
@@ -1510,7 +1518,7 @@ function getRunner() {
         reviseNarration: async (...args) =>
           (await import("@/lib/pipeline/openai")).reviseNarrationLength(...args),
         generateSpeech: async (...args) =>
-          (await import("@/lib/pipeline/elevenlabs")).generateSpeech(...args),
+          (await import("@/lib/pipeline/tts")).synthesizeNarration(...args),
         generateThumbnail: async (...args) =>
           (await import("@/lib/pipeline/gemini-image")).generateThumbnail(...args),
         submitTextToVideo: async (...args) =>

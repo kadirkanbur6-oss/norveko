@@ -257,3 +257,33 @@ function isAlignment(value: unknown): value is CharacterAlignment {
     a.characters.length === a.character_start_times_seconds.length
   );
 }
+
+
+/**
+ * Forced alignment: given audio + its exact transcript, return per-character
+ * timings in the same shape as /with-timestamps, so captions work for audio
+ * from any TTS provider (used for Gemini voices).
+ */
+export async function forceAlign(audio: Buffer, text: string, mimeType = "audio/wav"): Promise<CharacterAlignment | null> {
+  const form = new FormData();
+  const ext = mimeType.includes("wav") ? "wav" : "mp3";
+  form.append("file", new Blob([new Uint8Array(audio)], { type: mimeType }), `narration.${ext}`);
+  form.append("text", text);
+  const res = await fetch(`${ELEVENLABS_BASE_URL}/v1/forced-alignment`, {
+    method: "POST",
+    headers: { ...getAuthHeaders() },
+    body: form,
+  });
+  if (!res.ok) {
+    const body = (await res.text()).slice(0, 300);
+    throw new Error(`ElevenLabs forced alignment error (${res.status}): ${body}`);
+  }
+  const data = (await res.json()) as { characters?: Array<{ text: string; start: number; end: number }> };
+  const chars = Array.isArray(data.characters) ? data.characters : [];
+  if (!chars.length) return null;
+  return {
+    characters: chars.map((c) => c.text),
+    character_start_times_seconds: chars.map((c) => c.start),
+    character_end_times_seconds: chars.map((c) => c.end),
+  };
+}

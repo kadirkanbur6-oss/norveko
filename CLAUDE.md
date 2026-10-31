@@ -213,6 +213,26 @@ karşılaştırması yapılır.
   her sayfada `id="main-content"`), ikon butonlarda aria-label, dialog/menu
   rolleri, `text-gray-600` kaldırıldı (kontrast).
 
+### Seslendirme motoru (31 Ekim: Gemini Pro TTS varsayılan)
+- Model lab'da (`/lab`, sadece beta) karşılaştırıldı; Kadir **Gemini Pro TTS**'i
+  seçti. `lib/pipeline/gemini-tts.ts`: `gemini-2.5-pro-preview-tts` (env
+  `GEMINI_TTS_MODEL` ile değişir), 24 kHz PCM → **WAV**; 16 seçilmiş ses
+  (`GEMINI_VOICES`, Charon ilk). Ses kimliği `gemini:<Ad>` → `lib/pipeline/tts.ts`
+  `synthesizeNarration()` yönlendirir (Gemini veya ElevenLabs). Gemini zaman
+  vermez → altyazı için **ElevenLabs forced alignment** (`forceAlign()`,
+  `/v1/forced-alignment`, karakter zamanları aynı formatta); başarısız olursa
+  ses yine kullanılır. Süre düzeltmesindeki hız → Gemini'de "slightly faster/
+  slower" talimatı. Maliyet ~$0.03/60 sn (Pro, $20/1M ses tokenı). Ses seçicide
+  Gemini sesleri en üstte (`/api/voices` `gemini[]`), önizleme
+  `/api/voices/preview` ilk istekte üretip `videos/previews/gemini/` altında
+  önbelleğe alır. ElevenLabs sesleri seçenek olarak duruyor.
+- **Model lab** (`app/lab`, `app/api/lab`, `lib/lab/providers.ts`): görsel
+  (Gemini/Imagen/GPT Image/fal), TTS (ElevenLabs modelleri/Gemini), video
+  (Kling/Gemini Omni Interactions API/fal MiniMax) yan yana; Google model
+  listesi butonu. Görsel karşılaştırmasında Nano Banana 2.1 ($0.034) ≈ mevcut
+  kalite. Veo 3.x Gemini API'de kapandı → `gemini-omni-1.1-flash`
+  (Interactions API). fal için `FAL_KEY` Vercel'e eklenecek.
+
 ### ElevenLabs sesleri (önemli)
 - `lib/pipeline/elevenlabs.ts`: `listVoices()` (hesap sesleri, `languages`
   = labels.language ∪ verified_languages), `listLibraryVoices(code)`

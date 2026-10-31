@@ -27,7 +27,7 @@ interface VoiceOption {
   labels: Record<string, string>;
   preview_url: string | null;
   languages?: string[];
-  source?: "account" | "library";
+  source?: "account" | "library" | "gemini";
   public_owner_id?: string;
 }
 
@@ -242,10 +242,15 @@ function ChatContent() {
         if (active) {
           // Outside English, native Voice Library narrators come first so the
           // default pick sounds local; English keeps the account defaults first.
+          // Gemini narrators (the default engine) come first for every
+          // language; ElevenLabs voices stay available below them.
+          const gemini: VoiceOption[] = data.gemini ?? [];
           const account: VoiceOption[] = data.voices ?? [];
           const library: VoiceOption[] = data.library ?? [];
-          const loaded: VoiceOption[] =
-            data.languageCode === "en" ? [...account, ...library] : [...library, ...account];
+          const loaded: VoiceOption[] = [
+            ...gemini,
+            ...(data.languageCode === "en" ? [...account, ...library] : [...library, ...account]),
+          ];
           setVoices(loaded);
           setNativeMatch(data.nativeMatch !== false);
           // Keep the current pick only if it still exists for this language.
@@ -640,7 +645,7 @@ function ChatContent() {
                       </span>
                     </span>
                     <span className="mt-0.5 block text-xs text-gray-500">
-                      Narration of the full script, delivered as MP3
+                      Narration of the full script, delivered as an audio file
                     </span>
                   </span>
                 </label>

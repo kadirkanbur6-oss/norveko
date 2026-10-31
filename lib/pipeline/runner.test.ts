@@ -186,6 +186,9 @@ function makeRunner(
             character_start_times_seconds: chars.map((_, i) => i * step),
             character_end_times_seconds: chars.map((_, i) => (i + 1) * step),
           },
+          contentType: "audio/mpeg",
+          ext: "mp3" as const,
+          usageKey: "elevenlabs:eleven_multilingual_v2",
         };
       },
       generateThumbnail: async () => {

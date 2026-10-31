@@ -40,7 +40,7 @@ const CANDIDATES: Candidate[] = [
   { key: "img-now", kind: "image", label: "Gemini 3.1 Flash Image", provider: "gemini", model: "gemini-3.1-flash-image", cost: "$0.067", current: true },
   { key: "img-nb21", kind: "image", label: "Nano Banana 2.1", provider: "gemini", model: "gemini-nano-banana-2.1", cost: "$0.034" },
   { key: "img-lite", kind: "image", label: "Nano Banana 2 Lite", provider: "gemini", model: "gemini-3.1-flash-lite-image", cost: "$0.034" },
-  { key: "img-imagen-fast", kind: "image", label: "Imagen 4 Fast", provider: "imagen", model: "imagen-4.0-fast-generate-001", cost: "~$0.02" },
+  { key: "img-imagen-fast", kind: "image", label: "Imagen (see model list)", provider: "imagen", model: "imagen-4.0-fast-generate-001", cost: "~$0.02–0.03" },
   { key: "img-gpt2", kind: "image", label: "GPT Image 2 (medium)", provider: "openai", model: "gpt-image-2", cost: "$0.041" },
   { key: "img-seedream", kind: "image", label: "Seedream 5.0 Lite (fal)", provider: "fal", model: "fal-ai/bytedance/seedream/v5/lite/text-to-image", cost: "$0.035" },
   // Voices (Daniel — the Turkish narrator used in production)
@@ -52,8 +52,7 @@ const CANDIDATES: Candidate[] = [
   { key: "tts-gemini-pro", kind: "tts", label: "Gemini Pro TTS", provider: "gemini", model: "gemini-2.5-pro-preview-tts", cost: "?", voice: "Charon" },
   // Video
   { key: "vid-kling", kind: "video", label: "Kling 3.0 (text→video)", provider: "kling", model: "kling-3.0", cost: "$0.42–0.50", current: true },
-  { key: "vid-veo-lite", kind: "video", label: "Veo 3.1 Lite (image→video)", provider: "veo", model: "veo-3.1-lite-generate-preview", cost: "~$0.25", fromImage: true },
-  { key: "vid-veo-fast", kind: "video", label: "Veo 3.1 Fast (image→video)", provider: "veo", model: "veo-3.1-fast-generate-preview", cost: "~$0.50", fromImage: true },
+  { key: "vid-omni", kind: "video", label: "Gemini Omni 1.1 Flash (image→video)", provider: "omni", model: "gemini-omni-1.1-flash", cost: "?", fromImage: true },
   { key: "vid-h3-turbo", kind: "video", label: "MiniMax H3 Max Turbo (fal)", provider: "fal", model: "fal-ai/minimax/h3-max-turbo/image-to-video", cost: "$0.20", fromImage: true },
   { key: "vid-h3", kind: "video", label: "MiniMax H3 Max (fal)", provider: "fal", model: "fal-ai/minimax/h3-max/image-to-video", cost: "$0.40", fromImage: true },
 ];
@@ -73,6 +72,7 @@ export default function LabPage() {
   const [ttsText, setTtsText] = useState(DEFAULT_TTS_TEXT);
   const [videoPrompt, setVideoPrompt] = useState(DEFAULT_VIDEO_PROMPT);
   const [sourceImage, setSourceImage] = useState<string>("");
+  const [googleModels, setGoogleModels] = useState<string>("");
 
   const imageOptions = useMemo(
     () => CANDIDATES.filter((c) => c.kind === "image" && cells[c.key]?.url).map((c) => ({ label: c.label, url: cells[c.key]!.url! })),
@@ -218,6 +218,27 @@ export default function LabPage() {
       <p className="mt-1 max-w-2xl text-sm text-gray-400">
         Same scene, same narration, every candidate model. Yellow = what production uses today. Pick by quality first, then price.
       </p>
+
+      <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs text-gray-400">
+        <button
+          type="button"
+          onClick={async () => {
+            setGoogleModels("Loading…");
+            const r = await call({ action: "models" });
+            setGoogleModels(
+              r.success
+                ? ((r as unknown as { models: Array<{ name: string; methods: string[] }> }).models ?? [])
+                    .map((m) => `${m.name}  [${m.methods.join(", ")}]`)
+                    .join("\n")
+                : r.error ?? "failed"
+            );
+          }}
+          className="rounded-lg border border-white/10 px-3 py-1 text-gray-200 hover:text-white"
+        >
+          List Google image / video / TTS models for this key
+        </button>
+        {googleModels && <pre className="mt-2 max-h-60 overflow-auto whitespace-pre-wrap font-mono text-[11px] text-gray-300">{googleModels}</pre>}
+      </div>
 
       <label className="mt-6 block text-xs font-semibold uppercase tracking-wider text-gray-400">Scene prompt (images)</label>
       <textarea value={imagePrompt} onChange={(e) => setImagePrompt(e.target.value)} rows={3} className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 p-3 text-sm" />

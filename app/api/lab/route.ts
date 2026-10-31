@@ -8,6 +8,7 @@ import { createClient } from "@supabase/supabase-js";
 import { requireUser } from "@/lib/supabase-server";
 import { isFullVideoEnabled } from "@/lib/pipeline/features";
 import {
+  listGoogleModels,
   labImage,
   labSpeech,
   labVideoPoll,
@@ -70,6 +71,8 @@ export async function POST(req: Request) {
         if (r.error || !r.media) return NextResponse.json({ success: false, done: true, error: r.error ?? "failed" });
         return NextResponse.json({ success: true, done: true, url: await store(run, name, r.media), bytes: r.media.buffer.length });
       }
+      case "models":
+        return NextResponse.json({ success: true, models: await listGoogleModels() });
       default:
         return NextResponse.json({ success: false, error: "Unknown action." }, { status: 400 });
     }

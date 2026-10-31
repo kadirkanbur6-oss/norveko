@@ -156,52 +156,60 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
-      const { listVoices, addLibraryVoice, getSubscriptionTier } = await import(
-        "@/lib/pipeline/elevenlabs"
-      );
-      if (voicePublicOwnerId) {
-        // A Voice Library pick: make it usable for TTS before charging anything.
-        try {
-          voiceId = await addLibraryVoice(voicePublicOwnerId, voiceId, voiceName || "Norveko voice");
-        } catch (err) {
-          console.error("[pipeline] library voice add failed:", err);
-          const detail = err instanceof Error ? err.message : "";
-          const permission = /voices_write|missing_permissions/i.test(detail);
+      const { isGeminiVoiceId, geminiVoiceName } = await import("@/lib/pipeline/gemini-tts");
+      if (isGeminiVoiceId(voiceId)) {
+        // Gemini narrators are built in: only the name has to be known.
+        if (!geminiVoiceName(voiceId)) {
+          return NextResponse.json({ success: false, error: "Selected voice is not available." }, { status: 400 });
+        }
+      } else {
+        const { listVoices, addLibraryVoice, getSubscriptionTier } = await import(
+          "@/lib/pipeline/elevenlabs"
+        );
+        if (voicePublicOwnerId) {
+          // A Voice Library pick: make it usable for TTS before charging anything.
+          try {
+            voiceId = await addLibraryVoice(voicePublicOwnerId, voiceId, voiceName || "Norveko voice");
+          } catch (err) {
+            console.error("[pipeline] library voice add failed:", err);
+            const detail = err instanceof Error ? err.message : "";
+            const permission = /voices_write|missing_permissions/i.test(detail);
+            return NextResponse.json(
+              {
+                success: false,
+                error: permission
+                  ? "Library voices aren't enabled on this deployment yet. Please pick a voice without the Library badge."
+                  : "This voice could not be added right now. Please pick another voice.",
+              },
+              { status: 400 }
+            );
+          }
+        }
+        const voices = await listVoices();
+        const chosen = voices.find((voice) => voice.voice_id === voiceId);
+        if (!chosen) {
           return NextResponse.json(
-            {
-              success: false,
-              error: permission
-                ? "Library voices aren't enabled on this deployment yet. Please pick a voice without the Library badge."
-                : "This voice could not be added right now. Please pick another voice.",
-            },
+            { success: false, error: "Selected voice is not available." },
             { status: 400 }
           );
         }
-      }
-      const voices = await listVoices();
-      const chosen = voices.find((voice) => voice.voice_id === voiceId);
-      if (!chosen) {
-        return NextResponse.json(
-          { success: false, error: "Selected voice is not available." },
-          { status: 400 }
-        );
-      }
-      // Library-origin voices (anything not "premade") fail at TTS time on the
-      // ElevenLabs free tier (402 paid_plan_required). Refuse BEFORE charging
-      // credits rather than failing the job later.
-      if (chosen.category !== "premade") {
-        const tier = await getSubscriptionTier().catch(() => null);
-        const libraryAllowed = tier
-          ? tier !== "free"
-          : process.env.ELEVENLABS_LIBRARY_VOICES === "true";
-        if (!libraryAllowed) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: "This voice isn't available on the current plan. Please pick another voice.",
-            },
-            { status: 400 }
-          );
+        // Library-origin voices (anything not "premade") fail at TTS time on the
+        // ElevenLabs free tier (402 paid_plan_required). Refuse BEFORE charging
+        // credits rather than failing the job later.
+        if (chosen.category !== "premade") {
+          const tier = await getSubscriptionTier().catch(() => null);
+          const libraryAllowed = tier
+            ? tier !== "free"
+            : process.env.ELEVENLABS_LIBRARY_VOICES === "true";
+          if (!libraryAllowed) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: "This voice isn't available on the current plan. Please pick another voice.",
+              },
+              { status: 400 }
+            );
+          }
         }
       }
     }
