@@ -221,7 +221,7 @@ Business 5000/$59.
   **Supabase pg_cron kalp atışı** (SQL `supabase/README.md` "Heartbeat") dakikada bir `/api/pipeline/reap`,
   saatte bir `/api/series/tick?lookahead=2`; yetki `lib/cron-auth.ts` (`CRON_SECRET` veya `HEARTBEAT_SECRET`).
   ✅ 31 Ekim canlıda 200; şifre Supabase **Vault** `heartbeat_secret`'tan okunur (SQL'e yapıştırmak tırnakları iki kez bozdu).
-  (Kısa süre denenen `watchJob` kaldırıldı: zincir içinden kick ettiği için aynı 508'e takılıyordu.) TikTok geliştirici uygulaması "Norveko" (Bireysel) + Sandbox "Norveko test"; site doğrulama
+  (Kısa süre denenen `watchJob` kaldırıldı: zincir içinden kick ettiği için aynı 508'e takılıyordu.) TikTok geliştirici uygulaması "Norveko" (Bireysel) + Sandbox "Norveko test" (Vercel `TIKTOK_CLIENT_KEY/SECRET` = Sandbox anahtarları; env değerleri artık `.trim()` — yapıştırılan satır sonu client_key hatası verdi). ✅ 31 Ekim canlı test: Redkalien hesabı (gizli) bağlandı, Flannan videosu `SELF_ONLY` → `PUBLISH_COMPLETE`; seri testi (Flannan, YouTube private `6ulP0Mc6UeM`) uçtan uca yayınlandı. Production'a geçiş = TikTok incelemesi (demo video + ikon) sonra Production anahtarları; site doğrulama
   dosyası `public/tiktok2Vlc4spidXzS1mcfLwXijkpCKUcnVKNi.txt`; 1024 px ikon `public/brand/norveko-icon-1024.png`.
 - Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
 - Bitince sonuç `projects.content` JSONB'ye yazılır; başlık = AI'nin ilk title'ı.
