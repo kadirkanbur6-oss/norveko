@@ -14,7 +14,19 @@ import {
   type JobRow,
 } from "./runner";
 import type { UsageRecord } from "./usage";
-import { initialStepsState, totalPipelineCredits } from "./steps";
+import {
+  initialStepsState,
+  totalPipelineCredits,
+  RESEARCH_CREDITS,
+  THUMBNAIL_CREDITS,
+  STILL_SCENE_CREDITS,
+  IMAGE_CLIP_CREDITS,
+  VIDEO_CLIP_CREDITS,
+  RENDER_CREDITS_PER_30S,
+  scriptCredits,
+  voiceoverCredits,
+  subtitlesCredits,
+} from "./steps";
 
 type Row = Record<string, any>;
 
@@ -120,7 +132,7 @@ function makeDb() {
       status: "running",
       current_step: "script",
       steps,
-      credits_charged: withVoice ? 30 : 15,
+      credits_charged: withVoice ? totalPipelineCredits({ voiceover: true, subtitles: true }) : totalPipelineCredits(false),
       credits_refunded: 0, // DB default; the refund guard must treat 0 as "not refunded"
       error: null,
       created_at: new Date(0).toISOString(),
@@ -264,7 +276,7 @@ function seedVideoJob(seedJob: ReturnType<typeof makeDb>["seedJob"]) {
       thumbnail: { status: "pending", provider: "gemini", error: null },
       video: { status: "pending", provider: "kling", error: null },
     },
-    credits_charged: 15 + 130 * 5,
+    credits_charged: totalPipelineCredits(false) + VIDEO_CLIP_CREDITS * 5,
   });
 }
 
@@ -315,11 +327,11 @@ test("a failing step fails the job, refunds only the unfinished steps, keeps the
   assert.equal(job.status, "failed");
   assert.equal(job.error, "gemini down");
   assert.equal(job.steps.thumbnail.status, "failed");
-  // 15 charged: script (5) completed and is kept, thumbnail (10) refunded.
-  assert.equal(job.credits_refunded, 10);
+  // Script completed and is kept, thumbnail refunded.
+  assert.equal(job.credits_refunded, THUMBNAIL_CREDITS);
   assert.equal(rpc.length, 1);
   assert.equal(rpc[0][0], "add_credits");
-  assert.equal(rpc[0][1].p_amount, 10);
+  assert.equal(rpc[0][1].p_amount, THUMBNAIL_CREDITS);
   assert.equal(job.steps.result?.status, "partial");
   assert.match(job.steps.result?.project_id, /^proj_/, "script saved as a project");
 
@@ -382,7 +394,7 @@ test("video step: submits one task per scene, refunds unused clips, polls until 
   assert.equal(job.steps.video.status, "running");
   assert.equal(job.steps.video.clips.length, 3);
   // 5 clips charged, 3 scenes -> 2 clips refunded right away
-  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [260]);
+  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [2 * VIDEO_CLIP_CREDITS]);
 
   // Still processing: polling is a noop
   assert.equal(await runner.runNextStep(id), "noop");
@@ -399,7 +411,7 @@ test("video step: submits one task per scene, refunds unused clips, polls until 
   assert.equal(job.steps.video.status, "completed");
   assert.deepEqual(job.steps.video.clips.map((c: any) => c.status), ["succeed", "failed", "succeed"]);
   assert.match(job.steps.video.clips[0].video_url, /^https:\/\/cdn\//);
-  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [260, 130]);
+  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [2 * VIDEO_CLIP_CREDITS, VIDEO_CLIP_CREDITS]);
   assert.equal(job.steps.result.project_id.startsWith("proj_"), true);
 });
 
@@ -411,9 +423,9 @@ test("video step: every submit failing fails the job, refunding the clips but ke
   assert.equal(await runner.runNextStep(id), "failed");
   const job = rows.get(id)!;
   assert.equal(job.status, "failed");
-  // 665 charged = script 5 + thumbnail 10 (kept) + 5 clips × 130 (refunded)
-  assert.equal(job.credits_refunded, 650);
-  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [650]);
+  // script + thumbnail kept, the 5 clips refunded
+  assert.equal(job.credits_refunded, 5 * VIDEO_CLIP_CREDITS);
+  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [5 * VIDEO_CLIP_CREDITS]);
   assert.equal(job.steps.result?.status, "partial");
 });
 
@@ -496,13 +508,15 @@ function seedFullVideoJob(
   return seedJob(false, { steps, credits_charged: totalPipelineCredits(opts), options: { orientation: "vertical" } });
 }
 
-test("full video (hybrid, 60 s): 12 slots, 3 Kling + stills, render to final MP4, 70%-margin pricing", async () => {
-  assert.equal(totalPipelineCredits({ fullVideo: true, footage: "hybrid", clipMode: "text", duration: "60 seconds" }), 5 + 15 + 10 + 10 + 3 * 130 + 9 * 12 + 2 * 30);
-  assert.equal(totalPipelineCredits({ fullVideo: true, footage: "cinematic", clipMode: "text", duration: "60 seconds" }), 40 + 12 * 130 + 60);
+test("full video (hybrid, 60 s): 12 slots, 3 Kling + stills, render to final MP4, 60%-margin pricing", async () => {
+  const base60 = scriptCredits("60 seconds") + voiceoverCredits("gemini", "60 seconds") + subtitlesCredits("60 seconds") + THUMBNAIL_CREDITS;
+  const base30 = scriptCredits("30 seconds") + voiceoverCredits("gemini", "30 seconds") + subtitlesCredits("30 seconds") + THUMBNAIL_CREDITS;
+  assert.equal(totalPipelineCredits({ fullVideo: true, footage: "hybrid", clipMode: "text", duration: "60 seconds" }), base60 + 3 * VIDEO_CLIP_CREDITS + 9 * STILL_SCENE_CREDITS + 2 * RENDER_CREDITS_PER_30S);
+  assert.equal(totalPipelineCredits({ fullVideo: true, footage: "cinematic", clipMode: "text", duration: "60 seconds" }), base60 + 12 * VIDEO_CLIP_CREDITS + 2 * RENDER_CREDITS_PER_30S);
   // Image→video (Seedance) is the default clip mode and much cheaper per clip.
-  assert.equal(totalPipelineCredits({ fullVideo: true, footage: "hybrid", duration: "60 seconds" }), 40 + 3 * 50 + 9 * 12 + 60);
-  assert.equal(totalPipelineCredits({ fullVideo: true, footage: "stills", duration: "30 seconds" }), 40 + 6 * 12 + 30);
-  assert.equal(totalPipelineCredits({ fullVideo: true, duration: "8 minutes" }), 15, "unsupported duration → plain package");
+  assert.equal(totalPipelineCredits({ fullVideo: true, footage: "hybrid", duration: "60 seconds" }), base60 + 3 * IMAGE_CLIP_CREDITS + 9 * STILL_SCENE_CREDITS + 2 * RENDER_CREDITS_PER_30S);
+  assert.equal(totalPipelineCredits({ fullVideo: true, footage: "stills", duration: "30 seconds" }), base30 + 6 * STILL_SCENE_CREDITS + RENDER_CREDITS_PER_30S);
+  assert.equal(totalPipelineCredits({ fullVideo: true, duration: "8 minutes" }), scriptCredits("8 minutes") + THUMBNAIL_CREDITS, "unsupported duration → plain package");
 
   const { runner, rows, rpc, seedJob, calls, klingStatuses, renderStatus, edit, projects } = makeRunner();
   const id = seedFullVideoJob(seedJob);
@@ -543,7 +557,7 @@ test("full video (hybrid, 60 s): 12 slots, 3 Kling + stills, render to final MP4
   job = rows.get(id)!;
   assert.equal(job.steps.video.status, "completed");
   assert.equal(job.current_step, "render");
-  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [130], "failed Kling slot refunded");
+  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [VIDEO_CLIP_CREDITS], "failed Kling slot refunded");
 
   assert.equal(await runner.runNextStep(id), "advanced"); // render: submit
   const e = edit()!;
@@ -593,7 +607,7 @@ test("full video: a failed render fails the job and refunds", async () => {
 
 test("research step runs first and its brief is handed to the script", async () => {
   const opts = { research: true, voiceover: false };
-  assert.equal(totalPipelineCredits(opts), 5 + 5 + 10);
+  assert.equal(totalPipelineCredits(opts), RESEARCH_CREDITS + scriptCredits(undefined) + THUMBNAIL_CREDITS);
   const { runner, rows, seedJob, calls, scriptParams } = makeRunner();
   const steps = initialStepsState(opts) as Record<string, any>;
   steps.research.queued_at = new Date(0).toISOString();
@@ -613,7 +627,7 @@ test("research step runs first and its brief is handed to the script", async () 
   assert.equal(job.status, "completed");
 });
 
-test("research failure skips the step, refunds 5 credits and the job still completes", async () => {
+test("research failure skips the step, refunds its credits and the job still completes", async () => {
   const { runner, rows, seedJob, rpc, calls } = makeRunner({ failAt: "research" });
   const steps = initialStepsState({ research: true }) as Record<string, any>;
   steps.research.queued_at = new Date(0).toISOString();
@@ -621,8 +635,8 @@ test("research failure skips the step, refunds 5 credits and the job still compl
   assert.equal(await runner.runNextStep(id), "advanced");
   let job = rows.get(id)!;
   assert.equal(job.steps.research.status, "skipped");
-  assert.equal(job.steps.research.refunded, 5);
-  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [5]);
+  assert.equal(job.steps.research.refunded, RESEARCH_CREDITS);
+  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [RESEARCH_CREDITS]);
   assert.equal(await runner.runNextStep(id), "advanced"); // script
   assert.equal(await runner.runNextStep(id), "completed"); // thumbnail → finalize
   job = rows.get(id)!;
@@ -645,7 +659,7 @@ test("a research step whose worker died is skipped by reconcile after 2 minutes,
   assert.equal(job.status, "running");
   assert.equal(job.steps.research.status, "skipped");
   assert.equal(job.current_step, "script");
-  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [5]);
+  assert.deepEqual(rpc.map(([, a]) => a.p_amount), [RESEARCH_CREDITS]);
   assert.deepEqual(kicked, [id]);
 });
 
@@ -677,7 +691,7 @@ test("full video, image→video clips: still first, then the video model; a fail
   for (let i = 0; i < 12 && rows.get(id)!.steps.video.status !== "completed"; i++) await runner.runNextStep(id);
   job = rows.get(id)!;
   assert.equal(job.steps.video.status, "completed");
-  assert.deepEqual(rpc.map(([, x]) => x.p_amount), [50], "only the failed clip's 50 credits come back");
+  assert.deepEqual(rpc.map(([, x]) => x.p_amount), [IMAGE_CLIP_CREDITS], "only the failed clip's credits come back");
 
   await runner.runNextStep(id); // render submit
   const clips = (edit()!.timeline as any).tracks.find((t: any) => t.clips?.length >= 12).clips;

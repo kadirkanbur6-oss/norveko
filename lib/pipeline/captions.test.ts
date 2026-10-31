@@ -85,11 +85,14 @@ test("SRT and VTT renderers format timestamps correctly", () => {
   );
 });
 
-test("pricing: subtitles add 10 credits only together with a voiceover", async () => {
-  const { totalPipelineCredits, initialStepsState, optionsFromSteps } = await import("./steps");
-  assert.equal(totalPipelineCredits({ voiceover: true }), 30);
-  assert.equal(totalPipelineCredits({ voiceover: true, subtitles: true }), 40);
-  assert.equal(totalPipelineCredits({ voiceover: false, subtitles: true }), 15, "no voiceover → no subtitles charge");
+test("pricing: subtitles are charged only together with a voiceover; voice priced per minute and engine", async () => {
+  const { totalPipelineCredits, initialStepsState, optionsFromSteps, subtitlesCredits, voiceoverCredits, scriptCredits, THUMBNAIL_CREDITS } = await import("./steps");
+  const base = scriptCredits("60 seconds") + THUMBNAIL_CREDITS;
+  assert.equal(totalPipelineCredits({ voiceover: true }), base + voiceoverCredits("gemini", "60 seconds"));
+  assert.equal(totalPipelineCredits({ voiceover: true, subtitles: true }), base + voiceoverCredits("gemini", "60 seconds") + subtitlesCredits("60 seconds"));
+  assert.equal(totalPipelineCredits({ voiceover: false, subtitles: true }), base, "no voiceover → no subtitles charge");
+  assert.equal(voiceoverCredits("gemini", "8 minutes"), 8 * voiceoverCredits("gemini", "60 seconds"), "8 minutes = 8 started minutes");
+  assert.ok(voiceoverCredits("elevenlabs", "60 seconds") > 3 * voiceoverCredits("gemini", "60 seconds"), "ElevenLabs costs more");
   const steps = initialStepsState({ voiceover: true, subtitles: true });
   assert.equal(steps.voiceover.subtitles, true);
   const o = optionsFromSteps(steps);
@@ -97,6 +100,28 @@ test("pricing: subtitles add 10 credits only together with a voiceover", async (
   assert.equal(o.subtitles, true);
   assert.equal(o.video, false);
   assert.equal(o.fullVideo, false);
+  // Prices are recorded on the steps so later refunds use what was paid.
+  assert.equal(steps.voiceover.credits, voiceoverCredits("gemini", "60 seconds"));
+  assert.equal(steps.voiceover.subtitles_credits, subtitlesCredits("60 seconds"));
+  assert.equal(steps.thumbnail.credits, THUMBNAIL_CREDITS);
+});
+
+test("pricing: every item keeps ≥ 60% margin at the Business-pack revenue per credit", async () => {
+  const s = await import("./steps");
+  const margin = (credits: number, usd: number) => 1 - usd / (credits * s.REVENUE_PER_CREDIT_USD);
+  const checks: Array<[string, number, number]> = [
+    ["research", s.RESEARCH_CREDITS, 0.045],
+    ["script 60 s", s.scriptCredits("60 seconds"), 0.04],
+    ["script 8 min", s.scriptCredits("8 minutes"), 0.12],
+    ["gemini voice / min", s.VOICE_CREDITS_PER_MIN.gemini, 0.05],
+    ["elevenlabs voice / min", s.VOICE_CREDITS_PER_MIN.elevenlabs, 0.2],
+    ["thumbnail", s.THUMBNAIL_CREDITS, 0.067],
+    ["still", s.STILL_SCENE_CREDITS, 0.04],
+    ["image→video clip", s.IMAGE_CLIP_CREDITS, 0.17],
+    ["kling clip", s.VIDEO_CLIP_CREDITS, 0.42],
+    ["render / 30 s", s.RENDER_CREDITS_PER_30S, 0.1],
+  ];
+  for (const [name, credits, usd] of checks) assert.ok(margin(credits, usd) >= 0.6, `${name}: ${(margin(credits, usd) * 100).toFixed(1)}%`);
 });
 
 test("timeline: planSlots spreads Kling slots evenly and maps scenes in order", async () => {

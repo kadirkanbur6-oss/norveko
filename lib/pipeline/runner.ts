@@ -300,6 +300,11 @@ export function createPipelineRunner(deps: RunnerDeps) {
     if (!steps) return 0;
     const items = creditBreakdown(optionsFromSteps(steps));
     const done = (id: string) => steps[id]?.status === "completed";
+    // Prefer the price recorded at purchase time (initialStepsState) over today's list.
+    const charged = (id: string, fallback: number) => {
+      const stored = id === "subtitles" ? steps.voiceover?.subtitles_credits : steps[id]?.credits;
+      return typeof stored === "number" ? stored : fallback;
+    };
     // (a skipped research step was already refunded — see skipResearch)
     let total = 0;
     for (const item of items) {
@@ -307,15 +312,15 @@ export function createPipelineRunner(deps: RunnerDeps) {
         case "research":
         case "script":
         case "thumbnail":
-          if (done(item.id)) total += item.credits;
+          if (done(item.id)) total += charged(item.id, item.credits);
           break;
         case "render":
           // A re-render (version ≥ 1) re-does a render that was already delivered and paid.
-          if (done("render") || Number(steps.render?.version) > 0) total += item.credits;
+          if (done("render") || Number(steps.render?.version) > 0) total += charged("render", item.credits);
           break;
         case "voiceover":
         case "subtitles":
-          if (done("voiceover")) total += item.credits;
+          if (done("voiceover")) total += charged(item.id, item.credits);
           break;
         case "kling": {
           const slots = (steps.video?.slots as TimelineSlot[] | undefined) ?? [];
@@ -327,7 +332,8 @@ export function createPipelineRunner(deps: RunnerDeps) {
         }
         case "stills": {
           const slots = (steps.video?.slots as TimelineSlot[] | undefined) ?? [];
-          total += slots.filter((x) => x.kind === "still" && x.status === "succeed").length * STILL_SCENE_CREDITS;
+          const perStill = (steps.video?.plan as Partial<FullVideoPlan> | undefined)?.stillCredits;
+          total += slots.filter((x) => x.kind === "still" && x.status === "succeed").length * (typeof perStill === "number" ? perStill : STILL_SCENE_CREDITS);
           break;
         }
         case "video": // legacy clips-only option: paid per succeeded clip
@@ -592,15 +598,16 @@ export function createPipelineRunner(deps: RunnerDeps) {
   async function skipResearch(job: JobRow, reason: string): Promise<void> {
     const already = Number(job.steps?.research?.refunded ?? 0);
     let refunded = already;
+    const paid = typeof job.steps?.research?.credits === "number" ? (job.steps.research.credits as number) : RESEARCH_CREDITS;
     if (already <= 0) {
       const { error } = await db.rpc("add_credits", {
         p_user_id: job.user_id,
-        p_amount: RESEARCH_CREDITS,
+        p_amount: paid,
         p_type: "refund",
         p_reason: `Refund: web research skipped (${reason.slice(0, 100)})`,
       });
       if (error) console.error(`[pipeline] ${job.id} research refund failed:`, error);
-      else refunded = RESEARCH_CREDITS;
+      else refunded = paid;
     }
     await patchStep(job, "research", { status: "skipped", error: reason.slice(0, 300), refunded, brief: null, sources: [] });
   }
@@ -618,7 +625,10 @@ export function createPipelineRunner(deps: RunnerDeps) {
   }
 
   async function refundVisuals(job: JobRow, klingUnused: number, stillUnused: number): Promise<void> {
-    const amount = Math.max(0, klingUnused) * clipCreditsOf(job) + Math.max(0, stillUnused) * STILL_SCENE_CREDITS;
+    const perStill = (job.steps?.video?.plan as Partial<FullVideoPlan> | undefined)?.stillCredits;
+    const amount =
+      Math.max(0, klingUnused) * clipCreditsOf(job) +
+      Math.max(0, stillUnused) * (typeof perStill === "number" ? perStill : STILL_SCENE_CREDITS);
     if (amount <= 0) return;
     const { error } = await db.rpc("add_credits", {
       p_user_id: job.user_id,

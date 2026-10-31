@@ -153,6 +153,8 @@ export async function POST(req: NextRequest) {
       footage,
       clipMode,
       duration,
+      // Narration is priced per engine: built-in Gemini narrators vs ElevenLabs voices.
+      voiceEngine: voiceId && !voiceId.startsWith("gemini:") ? "elevenlabs" : "gemini",
     };
     const resolved = resolvePipelineOptions(options);
 

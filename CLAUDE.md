@@ -103,7 +103,7 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   `voice_settings`: stability 0.38, similarity 0.8, style 0.35, speaker boost
   (düz okumayı azaltmak için).
   Zaman çizelgesi her durumda gerçek anlatım süresine göre kurulur.
-- Kredi maliyetleri **tek kaynak**: `lib/pipeline/steps.ts` (research 5, script 5, voiceover
+- Kredi maliyetleri **tek kaynak**: `lib/pipeline/steps.ts` (31 Ekim: %60 kâr fiyatları aşağıda; eski: research 5, script 5, voiceover
   15, **altyazı eklentisi 10** (`SUBTITLES_CREDITS`, sadece voiceover ile;
   adım değil, `steps.voiceover.subtitles=true` olarak kaydedilir), thumbnail
   10, **Kling klip 130** (5 sn, Kling 3.0 720p sessiz = 3 unit ≈ $0.42;
@@ -111,16 +111,23 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   **AI görsel sahne 12**, **render 30 / 30 sn**). `creditBreakdown(opts)` UI
   ve fatura metni için kalemleri verir; kullanılmayan/başarısız görsel iade.
 
-### Fiyatlandırma mantığı (26 Ekim 2026, hedef ≥%70 kâr)
-Paddle komisyonu sonrası 1 kredi ≈ $0.011 (Business paketi, en kötü durum) →
-fiyat ≥ maliyet × 3.33. Sağlayıcı maliyetleri: Kling 3.0 720p sessiz 5 sn ≈
-$0.42 liste (0.6 unit/sn × $0.14; 1080p 0.8 unit/sn; deneme paketi %30
-indirimli; $9.80 deneme / $700 standart paket ön ödemeli), Gemini görsel
-$0.04, Shotstack render $0.20/dk (PAYG $10 = 50 dk), ElevenLabs
-$0.00022/karakter. 60 sn tam video: Hybrid ~600 kredi (maliyet ~$2.0),
-Cinematic ~1.660 (~$5.6), Stills ~250 (~$0.8). `lib/pipeline/usage.ts`
-`PRICE_LIST` güncel; `provider_usage` tablosundan gerçek maliyet/kredi
-karşılaştırması yapılır.
+### Fiyatlandırma mantığı (31 Ekim 2026, hedef **%60 brüt kâr** — Kadir)
+Tek kaynak `lib/pipeline/steps.ts`: `creditsForCost(usd) = ceil(usd / (0,40 ×
+$0.01111))` ≈ maliyet × 225 (Business paketi Paddle sonrası en kötü gelir/kredi).
+Maliyetler `provider_usage` gerçek ortalamaları (lab `usage-report`) + liste fiyatları:
+araştırma $0.045 → **11** · senaryo 60 sn $0.04 → **10** (3 dk 16, 8 dk 28, `scriptCredits`)
+· seslendirme **dakika başına** Gemini $0.05 → **12**, ElevenLabs $0.20 → **46**
+(`voiceoverCredits(engine, duration)`; motor `voiceEngine` start route'ta ses id'sinden)
+· altyazı **3/dk** · thumbnail $0.067 → **16** · AI görsel $0.04 → **10** · image→video
+klip $0.17 → **39** · Kling klip $0.42 → **95** · render $0.10/30 sn → **23**.
+60 sn tam video: hybrid-image **305** (eski 363), stills 218, cinematic-image 566,
+hybrid-Kling 473. Her adımın ödenen kredisi `initialStepsState` ile adıma yazılır
+(`credits`, `voiceover.subtitles_credits`, `plan.stillCredits/clipCredits`) → iadeler
+satın alma anındaki fiyatla yapılır. Test: "every item keeps ≥ 60% margin".
+Sabit aylık giderler (lansmanda): Vercel Pro $20, Supabase Pro $25, ElevenLabs
+Starter $5, alan adı ~$1 → ~$51/ay ≈ ayda ~7.700 kredi (≈1,5 Business paketi)
+satışla başa baş. Paket fiyatları (Paddle) değişmedi: Starter 500/$9, Pro 2000/$29,
+Business 5000/$59.
 - Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
 - Bitince sonuç `projects.content` JSONB'ye yazılır; başlık = AI'nin ilk title'ı.
 

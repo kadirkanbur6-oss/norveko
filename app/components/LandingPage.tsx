@@ -11,7 +11,14 @@ import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
 import SignOutButton from "./SignOutButton";
 import BrandMark from "./BrandMark";
 import { CREDIT_PACKAGES } from "@/lib/packages";
-import { totalPipelineCredits } from "@/lib/pipeline/steps";
+import {
+  RESEARCH_CREDITS,
+  SUBTITLES_CREDITS_PER_MIN,
+  THUMBNAIL_CREDITS,
+  VOICE_CREDITS_PER_MIN,
+  scriptCredits,
+  totalPipelineCredits,
+} from "@/lib/pipeline/steps";
 import {
   ArrowRight,
   Check,
@@ -172,7 +179,7 @@ const FAQS = [
   },
   {
     q: "How does the credit system work?",
-    a: "You get 50 free credits on signup. A content package with thumbnail costs 15 credits; web research adds 5, voiceover 15 and subtitles 10. The exact total is shown before you click Generate. Credits never expire, and if a step fails, the unfinished steps are refunded automatically while everything already produced is kept in your project.",
+    a: `You get 50 free credits on signup. A 60-second content package with thumbnail costs ${scriptCredits("60 seconds") + THUMBNAIL_CREDITS} credits; web research adds ${RESEARCH_CREDITS}, a Norveko narrator ${VOICE_CREDITS_PER_MIN.gemini} per minute (ElevenLabs voices ${VOICE_CREDITS_PER_MIN.elevenlabs} per minute) and subtitles ${SUBTITLES_CREDITS_PER_MIN} per minute. The exact total is shown before you click Generate. Credits never expire, and if a step fails, the unfinished steps are refunded automatically while everything already produced is kept in your project.`,
   },
 ];
 

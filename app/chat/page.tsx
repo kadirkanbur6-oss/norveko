@@ -13,7 +13,8 @@ import {
   fullVideoPlan,
   FULL_VIDEO_DURATIONS,
   RESEARCH_CREDITS,
-  SUBTITLES_CREDITS,
+  subtitlesCredits,
+  voiceoverCredits,
   totalPipelineCredits,
   type FootageMode,
   type ClipMode,
@@ -121,6 +122,8 @@ function ChatContent() {
     footage,
     clipMode,
     duration,
+    // An ElevenLabs voice costs more per minute than a built-in Gemini narrator.
+    voiceEngine: voiceId && !voiceId.startsWith("gemini:") ? "elevenlabs" : "gemini",
   });
   const fullVideoSupported = Boolean(FULL_VIDEO_DURATIONS[duration]);
   const videoCost = VIDEO_CLIP_CREDITS * VIDEO_MAX_CLIPS;
@@ -682,7 +685,7 @@ function ChatContent() {
                       <Mic size={15} className="text-blue-300" />
                       AI voiceover
                       <span className="rounded-full border border-yellow-400/20 bg-yellow-500/5 px-2 py-0.5 text-[11px] font-medium text-yellow-300">
-                        +15 credits
+                        +{voiceoverCredits(voiceId && !voiceId.startsWith("gemini:") ? "elevenlabs" : "gemini", duration)} credits
                       </span>
                     </span>
                     <span className="mt-0.5 block text-xs text-gray-500">
@@ -933,7 +936,7 @@ function ChatContent() {
                       <Captions size={15} className="text-blue-300" />
                       Auto subtitles
                       <span className="rounded-full border border-yellow-400/20 bg-yellow-500/5 px-2 py-0.5 text-[11px] font-medium text-yellow-300">
-                        +{SUBTITLES_CREDITS} credits
+                        +{subtitlesCredits(duration)} credits
                       </span>
                     </span>
                     <span className="mt-0.5 block text-xs text-gray-500">

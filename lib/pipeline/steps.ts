@@ -57,12 +57,71 @@ export interface PipelineOptions {
   clipMode?: ClipMode;
   /** Duration label from lib/pipeline/options.ts (needed to size the plan). */
   duration?: string;
+  /** Which TTS engine reads the narration — priced differently (Gemini ≪ ElevenLabs). */
+  voiceEngine?: VoiceEngine;
+}
+
+export type VoiceEngine = "gemini" | "elevenlabs";
+
+/* ---------------- Pricing (31 Oct 2026: 60% gross margin) ----------------
+ * Revenue per credit after Paddle (5% + $0.50) is lowest on the Business
+ * pack: ($59 × 0.95 − 0.50) / 5000 ≈ $0.0111. A 60% margin means
+ *     credits ≥ provider cost / (0.40 × $0.0111) = provider cost × 225.
+ * Costs below are the REAL averages from provider_usage (lab "usage-report",
+ * 31 Oct runs) plus the provider price lists; see CLAUDE.md §Fiyatlandırma.
+ */
+export const TARGET_MARGIN = 0.6;
+/** Worst-case net revenue per credit (Business pack after Paddle fees). */
+export const REVENUE_PER_CREDIT_USD = (59 * 0.95 - 0.5) / 5000;
+/** Credits needed to sell `usd` of provider cost at the target margin. */
+export function creditsForCost(usd: number): number {
+  return Math.ceil(usd / ((1 - TARGET_MARGIN) * REVENUE_PER_CREDIT_USD));
+}
+
+/** Seconds of narration a duration label stands for. */
+export function durationSeconds(label: string | undefined): number {
+  const d = (label ?? "60 seconds").toLowerCase();
+  const n = Number(d.match(/\d+/)?.[0] ?? 60);
+  return d.includes("minute") ? n * 60 : n;
+}
+function startedMinutes(label: string | undefined): number {
+  return Math.max(1, Math.ceil(durationSeconds(label) / 60));
+}
+
+/**
+ * Script (plan → draft → editor → fact check on gpt-6.1-terra): measured
+ * $0.028–0.035 for a 60 s Short; longer scripts write proportionally more.
+ */
+export function scriptCredits(duration: string | undefined): number {
+  const s = durationSeconds(duration);
+  if (s <= 60) return creditsForCost(0.04); // 10
+  if (s <= 180) return creditsForCost(0.07); // 16
+  return creditsForCost(0.12); // 28
+}
+
+/**
+ * Narration per started minute. Gemini Pro TTS ≈ $0.03/min (+ an occasional
+ * length retake + forced alignment) ≈ $0.05/min. ElevenLabs ≈ 900 characters
+ * a minute × $0.18/1K + retake ≈ $0.20/min.
+ */
+export const VOICE_CREDITS_PER_MIN: Record<VoiceEngine, number> = {
+  gemini: creditsForCost(0.05), // 12
+  elevenlabs: creditsForCost(0.2), // 46
+};
+export function voiceoverCredits(engine: VoiceEngine | undefined, duration: string | undefined): number {
+  return VOICE_CREDITS_PER_MIN[engine === "elevenlabs" ? "elevenlabs" : "gemini"] * startedMinutes(duration);
+}
+
+/** Word-timed subtitles per started minute (alignment ≈ $0.005/min + compute). */
+export const SUBTITLES_CREDITS_PER_MIN = 3;
+export function subtitlesCredits(duration: string | undefined): number {
+  return SUBTITLES_CREDITS_PER_MIN * startedMinutes(duration);
 }
 
 /* ---------------- Subtitles (voiceover add-on) pricing ---------------- */
 
-/** Credits charged for word-timed subtitles on top of the voiceover. */
-export const SUBTITLES_CREDITS = 10;
+/** Subtitles for a ≤ 60 s video (per-minute pricing: subtitlesCredits()). */
+export const SUBTITLES_CREDITS = SUBTITLES_CREDITS_PER_MIN;
 
 /* ---------------- Video pricing (≥70% margin target) ----------------
  * Revenue per credit after Paddle fees is ≈ $0.011 (Business pack, worst
@@ -71,13 +130,13 @@ export const SUBTITLES_CREDITS = 10;
  * render ≈ $0.20/min. See docs in CLAUDE.md §"Fiyatlandırma".
  */
 
-/** Credits per 5-second Kling 3.0 clip, 720p, no audio (3 units ≈ $0.42 list → ≈$1.43 revenue, 70% margin). */
-export const VIDEO_CLIP_CREDITS = 130;
+/** Credits per 5-second Kling 3.0 clip, 720p, no audio (3 units ≈ $0.42). */
+export const VIDEO_CLIP_CREDITS = creditsForCost(0.42); // 95
 /**
- * Credits per 5-second image→video clip: Nano Banana 2.1 still ($0.034) +
- * Seedance 1.5 Pro silent 720p (~$0.13) ≈ $0.16 → ×300 for ≥70% margin.
+ * Credits per 5-second image→video clip: Nano Banana 2.1 still ($0.034, ~1.17
+ * calls per still incl. retries) + Seedance 1.5 Pro silent 720p (~$0.13).
  */
-export const IMAGE_CLIP_CREDITS = 50;
+export const IMAGE_CLIP_CREDITS = creditsForCost(0.17); // 39
 
 export function clipCredits(mode: ClipMode | undefined): number {
   return mode === "text" ? VIDEO_CLIP_CREDITS : IMAGE_CLIP_CREDITS;
@@ -86,10 +145,12 @@ export function clipCredits(mode: ClipMode | undefined): number {
 export const VIDEO_MAX_CLIPS = 5;
 /** Seconds per Kling clip requested from the provider. */
 export const VIDEO_CLIP_SECONDS = 5;
-/** Credits per AI still scene (Gemini image + Ken Burns in the render). */
-export const STILL_SCENE_CREDITS = 12;
-/** Credits per started 30 s of rendered output (Shotstack ≈ $0.10/30 s). */
-export const RENDER_CREDITS_PER_30S = 30;
+/** Credits per AI still scene (Nano Banana 2.1 $0.034 × ~1.17 calls incl. retries). */
+export const STILL_SCENE_CREDITS = creditsForCost(0.04); // 10
+/** Credits per started 30 s of rendered output (Shotstack $0.20/min, billed per second). */
+export const RENDER_CREDITS_PER_30S = creditsForCost(0.1); // 23
+/** Thumbnail: Gemini 3.1 Flash Image ≈ $0.067. */
+export const THUMBNAIL_CREDITS = creditsForCost(0.067); // 16
 /** Timeline slot length a full video is planned in (one visual per slot). */
 export const SLOT_SECONDS = 5;
 
@@ -110,6 +171,8 @@ export interface FullVideoPlan {
   clipMode: ClipMode;
   /** Credits per AI clip for this plan (refunds use the same number). */
   clipCredits: number;
+  /** Credits per AI still for this plan (refunds use the same number). */
+  stillCredits: number;
   credits: { kling: number; stills: number; render: number; total: number };
 }
 
@@ -140,12 +203,13 @@ export function fullVideoPlan(
     renderBlocks,
     clipMode,
     clipCredits: perClip,
+    stillCredits: STILL_SCENE_CREDITS,
     credits: { kling, stills, render, total: kling + stills + render },
   };
 }
 
-/** Credits for the research step (one OpenAI web-search call ≈ $0.015). */
-export const RESEARCH_CREDITS = 5;
+/** Research: gpt-6.1-terra tokens (~$0.016) + 2–3 web-search calls at $10/1K ≈ $0.045. */
+export const RESEARCH_CREDITS = creditsForCost(0.045); // 11
 
 export const PIPELINE_STEP_ORDER: StepDefinition[] = [
   {
@@ -157,19 +221,19 @@ export const PIPELINE_STEP_ORDER: StepDefinition[] = [
   {
     id: "script",
     label: "Content Package",
-    credits: 5,
+    credits: scriptCredits("60 seconds"), // per duration: scriptCredits()
     provider: "openai:gpt-6.1-terra",
   },
   {
     id: "voiceover",
     label: "Voiceover",
-    credits: 15,
+    credits: VOICE_CREDITS_PER_MIN.gemini, // per minute and engine: voiceoverCredits()
     provider: "elevenlabs:eleven_multilingual_v2",
   },
   {
     id: "thumbnail",
     label: "Thumbnail",
-    credits: 10,
+    credits: THUMBNAIL_CREDITS,
     provider: "gemini-3.1-flash-image",
   },
   {
@@ -199,11 +263,12 @@ type Normalized = {
   footage: FootageMode;
   clipMode: ClipMode;
   duration: string | undefined;
+  voiceEngine: VoiceEngine;
 };
 
 function normalize(opts: boolean | PipelineOptions | undefined): Normalized {
   if (typeof opts === "boolean") {
-    return { research: false, voiceover: opts, subtitles: false, video: false, fullVideo: false, footage: "hybrid", clipMode: "image", duration: undefined };
+    return { research: false, voiceover: opts, subtitles: false, video: false, fullVideo: false, footage: "hybrid", clipMode: "image", duration: undefined, voiceEngine: "gemini" };
   }
   const fullVideo = Boolean(opts?.fullVideo) && Boolean(fullVideoPlan(opts?.duration, opts?.footage));
   // A full video always narrates and burns in subtitles.
@@ -217,6 +282,7 @@ function normalize(opts: boolean | PipelineOptions | undefined): Normalized {
     footage: FOOTAGE_MODES.includes(opts?.footage as FootageMode) ? (opts!.footage as FootageMode) : "hybrid",
     clipMode: CLIP_MODES.includes(opts?.clipMode as ClipMode) ? (opts!.clipMode as ClipMode) : "image",
     duration: opts?.duration,
+    voiceEngine: opts?.voiceEngine === "elevenlabs" ? "elevenlabs" : "gemini",
   };
 }
 
@@ -227,7 +293,8 @@ export function resolvePipelineOptions(opts: boolean | PipelineOptions | undefin
 
 /** Add-ons that ride on a step instead of being steps themselves. */
 export function addonCredits(opts: boolean | PipelineOptions = false): number {
-  return normalize(opts).subtitles ? SUBTITLES_CREDITS : 0;
+  const n = normalize(opts);
+  return n.subtitles ? subtitlesCredits(n.duration) : 0;
 }
 
 /** Itemised credits for the billing UI and the charge reason. */
@@ -250,8 +317,21 @@ export function creditBreakdown(opts: boolean | PipelineOptions = false): Array<
       items.push({ id: "render", label: `Final video render (${plan.seconds} s)`, credits: plan.credits.render });
       continue;
     }
+    if (step.id === "script") {
+      items.push({ id: "script", label: step.label, credits: scriptCredits(n.duration) });
+      continue;
+    }
+    if (step.id === "voiceover") {
+      const mins = Math.max(1, Math.ceil(durationSeconds(n.duration) / 60));
+      items.push({
+        id: "voiceover",
+        label: `Voiceover (${n.voiceEngine === "elevenlabs" ? "ElevenLabs voice" : "Norveko narrator"}, ${mins} min)`,
+        credits: voiceoverCredits(n.voiceEngine, n.duration),
+      });
+      if (n.subtitles) items.push({ id: "subtitles", label: "Auto subtitles", credits: subtitlesCredits(n.duration) });
+      continue;
+    }
     items.push({ id: step.id, label: step.label, credits: step.credits });
-    if (step.id === "voiceover" && n.subtitles) items.push({ id: "subtitles", label: "Auto subtitles", credits: SUBTITLES_CREDITS });
   }
   return items;
 }
@@ -305,6 +385,14 @@ export function initialStepsState(
   // and optionsFromSteps() can see them.
   const n = normalize(opts);
   if (n.subtitles && state.voiceover) state.voiceover.subtitles = true;
+  // Record what each step was charged so refunds use the price at purchase
+  // time even after prices change.
+  for (const item of creditBreakdown(opts)) {
+    if (item.id === "subtitles" && state.voiceover) state.voiceover.subtitles_credits = item.credits;
+    else if (state[item.id]) state[item.id].credits = item.credits;
+  }
+  if (state.script) state.script.duration = n.duration ?? null;
+  if (state.voiceover) state.voiceover.engine = n.voiceEngine;
   if (n.fullVideo) {
     const plan = fullVideoPlan(n.duration, n.footage, n.clipMode)!;
     state.video.plan = { ...plan, footage: n.footage, duration: n.duration };
@@ -327,6 +415,11 @@ export function optionsFromSteps(steps: Record<string, unknown> | null | undefin
     footage: plan?.footage,
     // Plans created before clip modes existed were Kling text→video.
     clipMode: plan ? (plan.clipMode ?? "text") : undefined,
-    duration: plan?.duration,
+    duration: plan?.duration ?? ((steps?.script as Record<string, unknown> | undefined)?.duration as string | undefined) ?? undefined,
+    voiceEngine:
+      voiceover?.engine === "elevenlabs" ||
+      (voiceover?.engine === undefined && typeof voiceover?.voice_id === "string" && !String(voiceover.voice_id).startsWith("gemini:"))
+        ? "elevenlabs"
+        : "gemini",
   };
 }
