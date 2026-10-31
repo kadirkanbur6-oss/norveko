@@ -18,6 +18,12 @@ const supabaseAdmin = createClient(
 );
 
 const GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image";
+/**
+ * Scene stills for full videos. Nano Banana 2.1 won the 31 Oct model-lab
+ * comparison: same quality as 3.1 Flash Image at half the price ($0.034).
+ * Thumbnails (readable overlay text) stay on GEMINI_IMAGE_MODEL for now.
+ */
+export const GEMINI_SCENE_IMAGE_MODEL = process.env.GEMINI_SCENE_IMAGE_MODEL || "gemini-nano-banana-2.1";
 
 interface ThumbnailResult {
   imageUrl: string; // public URL — usable directly as <img src>
@@ -125,7 +131,7 @@ export async function generateSceneImage(
 ): Promise<SceneImageResult> {
   const aspectRatio = orientation === "vertical" ? "9:16" : "16:9";
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_SCENE_IMAGE_MODEL}:generateContent`,
     {
       method: "POST",
       headers: {

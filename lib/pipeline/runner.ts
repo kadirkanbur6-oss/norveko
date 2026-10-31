@@ -766,6 +766,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
         slot.storage_path = img.storagePath;
         slot.status = "succeed";
         await logUsage(job, "thumbnail", {
+          usageKey: `gemini:${process.env.GEMINI_SCENE_IMAGE_MODEL || "gemini-nano-banana-2.1"}`,
           unit: "images",
           quantity: 1,
           durationMs: now() - startedAt,

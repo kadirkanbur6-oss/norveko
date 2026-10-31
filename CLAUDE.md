@@ -230,8 +230,14 @@ karşılaştırması yapılır.
   (Gemini/Imagen/GPT Image/fal), TTS (ElevenLabs modelleri/Gemini), video
   (Kling/Gemini Omni Interactions API/fal MiniMax) yan yana; Google model
   listesi butonu. Görsel karşılaştırmasında Nano Banana 2.1 ($0.034) ≈ mevcut
-  kalite. Veo 3.x Gemini API'de kapandı → `gemini-omni-1.1-flash`
-  (Interactions API). fal için `FAL_KEY` Vercel'e eklenecek.
+  kalite → **sahne görselleri Nano Banana 2.1'e geçti** (`GEMINI_SCENE_IMAGE_MODEL`,
+  thumbnail hâlâ 3.1 Flash Image). Veo 3.x Gemini API'de kapandı →
+  `gemini-omni-1.1-flash` (Interactions API, `POST /v1beta/interactions`
+  `background:true`, poll `GET /interactions/{id}`, video base64 `steps[]`
+  içinde; 720p $0.10/sn, 10 sn klip). fal `FAL_KEY` ✅ (31 Ekim); MiniMax H3
+  fal uç noktaları `minimax/h3-max(-turbo)/image-to-video` (fal-ai/ öneki
+  YOK), `prompt_expansion_mode` zorunlu; testte hareket çok az kaldı. Video
+  modeli kararı bekleniyor (Omni önerildi).
 
 ### ElevenLabs sesleri (önemli)
 - `lib/pipeline/elevenlabs.ts`: `listVoices()` (hesap sesleri, `languages`
