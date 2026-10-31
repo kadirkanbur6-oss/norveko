@@ -147,6 +147,11 @@ export interface RunnerDeps {
    * omit it; production writes to the `provider_usage` table.
    */
   recordUsage?: (record: UsageRecord) => Promise<void>;
+  /**
+   * Called after a job finishes (first render and re-renders alike). Series
+   * autopilot uses it to publish episodes; failures here never fail the job.
+   */
+  afterComplete?: (jobId: string) => Promise<void>;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -1484,6 +1489,13 @@ export function createPipelineRunner(deps: RunnerDeps) {
       .update({ status: "completed", current_step: null, steps })
       .eq("id", fresh.id)
       .eq("status", "running");
+    if (deps.afterComplete) {
+      try {
+        await deps.afterComplete(fresh.id);
+      } catch (err) {
+        console.error(`[pipeline] ${fresh.id} afterComplete failed:`, err);
+      }
+    }
   }
 
   /**
@@ -1732,6 +1744,9 @@ function getRunner() {
       now: Date.now,
       recordUsage: async (record) => {
         await recordProviderUsage(productionDb(), record);
+      },
+      afterComplete: async (jobId) => {
+        await (await import("@/lib/series/run")).onJobCompleted(jobId);
       },
     });
   }

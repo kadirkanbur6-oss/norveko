@@ -178,3 +178,42 @@ create table if not exists public.tiktok_connections (
 );
 alter table public.tiktok_connections enable row level security;
 ```
+
+## Series autopilot (`series`, `series_episodes`, 31 Oct 2026)
+
+```sql
+create table if not exists public.series (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  topic text not null,
+  settings jsonb not null,
+  days int[] not null,
+  post_time text not null,
+  timezone text not null,
+  publish jsonb not null default '{}'::jsonb,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists series_user_idx on public.series(user_id);
+create index if not exists series_active_idx on public.series(active);
+alter table public.series enable row level security;
+
+create table if not exists public.series_episodes (
+  id uuid primary key default gen_random_uuid(),
+  series_id uuid not null references public.series(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  scheduled_for timestamptz not null,
+  idea text,
+  job_id uuid,
+  project_id uuid,
+  status text not null default 'pending',
+  error text,
+  publish jsonb,
+  created_at timestamptz not null default now(),
+  unique (series_id, scheduled_for)
+);
+create index if not exists series_episodes_job_idx on public.series_episodes(job_id);
+alter table public.series_episodes enable row level security;
+```

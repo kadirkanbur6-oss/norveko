@@ -7,6 +7,10 @@
     {
       "path": "/api/pipeline/reap",
       "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/series/tick",
+      "schedule": "0 4 * * *"
     }
   ]
 }

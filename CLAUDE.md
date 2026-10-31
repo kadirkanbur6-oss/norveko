@@ -191,6 +191,30 @@ Business 5000/$59.
   güncellenir, render `version+1` → `final-v<n>.mp4`, bitince `refreshProjectVideo`. UI 6 sn'de bir
   `/api/pipeline/[jobId]` poll eder, bitince sayfayı yeniler. **failJob**: işin zaten projesi varsa
   (başarısız yeniden render) yeni proje AÇMAZ, eski video kalır.
+- **TikTok paylaşımı (31 Ekim)**: `lib/tiktok/client.ts` (Login Kit OAuth v2 `user.info.basic,video.publish`,
+  refresh token her yanıtta döner → saklanır; Content Posting API Direct Post: `creator_info/query` →
+  `video/init` FILE_UPLOAD tek parça (≤64 MB) → PUT Content-Range → `status/fetch`), `is_aigc:true`.
+  `tiktok_connections` tablosu (şifreli refresh token, YouTube ile aynı anahtar). Rotalar
+  `/api/tiktok/connect|callback`, `GET/DELETE /api/tiktok` (`?creator=1` canlı creator info),
+  `POST /api/projects/[id]/tiktok` (gizlilik zorunlu + müzik onayı). UI `TikTokPublish` (TikTok denetim
+  kuralları: hesap adı/avatarı, varsayılansız görünürlük, yorum/duet/stitch varsayılan kapalı ve hesapta
+  kapalıysa gri, Music Usage Confirmation onayı) + Ayarlar `TikTokConnectionCard`. Env `TIKTOK_CLIENT_KEY/
+  SECRET` yoksa gizli. **Denetimsiz uygulama:** yalnız GİZLİ TikTok hesaplarına, `SELF_ONLY`, 24 saatte ≤5
+  kullanıcı (`unaudited_client_can_only_post_to_private_accounts`). YouTube yükleme ortak modüle taşındı:
+  `lib/youtube/publish.ts` `publishProjectToYouTube()` (rota + seriler).
+- **Seriler / otomatik pilot (31 Ekim)**: `/series` sayfası (Sidebar "Series"). Tablolar `series` +
+  `series_episodes` (unique series_id+scheduled_for). `lib/series/schedule.ts` saf saat hesabı (Intl ile
+  saat dilimi/DST), `lib/series/validate.ts`, `lib/series/run.ts`: `runSeriesTick()` aktif serilerin
+  `LOOKAHEAD_HOURS` (env `SERIES_LOOKAHEAD_HOURS`, varsayılan 26 — Hobby'de cron günlük) içindeki yayın
+  saatleri için bölüm açar → `pickNextIdea()` (SCRIPT_MODEL, önceki 40 fikri tekrar etmez) → kredi düşer
+  (normal tam video fiyatı; yetmezse bölüm `skipped`) → `pipeline_jobs.options.series={id,episodeId}` ile
+  iş başlar. Runner `deps.afterComplete` → `onJobCompleted()`: bölüm `generating` ise (re-render'da tekrar
+  yayınlamaz) YouTube'a `publishAt`=yayın saati (geçmişse hemen), TikTok'a hemen (API zamanlama
+  desteklemiyor). Durumlar pending/generating/publishing/published/ready/publish_failed/skipped/failed
+  (iş başarısızsa GET'te failed gösterilir). Seri yalnız paket almış (veya beta) + tam video erişimi olan
+  hesaplara (`seriesAllowed`), kullanıcı başına 5 seri, ses yalnız Gemini anlatıcıları. Cron
+  `/api/series/tick` 04:00 UTC (`vercel.json`), "Make one now" → `/api/series/[id]/run`.
+  **CRON_SECRET Vercel'de tanımlı olmalı** (yoksa reap ve tick 401 döner).
 - Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
 - Bitince sonuç `projects.content` JSONB'ye yazılır; başlık = AI'nin ilk title'ı.
 
@@ -424,7 +448,7 @@ galeri~~ (29 Ekim: landing `#examples` gerçek render'lar `lib/showcase.ts`
 X video" satırı `steps.ts`'ten hesaplanır. **Paket kredileri/fiyatları 29
 Ekim'de gözden geçirildi, Kadir "şimdilik değiştirme" dedi** — Starter 500 ile
 yalnızca 1×30 sn video çıkıyor; ileride tekrar bakılacak) →
-~~YouTube'a doğrudan yükleme~~ (31 Ekim, Google kurulumu + denetim bekliyor) → seri modu/zamanlama → ses klonlama + brand kit →
+~~YouTube'a doğrudan yükleme~~ (31 Ekim, Google kurulumu + denetim bekliyor) → ~~seri modu/zamanlama~~ + ~~TikTok~~ (31 Ekim; TikTok uygulaması + denetim bekliyor) → ses klonlama + brand kit →
 affiliate. Ertelenen: timeline editör, AI avatar, mobil app.
 
 Teknik borç: sahne düzeyinde yeniden üretim + versiyon geçmişi +

@@ -15,12 +15,14 @@ import {
   Settings,
   Wand2,
   X,
+  Repeat,
 } from "lucide-react";
 
 const navItems = [
   { label: "Dashboard", icon: BarChart3, href: "/dashboard" },
   { label: "AI Workspace", icon: Wand2, href: "/chat" },
   { label: "Projects", icon: FolderOpen, href: "/projects" },
+  { label: "Series", icon: Repeat, href: "/series" },
   { label: "Billing", icon: CreditCard, href: "/billing" },
   { label: "Settings", icon: Settings, href: "/settings" },
 ];

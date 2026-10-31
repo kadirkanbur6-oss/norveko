@@ -424,3 +424,50 @@ test("edit video: a regenerated still replaces the slot's clip in the render", (
   assert.ok(JSON.stringify(edited).includes("https://x/swap.png"));
   assert.ok(!JSON.stringify(edited).includes("clip.mp4"));
 });
+
+// --- Series schedule (lib/series/schedule.ts) ---
+import { upcomingSlots, nextSlot, zonedToUtc } from "../series/schedule";
+import { validateSeries } from "../series/validate";
+
+test("series: post times are computed in the series' own time zone", () => {
+  // Istanbul is UTC+3 all year: 18:00 local = 15:00 UTC.
+  assert.equal(zonedToUtc(2026, 11, 2, 18, 0, "Europe/Istanbul").toISOString(), "2026-11-02T15:00:00.000Z");
+  // New York: EDT (UTC-4) before 1 Nov 2026, EST (UTC-5) after.
+  assert.equal(zonedToUtc(2026, 10, 30, 9, 0, "America/New_York").toISOString(), "2026-10-30T13:00:00.000Z");
+  assert.equal(zonedToUtc(2026, 11, 2, 9, 0, "America/New_York").toISOString(), "2026-11-02T14:00:00.000Z");
+
+  // Sat 31 Oct 2026 12:00 Istanbul; Mon/Wed/Fri at 18:00 → next is Mon 2 Nov.
+  const from = new Date("2026-10-31T09:00:00Z");
+  const sched = { days: [1, 3, 5], time: "18:00", timezone: "Europe/Istanbul" };
+  assert.equal(nextSlot(sched, from)?.toISOString(), "2026-11-02T15:00:00.000Z");
+  assert.deepEqual(upcomingSlots(sched, from, 26), []);
+  assert.equal(upcomingSlots(sched, from, 24 * 7).length, 3);
+  // Daily at 18:00, looking 26 h ahead from 12:00 → today 18:00 only.
+  assert.equal(upcomingSlots({ ...sched, days: [0, 1, 2, 3, 4, 5, 6] }, from, 26).length, 1);
+  // A slot exactly now is not "upcoming" (no double-creation on the boundary).
+  assert.equal(upcomingSlots({ ...sched, days: [6], time: "12:00" }, from, 1).length, 0);
+});
+
+test("series: input validation", () => {
+  const good = {
+    name: "Mysteries",
+    topic: "Unsolved disappearances of the 20th century",
+    settings: { platform: "YouTube Shorts", style: "Mystery", duration: "60 seconds", language: "English", voiceId: "gemini:Charon", visualStyle: "dark" },
+    days: [5, 1, 1, 9],
+    post_time: "18:00",
+    timezone: "Europe/Istanbul",
+    publish: { youtube: { enabled: true, privacy: "public" }, tiktok: { enabled: true, privacy: "SELF_ONLY", consent: false } },
+  };
+  const r = validateSeries(good);
+  assert.equal(r.ok, false); // TikTok without the music-usage consent
+  const ok = validateSeries({ ...good, publish: { youtube: { enabled: true, privacy: "public" } } });
+  assert.ok(ok.ok);
+  if (ok.ok) {
+    assert.deepEqual(ok.value.days, [1, 5]);
+    assert.equal(ok.value.settings.visualStyle, "dark");
+    assert.equal(ok.value.publish.tiktok, undefined);
+  }
+  assert.equal(validateSeries({ ...good, settings: { ...good.settings, duration: "8 minutes" } }).ok, false);
+  assert.equal(validateSeries({ ...good, timezone: "Mars/Olympus" }).ok, false);
+  assert.equal(validateSeries({ ...good, settings: { ...good.settings, voiceId: "someElevenId" } }).ok, false);
+});
