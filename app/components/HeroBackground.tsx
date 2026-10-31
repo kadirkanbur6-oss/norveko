@@ -27,7 +27,10 @@ export default function HeroBackground() {
     };
   }, []);
 
-  const clips = HERO_LOOP_CLIPS.slice(0, count)
+  // Phones show only the lead clip; on desktop it goes to the right-most
+  // column, the one least covered by the headline and its dark gradient.
+  const ordered = count > 1 ? [...HERO_LOOP_CLIPS.slice(1), HERO_LOOP_CLIPS[0]] : HERO_LOOP_CLIPS;
+  const clips = ordered.slice(0, count)
     .map(heroClipUrl)
     .filter((u): u is string => Boolean(u));
 
