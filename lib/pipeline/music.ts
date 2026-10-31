@@ -7,7 +7,8 @@
 
 import type { STYLES } from "./options";
 
-export type MusicMood = "mystery" | "horror" | "documentary" | "educational" | "cinematic" | "upbeat";
+export const MUSIC_MOODS = ["tragic", "eerie", "tense", "mysterious", "epic", "wonder", "upbeat"] as const;
+export type MusicMood = (typeof MUSIC_MOODS)[number];
 
 export interface MusicTrack {
   id: string;
@@ -19,51 +20,95 @@ export interface MusicTrack {
 }
 
 const INCOMPETECH = "https://incompetech.com/music/royalty-free/mp3-royaltyfree/";
-const track = (id: string, title: string, mood: MusicMood, seconds: number): MusicTrack => ({
-  id,
-  title,
-  mood,
-  seconds,
-  sourceUrl: `${INCOMPETECH}${encodeURIComponent(title)}.mp3`,
-});
+const track = (title: string, mood: MusicMood, length: string): MusicTrack => {
+  const [m, sec] = length.split(":").map(Number);
+  return {
+    id: title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+    title,
+    mood,
+    seconds: m * 60 + sec,
+    sourceUrl: `${INCOMPETECH}${encodeURIComponent(title)}.mp3`,
+  };
+};
 
+/**
+ * Curated 31 Oct 2026 from Kevin MacLeod's OWN catalogue metadata
+ * (incompetech pieces.json "feel" tags — checked via /lab "music-catalog"),
+ * not from titles: the old list had "Hidden Agenda" (Humorous) under mystery,
+ * "Thinking Music" (Humorous) under educational and "Ghost Story" (Calming)
+ * under horror. Never add a piece tagged Humorous/Bouncy/Grooving to a
+ * serious mood.
+ */
 export const MUSIC_TRACKS: MusicTrack[] = [
-  track("dark-fog", "Dark Fog", "mystery", 239),
-  track("hidden-agenda", "Hidden Agenda", "mystery", 135),
-  track("crypto", "Crypto", "mystery", 204),
-  track("night-vigil", "Night Vigil", "mystery", 288),
-  track("unseen-horrors", "Unseen Horrors", "horror", 251),
-  track("ghost-story", "Ghost Story", "horror", 320),
-  track("darkest-child", "Darkest Child", "horror", 239),
-  track("lightless-dawn", "Lightless Dawn", "horror", 380),
-  track("lost-frontier", "Lost Frontier", "documentary", 265),
-  track("heart-of-nowhere", "Heart of Nowhere", "documentary", 172),
-  track("the-descent", "The Descent", "documentary", 192),
-  track("deep-haze", "Deep Haze", "documentary", 122),
-  track("thinking-music", "Thinking Music", "educational", 196),
-  track("floating-cities", "Floating Cities", "educational", 184),
-  track("inspired", "Inspired", "upbeat", 286),
-  track("impact-prelude", "Impact Prelude", "cinematic", 203),
-  track("mesmerize", "Mesmerize", "cinematic", 424),
+  // tragic — Somber (+Dark/Calming): deaths, disasters, loss
+  track("Lost Time", "tragic", "3:47"),
+  track("Dark Times", "tragic", "3:04"),
+  track("Sad Trio", "tragic", "4:12"),
+  track("Night Vigil", "tragic", "4:48"),
+  track("Lamentation", "tragic", "3:18"),
+  track("Disquiet", "tragic", "3:05"),
+  track("Despair and Triumph", "tragic", "4:46"),
+  track("Anguish", "tragic", "3:59"),
+  // eerie — Dark, Eerie, Unnerving: horror, paranormal, hauntings
+  track("Unseen Horrors", "eerie", "4:11"),
+  track("Darkest Child", "eerie", "3:59"),
+  track("Penumbra", "eerie", "4:56"),
+  track("Vanishing", "eerie", "3:55"),
+  track("Gathering Darkness", "eerie", "4:25"),
+  track("Distant Tension", "eerie", "3:48"),
+  track("Cryptic Sorrow", "eerie", "8:00"),
+  // tense — Suspenseful/Unnerving: crimes, investigations, unexplained danger
+  track("Crypto", "tense", "3:24"),
+  track("Lost Frontier", "tense", "4:25"),
+  track("Echoes of Time v2", "tense", "4:45"),
+  track("Interloper", "tense", "4:23"),
+  // mysterious — Mysterious/Mystical, not scary: puzzles, ancient secrets
+  track("Aftermath", "mysterious", "3:13"),
+  track("Lightless Dawn", "mysterious", "6:20"),
+  track("Long Note Four", "mysterious", "10:00"),
+  track("Heart of Nowhere", "mysterious", "2:52"),
+  track("Impact Lento", "mysterious", "3:31"),
+  track("Myst on the Moor", "mysterious", "3:49"),
+  // epic — Epic: battles, empires, great achievements
+  track("Long Road Ahead", "epic", "2:26"),
+  track("Majestic Hills", "epic", "3:19"),
+  track("Hero Down", "epic", "3:34"),
+  track("Danse Macabre", "epic", "6:46"),
+  track("Americana", "epic", "3:22"),
+  // wonder — Calming + Bright/Uplifting: science, nature, how things work
+  track("Airship Serenity", "wonder", "4:00"),
+  track("Infinite Perspective", "wonder", "5:45"),
+  track("Aretes", "wonder", "4:36"),
+  track("Living Voyage", "wonder", "3:29"),
+  track("Brittle Rille", "wonder", "3:49"),
+  // upbeat — Bright/Uplifting + Driving: ads, positive news
+  track("Inspired", "upbeat", "4:46"),
+  track("Nonstop", "upbeat", "3:11"),
+  track("Realizer", "upbeat", "5:10"),
+  track("Dance Monster", "upbeat", "3:20"),
 ];
 
-/** Map the form's style to a music mood. */
+export function isMusicMood(v: unknown): v is MusicMood {
+  return typeof v === "string" && (MUSIC_MOODS as readonly string[]).includes(v);
+}
+
+/** Fallback when the script writer gave no mood: map the form's style. */
 export function moodForStyle(style: string | null | undefined): MusicMood {
   switch ((style ?? "") as (typeof STYLES)[number] | "") {
     case "Mystery":
-      return "mystery";
+      return "mysterious";
     case "Horror":
-      return "horror";
+      return "eerie";
     case "Documentary":
-      return "documentary";
+      return "mysterious";
     case "Educational":
-      return "educational";
+      return "wonder";
     case "Ad / Promo":
       return "upbeat";
     case "Cinematic":
-      return "cinematic";
+      return "epic";
     default:
-      return "documentary";
+      return "mysterious";
   }
 }
 
@@ -73,9 +118,21 @@ function hash(seed: string): number {
   return h >>> 0;
 }
 
-/** Deterministic pick per job so retries render the same video. */
-export function pickMusicTrack(style: string | null | undefined, seed: string): MusicTrack {
-  const mood = moodForStyle(style);
+/**
+ * Deterministic pick per job so retries render the same video. The script
+ * writer's `musicMood` (chosen from the story's tone) wins over the style;
+ * `trackId` forces a specific piece (re-render with different music).
+ */
+export function pickMusicTrack(
+  style: string | null | undefined,
+  seed: string,
+  opts: { mood?: unknown; trackId?: unknown } = {}
+): MusicTrack {
+  if (typeof opts.trackId === "string") {
+    const forced = MUSIC_TRACKS.find((t) => t.id === opts.trackId);
+    if (forced) return forced;
+  }
+  const mood = isMusicMood(opts.mood) ? opts.mood : moodForStyle(style);
   const pool = MUSIC_TRACKS.filter((t) => t.mood === mood);
   const list = pool.length ? pool : MUSIC_TRACKS;
   return list[hash(seed) % list.length];

@@ -188,7 +188,7 @@ karşılaştırması yapılır.
   runner `ensureMusicCached()` parçayı ilk kullanımda `videos/music/<id>.mp3`
   olarak bucket'a kopyalar; edit'te ayrı audio track `volume 0.13` (≈-18 dB)
   `fadeInFadeOut`; `steps.render.music{title,credit}` ve zorunlu atıf
-  `musicCredit()` proje açıklamasının sonuna eklenir. Kling klibi slotu dolduracak şekilde `speed`
+  `musicCredit()` proje açıklamasının sonuna eklenir. **31 Ekim: katalog yeniden kuruldu** — Kevin MacLeod'un resmî `pieces.json` "feel" etiketlerinden (lab `music-catalog`), 7 ruh hâli: tragic/eerie/tense/mysterious/epic/wonder/upbeat (~38 parça; Humorous/Bouncy/Grooving parçalar ciddi havuzlara girmez — eski listede "Hidden Agenda" (Humorous) gizemdeydi, Dyatlov'a düştü). Senaryo yazarı JSON'da `musicMood` seçer (ölüm varsa tragic/eerie/tense) → `steps.script.music_mood`; `pickMusicTrack(style, jobId, {mood, trackId})`. **Yeniden render** (lab `rerender` {jobId, musicId}): yalnız render adımı tekrar çalışır, `steps.render.music_id/version`, dosya `final-v<n>.mp4`, proje yerinde güncellenir (`refreshProjectVideo`), ücret yok/iade yok. Gemini ile parça dinletme (`music-analyze`) denendi — tutarsız, kullanma. Kling klibi slotu dolduracak şekilde `speed`
   ≥0.5, görsellere Ken Burns `effect`, soundtrack = voiceover, 1080×1920 /
   1920×1080, 30 fps, `range` anlatım süresi). Runner: görseller adımı async —
   ilk çağrıda Kling slotları gönderilir, her poll'da Kling sorgulanır + en

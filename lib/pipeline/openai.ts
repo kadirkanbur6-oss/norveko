@@ -5,6 +5,7 @@ import { languageCode, languagePromptName } from "./options";
 import { narrationWordCount, wordRange, wordsPerSecond } from "./narration";
 import { chatJSON, llmUsageKey, type LlmUsage } from "./llm";
 import { exampleBlock } from "./script-examples";
+import { MUSIC_MOODS, isMusicMood } from "./music";
 
 if (!process.env.OPENAI_API_KEY) {
   throw new Error("OPENAI_API_KEY is not set.");
@@ -32,6 +33,8 @@ export interface ScriptResult {
   /** Result of the fact-check pass (only runs with a research brief). */
   factCheck?: { checked: boolean; issues: FactCheckIssue[] };
   promptVersion?: string;
+  /** Background-music mood chosen from the story's tone (lib/pipeline/music.ts). */
+  musicMood?: string;
 }
 
 interface ScriptParams {
@@ -52,7 +55,7 @@ interface ScriptParams {
 }
 
 /** Bump when the script prompts change; stored on every job for comparisons. */
-export const SCRIPT_PROMPT_VERSION = "2026-10-31.plan-factcheck";
+export const SCRIPT_PROMPT_VERSION = "2026-10-31.plan-factcheck-music";
 
 export interface StoryPlan {
   /** The one question the viewer wants answered. */
@@ -168,7 +171,8 @@ Respond ONLY with a valid JSON object, no markdown, no extra text. Schema:
   "titles": ["title option 1", "title option 2", "title option 3", "title option 4", "title option 5"],
   "description": "SEO-friendly video description",
   "tags": ["tag1", "tag2", "tag3"],
-  "thumbnailIdea": "a vivid, cinematic ENGLISH image-generation prompt for a ${aspect} thumbnail including short bold overlay text direction"
+  "thumbnailIdea": "a vivid, cinematic ENGLISH image-generation prompt for a ${aspect} thumbnail including short bold overlay text direction",
+  "musicMood": "one of: ${MUSIC_MOODS.join(", ")}"
 }
 Rules:
 - "hook", "script", scene "description", title options, and "description" must be written in this language: ${languagePromptName(outputLanguage)}. Write like a native professional narrator of that language, not like a translation.
@@ -177,6 +181,7 @@ Rules:
 - return 5 titles exactly.
 - return 5-8 scenes in the same order as the narration; scene 1 is the hook moment; each scene illustrates what the narrator is saying at that point.
 - "tags" should be concise SEO tags without # symbols.
+- "musicMood" picks the background music for THIS story's emotional tone, not the genre label: tragic = deaths, disasters, loss, grief; eerie = horror, hauntings, the paranormal; tense = crimes, investigations, danger, unexplained threats; mysterious = puzzles, ancient secrets, unexplained phenomena without a death toll at their centre; epic = battles, empires, great feats; wonder = science, nature, how things work, curiosity; upbeat = ads, positive or fun topics. When people died, choose tragic, eerie or tense — never wonder or upbeat.
 - Match the tone to the platform and style.
 - STORY FIRST: the script tells ONE story as a single connected thread — chronological or cause → effect. Each sentence must follow logically from the one before it; a listener who hears only the audio must always know who and what is being talked about. Never a list of disconnected claims.
 - SCRIPT CRAFT (retention structure for Shorts, written in your own words — do not copy stock phrases): (1) HOOK 0–3 s: the hook sentence. (2) PROMISE: one sentence that opens a curiosity loop about THIS story. (3) CONTEXT: at most 2 sentences — who, where, when. (4) PAYOFF: 2–3 concrete beats (names, dates, places, what actually happened), each a new image; optionally one mid-point re-hook if the story genuinely has a second twist. (5) CLOSE every loop you opened, then one final line that lands an emotion or a question for the comments. Rhythm: vary sentence length (short punch, then 12–16 words, then short again); no sentence over 18 words; no nested clauses; no filler transitions, no greetings, no "in this video", no restating.
@@ -310,6 +315,7 @@ Target duration: ${duration ?? "60 seconds"}`;
     plan,
     factCheck,
     promptVersion: SCRIPT_PROMPT_VERSION,
+    musicMood: isMusicMood(parsed.musicMood) ? parsed.musicMood : undefined,
   };
 }
 

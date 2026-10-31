@@ -215,3 +215,17 @@ test("style examples: mystery/horror share one, ads get none, hook opens the scr
     assert.match(exampleBlock(s), /never reuse its topic/);
   }
 });
+
+test("music: story mood wins over style, forced track wins over both, every track ≥ 60 s", async () => {
+  const { pickMusicTrack, MUSIC_TRACKS, MUSIC_MOODS } = await import("./music");
+  for (const seed of ["a", "b", "c", "d", "e"]) {
+    assert.equal(pickMusicTrack("Mystery", seed, { mood: "tragic" }).mood, "tragic");
+    assert.equal(pickMusicTrack("Horror", seed).mood, "eerie");
+  }
+  assert.equal(pickMusicTrack("Mystery", "x", { mood: "tragic", trackId: "dark-times" }).title, "Dark Times");
+  assert.equal(pickMusicTrack("Mystery", "x", { mood: "nonsense" }).mood, "mysterious");
+  for (const m of MUSIC_MOODS) assert.ok(MUSIC_TRACKS.some((t) => t.mood === m), `no track for ${m}`);
+  assert.ok(MUSIC_TRACKS.every((t) => t.seconds >= 60));
+  assert.ok(!MUSIC_TRACKS.some((t) => ["Hidden Agenda", "Thinking Music"].includes(t.title)), "humorous cues must not return");
+  assert.equal(new Set(MUSIC_TRACKS.map((t) => t.id)).size, MUSIC_TRACKS.length);
+});

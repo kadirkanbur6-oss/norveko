@@ -307,8 +307,11 @@ export function createPipelineRunner(deps: RunnerDeps) {
         case "research":
         case "script":
         case "thumbnail":
-        case "render":
           if (done(item.id)) total += item.credits;
+          break;
+        case "render":
+          // A re-render (version ≥ 1) re-does a render that was already delivered and paid.
+          if (done("render") || Number(steps.render?.version) > 0) total += item.credits;
           break;
         case "voiceover":
         case "subtitles":
@@ -920,7 +923,10 @@ export function createPipelineRunner(deps: RunnerDeps) {
 
     // Background music: mirror the CC BY track into our bucket once, then
     // reference our copy (no dependency on the source host at render time).
-    const music = pickMusicTrack(job.style, job.id);
+    const music = pickMusicTrack(job.style, job.id, {
+      mood: job.steps?.script?.music_mood,
+      trackId: job.steps?.render?.music_id,
+    });
     let musicUrl: string | undefined;
     try {
       musicUrl = await ensureMusicCached(music);
@@ -944,7 +950,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
     await patchStep(job, "render", {
       render_id: renderId,
       subtitles_url: subtitlesUrl,
-      music: musicUrl ? { id: music.id, title: music.title, credit: musicCredit(music) } : null,
+      music: musicUrl ? { id: music.id, title: music.title, mood: music.mood, credit: musicCredit(music) } : null,
       total_seconds: total,
       submitted_at: new Date(now()).toISOString(),
       last_polled_at: new Date(now()).toISOString(),
@@ -975,7 +981,10 @@ export function createPipelineRunner(deps: RunnerDeps) {
       return false;
     }
     const buffer = await providers.downloadRender(result.url);
-    const storagePath = `${job.user_id}/${job.id}/final.mp4`;
+    // Re-renders (e.g. different music) get a new file name so CDN caches and
+    // the original never serve a stale video.
+    const version = Number(job.steps?.render?.version) || 0;
+    const storagePath = `${job.user_id}/${job.id}/final${version ? `-v${version}` : ""}.mp4`;
     const { error: uploadError } = await db.storage
       .from("videos")
       .upload(storagePath, buffer, { contentType: "video/mp4", upsert: true });
@@ -1116,6 +1125,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
         prompt_version: result.promptVersion ?? null,
         plan: result.plan ?? null,
         fact_check: result.factCheck ?? null,
+        music_mood: result.musicMood ?? null,
       });
       return;
     }
@@ -1303,6 +1313,22 @@ export function createPipelineRunner(deps: RunnerDeps) {
     throw new Error(`Unknown pipeline step: ${stepId}`);
   }
 
+  /** After a re-render: point the project at the new MP4 and the new music credit. */
+  async function refreshProjectVideo(fresh: JobRow, projectId: string): Promise<string | null> {
+    const { data: project } = await db.from("projects").select("content").eq("id", projectId).maybeSingle();
+    if (!project) return saveProject(fresh);
+    const finalVideoUrl =
+      typeof fresh.steps?.render?.video_url === "string" ? (fresh.steps.render.video_url as string) : undefined;
+    const content = {
+      ...((project.content ?? {}) as Record<string, unknown>),
+      finalVideoUrl,
+      description: withMusicCredit(fresh.steps?.script?.description, fresh.steps?.render?.music),
+    };
+    const { error } = await db.from("projects").update({ content }).eq("id", projectId);
+    if (error) console.error(`[pipeline] ${fresh.id} project refresh failed:`, error.message);
+    return projectId;
+  }
+
   /** Save the finished package as a project and mark the job completed. */
   /** Insert a project from whatever the job has produced. Returns its id. */
   async function saveProject(fresh: JobRow): Promise<string | null> {
@@ -1375,7 +1401,12 @@ export function createPipelineRunner(deps: RunnerDeps) {
   /** Save the finished package as a project and mark the job completed. */
   async function finalizeJob(job: JobRow): Promise<void> {
     const fresh = (await loadJob(job.id)) ?? job;
-    const projectId = await saveProject(fresh);
+    // A re-render of an already finished job updates its project in place.
+    const existingProject = (fresh.steps?.result as { project_id?: unknown } | undefined)?.project_id;
+    const projectId =
+      typeof existingProject === "string" && existingProject
+        ? await refreshProjectVideo(fresh, existingProject)
+        : await saveProject(fresh);
     const steps = { ...(fresh.steps ?? {}) };
     if (projectId) {
       steps.result = { status: "completed", project_id: projectId };
