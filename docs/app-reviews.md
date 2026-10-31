@@ -99,6 +99,17 @@ watermarks or branding to the creator's video.
 
 ## 2. Google — OAuth doğrulaması (YouTube kapsamları)
 
+> **31 Ekim akşam değişikliği:** YouTube yükleme artık AYRI bir Google Cloud projesinde: **Norveko Publishing**
+> (`norveko-publishing`). Sebep: eski "Norveko" projesinin onaylı alan adlarında Supabase girişi için
+> `zpvtekjjsdjtbvidrgay.supabase.co` var; Google doğrulaması her alan adının sahipliğini ister, supabase.co
+> kanıtlanamaz. Yeni projede yalnız `norveko.app` var. Kurulu: YouTube Data API v3 etkin, Branding (ad, e-posta,
+> site/gizlilik/şartlar linkleri, alan `norveko.app`), Data access (`youtube.upload`, `youtube.readonly`),
+> Audience External + **In production**, Web istemcisi **"Norveko Web"** (yönlendirme
+> `https://norveko.app/api/youtube/callback`). Vercel'de `GOOGLE_OAUTH_CLIENT_ID/SECRET` bu istemcinin değerleri
+> olmalı; değişince YouTube Ayarlar'dan yeniden bağlanır. Eski projedeki "Norveko Web" istemcisi artık kullanılmıyor
+> (Supabase Google girişi eski projede kalır, doğrulama gerektirmez). Logo isteğe bağlı (yüklenirse marka da
+> doğrulanır).
+
 **Neden:** Doğrulanmamış uygulamada 100 kullanıcı sınırı + "Google hasn't verified this app" uyarısı.
 
 ### 2.1 Ön koşullar (console.cloud.google.com → Google Auth Platform)
