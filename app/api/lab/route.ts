@@ -197,6 +197,29 @@ export async function POST(req: Request) {
           judge,
         });
       }
+      case "music-catalog": {
+        // Kevin MacLeod's own catalogue metadata (feel / genre / length per piece).
+        const url = String(body.url ?? "https://incompetech.com/music/royalty-free/pieces.json");
+        if (!url.startsWith("https://incompetech.com/")) throw new Error("incompetech.com only");
+        const res = await fetch(url, { cache: "no-store" });
+        const text = await res.text();
+        let pieces: Array<Record<string, unknown>> = [];
+        try {
+          const j = JSON.parse(text);
+          pieces = Array.isArray(j) ? j : Array.isArray(j?.pieces) ? j.pieces : [];
+        } catch {
+          return NextResponse.json({ success: false, status: res.status, error: "not JSON", head: text.slice(0, 400) });
+        }
+        const want = Array.isArray(body.titles) ? (body.titles as string[]).map((t) => t.toLowerCase()) : null;
+        const feel = typeof body.feel === "string" ? body.feel.toLowerCase() : null;
+        const rows = pieces.filter((p) => {
+          const title = String(p.title ?? "").toLowerCase();
+          if (want && !want.includes(title)) return false;
+          if (feel && !JSON.stringify(p.feel ?? "").toLowerCase().includes(feel)) return false;
+          return true;
+        });
+        return NextResponse.json({ success: true, total: pieces.length, keys: Object.keys(pieces[0] ?? {}), rows: rows.slice(0, 300) });
+      }
       case "music-analyze": {
         const { analyzeTrack } = await import("@/lib/lab/music-analyze");
         return NextResponse.json({ success: true, result: await analyzeTrack(String(body.title ?? "")), ms: Date.now() - started });
