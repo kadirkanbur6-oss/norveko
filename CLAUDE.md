@@ -231,7 +231,7 @@ Business 5000/$59.
   bölümü kiti `options.brand` snapshot'ı olarak işe kopyalar (`brandSnapshot`/`readSnapshot`; `/chat` "Apply my brand kit",
   `useBrandKit`). ✅ 31 Ekim canlı test (Dancing Plague, Norveko logosu + #7C3AED + "Follow for more mysteries"): thumbnail
   logosu, video logosu, mor hook kartı/altyazı vurgusu ve end card render'da doğru. `buildEdit({brand})`: logo sol üst (`fit contain`, scale 0.17/0.12), hook kartı arka planı marka rengi
-  (yazı `contrastText`), altyazı vurgu rengi marka rengi, son 2,5 sn end card. Thumbnail: `brandStoredThumbnail` logo sol üst
+  (yazı `contrastText`), son 2,5 sn end card. Altyazı vurgusu marka rengini ALMAZ, stilin rengi kalır (Kadir: "sarı renk iyi"). Thumbnail: `brandStoredThumbnail` logo sol üst
   (filigrandan ÖNCE → temiz kopyada da logo var). Hesap silmede tablo + logolar silinir.
 - **TikTok inceleme uyumu (31 Ekim akşam)**: `TikTokPublish` ticari içerik bildirimi (Your brand/Branded content, etiket metni,
   branded iken "Only me" pasif, hiçbiri seçilmezse buton pasif), önizleme videosu, süre sınırı, değişen onay metni

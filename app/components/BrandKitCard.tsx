@@ -192,7 +192,7 @@ export default function BrandKitCard() {
                   </button>
                 )}
               </div>
-              <p className="mt-2 text-xs text-gray-500">Used for the hook card, the highlighted caption word and the end card.</p>
+              <p className="mt-2 text-xs text-gray-500">Used for the hook card at the start and the end card. Subtitles keep their own colours.</p>
             </div>
 
             {/* End card */}
@@ -235,7 +235,7 @@ export default function BrandKitCard() {
               The lighthouse went dark
             </div>
             <div className="absolute inset-x-3 bottom-[18%] text-center text-[11px] font-extrabold uppercase text-white [text-shadow:0_1px_3px_#000]">
-              Three men <span style={{ color: color || "#FFD60A" }}>vanished</span>
+              Three men <span style={{ color: "#FFD60A" }}>vanished</span>
             </div>
             {outro && (
               <div

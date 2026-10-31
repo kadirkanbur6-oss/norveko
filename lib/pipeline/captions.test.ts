@@ -506,7 +506,7 @@ test("brand kit: snapshot, validation and edit layers", () => {
   const hook = assets.find((a) => a.type === "rich-text" && a.text?.startsWith("THE"));
   assert.equal(hook.background.color, "#7C3AED");
   const caption = assets.find((a) => a.type === "rich-caption");
-  assert.equal(caption.active.font.color, "#7C3AED");
+  assert.equal(caption.active.font.color, "#FFD60A"); // subtitles keep the preset colour
 
   // Logo only on thumbnails → no video layer.
   const noLogo = buildEdit({ slots: slots as never, voiceoverUrl: "v", orientation: "vertical", totalSeconds: 30, brand: { ...snap, videoLogo: false } }) as typeof edit;

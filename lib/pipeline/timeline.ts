@@ -244,15 +244,9 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
   }
 
   if (input.subtitlesUrl) {
-    const preset = captionStyle(input.captionStyle);
-    // Brand colour replaces the preset's highlight (the spoken word).
-    const cap = brandColor
-      ? {
-          ...preset,
-          active: preset.activeBackground ? onBrand : preset.active ? brandColor : null,
-          activeBackground: preset.activeBackground ? brandColor : null,
-        }
-      : preset;
+    // Captions keep their preset colours (yellow spoken word reads best on
+    // any picture — Kadir, 31 Oct); the brand colour is for the hook and end cards.
+    const cap = captionStyle(input.captionStyle);
     tracks.push({
       clips: [
         {
