@@ -226,7 +226,7 @@ export async function labVideoSubmit(
   // number and prompt_expansion_mode is required. Other fal video models take
   // the common aspect_ratio / string duration shape.
   const body = model.startsWith("minimax/")
-    ? { prompt, ...(imageUrl ? { image_url: imageUrl } : {}), duration: 5, resolution: "768P", prompt_expansion_mode: "disabled" }
+    ? { prompt, ...(imageUrl ? { image_url: imageUrl } : {}), duration: 5, resolution: "768P", prompt_expansion_mode: process.env.FAL_MINIMAX_EXPANSION || "balanced" }
     : { prompt, ...(imageUrl ? { image_url: imageUrl } : {}), aspect_ratio: "9:16", duration: "5" };
   const res = await fetch(`https://queue.fal.run/${model}`, {
     method: "POST",
