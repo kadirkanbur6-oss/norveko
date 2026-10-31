@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Fragment, Suspense, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Captions, CheckCircle2, Film, Globe, ChevronDown, Clapperboard, Coins, LayoutTemplate, Loader2, Mic, Play, Search, Sparkles, Square, Wand2 } from "lucide-react";
 import Link from "next/link";
@@ -695,7 +695,7 @@ function ChatContent() {
                           {voiceDisplayName(selectedVoice.name).short}
                           {selectedVoice.source === "library" && (
                             <span className="rounded-full border border-purple-400/30 bg-purple-500/10 px-1.5 py-px text-[10px] font-medium text-purple-200">
-                              Library
+                              Native
                             </span>
                           )}
                         </p>
@@ -760,7 +760,25 @@ function ChatContent() {
                       {filteredVoices.length === 0 && (
                         <p className="p-3 text-xs text-gray-500 sm:col-span-2 lg:col-span-3">No voices match “{voiceQuery}”.</p>
                       )}
-                      {filteredVoices.map((voice) => {
+                      {filteredVoices.map((voice, index) => {
+                        const group = voice.source === "gemini" ? "gemini" : "native";
+                        const prevGroup =
+                          index > 0 ? (filteredVoices[index - 1].source === "gemini" ? "gemini" : "native") : null;
+                        const groupHeader =
+                          group !== prevGroup ? (
+                            <p
+                              key={`h-${group}`}
+                              className={`px-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500 sm:col-span-2 lg:col-span-3 ${
+                                index > 0 ? "mt-2" : ""
+                              }`}
+                            >
+                              {group === "gemini"
+                                ? "Norveko narrators · speak every language"
+                                : nativeMatch
+                                ? `Native ${language} voice artists`
+                                : "More voices · multilingual"}
+                            </p>
+                          ) : null;
                         const isSelected = effectiveVoiceId === voice.voice_id;
                         const isPlaying = playingVoiceId === voice.voice_id;
                         const { short, tagline } = voiceDisplayName(voice.name);
@@ -776,8 +794,9 @@ function ChatContent() {
                           .slice(0, 2);
 
                         return (
+                          <Fragment key={voice.voice_id}>
+                          {groupHeader}
                           <div
-                            key={voice.voice_id}
                             role="radio"
                             aria-checked={isSelected}
                             tabIndex={0}
@@ -826,7 +845,7 @@ function ChatContent() {
                                 {short}
                                 {voice.source === "library" && (
                                   <span className="rounded-full border border-purple-400/30 bg-purple-500/10 px-1.5 py-px text-[10px] font-medium text-purple-200">
-                                    Library
+                                    Native
                                   </span>
                                 )}
                               </p>
@@ -846,6 +865,7 @@ function ChatContent() {
                               <CheckCircle2 size={16} className="shrink-0 text-blue-300" aria-hidden />
                             )}
                           </div>
+                          </Fragment>
                         );
                       })}
                     </div>

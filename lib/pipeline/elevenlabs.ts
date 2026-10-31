@@ -95,9 +95,11 @@ export async function getSubscriptionTier(): Promise<string | null> {
  * after being added to the account (see addLibraryVoice); we add them lazily
  * when a user actually picks one.
  */
+const NARRATION_USE_CASES = new Set(["narrative_story", "informative_educational", "narration", "documentary"]);
+
 export async function listLibraryVoices(
   languageCode: string,
-  pageSize = 24
+  pageSize = 30
 ): Promise<ElevenLabsLibraryVoice[]> {
   const params = new URLSearchParams({
     language: languageCode,
@@ -126,10 +128,15 @@ export async function listLibraryVoices(
         name: String(v.name ?? "Unnamed voice"),
         labels,
         preview_url: typeof v.preview_url === "string" ? v.preview_url : null,
-        languages: [String(v.language ?? languageCode).slice(0, 2).toLowerCase()],
+        languages: [String(v.language ?? languageCode).toLowerCase()],
       } satisfies ElevenLabsLibraryVoice;
     })
-    .filter((v: ElevenLabsLibraryVoice) => v.voice_id && v.public_owner_id);
+    .filter((v: ElevenLabsLibraryVoice) => v.voice_id && v.public_owner_id)
+    // Narration-friendly voices first (this product reads stories), then the
+    // rest in trending order.
+    .map((v: ElevenLabsLibraryVoice, i: number) => ({ v, i, rank: NARRATION_USE_CASES.has(v.labels.use_case ?? "") ? 0 : 1 }))
+    .sort((a: { rank: number; i: number }, b: { rank: number; i: number }) => a.rank - b.rank || a.i - b.i)
+    .map((x: { v: ElevenLabsLibraryVoice }) => x.v);
 }
 
 /**

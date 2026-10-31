@@ -271,7 +271,7 @@ karşılaştırması yapılır.
   düşmeden önce 400 ile reddeder (25 Ekim: `fXhoW006…` sesi iki işi 402 ile
   düşürmüştü).
   Starter'a geçince Vercel'e `ELEVENLABS_LIBRARY_VOICES=true` ekle (veya
-  anahtara User→Access izni ver, otomatik algılar). Bu konu şimdilik SKIP.
+  anahtara User→Access izni ver, otomatik algılar). **31 Ekim: Kadir Starter'a geçti.** Kütüphane artık İngilizce dahil her dilde sorgulanır (30 ses, anlatım use_case'leri önce); `/chat` seçicisi gruplu: "Norveko narrators · speak every language" (Gemini, 29 dilin hepsi destekli) + "Native {dil} voice artists" (kütüphane + o dile etiketli hesap sesleri, "Native" rozeti).
 - Stok B-roll: Pexels yeni anahtar vermiyor → **Pixabay** eklendi
   (`PIXABAY_API_KEY` Vercel'de, `lib/pipeline/pexels.ts` iki sağlayıcıyı da
   destekler).

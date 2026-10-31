@@ -78,10 +78,10 @@ export async function GET(req: NextRequest) {
     const account = libraryAllowed ? allAccount : allAccount.filter((v) => v.category === "premade");
     const tagged = account.filter((v) => v.languages.includes(code));
 
-    // Library voices in the user's language (skip for English: the account
-    // defaults already cover it). Failures here must not break the picker.
+    // Native voice artists from the Voice Library for the user's language
+    // (English too: US/UK/AU narrators). Failures must not break the picker.
     let library: Awaited<ReturnType<typeof listLibraryVoices>> = [];
-    if (code !== "en" && libraryAllowed) {
+    if (libraryAllowed) {
       try {
         const inAccount = new Set(account.map((v) => v.voice_id));
         library = (await getLibraryVoices(code)).filter((v) => !inAccount.has(v.voice_id));
