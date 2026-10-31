@@ -303,7 +303,10 @@ export async function reviseNarrationLength(args: {
       messages: [
         {
           role: "system",
-          content: `You edit voice-over narration for length. Respond ONLY with JSON {"hook": "...", "script": "..."} in ${languagePromptName(outputLanguage)}. Keep every fact and the meaning; change wording only as needed.`,
+          content: `You edit voice-over narration for length. Respond ONLY with JSON {"hook": "...", "script": "..."} in ${languagePromptName(outputLanguage)}. Rules:
+- The hook stays EXACTLY as given, and the script must START with the hook sentence verbatim (it is the first thing the narrator says).
+- Keep every fact and the meaning; keep it one connected story; change wording only as needed.
+- Write for the ear: no abbreviations (write "December", "Naval Air Station", not "Dec", "NAS"), no semicolons, every sentence grammatically complete, natural and fluent ${languagePromptName(outputLanguage)}.`,
         },
         {
           role: "user",
@@ -320,7 +323,12 @@ export async function reviseNarrationLength(args: {
     const usage = data?.usage
       ? { inputTokens: Number(data.usage.prompt_tokens ?? 0), outputTokens: Number(data.usage.completion_tokens ?? 0) }
       : undefined;
-    return { hook: out.hook, script: out.script, usage };
+    // The hook card on screen shows the original hook, so the narration must
+    // open with it too (31 Oct: a length rewrite dropped it from the audio).
+    const keptHook = hook.trim();
+    let revised = out.script.trim();
+    if (keptHook && !revised.startsWith(keptHook)) revised = `${keptHook} ${revised}`;
+    return { hook: keptHook || out.hook, script: revised, usage };
   } catch {
     return null;
   }
