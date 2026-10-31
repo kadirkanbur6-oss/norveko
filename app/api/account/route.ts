@@ -17,6 +17,7 @@ const USER_TABLES = [
   "youtube_connections",
   "tiktok_connections",
   "series",
+  "brand_kits",
   "credit_transactions",
   "credit_purchases",
   "pipeline_jobs",
@@ -124,6 +125,12 @@ export async function DELETE(req: Request) {
       } catch (err) {
         console.error(`[account] storage cleanup ${bucket} failed:`, err);
       }
+    }
+    // Brand kit logos live under videos/brand/<user>/.
+    try {
+      await emptyPrefix(client, "videos", `brand/${user.id}`);
+    } catch (err) {
+      console.error("[account] brand logo cleanup failed:", err);
     }
     // Legacy thumbnails were stored at the bucket root as <jobId>.png; collect them by job id.
     const { data: jobs } = await client

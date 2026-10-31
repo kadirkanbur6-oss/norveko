@@ -50,6 +50,7 @@ import { narrationWordCount, rangeForMeasuredRatio } from "@/lib/pipeline/narrat
 import { RESEARCH_MODEL, SCRIPT_MODEL, llmUsageKey } from "@/lib/pipeline/llm";
 import { captionStyle, clipPrompt } from "@/lib/pipeline/visual-styles";
 import { WATERMARK_PUBLIC_PATH } from "@/lib/pipeline/watermark-policy";
+import { readSnapshot } from "@/lib/brand/kit";
 import {
   estimateCostUsd,
   recordProviderUsage,
@@ -105,6 +106,8 @@ export interface JobRow {
     /** Look presets (lib/pipeline/visual-styles.ts). */
     visualStyle?: string | null;
     captionStyle?: string | null;
+    /** Brand kit snapshot taken at start (lib/brand/kit.ts). */
+    brand?: unknown;
   } | null;
   status: "queued" | "running" | "completed" | "failed";
   current_step: string | null;
@@ -139,6 +142,8 @@ export interface RunnerDeps {
     /** Free-trial watermark (optional so tests can leave it out → never watermark). */
     needsWatermark?: (userId: string) => Promise<boolean>;
     watermarkThumbnail?: typeof import("@/lib/pipeline/watermark").watermarkStoredThumbnail;
+    /** Brand kit logo on the thumbnail (optional; tests leave it out). */
+    brandThumbnail?: typeof import("@/lib/pipeline/watermark").brandStoredThumbnail;
   };
   kick: (jobId: string) => Promise<void>;
   now: () => number;
@@ -989,6 +994,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
       hookText: typeof job.steps?.script?.hook === "string" ? job.steps.script.hook : undefined,
       languageCode: languageCode(job.output_language ?? "English"),
       captionStyle: job.options?.captionStyle ?? undefined,
+      brand: readSnapshot(job.options?.brand),
     });
 
     const renderId = await providers.submitRender(edit);
@@ -1349,6 +1355,17 @@ export function createPipelineRunner(deps: RunnerDeps) {
         durationMs: now() - startedAt,
         status: "ok",
       });
+      // Brand kit logo first, so the clean (unbadged) copy keeps it.
+      const brand = readSnapshot(job.options?.brand);
+      let branded = false;
+      if (brand?.logoUrl && brand.thumbLogo && providers.brandThumbnail) {
+        try {
+          await providers.brandThumbnail({ storagePath: result.storagePath, logoUrl: brand.logoUrl });
+          branded = true;
+        } catch (err) {
+          console.warn(`[pipeline] ${job.id} brand logo on thumbnail failed, delivering it without:`, err);
+        }
+      }
       // Free trial: badge the thumbnail, keep the clean copy for after the first purchase.
       let watermark: { watermarked: boolean; clean_url?: string; clean_path?: string } = { watermarked: false };
       if (providers.needsWatermark && providers.watermarkThumbnail && (await providers.needsWatermark(job.user_id))) {
@@ -1364,6 +1381,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
         status: "completed",
         image_url: result.imageUrl,
         storage_path: result.storagePath,
+        ...(branded ? { branded: true } : {}),
         ...watermark,
       });
       return;
@@ -1739,6 +1757,8 @@ function getRunner() {
           (await import("@/lib/pipeline/watermark-policy")).needsWatermark(productionDb(), userId),
         watermarkThumbnail: async (...args) =>
           (await import("@/lib/pipeline/watermark")).watermarkStoredThumbnail(...args),
+        brandThumbnail: async (...args) =>
+          (await import("@/lib/pipeline/watermark")).brandStoredThumbnail(...args),
       },
       kick: kickJob,
       now: Date.now,

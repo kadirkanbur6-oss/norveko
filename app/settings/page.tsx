@@ -14,6 +14,7 @@ import SignOutButton from "../components/SignOutButton";
 import AccountSecurity from "../components/AccountSecurity";
 import YouTubeConnectionCard from "../components/YouTubeConnectionCard";
 import TikTokConnectionCard from "../components/TikTokConnectionCard";
+import BrandKitCard from "../components/BrandKitCard";
 
 interface UserSettings {
   email: string;
@@ -215,6 +216,8 @@ export default function SettingsPage() {
                   </p>
                 )}
               </div>
+
+              <BrandKitCard />
 
               <YouTubeConnectionCard />
 

@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { requireUser } from "@/lib/supabase-server";
 import { createClient } from "@supabase/supabase-js";
+import { brandSnapshot, rowToKit, type BrandSnapshot } from "@/lib/brand/kit";
 import {
   buildPipelineSteps,
   FOOTAGE_MODES,
@@ -308,6 +309,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Brand kit: copied onto the job so re-renders keep this look.
+    let brand: BrandSnapshot | null = null;
+    if (body.useBrandKit !== false) {
+      const { data: kitRow } = await supabaseAdmin.from("brand_kits").select("*").eq("user_id", user.id).maybeSingle();
+      brand = brandSnapshot(rowToKit(kitRow as Record<string, unknown> | null));
+    }
+
     // 5) Insert the job with every step pending
     const steps = initialStepsState(options) as Record<string, Record<string, unknown>>;
     const firstStep = buildPipelineSteps(options)[0];
@@ -325,7 +333,7 @@ export async function POST(req: NextRequest) {
         style,
         duration,
         output_language: outputLanguage,
-        options: { orientation, template, notes, visualStyle, captionStyle, ...freeMarkers, trialVideo: options.trialVideo === true || undefined, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined, clipMode: resolved.fullVideo ? clipMode : undefined },
+        options: { orientation, template, notes, visualStyle, captionStyle, brand: brand ?? undefined, ...freeMarkers, trialVideo: options.trialVideo === true || undefined, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined, clipMode: resolved.fullVideo ? clipMode : undefined },
         status: "running",
         current_step: firstStep.id,
         steps,

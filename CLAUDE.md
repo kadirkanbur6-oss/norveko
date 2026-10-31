@@ -225,6 +225,19 @@ Business 5000/$59.
   ✅ 31 Ekim canlıda 200; şifre Supabase **Vault** `heartbeat_secret`'tan okunur (SQL'e yapıştırmak tırnakları iki kez bozdu).
   (Kısa süre denenen `watchJob` kaldırıldı: zincir içinden kick ettiği için aynı 508'e takılıyordu.) TikTok geliştirici uygulaması "Norveko" (Bireysel) + Sandbox "Norveko test" (Vercel `TIKTOK_CLIENT_KEY/SECRET` = Sandbox anahtarları; env değerleri artık `.trim()` — yapıştırılan satır sonu client_key hatası verdi). ✅ 31 Ekim canlı test: Redkalien hesabı (gizli) bağlandı, Flannan videosu `SELF_ONLY` → `PUBLISH_COMPLETE`; seri testi (Flannan, YouTube private `6ulP0Mc6UeM`) uçtan uca yayınlandı. Production'a geçiş = TikTok incelemesi (demo video + ikon) sonra Production anahtarları; site doğrulama
   dosyası `public/tiktok2Vlc4spidXzS1mcfLwXijkpCKUcnVKNi.txt`; 1024 px ikon `public/brand/norveko-icon-1024.png`.
+- **Brand kit (31 Ekim akşam)**: `lib/brand/kit.ts` + `brand_kits` tablosu (SQL `supabase/README.md`, yalnız service role) +
+  `/api/brand` (GET/PUT renk-outro-logo yerleri, POST multipart logo → sharp PNG ≤512 px `videos/brand/<user>/logo-<uuid>.png`,
+  DELETE `?part=logo`). Ayarlar `BrandKitCard` (logo, 8 renk + özel, end card ≤60 kr, canlı önizleme). Start route ve seri
+  bölümü kiti `options.brand` snapshot'ı olarak işe kopyalar (`brandSnapshot`/`readSnapshot`; `/chat` "Apply my brand kit",
+  `useBrandKit`). `buildEdit({brand})`: logo sol üst (`fit contain`, scale 0.17/0.12), hook kartı arka planı marka rengi
+  (yazı `contrastText`), altyazı vurgu rengi marka rengi, son 2,5 sn end card. Thumbnail: `brandStoredThumbnail` logo sol üst
+  (filigrandan ÖNCE → temiz kopyada da logo var). Hesap silmede tablo + logolar silinir.
+- **TikTok inceleme uyumu (31 Ekim akşam)**: `TikTokPublish` ticari içerik bildirimi (Your brand/Branded content, etiket metni,
+  branded iken "Only me" pasif, hiçbiri seçilmezse buton pasif), önizleme videosu, süre sınırı, değişen onay metni
+  (Branded Content Policy), "Check status" (`GET /api/projects/[id]/tiktok` → `refreshTikTokStatus`); filigranlı (deneme)
+  video paylaşılamaz (TikTok promosyon filigranı yasak). Gönderim **PULL_FROM_URL** `https://norveko.app/media/videos/...`
+  (`next.config.ts` rewrite → Supabase public `videos`), URL öneki doğrulanmamışsa FILE_UPLOAD'a düşer. Başvuru rehberi:
+  `docs/app-reviews.md`.
 - Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
 - Bitince sonuç `projects.content` JSONB'ye yazılır; başlık = AI'nin ilk title'ı.
 
@@ -458,7 +471,7 @@ galeri~~ (29 Ekim: landing `#examples` gerçek render'lar `lib/showcase.ts`
 X video" satırı `steps.ts`'ten hesaplanır. **Paket kredileri/fiyatları 29
 Ekim'de gözden geçirildi, Kadir "şimdilik değiştirme" dedi** — Starter 500 ile
 yalnızca 1×30 sn video çıkıyor; ileride tekrar bakılacak) →
-~~YouTube'a doğrudan yükleme~~ (31 Ekim, Google kurulumu + denetim bekliyor) → ~~seri modu/zamanlama~~ + ~~TikTok~~ (31 Ekim; TikTok uygulaması + denetim bekliyor) → ses klonlama + brand kit →
+~~YouTube'a doğrudan yükleme~~ (31 Ekim, Google kurulumu + denetim bekliyor) → ~~seri modu/zamanlama~~ + ~~TikTok~~ (31 Ekim; TikTok uygulaması + denetim bekliyor) → ~~brand kit~~ → ses klonlama →
 affiliate. Ertelenen: timeline editör, AI avatar, mobil app.
 
 Teknik borç: sahne düzeyinde yeniden üretim + versiyon geçmişi +

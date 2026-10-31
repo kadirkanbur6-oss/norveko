@@ -62,3 +62,29 @@ export async function watermarkStoredThumbnail(args: {
 
   return { cleanPath, cleanUrl: bucket.getPublicUrl(cleanPath).data.publicUrl };
 }
+
+/** Creator's brand logo in the top-left corner (~18% of the width), in place. */
+export async function brandStoredThumbnail(args: { storagePath: string; logoUrl: string }): Promise<void> {
+  const res = await fetch(args.logoUrl, { signal: AbortSignal.timeout(15_000) });
+  if (!res.ok) throw new Error(`brand logo HTTP ${res.status}`);
+  const logo = Buffer.from(await res.arrayBuffer());
+  const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    auth: { persistSession: false },
+  });
+  const bucket = db.storage.from("thumbnails");
+  const { data: file, error } = await bucket.download(args.storagePath);
+  if (error || !file) throw new Error(`thumbnail download failed: ${error?.message ?? "empty"}`);
+  const original = Buffer.from(await file.arrayBuffer());
+  const img = sharp(original);
+  const meta = await img.metadata();
+  const width = meta.width ?? 1280;
+  const box = Math.round(width * 0.18);
+  const resized = await sharp(logo).resize({ width: box, height: box, fit: "inside" }).png().toBuffer();
+  const margin = Math.round(width * 0.03);
+  const out = img.composite([{ input: resized, left: margin, top: margin }]);
+  const ext = args.storagePath.split(".").pop() ?? "png";
+  const jpeg = ext === "jpg" || ext === "jpeg";
+  const buf = jpeg ? await out.jpeg({ quality: 90 }).toBuffer() : await out.png().toBuffer();
+  const up = await bucket.upload(args.storagePath, buf, { contentType: jpeg ? "image/jpeg" : "image/png", upsert: true });
+  if (up.error) throw new Error(`branded upload failed: ${up.error.message}`);
+}

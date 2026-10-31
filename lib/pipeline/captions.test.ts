@@ -471,3 +471,44 @@ test("series: input validation", () => {
   assert.equal(validateSeries({ ...good, timezone: "Mars/Olympus" }).ok, false);
   assert.equal(validateSeries({ ...good, settings: { ...good.settings, voiceId: "someElevenId" } }).ok, false);
 });
+
+import { brandSnapshot, readSnapshot, cleanOutro, contrastText, rowToKit } from "../brand/kit";
+
+test("brand kit: snapshot, validation and edit layers", () => {
+  assert.equal(cleanOutro("  Follow <b>@me</b>  for more "), "Follow b@me/b for more");
+  assert.equal(cleanOutro("x".repeat(80))?.length, 60);
+  assert.equal(contrastText("#FFFFFF"), "#000000");
+  assert.equal(contrastText("#7C3AED"), "#FFFFFF");
+  assert.equal(brandSnapshot(rowToKit({ logo_url: null, color: null, outro_text: "" })), null);
+  const snap = brandSnapshot(
+    rowToKit({ logo_url: "https://cdn/logo.png", color: "#7C3AED", outro_text: "Follow for more", logo_on_video: true, logo_on_thumbnail: false })
+  )!;
+  assert.deepEqual(snap, { logoUrl: "https://cdn/logo.png", videoLogo: true, thumbLogo: false, color: "#7C3AED", outroText: "Follow for more" });
+  assert.deepEqual(readSnapshot(snap), snap);
+  assert.equal(readSnapshot({ logoUrl: "javascript:x", color: "red" }), null);
+
+  const slots = [{ index: 0, start: 0, length: 30, kind: "still" as const, status: "succeed", url: "https://cdn/a.png", sceneIndex: 0 }];
+  const edit = buildEdit({
+    slots: slots as never,
+    voiceoverUrl: "v",
+    subtitlesUrl: "s",
+    orientation: "vertical",
+    totalSeconds: 30,
+    hookText: "The lighthouse went dark.",
+    captionStyle: "bold",
+    brand: snap,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  }) as { timeline: { tracks: Array<{ clips: Array<Record<string, any>> }> } };
+  const assets = edit.timeline.tracks.map((t) => t.clips[0].asset);
+  assert.ok(assets.some((a) => a.type === "image" && a.src === "https://cdn/logo.png"), "logo layer");
+  const outro = edit.timeline.tracks.find((t) => t.clips[0].asset.text === "Follow for more")!.clips[0];
+  assert.equal(outro.start, 27.5);
+  const hook = assets.find((a) => a.type === "rich-text" && a.text?.startsWith("THE"));
+  assert.equal(hook.background.color, "#7C3AED");
+  const caption = assets.find((a) => a.type === "rich-caption");
+  assert.equal(caption.active.font.color, "#7C3AED");
+
+  // Logo only on thumbnails → no video layer.
+  const noLogo = buildEdit({ slots: slots as never, voiceoverUrl: "v", orientation: "vertical", totalSeconds: 30, brand: { ...snap, videoLogo: false } }) as typeof edit;
+  assert.ok(!noLogo.timeline.tracks.some((t) => t.clips[0].asset.src === "https://cdn/logo.png"));
+});

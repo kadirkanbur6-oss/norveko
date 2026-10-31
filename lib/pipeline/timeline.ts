@@ -12,6 +12,7 @@
 // is slowed/trimmed to its slot, stills get a Ken Burns move.
 
 import { captionStyle } from "./visual-styles";
+import { contrastText, OUTRO_SECONDS, type BrandSnapshot } from "@/lib/brand/kit";
 import { upper, type CaptionCue } from "./captions";
 import { SLOT_SECONDS } from "./steps";
 import { MUSIC_VOLUME } from "./music";
@@ -129,6 +130,8 @@ export interface EditInput {
   watermarkUrl?: string;
   /** Caption look preset id (lib/pipeline/visual-styles.ts); default "bold". */
   captionStyle?: string;
+  /** Creator's brand kit (lib/brand/kit.ts): logo corner, brand colour, end card. */
+  brand?: BrandSnapshot | null;
 }
 
 /** Seconds the hook title stays on screen. */
@@ -199,6 +202,8 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
   // Hook title card: big uppercase line over the opening seconds so the
   // viewer gets the promise of the video before scrolling on.
   const hook = hookTitle(input.hookText, input.languageCode);
+  const brandColor = input.brand?.color;
+  const onBrand = brandColor ? contrastText(brandColor) : "#FFFFFF";
   if (hook) {
     tracks.push({
       clips: [
@@ -209,13 +214,15 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
             font: {
               family: "Montserrat ExtraBold",
               size: orientation === "vertical" ? 92 : 68,
-              color: "#FFFFFF",
+              color: onBrand,
               weight: 800,
             },
             style: { lineHeight: 1.05 },
-            stroke: { color: "#000000", width: 6, opacity: 1 },
+            ...(onBrand === "#FFFFFF" ? { stroke: { color: "#000000", width: 6, opacity: 1 } } : {}),
             shadow: { offsetX: 0, offsetY: 6, blur: 18, color: "#000000", opacity: 0.6 },
-            background: { color: "#000000", opacity: 0.45, borderRadius: 24, wrap: true },
+            background: brandColor
+              ? { color: brandColor, opacity: 0.9, borderRadius: 24, wrap: true }
+              : { color: "#000000", opacity: 0.45, borderRadius: 24, wrap: true },
             padding: 28,
             align: { horizontal: "center", vertical: "middle" },
             // Snappy: the whole line lands in a third of a second.
@@ -235,7 +242,15 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
   }
 
   if (input.subtitlesUrl) {
-    const cap = captionStyle(input.captionStyle);
+    const preset = captionStyle(input.captionStyle);
+    // Brand colour replaces the preset's highlight (the spoken word).
+    const cap = brandColor
+      ? {
+          ...preset,
+          active: preset.activeBackground ? onBrand : preset.active ? brandColor : null,
+          activeBackground: preset.activeBackground ? brandColor : null,
+        }
+      : preset;
     tracks.push({
       clips: [
         {
@@ -287,6 +302,53 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
           asset: { type: "audio", src: input.musicUrl, volume: MUSIC_VOLUME, effect: "fadeInFadeOut" },
           start: 0,
           length: Math.round(totalSeconds * 100) / 100,
+        },
+      ],
+    });
+  }
+
+  // End card: the creator's call to action over the last seconds.
+  const outro = input.brand?.outroText;
+  if (outro && totalSeconds > HOOK_CARD_SECONDS + OUTRO_SECONDS + 1) {
+    const start = Math.round((totalSeconds - OUTRO_SECONDS) * 100) / 100;
+    tracks.unshift({
+      clips: [
+        {
+          asset: {
+            type: "rich-text",
+            text: outro,
+            font: { family: "Montserrat ExtraBold", size: orientation === "vertical" ? 72 : 56, color: onBrand, weight: 800 },
+            style: { lineHeight: 1.1 },
+            background: { color: brandColor ?? "#000000", opacity: brandColor ? 0.92 : 0.6, borderRadius: 24, wrap: true },
+            padding: 28,
+            align: { horizontal: "center", vertical: "middle" },
+            animation: { preset: "fadeIn", duration: 0.3 },
+          },
+          start,
+          length: Math.round((totalSeconds - start) * 100) / 100,
+          width: Math.round(size.width * 0.82),
+          height: Math.round(size.height * (orientation === "vertical" ? 0.22 : 0.32)),
+          position: "center",
+          offset: { x: 0, y: orientation === "vertical" ? 0.08 : 0.04 },
+          transition: { in: "fade" },
+        },
+      ],
+    });
+  }
+
+  // Creator's logo, top-left corner for the whole video (the trial badge sits top-right).
+  if (input.brand?.logoUrl && input.brand.videoLogo) {
+    tracks.unshift({
+      clips: [
+        {
+          asset: { type: "image", src: input.brand.logoUrl },
+          start: 0,
+          length: totalSeconds,
+          fit: "contain",
+          scale: orientation === "vertical" ? 0.17 : 0.12,
+          position: "topLeft",
+          offset: { x: 0.04, y: orientation === "vertical" ? -0.05 : -0.04 },
+          opacity: 0.92,
         },
       ],
     });

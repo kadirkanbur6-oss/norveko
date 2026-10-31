@@ -179,6 +179,24 @@ create table if not exists public.tiktok_connections (
 alter table public.tiktok_connections enable row level security;
 ```
 
+## Brand kit (`brand_kits`, 31 Oct 2026)
+
+Written only by `/api/brand` (service role). Logos: `videos/brand/<user>/logo-<uuid>.png`.
+
+```sql
+create table if not exists public.brand_kits (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  logo_url text,
+  logo_path text,
+  color text,
+  outro_text text,
+  logo_on_video boolean not null default true,
+  logo_on_thumbnail boolean not null default true,
+  updated_at timestamptz not null default now()
+);
+alter table public.brand_kits enable row level security;
+```
+
 ## Series autopilot (`series`, `series_episodes`, 31 Oct 2026)
 
 ```sql

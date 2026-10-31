@@ -102,6 +102,17 @@ function ChatContent() {
   const [clipMode, setClipMode] = useState<ClipMode>("image");
   const [visualStyle, setVisualStyle] = useState<string>(DEFAULT_VISUAL_STYLE);
   const [captionStyleId, setCaptionStyleId] = useState<string>(DEFAULT_CAPTION_STYLE);
+  const [brandKit, setBrandKit] = useState<{ logoUrl: string | null; color: string | null; outroText: string | null } | null>(null);
+  const [useBrandKit, setUseBrandKit] = useState(true);
+  useEffect(() => {
+    fetch("/api/brand")
+      .then((r) => r.json())
+      .then((d) => {
+        const k = d?.kit;
+        if (k && (k.logoUrl || k.color || k.outroText)) setBrandKit(k);
+      })
+      .catch(() => undefined);
+  }, []);
   const [fullVideoAvailable, setFullVideoAvailable] = useState(false);
   const [trialVideoAvailable, setTrialVideoAvailable] = useState(false);
   const [generationAvailable, setGenerationAvailable] = useState(true);
@@ -395,6 +406,7 @@ function ChatContent() {
           template: templateId,
           visualStyle,
           captionStyle: captionStyleId,
+          useBrandKit: Boolean(brandKit) && useBrandKit,
         }),
       });
 
@@ -645,6 +657,28 @@ function ChatContent() {
             </div>
 
             <VisualStylePicker value={visualStyle} onChange={setVisualStyle} />
+
+            {brandKit && (
+              <label className="mt-4 flex cursor-pointer items-center gap-3 rounded-2xl border border-white/10 bg-[#0d0d16] p-4">
+                <input type="checkbox" checked={useBrandKit} onChange={(e) => setUseBrandKit(e.target.checked)} className="h-4 w-4 accent-purple-500" />
+                {brandKit.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={brandKit.logoUrl} alt="" className="h-8 w-8 rounded object-contain" />
+                ) : (
+                  <span className="h-6 w-6 rounded-full border border-white/20" style={{ background: brandKit.color ?? "transparent" }} />
+                )}
+                <span className="text-sm">
+                  <span className="font-semibold text-white">Apply my brand kit</span>
+                  <span className="block text-xs text-gray-400">
+                    Logo, brand colour and end card from{" "}
+                    <Link href="/settings" className="text-purple-300 hover:text-white">
+                      Settings
+                    </Link>
+                    . Free.
+                  </span>
+                </span>
+              </label>
+            )}
 
             {/* Web research before the script */}
             <div

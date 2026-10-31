@@ -24,6 +24,7 @@ import { chatJSON, SCRIPT_MODEL } from "@/lib/pipeline/llm";
 import { validPublishAt, type YouTubePrivacy } from "@/lib/youtube/metadata";
 import type { TikTokPrivacy } from "@/lib/tiktok/client";
 import { upcomingSlots } from "./schedule";
+import { brandSnapshot, rowToKit } from "@/lib/brand/kit";
 
 /** How far ahead the tick creates episodes. Daily cron (Hobby): 26 h; hourly cron: set SERIES_LOOKAHEAD_HOURS=2. */
 export const LOOKAHEAD_HOURS = Number(process.env.SERIES_LOOKAHEAD_HOURS) || 26;
@@ -165,6 +166,9 @@ export async function createEpisode(db: SupabaseClient, series: SeriesRow, sched
   steps[first.id] = { ...steps[first.id], queued_at: new Date().toISOString() };
   steps.voiceover = { ...steps.voiceover, voice_id: series.settings.voiceId };
 
+  const { data: kitRow } = await db.from("brand_kits").select("*").eq("user_id", series.user_id).maybeSingle();
+  const brand = brandSnapshot(rowToKit(kitRow as Record<string, unknown> | null));
+
   const { data: job, error: jobError } = await db
     .from("pipeline_jobs")
     .insert({
@@ -180,6 +184,7 @@ export async function createEpisode(db: SupabaseClient, series: SeriesRow, sched
         notes: series.settings.notes ?? null,
         visualStyle: series.settings.visualStyle,
         captionStyle: series.settings.captionStyle,
+        brand: brand ?? undefined,
         fullVideo: resolved.fullVideo,
         footage: series.settings.footage,
         clipMode: "image",
