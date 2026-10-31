@@ -47,6 +47,7 @@ const DRAFT_KEY = "norveko:chat-draft";
 
 interface Draft {
   idea: string;
+  notes?: string;
   platform: string;
   style: string;
   duration: string;
@@ -75,6 +76,8 @@ function ChatContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [idea, setIdea] = useState("");
+  const [notes, setNotes] = useState("");
+  const [notesOpen, setNotesOpen] = useState(false);
   const [platform, setPlatform] = useState<string>(PLATFORMS[0]);
   const [style, setStyle] = useState<string>(STYLES[0]);
   const [duration, setDuration] = useState<string>(DURATIONS[1]);
@@ -129,6 +132,10 @@ function ChatContent() {
     const draft = readDraft();
     const id = setTimeout(() => {
       if (typeof draft.idea === "string") setIdea(draft.idea);
+      if (typeof draft.notes === "string" && draft.notes) {
+        setNotes(draft.notes);
+        setNotesOpen(true);
+      }
       if (typeof draft.platform === "string") setPlatform(draft.platform);
       if (typeof draft.style === "string") setStyle(draft.style);
       if (typeof draft.duration === "string") setDuration(draft.duration);
@@ -165,12 +172,12 @@ function ChatContent() {
 
   useEffect(() => {
     try {
-      const draft: Draft = { idea, platform, style, duration, language, includeVoiceover, includeResearch, includeSubtitles, includeFullVideo, footage, clipMode, voiceId, orientation, template: templateId };
+      const draft: Draft = { idea, notes, platform, style, duration, language, includeVoiceover, includeResearch, includeSubtitles, includeFullVideo, footage, clipMode, voiceId, orientation, template: templateId };
       sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     } catch {
       // storage unavailable
     }
-  }, [idea, platform, style, duration, language, includeVoiceover, includeResearch, includeSubtitles, includeFullVideo, footage, clipMode, voiceId, orientation, templateId]);
+  }, [idea, notes, platform, style, duration, language, includeVoiceover, includeResearch, includeSubtitles, includeFullVideo, footage, clipMode, voiceId, orientation, templateId]);
 
   // Keep orientation in step with the platform until the user picks one explicitly.
   function choosePlatform(next: string) {
@@ -350,6 +357,7 @@ function ChatContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           idea,
+          notes: notes.trim() || null,
           platform,
           style,
           duration,
@@ -488,6 +496,33 @@ function ChatContent() {
               rows={3}
               className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] p-4 text-white placeholder-gray-500 outline-none focus:border-blue-400/50"
             />
+
+            {notesOpen ? (
+              <div className="mt-3">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="creator-notes" className="text-sm text-gray-400">
+                    Angle &amp; notes <span className="text-gray-500">(optional)</span>
+                  </label>
+                  <span className="text-[11px] text-gray-500">{notes.length}/500</span>
+                </div>
+                <textarea
+                  id="creator-notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value.slice(0, 500))}
+                  placeholder="e.g. Focus on Flight 19, keep the scientific explanation for the end, avoid aliens."
+                  rows={2}
+                  className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm text-white placeholder-gray-500 outline-none focus:border-blue-400/50"
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setNotesOpen(true)}
+                className="mt-2 text-xs text-blue-300 transition hover:text-blue-200"
+              >
+                + Add an angle or notes for the writer
+              </button>
+            )}
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>
@@ -1163,6 +1198,8 @@ function ChatContent() {
                 onClick={() => {
                   setJobId(null);
                   setIdea("");
+                  setNotes("");
+                  setNotesOpen(false);
                   setError("");
                   setFormOpen(true);
                   router.replace(pathname, { scroll: false });

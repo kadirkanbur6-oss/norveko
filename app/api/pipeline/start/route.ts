@@ -72,6 +72,9 @@ export async function POST(req: NextRequest) {
     }
 
     const idea = typeof body.idea === "string" ? body.idea.trim() : "";
+    // Optional creator notes for the writer (angle, focus, things to avoid).
+    const notes =
+      typeof body.notes === "string" && body.notes.trim() ? body.notes.trim().replace(/\s+/g, " ").slice(0, 500) : null;
     if (idea.length < 3) {
       return NextResponse.json(
         { success: false, error: "Please provide a video idea." },
@@ -295,7 +298,7 @@ export async function POST(req: NextRequest) {
         style,
         duration,
         output_language: outputLanguage,
-        options: { orientation, template, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined, clipMode: resolved.fullVideo ? clipMode : undefined },
+        options: { orientation, template, notes, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined, clipMode: resolved.fullVideo ? clipMode : undefined },
         status: "running",
         current_step: firstStep.id,
         steps,

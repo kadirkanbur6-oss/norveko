@@ -9,6 +9,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Loader2, Play, RefreshCw } from "lucide-react";
+import ScriptLab from "./ScriptLab";
 
 type Kind = "image" | "tts" | "video";
 type Status = "idle" | "running" | "done" | "error";
@@ -245,7 +246,9 @@ export default function LabPage() {
         {googleModels && <pre className="mt-2 max-h-60 overflow-auto whitespace-pre-wrap font-mono text-[11px] text-gray-300">{googleModels}</pre>}
       </div>
 
-      <label className="mt-6 block text-xs font-semibold uppercase tracking-wider text-gray-400">Scene prompt (images)</label>
+      <ScriptLab />
+
+      <label className="mt-10 block text-xs font-semibold uppercase tracking-wider text-gray-400">Scene prompt (images)</label>
       <textarea value={imagePrompt} onChange={(e) => setImagePrompt(e.target.value)} rows={3} className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 p-3 text-sm" />
       {section("image", "1 · Scene images (9:16)", "One image per 5-second slot in a video; 9–12 per 60 s Short.")}
 

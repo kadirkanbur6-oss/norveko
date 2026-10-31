@@ -21,10 +21,45 @@ import {
 } from "@/lib/lab/providers";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 300; // script runs: research + plan + draft + editor + fact check + judge
 
 function admin() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+}
+
+async function readJson<T>(path: string): Promise<T | null> {
+  const { data } = await admin().storage.from("videos").download(path);
+  if (!data) return null;
+  try {
+    return JSON.parse(await data.text()) as T;
+  } catch {
+    return null;
+  }
+}
+
+async function writeJson(path: string, value: unknown): Promise<string> {
+  const db = admin();
+  const { error } = await db.storage
+    .from("videos")
+    .upload(path, Buffer.from(JSON.stringify(value, null, 2)), { contentType: "application/json", upsert: true });
+  if (error) throw new Error(`upload failed: ${error.message}`);
+  return db.storage.from("videos").getPublicUrl(path).data.publicUrl;
+}
+
+type Research = { brief: string; sources: Array<{ title: string; url: string }> };
+
+/** Research for a lab run; eval topics are cached so every model sees the same brief. */
+async function labResearch(idea: string, language: string, cacheId?: string, refresh = false): Promise<Research> {
+  const path = cacheId ? `lab/eval/research/${cacheId.replace(/[^a-z0-9-]/gi, "")}.json` : null;
+  if (path && !refresh) {
+    const hit = await readJson<Research>(path);
+    if (hit?.brief) return hit;
+  }
+  const { researchTopic } = await import("@/lib/pipeline/openai");
+  const r = await researchTopic({ idea, outputLanguage: language, model: "gpt-5-mini" });
+  const out = { brief: r.brief, sources: r.sources };
+  if (path) await writeJson(path, out);
+  return out;
 }
 
 async function store(run: string, name: string, media: Media): Promise<string> {
@@ -89,6 +124,91 @@ export async function POST(req: Request) {
       }
       case "models":
         return NextResponse.json({ success: true, models: await listGoogleModels() });
+      case "text-models": {
+        const { listOpenAIModels } = await import("@/lib/lab/script-eval");
+        const google = (await listGoogleModels().catch(() => [])) as Array<{ name: string; methods: string[] }>;
+        return NextResponse.json({ success: true, openai: await listOpenAIModels(), google: google.map((m) => m.name) });
+      }
+      case "eval-topics": {
+        const { EVAL_TOPICS, JUDGE_MODEL } = await import("@/lib/lab/script-eval");
+        const { SCRIPT_MODEL } = await import("@/lib/pipeline/llm");
+        const { SCRIPT_PROMPT_VERSION } = await import("@/lib/pipeline/openai");
+        return NextResponse.json({ success: true, topics: EVAL_TOPICS, judge: JUDGE_MODEL, current: SCRIPT_MODEL, promptVersion: SCRIPT_PROMPT_VERSION });
+      }
+      case "research": {
+        const r = await labResearch(String(body.idea ?? ""), String(body.language ?? "English"), typeof body.cacheId === "string" ? body.cacheId : undefined, body.refresh === true);
+        return NextResponse.json({ success: true, ...r, ms: Date.now() - started });
+      }
+      case "script": {
+        // One script-writer run: optional research → full generateScript → optional judge.
+        const idea = String(body.idea ?? "").trim();
+        const language = String(body.language ?? "English");
+        const style = String(body.style ?? "Documentary");
+        const duration = String(body.duration ?? "60 seconds");
+        const model = String(body.model ?? "gpt-5-mini");
+        let research: string | null = typeof body.research === "string" && body.research.trim() ? body.research : null;
+        if (!research && body.withResearch === true) {
+          research = (await labResearch(idea, language, typeof body.cacheId === "string" ? body.cacheId : undefined)).brief;
+        }
+        const { generateScript } = await import("@/lib/pipeline/openai");
+        const { narrationWordCount, wordRange } = await import("@/lib/pipeline/narration");
+        const { languageCode } = await import("@/lib/pipeline/options");
+        const { estimateCostUsd, splitProvider } = await import("@/lib/pipeline/usage");
+        const t0 = Date.now();
+        const r = await generateScript({
+          idea,
+          platform: "YouTube Shorts",
+          style,
+          duration,
+          outputLanguage: language,
+          model,
+          orientation: "vertical",
+          research,
+          notes: typeof body.notes === "string" && body.notes.trim() ? body.notes.trim().slice(0, 500) : null,
+        });
+        const writeMs = Date.now() - t0;
+        const range = wordRange(duration, languageCode(language));
+        const words = narrationWordCount(r.hook, r.script);
+        const { provider, model: m } = splitProvider(r.usageKey ?? `openai:${model}`);
+        const costUsd = estimateCostUsd(provider, m, { inputTokens: r.usage?.inputTokens, outputTokens: r.usage?.outputTokens });
+        let judge = null;
+        if (body.judge === true) {
+          const { judgeScript } = await import("@/lib/lab/script-eval");
+          judge = (await judgeScript({ idea, language, hook: r.hook, script: r.script, research, wordCount: words, range })).scores;
+        }
+        return NextResponse.json({
+          success: true,
+          ms: Date.now() - started,
+          writeMs,
+          model: r.usageKey,
+          promptVersion: r.promptVersion,
+          hook: r.hook,
+          script: r.script,
+          words,
+          range,
+          plan: r.plan,
+          factCheck: r.factCheck,
+          usage: r.usage,
+          costUsd,
+          research,
+          judge,
+        });
+      }
+      case "save-eval": {
+        const id = `${new Date().toISOString().replace(/[:.]/g, "-")}-${String(body.model ?? "model").replace(/[^a-z0-9.-]/gi, "_")}`;
+        const url = await writeJson(`lab/eval/runs/${id}.json`, { savedAt: new Date().toISOString(), ...(body.result as object) });
+        return NextResponse.json({ success: true, url, id });
+      }
+      case "list-evals": {
+        const db = admin();
+        const { data } = await db.storage.from("videos").list("lab/eval/runs", { limit: 100, sortBy: { column: "name", order: "desc" } });
+        const runs = [];
+        for (const f of (data ?? []).slice(0, 30)) {
+          const j = await readJson<Record<string, unknown>>(`lab/eval/runs/${f.name}`);
+          if (j) runs.push({ id: f.name.replace(/\.json$/, ""), model: j.model, promptVersion: j.promptVersion, average: j.average, count: j.count, savedAt: j.savedAt, costUsd: j.costUsd });
+        }
+        return NextResponse.json({ success: true, runs });
+      }
       default:
         return NextResponse.json({ success: false, error: "Unknown action." }, { status: 400 });
     }

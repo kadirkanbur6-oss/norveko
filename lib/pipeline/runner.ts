@@ -47,6 +47,7 @@ import { getTemplate } from "@/lib/pipeline/templates";
 import { musicCredit, pickMusicTrack, type MusicTrack } from "@/lib/pipeline/music";
 import { defaultOrientation, languageCode } from "@/lib/pipeline/options";
 import { narrationWordCount, rangeForMeasuredRatio } from "@/lib/pipeline/narration";
+import { SCRIPT_MODEL, llmUsageKey } from "@/lib/pipeline/llm";
 import {
   estimateCostUsd,
   recordProviderUsage,
@@ -95,7 +96,7 @@ export interface JobRow {
   duration: string | null;
   output_language: string | null;
   /** Optional UI choices stored on the job (orientation, template id). */
-  options?: { orientation?: "vertical" | "horizontal"; template?: string | null } | null;
+  options?: { orientation?: "vertical" | "horizontal"; template?: string | null; notes?: string | null } | null;
   status: "queued" | "running" | "completed" | "failed";
   current_step: string | null;
   steps: Record<string, StepRecord>;
@@ -1033,6 +1034,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
           outputLanguage: job.output_language ?? "EN",
           model,
           today: new Date(now()).toISOString().slice(0, 10),
+          notes: job.options?.notes ?? null,
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -1065,7 +1067,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
     }
 
     if (stepId === "script") {
-      const model = def.provider.split(":")[1] ?? "gpt-5-mini";
+      const model = SCRIPT_MODEL;
       const orientation = job.options?.orientation ?? defaultOrientation(job.platform ?? "");
       const startedAt = now();
       let result: Awaited<ReturnType<typeof providers.generateScript>>;
@@ -1080,9 +1082,11 @@ export function createPipelineRunner(deps: RunnerDeps) {
           orientation,
           brief: getTemplate(job.options?.template)?.brief ?? null,
           research: typeof job.steps?.research?.brief === "string" ? (job.steps.research.brief as string) : null,
+          notes: job.options?.notes ?? null,
         });
       } catch (err) {
         await logUsage(job, "script", {
+          usageKey: llmUsageKey(model),
           unit: "tokens",
           quantity: 0,
           durationMs: now() - startedAt,
@@ -1092,6 +1096,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
         throw err;
       }
       await logUsage(job, "script", {
+        usageKey: result.usageKey ?? llmUsageKey(model),
         unit: "tokens",
         quantity: (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0),
         inputTokens: result.usage?.inputTokens,
@@ -1109,6 +1114,10 @@ export function createPipelineRunner(deps: RunnerDeps) {
         tags: result.tags,
         thumbnailIdea: result.thumbnailIdea,
         thumbnailPrompt: result.thumbnailPrompt,
+        model: llmUsageKey(model),
+        prompt_version: result.promptVersion ?? null,
+        plan: result.plan ?? null,
+        fact_check: result.factCheck ?? null,
       });
       return;
     }
@@ -1166,7 +1175,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
           const hook = typeof job.steps?.script?.hook === "string" ? job.steps.script.hook : "";
           const count = narrationWordCount("", script);
           const range = rangeForMeasuredRatio(count, ratio, targetSeconds);
-          const model = getPipelineStepDefinition("script").provider.split(":")[1] ?? "gpt-5-mini";
+          const model = SCRIPT_MODEL;
           const rewriteAt = now();
           try {
             const fixed = await providers.reviseNarration({
@@ -1343,6 +1352,13 @@ export function createPipelineRunner(deps: RunnerDeps) {
             captions,
             finalVideoUrl,
             research,
+            scriptMeta: {
+              model: typeof script.model === "string" ? script.model : undefined,
+              promptVersion: typeof script.prompt_version === "string" ? script.prompt_version : undefined,
+              factCheckIssues: Array.isArray((script.fact_check as { issues?: unknown[] } | undefined)?.issues)
+                ? (script.fact_check as { issues: unknown[] }).issues.length
+                : undefined,
+            },
           },
         })
         .select("id")

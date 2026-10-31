@@ -20,6 +20,7 @@ import ExportMenu from "../../components/ExportMenu";
 import AudioPlayer from "../../components/AudioPlayer";
 import VideoPlayer from "@/app/components/VideoPlayer";
 import VoiceoverDownloads from "../../components/VoiceoverDownloads";
+import ScriptFeedback from "../../components/ScriptFeedback";
 
 function slugify(s: string): string {
   return (
@@ -670,6 +671,14 @@ export default function ProjectDetailPage() {
                       className="mt-4"
                     />
                   </div>
+                )}
+                {normalizedProjectContent?.script && (
+                  <ScriptFeedback
+                    projectId={projectId}
+                    initial={
+                      (project.content as { feedback?: { rating: "up" | "down"; note?: string } } | null)?.feedback ?? null
+                    }
+                  />
                 )}
                 <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
                   {/* Tabs */}

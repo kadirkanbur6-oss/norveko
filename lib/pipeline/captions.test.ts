@@ -192,3 +192,26 @@ test("estimateAlignment spreads characters over the audio length with pauses at 
   const durB = a.character_end_times_seconds[0] - a.character_start_times_seconds[0];
   assert.ok(durDot > durB * 4, "full stop is a longer pause");
 });
+
+/* ---------------- Script writer helpers (31 Oct) ---------------- */
+
+test("llmProvider routes model ids to the right provider", async () => {
+  const { llmProvider, llmUsageKey } = await import("./llm");
+  assert.deepEqual(llmProvider("gpt-5-mini"), { provider: "openai", id: "gpt-5-mini" });
+  assert.deepEqual(llmProvider("openai:gpt-5"), { provider: "openai", id: "gpt-5" });
+  assert.deepEqual(llmProvider("gemini:gemini-2.5-pro"), { provider: "gemini", id: "gemini-2.5-pro" });
+  assert.deepEqual(llmProvider("gemini-3-pro-preview"), { provider: "gemini", id: "gemini-3-pro-preview" });
+  assert.equal(llmUsageKey("gpt-5-mini"), "openai:gpt-5-mini");
+});
+
+test("style examples: mystery/horror share one, ads get none, hook opens the script", async () => {
+  const { exampleForStyle, exampleBlock } = await import("./script-examples");
+  assert.equal(exampleForStyle("Horror"), exampleForStyle("Mystery"));
+  assert.equal(exampleForStyle("Ad / Promo"), null);
+  assert.equal(exampleBlock("Ad / Promo"), "");
+  for (const s of ["Mystery", "Documentary", "Educational", "Cinematic"]) {
+    const ex = exampleForStyle(s)!;
+    assert.ok(ex.script.startsWith(ex.hook), `${s} example must open with its hook`);
+    assert.match(exampleBlock(s), /never reuse its topic/);
+  }
+});

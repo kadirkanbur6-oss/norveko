@@ -48,6 +48,11 @@ export const PRICE_LIST: Record<string, Price> = {
   // OpenAI — per 1M tokens. (Web search calls, $10/1K, are not token-billed
   // and not included here.)
   "openai:gpt-5-mini": { inputPer1M: 0.25, outputPer1M: 2.0 },
+  "openai:gpt-5": { inputPer1M: 1.25, outputPer1M: 10.0 },
+  // Gemini text models (script-writer candidates compared in /lab).
+  "gemini:gemini-2.5-pro": { inputPer1M: 1.25, outputPer1M: 10.0 },
+  "gemini:gemini-2.5-flash": { inputPer1M: 0.3, outputPer1M: 2.5 },
+  "gemini:gemini-3-pro-preview": { inputPer1M: 2.0, outputPer1M: 12.0 },
   // ElevenLabs — per character. API rate $0.08/1K on every plan (31 Oct 2026);
   // plan credits are prepaid, so use the Creator effective rate ≈ $0.18/1K.
   "elevenlabs:eleven_multilingual_v2": { perUnit: 0.00018 },

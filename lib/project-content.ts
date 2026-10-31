@@ -38,7 +38,22 @@ export interface ProjectContent {
   finalVideoUrl?: string;
   /** Web research brief + sources the script was built on. */
   research?: { brief: string; sources: Array<{ title: string; url: string }> };
+  /**
+   * Server-owned: the creator's rating of the script (POST /api/projects/[id]/feedback)
+   * and which writer/prompt produced it. PATCH never changes these.
+   */
+  feedback?: ProjectFeedback;
+  scriptMeta?: { model?: string; promptVersion?: string; factCheckIssues?: number };
 }
+
+export interface ProjectFeedback {
+  rating: "up" | "down";
+  note?: string;
+  at: string;
+}
+
+/** Keys PATCH must carry over from the stored row instead of the request body. */
+export const SERVER_OWNED_CONTENT_KEYS = ["feedback", "scriptMeta"] as const;
 
 const LIMITS = {
   hook: 1_000,

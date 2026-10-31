@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/supabase-server";
-import { sanitizeProjectContent } from "@/lib/project-content";
+import { SERVER_OWNED_CONTENT_KEYS, sanitizeProjectContent } from "@/lib/project-content";
 
 
 // Tek projeyi getir
@@ -82,7 +82,19 @@ export async function PATCH(
           { status: 400 }
         );
       }
-      updates.content = cleaned.content;
+      // Ratings and writer metadata are server-owned: keep the stored values.
+      const { data: current } = await supabase
+        .from("projects")
+        .select("content")
+        .eq("id", id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const stored = (current?.content ?? {}) as Record<string, unknown>;
+      const merged: Record<string, unknown> = { ...cleaned.content };
+      for (const key of SERVER_OWNED_CONTENT_KEYS) {
+        if (stored[key] !== undefined) merged[key] = stored[key];
+      }
+      updates.content = merged;
     }
 
     if (typeof title === "string" && title.trim().length > 200) {

@@ -69,6 +69,24 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
   prompt'unda ayrıca gerçek kişi/marka kuralı: videoPrompt'lar yüz, arma,
   forma ismi, skor tabelası, okunur yazı istemez (AI görseller bunları
   uyduruyor).
+- **Senaryo yazımı (31 Ekim, prompt v`2026-10-31.plan-factcheck`)**: `generateScript` 4 aşama —
+  (1) `planStory()` araştırmadan olgular/sorular/beat'ler/reveal/3 hook adayı/şüpheli iddialar
+  (JSON, effort low), (2) taslak = ana prompt + STORY PLAN + stil örneği
+  (`lib/pipeline/script-examples.ts`: Mary Celeste/Tunguska/gökyüzü; kopyalanması yasak) +
+  "Angle & notes" (`options.notes`, ≤500 kr, `/chat`'te "+ Add an angle or notes", araştırmaya da
+  gider), (3) `editNarration()` editör, (4) `factCheckNarration()` (yalnız araştırma varsa; her
+  cümle brief'e karşı, sorunlar `steps.script.fact_check.issues`), sonra uzunluk düzeltmesi
+  (hook'u korur). Süre bütçesi 250 sn: süre azsa opsiyonel geçişler atlanır. Tüm LLM çağrıları
+  `lib/pipeline/llm.ts` `chatJSON()` üzerinden — model id `gpt-…`/`openai:…` → OpenAI,
+  `gemini:…`/`gemini-…` → Gemini. Yazar modeli env **`SCRIPT_MODEL`** (varsayılan `gpt-5-mini`;
+  11 Aralık'ta kapanacak → lab'da seçilecek). `steps.script.model/prompt_version/plan/fact_check`;
+  proje `content.scriptMeta`. **Lab "0 · Script writer"** (`app/lab/ScriptLab.tsx`): aynı fikir +
+  aynı araştırma 4 modelle (düzenlenebilir id), yargıç puanı; **test seti** 10 sabit konu
+  (`lib/lab/script-eval.ts` `EVAL_TOPICS`, TR+EN, araştırma `videos/lab/eval/research/` önbellekte),
+  yargıç `SCRIPT_JUDGE_MODEL` (varsayılan `gpt-5`), doğruluk ×2 + uzunluk %10 → 0–100; sonuçlar
+  `videos/lab/eval/runs/` (Save + geçmiş tablosu). **👍/👎**: proje sayfasında `ScriptFeedback`,
+  `POST /api/projects/[id]/feedback` → `content.feedback`; PATCH `feedback`/`scriptMeta`'yı
+  sunucudan korur (`SERVER_OWNED_CONTENT_KEYS`). `/api/lab` `maxDuration` 300.
 - **Süre tutarlılığı** (üç katman): (1) `lib/pipeline/narration.ts` —
   **dil bazlı** kelime hızı `wordsPerSecond(code)` (en 2,4 · tr 1,85 · de
   1,9 · fi 1,7 …; 30 Ekim: Türkçe 142–144 kelime 71–81 sn çıkınca eklendi);
