@@ -457,8 +457,9 @@ test("provider usage is logged per step with units and an estimated cost", async
   const script = usage[0];
   assert.equal(script.inputTokens, 1200);
   assert.equal(script.outputTokens, 800);
-  // gpt-5-mini list price: 1200 in @ $0.25/M + 800 out @ $2/M
-  assert.equal(script.estimatedCostUsd, 0.0019);
+  // gpt-6.1-terra list price: 1200 in @ $1/M + 800 out @ $5/M
+  assert.equal(script.model, "gpt-6.1-terra");
+  assert.equal(script.estimatedCostUsd, 0.0052);
   assert.ok(usage.every((u) => u.jobId === id && u.userId === "u1"));
 });
 
