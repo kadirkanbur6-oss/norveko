@@ -115,10 +115,10 @@ Paddle (ödeme, Merchant of Record) · YouTube Data API v3 (analytics, opsiyonel
 Tek kaynak `lib/pipeline/steps.ts`: `creditsForCost(usd) = ceil(usd / (0,40 ×
 $0.01111))` ≈ maliyet × 225 (Business paketi Paddle sonrası en kötü gelir/kredi).
 Maliyetler `provider_usage` gerçek ortalamaları (lab `usage-report`) + liste fiyatları:
-araştırma $0.045 → **11** · senaryo 60 sn $0.04 → **10** (3 dk 16, 8 dk 28, `scriptCredits`)
-· seslendirme **dakika başına** Gemini $0.05 → **12**, ElevenLabs $0.20 → **46**
+araştırma $0.045 → **11** · senaryo 30 sn **7**, 60 sn $0.04 → **10** (3 dk 16, 8 dk 28, `scriptCredits`)
+· seslendirme **başlanan 30 sn başına** Gemini **6** (=12/dk), ElevenLabs **23** (=46/dk) — 31 Ekim öğleden sonra: 30 sn ile 60 sn aynı fiyat çıkıyordu (Kadir), dakika→30 sn dilimine geçildi
 (`voiceoverCredits(engine, duration)`; motor `voiceEngine` start route'ta ses id'sinden)
-· altyazı **3/dk** · thumbnail $0.067 → **16** · AI görsel $0.04 → **10** · image→video
+· altyazı **2 / 30 sn** (4/dk) · thumbnail $0.067 → **16** · AI görsel $0.04 → **10** · image→video
 klip $0.17 → **39** · Kling klip $0.42 → **95** · render $0.10/30 sn → **23**.
 60 sn tam video: hybrid-image **305** (eski 363), stills 218, cinematic-image 566,
 hybrid-Kling 473. Her adımın ödenen kredisi `initialStepsState` ile adıma yazılır

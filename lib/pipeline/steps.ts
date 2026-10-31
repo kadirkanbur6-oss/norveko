@@ -103,8 +103,9 @@ export function durationSeconds(label: string | undefined): number {
   const n = Number(d.match(/\d+/)?.[0] ?? 60);
   return d.includes("minute") ? n * 60 : n;
 }
-function startedMinutes(label: string | undefined): number {
-  return Math.max(1, Math.ceil(durationSeconds(label) / 60));
+/** Narration is billed per started 30 s, so a 30 s video costs less than a 60 s one. */
+function startedHalfMinutes(label: string | undefined): number {
+  return Math.max(1, Math.ceil(durationSeconds(label) / 30));
 }
 
 /**
@@ -113,6 +114,7 @@ function startedMinutes(label: string | undefined): number {
  */
 export function scriptCredits(duration: string | undefined): number {
   const s = durationSeconds(duration);
+  if (s <= 30) return creditsForCost(0.03); // 7
   if (s <= 60) return creditsForCost(0.04); // 10
   if (s <= 180) return creditsForCost(0.07); // 16
   return creditsForCost(0.12); // 28
@@ -123,24 +125,30 @@ export function scriptCredits(duration: string | undefined): number {
  * length retake + forced alignment) ≈ $0.05/min. ElevenLabs ≈ 900 characters
  * a minute × $0.18/1K + retake ≈ $0.20/min.
  */
+export const VOICE_CREDITS_PER_30S: Record<VoiceEngine, number> = {
+  gemini: creditsForCost(0.025), // 6
+  elevenlabs: creditsForCost(0.1), // 23
+};
+/** Per-minute figures for display (2 × the 30 s price). */
 export const VOICE_CREDITS_PER_MIN: Record<VoiceEngine, number> = {
-  gemini: creditsForCost(0.05), // 12
-  elevenlabs: creditsForCost(0.2), // 46
+  gemini: VOICE_CREDITS_PER_30S.gemini * 2, // 12
+  elevenlabs: VOICE_CREDITS_PER_30S.elevenlabs * 2, // 46
 };
 export function voiceoverCredits(engine: VoiceEngine | undefined, duration: string | undefined): number {
-  return VOICE_CREDITS_PER_MIN[engine === "elevenlabs" ? "elevenlabs" : "gemini"] * startedMinutes(duration);
+  return VOICE_CREDITS_PER_30S[engine === "elevenlabs" ? "elevenlabs" : "gemini"] * startedHalfMinutes(duration);
 }
 
-/** Word-timed subtitles per started minute (alignment ≈ $0.005/min + compute). */
-export const SUBTITLES_CREDITS_PER_MIN = 3;
+/** Word-timed subtitles per started 30 s (alignment ≈ $0.005/min + compute). */
+export const SUBTITLES_CREDITS_PER_30S = 2;
+export const SUBTITLES_CREDITS_PER_MIN = SUBTITLES_CREDITS_PER_30S * 2; // 4
 export function subtitlesCredits(duration: string | undefined): number {
-  return SUBTITLES_CREDITS_PER_MIN * startedMinutes(duration);
+  return SUBTITLES_CREDITS_PER_30S * startedHalfMinutes(duration);
 }
 
 /* ---------------- Subtitles (voiceover add-on) pricing ---------------- */
 
 /** Subtitles for a ≤ 60 s video (per-minute pricing: subtitlesCredits()). */
-export const SUBTITLES_CREDITS = SUBTITLES_CREDITS_PER_MIN;
+export const SUBTITLES_CREDITS = SUBTITLES_CREDITS_PER_30S;
 
 /* ---------------- Video pricing (≥70% margin target) ----------------
  * Revenue per credit after Paddle fees is ≈ $0.011 (Business pack, worst
@@ -343,10 +351,10 @@ export function creditBreakdown(opts: boolean | PipelineOptions = false): Array<
       continue;
     }
     if (step.id === "voiceover") {
-      const mins = Math.max(1, Math.ceil(durationSeconds(n.duration) / 60));
+      const secs = durationSeconds(n.duration);
       items.push({
         id: "voiceover",
-        label: `Voiceover (${n.voiceEngine === "elevenlabs" ? "ElevenLabs voice" : "Norveko narrator"}, ${mins} min)`,
+        label: `Voiceover (${n.voiceEngine === "elevenlabs" ? "ElevenLabs voice" : "Norveko narrator"}, ${secs < 60 ? `${secs} s` : `${Math.round(secs / 60)} min`})`,
         credits: voiceoverCredits(n.voiceEngine, n.duration),
       });
       if (n.subtitles) items.push({ id: "subtitles", label: "Auto subtitles", credits: subtitlesCredits(n.duration) });

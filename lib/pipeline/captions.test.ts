@@ -93,6 +93,7 @@ test("pricing: subtitles are charged only together with a voiceover; voice price
   assert.equal(totalPipelineCredits({ voiceover: false, subtitles: true }), base, "no voiceover → no subtitles charge");
   assert.equal(voiceoverCredits("gemini", "8 minutes"), 8 * voiceoverCredits("gemini", "60 seconds"), "8 minutes = 8 started minutes");
   assert.ok(voiceoverCredits("elevenlabs", "60 seconds") > 3 * voiceoverCredits("gemini", "60 seconds"), "ElevenLabs costs more");
+  assert.ok(totalPipelineCredits({ voiceover: true, subtitles: true, duration: "30 seconds" }) < totalPipelineCredits({ voiceover: true, subtitles: true, duration: "60 seconds" }), "30 s is cheaper than 60 s");
   const steps = initialStepsState({ voiceover: true, subtitles: true });
   assert.equal(steps.voiceover.subtitles, true);
   const o = optionsFromSteps(steps);
@@ -111,7 +112,10 @@ test("pricing: every item keeps ≥ 60% margin at the Business-pack revenue per 
   const margin = (credits: number, usd: number) => 1 - usd / (credits * s.REVENUE_PER_CREDIT_USD);
   const checks: Array<[string, number, number]> = [
     ["research", s.RESEARCH_CREDITS, 0.045],
+    ["script 30 s", s.scriptCredits("30 seconds"), 0.03],
     ["script 60 s", s.scriptCredits("60 seconds"), 0.04],
+    ["gemini voice / 30 s", s.VOICE_CREDITS_PER_30S.gemini, 0.025],
+    ["elevenlabs voice / 30 s", s.VOICE_CREDITS_PER_30S.elevenlabs, 0.1],
     ["script 8 min", s.scriptCredits("8 minutes"), 0.12],
     ["gemini voice / min", s.VOICE_CREDITS_PER_MIN.gemini, 0.05],
     ["elevenlabs voice / min", s.VOICE_CREDITS_PER_MIN.elevenlabs, 0.2],
