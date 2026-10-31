@@ -294,7 +294,9 @@ export async function labVideoPoll(h: VideoHandle): Promise<{ done: boolean; med
 /* ---------------- Discovery ---------------- */
 
 /** Google models available to this key that look relevant (image / video / TTS). */
-export async function listGoogleModels(): Promise<Array<{ name: string; methods: string[] }>> {
+export async function listGoogleModels(
+  filter: RegExp = /image|imagen|veo|omni|tts|banana|video/i
+): Promise<Array<{ name: string; methods: string[] }>> {
   const key = need("GEMINI_API_KEY");
   const out: Array<{ name: string; methods: string[] }> = [];
   let pageToken = "";
@@ -304,7 +306,7 @@ export async function listGoogleModels(): Promise<Array<{ name: string; methods:
     const data = await res.json();
     for (const m of data?.models ?? []) {
       const name = String(m.name ?? "").replace(/^models\//, "");
-      if (/image|imagen|veo|omni|tts|banana|video/i.test(name)) out.push({ name, methods: m.supportedGenerationMethods ?? [] });
+      if (filter.test(name)) out.push({ name, methods: m.supportedGenerationMethods ?? [] });
     }
     pageToken = data?.nextPageToken ?? "";
     if (!pageToken) break;

@@ -126,8 +126,10 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true, models: await listGoogleModels() });
       case "text-models": {
         const { listOpenAIModels } = await import("@/lib/lab/script-eval");
-        const google = (await listGoogleModels().catch(() => [])) as Array<{ name: string; methods: string[] }>;
-        return NextResponse.json({ success: true, openai: await listOpenAIModels(), google: google.map((m) => m.name) });
+        const google = (await listGoogleModels(/^gemini-/i).catch(() => [])) as Array<{ name: string; methods: string[] }>;
+        return NextResponse.json({ success: true, openai: await listOpenAIModels(), google: google
+            .filter((m) => m.methods.includes("generateContent") && !/image|tts|audio|live|embed|omni|banana|robot/i.test(m.name))
+            .map((m) => m.name) });
       }
       case "eval-topics": {
         const { EVAL_TOPICS, JUDGE_MODEL } = await import("@/lib/lab/script-eval");
