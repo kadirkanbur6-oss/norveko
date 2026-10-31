@@ -1022,8 +1022,6 @@ export function createPipelineRunner(deps: RunnerDeps) {
   }
 
   async function executeStep(job: JobRow, stepId: PipelineStepId): Promise<void> {
-    const def = getPipelineStepDefinition(stepId);
-
     if (stepId === "research") {
       const model = RESEARCH_MODEL;
       const startedAt = now();
