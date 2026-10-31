@@ -148,6 +148,19 @@ export default function PrivacyPage() {
       </section>
 
       <section>
+        <h2>4.2 TikTok</h2>
+        <p>
+          If you connect a TikTok account, Norveko uses TikTok&apos;s Login Kit and
+          Content Posting API to read your basic profile (display name and
+          picture) and to post the videos you choose to publish. We store an
+          encrypted access grant and your profile name and picture, and use them
+          only to post videos you ask us to post. You can disconnect at any time
+          in Settings or in your TikTok app&apos;s security settings; deleting your
+          Norveko account also deletes this data.
+        </p>
+      </section>
+
+      <section>
         <h2>5. Cookies</h2>
         <p>
           We use essential cookies to keep you signed in and to operate core

@@ -23,6 +23,7 @@ import VoiceoverDownloads from "../../components/VoiceoverDownloads";
 import ScriptFeedback from "../../components/ScriptFeedback";
 import YouTubePublish from "../../components/YouTubePublish";
 import VideoEditor from "../../components/VideoEditor";
+import TikTokPublish from "../../components/TikTokPublish";
 
 function slugify(s: string): string {
   return (
@@ -682,6 +683,16 @@ export default function ProjectDetailPage() {
                     description={normalizedProjectContent.description}
                     tags={normalizedProjectContent.tags}
                     initial={(project.content as { youtube?: Parameters<typeof YouTubePublish>[0]["initial"] } | null)?.youtube ?? null}
+                  />
+                )}
+                {normalizedProjectContent?.finalVideoUrl && (
+                  <TikTokPublish
+                    projectId={projectId}
+                    defaultCaption={[
+                      normalizedProjectContent.titles[0] ?? project.title,
+                      normalizedProjectContent.tags.slice(0, 5).map((t) => `#${t.replace(/[^\p{L}\p{N}_]/gu, "")}`).filter((t) => t.length > 1).join(" "),
+                    ].filter(Boolean).join("\n\n")}
+                    initial={(project.content as { tiktok?: Parameters<typeof TikTokPublish>[0]["initial"] } | null)?.tiktok ?? null}
                   />
                 )}
                 {normalizedProjectContent?.finalVideoUrl && (

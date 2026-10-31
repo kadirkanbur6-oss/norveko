@@ -15,6 +15,8 @@ const BUCKETS = ["thumbnails", "voiceovers", "videos"] as const;
 // Deleted in this order so FK-style dependencies (if any) resolve.
 const USER_TABLES = [
   "youtube_connections",
+  "tiktok_connections",
+  "series",
   "credit_transactions",
   "credit_purchases",
   "pipeline_jobs",
@@ -138,6 +140,14 @@ export async function DELETE(req: Request) {
       const { getConnection, decryptToken, revokeToken } = await import("@/lib/youtube/oauth");
       const yt = await getConnection(client, user.id);
       if (yt) await revokeToken(decryptToken(yt.refresh_token_enc));
+    } catch {
+      // table missing or already revoked
+    }
+
+    try {
+      const { tiktokAccessToken, revokeTikTok } = await import("@/lib/tiktok/client");
+      const tt = await tiktokAccessToken(client, user.id);
+      if (tt) await revokeTikTok(tt.token);
     } catch {
       // table missing or already revoked
     }

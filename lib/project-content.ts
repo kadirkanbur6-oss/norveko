@@ -50,6 +50,17 @@ export interface ProjectContent {
   cleanAssets?: { thumbnailUrl?: string };
   /** Server-owned: the last direct upload to YouTube (POST /api/projects/[id]/youtube). */
   youtube?: ProjectYouTubeUpload;
+  /** Server-owned: the last direct post to TikTok (POST /api/projects/[id]/tiktok). */
+  tiktok?: ProjectTikTokPost;
+}
+
+export interface ProjectTikTokPost {
+  publishId: string;
+  status: string;
+  privacy: string;
+  displayName?: string;
+  postId?: string;
+  postedAt: string;
 }
 
 export interface ProjectYouTubeUpload {
@@ -71,7 +82,7 @@ export interface ProjectFeedback {
 }
 
 /** Keys PATCH must carry over from the stored row instead of the request body. */
-export const SERVER_OWNED_CONTENT_KEYS = ["feedback", "scriptMeta", "watermarked", "cleanAssets", "youtube"] as const;
+export const SERVER_OWNED_CONTENT_KEYS = ["feedback", "scriptMeta", "watermarked", "cleanAssets", "youtube", "tiktok"] as const;
 
 const LIMITS = {
   hook: 1_000,

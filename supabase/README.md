@@ -163,3 +163,18 @@ create table if not exists public.youtube_connections (
 );
 alter table public.youtube_connections enable row level security;
 ```
+
+## TikTok posting (`tiktok_connections`, 31 Oct 2026)
+
+```sql
+create table if not exists public.tiktok_connections (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  open_id text not null,
+  display_name text,
+  avatar_url text,
+  refresh_token_enc text not null,
+  scope text,
+  created_at timestamptz not null default now()
+);
+alter table public.tiktok_connections enable row level security;
+```
