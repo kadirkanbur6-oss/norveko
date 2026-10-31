@@ -202,12 +202,12 @@ export async function createEpisode(db: SupabaseClient, series: SeriesRow, sched
 }
 
 /** Cron: create episodes for every active series' upcoming post times. */
-export async function runSeriesTick(db: SupabaseClient = adminDb(), now = new Date()) {
+export async function runSeriesTick(db: SupabaseClient = adminDb(), now = new Date(), lookaheadHours = LOOKAHEAD_HOURS) {
   const { data: rows, error } = await db.from("series").select("*").eq("active", true).limit(500);
   if (error) throw new Error(error.message);
   const summary = { series: rows?.length ?? 0, created: 0, skipped: 0, errors: 0 };
   for (const series of (rows ?? []) as SeriesRow[]) {
-    const slots = upcomingSlots({ days: series.days, time: series.post_time, timezone: series.timezone }, now, LOOKAHEAD_HOURS);
+    const slots = upcomingSlots({ days: series.days, time: series.post_time, timezone: series.timezone }, now, lookaheadHours);
     for (const at of slots) {
       try {
         const r = await createEpisode(db, series, at);

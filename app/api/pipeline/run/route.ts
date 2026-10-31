@@ -3,7 +3,7 @@
 // next step. Protected by PIPELINE_WORKER_SECRET (falls back to CRON_SECRET).
 
 import { NextRequest, NextResponse, after } from "next/server";
-import { getWorkerSecret, kickJob, runNextStep, watchJob } from "@/lib/pipeline/runner";
+import { getWorkerSecret, kickJob, runNextStep } from "@/lib/pipeline/runner";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,11 +31,10 @@ export async function POST(req: NextRequest) {
   if (outcome === "advanced") {
     // Chain the next step after this response is sent.
     after(() => kickJob(jobId as string));
-  } else if (outcome === "noop") {
-    // Async step in flight (or claimed elsewhere): keep it moving even when no
-    // browser is polling (series autopilot, closed tabs).
-    after(() => watchJob(jobId as string));
   }
+  // Async steps in flight and unattended jobs are advanced by the heartbeat
+  // (Supabase pg_cron → /api/pipeline/reap every minute), not by chaining:
+  // Vercel cuts long self-call chains with 508 INFINITE_LOOP_DETECTED.
 
   return NextResponse.json({ success: true, outcome });
 }

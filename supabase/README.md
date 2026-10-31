@@ -217,3 +217,34 @@ create table if not exists public.series_episodes (
 create index if not exists series_episodes_job_idx on public.series_episodes(job_id);
 alter table public.series_episodes enable row level security;
 ```
+
+## Heartbeat (pg_cron → Vercel, 31 Oct 2026)
+
+Vercel Hobby crons run once a day, and a function that keeps calling its own
+URL is cut off with `508 INFINITE_LOOP_DETECTED` after a few hops. Unattended
+jobs (series episodes, closed tabs) therefore get a heartbeat from Supabase:
+every minute `/api/pipeline/reap` (reconcile running jobs: poll async steps,
+re-kick forgotten steps) and hourly `/api/series/tick?lookahead=2`.
+`HEARTBEAT_SECRET` must match the Vercel env var of the same name.
+
+```sql
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+
+select cron.schedule('norveko-heartbeat', '* * * * *', $$
+  select net.http_get(
+    url := 'https://norveko.app/api/pipeline/reap',
+    headers := jsonb_build_object('Authorization', 'Bearer <HEARTBEAT_SECRET>'),
+    timeout_milliseconds := 5000
+  );
+$$);
+
+select cron.schedule('norveko-series-tick', '5 * * * *', $$
+  select net.http_get(
+    url := 'https://norveko.app/api/series/tick?lookahead=2',
+    headers := jsonb_build_object('Authorization', 'Bearer <HEARTBEAT_SECRET>'),
+    timeout_milliseconds := 5000
+  );
+$$);
+-- check: select * from cron.job; select * from cron.job_run_details order by start_time desc limit 10;
+```
