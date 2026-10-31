@@ -27,6 +27,7 @@ import {
 } from "@/lib/pipeline/features";
 import { DURATIONS, LANGUAGES, PLATFORMS, STYLES, ORIENTATIONS, defaultOrientation, isOneOf } from "@/lib/pipeline/options";
 import { getTemplate } from "@/lib/pipeline/templates";
+import { isCaptionStyle, isVisualStyle } from "@/lib/pipeline/visual-styles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -111,6 +112,8 @@ export async function POST(req: NextRequest) {
         ? (body.orientation as "vertical" | "horizontal")
         : defaultOrientation(platform);
     const template = getTemplate(typeof body.template === "string" ? body.template : null)?.id ?? null;
+    const visualStyle = isVisualStyle(body.visualStyle) ? body.visualStyle : null;
+    const captionStyle = isCaptionStyle(body.captionStyle) ? body.captionStyle : null;
 
     const voiceoverEnabled = body.includeVoiceover === true;
     let voiceId = typeof body.voiceId === "string" ? body.voiceId.trim() : "";
@@ -322,7 +325,7 @@ export async function POST(req: NextRequest) {
         style,
         duration,
         output_language: outputLanguage,
-        options: { orientation, template, notes, ...freeMarkers, trialVideo: options.trialVideo === true || undefined, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined, clipMode: resolved.fullVideo ? clipMode : undefined },
+        options: { orientation, template, notes, visualStyle, captionStyle, ...freeMarkers, trialVideo: options.trialVideo === true || undefined, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined, clipMode: resolved.fullVideo ? clipMode : undefined },
         status: "running",
         current_step: firstStep.id,
         steps,

@@ -371,3 +371,36 @@ test("youtube: refresh tokens are encrypted and return paths are same-site only"
   assert.equal(safeReturnTo("https://evil.com"), "/settings");
   assert.equal(safeReturnTo(null), "/settings");
 });
+
+// --- Look presets (lib/pipeline/visual-styles.ts) ---
+import { stillPrompt, clipPrompt, captionStyle, visualStyle, VISUAL_STYLES, CAPTION_STYLES } from "./visual-styles";
+import { buildEdit } from "./timeline";
+
+test("styles: visual style leads the still prompt and never allows text", () => {
+  const anime = stillPrompt("a lighthouse at dusk", "anime", "9:16");
+  assert.ok(anime.startsWith(visualStyle("anime").still));
+  assert.ok(anime.includes("no text"));
+  assert.ok(anime.endsWith("a lighthouse at dusk"));
+  assert.ok(stillPrompt("x", "unknown-id", "9:16").startsWith(VISUAL_STYLES[0].still));
+  assert.equal(clipPrompt("waves", "cinematic"), "waves");
+  assert.equal(clipPrompt("waves", null), "waves");
+  assert.ok(clipPrompt("waves", "archive").includes("16mm"));
+  assert.equal(new Set(VISUAL_STYLES.map((s) => s.id)).size, VISUAL_STYLES.length);
+  assert.equal(new Set(CAPTION_STYLES.map((s) => s.id)).size, CAPTION_STYLES.length);
+});
+
+test("styles: caption style shapes the burned-in subtitles", () => {
+  const base = { slots: [], voiceoverUrl: "https://x/v.wav", subtitlesUrl: "https://x/c.srt", orientation: "vertical" as const, totalSeconds: 30 };
+  const capOf = (edit: EditJson) =>
+    edit.timeline.tracks.flatMap((t: EditJson) => t.clips).find((c: EditJson) => c.asset.type === "rich-caption").asset;
+  const bold = capOf(buildEdit(base));
+  assert.equal(bold.animation.style, "karaoke");
+  assert.equal(bold.active.font.color, "#FFD60A");
+  const box = capOf(buildEdit({ ...base, captionStyle: "box" }));
+  assert.equal(box.active.font.background, "#7C3AED");
+  const clean = capOf(buildEdit({ ...base, captionStyle: "clean" }));
+  assert.equal(clean.animation.style, "none");
+  assert.equal(clean.active, undefined);
+  assert.equal(captionStyle("clean").uppercase, false);
+  assert.equal(captionStyle(undefined).id, "bold");
+});

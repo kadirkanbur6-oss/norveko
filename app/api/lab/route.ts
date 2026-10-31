@@ -273,6 +273,50 @@ export async function POST(req: Request) {
         await kickJob(jobId);
         return NextResponse.json({ success: true, version: steps.render.version });
       }
+      case "style-previews": {
+        // One sample still per visual style for the /chat picker:
+        // videos/previews/styles/<id>.jpg (3:4, 480 px). ?only=<id> regenerates one.
+        const { VISUAL_STYLES, stillPrompt } = await import("@/lib/pipeline/visual-styles");
+        const sharp = (await import("sharp")).default;
+        const scene =
+          typeof body.scene === "string" && body.scene.trim()
+            ? body.scene.trim()
+            : "A lone lighthouse on a rocky cliff above a stormy sea at dusk, its beam cutting through the mist, a small figure with a lantern on the path below.";
+        const only = typeof body.only === "string" ? body.only : null;
+        const model = process.env.GEMINI_SCENE_IMAGE_MODEL || "gemini-nano-banana-2.1";
+        const results: Array<{ id: string; ok: boolean; error?: string }> = [];
+        await Promise.all(
+          VISUAL_STYLES.filter((s) => !only || s.id === only).map(async (style) => {
+            try {
+              const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY ?? "" },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: stillPrompt(scene, style.id, "3:4") }] }],
+                  generationConfig: { imageConfig: { aspectRatio: "3:4" } },
+                }),
+                signal: AbortSignal.timeout(120_000),
+              });
+              if (!res.ok) throw new Error(`Gemini ${res.status}`);
+              const data = await res.json();
+              const part = (data?.candidates?.[0]?.content?.parts ?? []).find(
+                (p: { inlineData?: { data?: string }; inline_data?: { data?: string } }) => (p.inlineData ?? p.inline_data)?.data
+              );
+              const b64 = (part?.inlineData ?? part?.inline_data)?.data;
+              if (!b64) throw new Error("no image");
+              const jpg = await sharp(Buffer.from(b64, "base64")).resize(480).jpeg({ quality: 82 }).toBuffer();
+              const { error } = await admin()
+                .storage.from("videos")
+                .upload(`previews/styles/${style.id}.jpg`, jpg, { contentType: "image/jpeg", upsert: true, cacheControl: "3600" });
+              if (error) throw new Error(error.message);
+              results.push({ id: style.id, ok: true });
+            } catch (err) {
+              results.push({ id: style.id, ok: false, error: err instanceof Error ? err.message : String(err) });
+            }
+          })
+        );
+        return NextResponse.json({ success: true, results, ms: Date.now() - started });
+      }
       case "music-list": {
         const { MUSIC_TRACKS } = await import("@/lib/pipeline/music");
         return NextResponse.json({ success: true, tracks: MUSIC_TRACKS });

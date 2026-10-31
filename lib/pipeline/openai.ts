@@ -1,6 +1,7 @@
 // lib/pipeline/openai.ts
 // OpenAI ile full content package üretimi (server-side only).
 
+import { DEFAULT_VISUAL_STYLE, visualStyle } from "./visual-styles";
 import { languageCode, languagePromptName } from "./options";
 import { narrationWordCount, wordRange, wordsPerSecond } from "./narration";
 import { chatJSON, llmUsageKey, type LlmUsage } from "./llm";
@@ -52,10 +53,12 @@ interface ScriptParams {
   research?: string | null;
   /** Optional creator notes: angle, focus, things to include or avoid. */
   notes?: string | null;
+  /** Visual look preset id (lib/pipeline/visual-styles.ts). */
+  visualStyle?: string | null;
 }
 
 /** Bump when the script prompts change; stored on every job for comparisons. */
-export const SCRIPT_PROMPT_VERSION = "2026-10-31.plan-factcheck-music";
+export const SCRIPT_PROMPT_VERSION = "2026-10-31.plan-factcheck-music-look";
 
 export interface StoryPlan {
   /** The one question the viewer wants answered. */
@@ -131,6 +134,7 @@ Hook options (pick or sharpen one; it must stay literally true): ${plan.hooks.jo
 
 export async function generateScript(params: ScriptParams): Promise<ScriptResult> {
   const { idea, platform, style, duration, outputLanguage, orientation, brief, research, notes } = params;
+  const look = params.visualStyle && params.visualStyle !== DEFAULT_VISUAL_STYLE ? visualStyle(params.visualStyle) : null;
   const model = params.model;
   const aspect = orientation === "vertical" ? "9:16 vertical" : "16:9 horizontal";
   const range = wordRange(duration, languageCode(outputLanguage));
@@ -191,7 +195,7 @@ Rules:
 - VISUAL PROMPT rules — each videoPrompt is a complete shot description for a photoreal AI video/image model, 35–60 words, in this order: (1) shot type and lens (e.g. "extreme close-up, 85mm" / "wide aerial establishing shot"), (2) the single clear subject and what it is doing, (3) environment and era-accurate details, (4) lighting and time of day, (5) colour palette/mood, (6) one slow steady camera move. Every scene must show a DIFFERENT subject or location — never two scenes of the same thing; alternate wide and close shots; keep one consistent palette across the video. Prefer physical, filmable things (objects, places, hands, textures, weather, crowds from behind) over abstract concepts. No text, signs, maps with labels, diagrams, or UI in any shot.
 - STRICT LENGTH: the hook + script together are read aloud at ~${wordsPerSecond(languageCode(outputLanguage))} words per second in ${languagePromptName(outputLanguage)}. For the target duration they MUST total between ${range.min} and ${range.max} words (aim for ${range.target}). Count the words before answering; do not go under or over.
 - The video is ${aspect}; compose every videoPrompt and the thumbnail for that framing (subjects centred, room above and below the subject for vertical). Do NOT write the words "vertical", "portrait", "tall framing", "9:16", "horizontal" or "16:9" inside a videoPrompt — the aspect ratio is set separately, and those words make the video model rotate the picture. Describe a steady, level camera (slow push-in, gentle pan, static); never ask for camera roll, spinning, flipping or orbiting.
-- If the topic involves real people, teams, companies or brands: videoPrompts must NOT depict identifiable real people, faces, logos, crests or jersey names. Show atmosphere, places, objects, crowds and colours instead (e.g. "fans in red-and-yellow striped shirts"), and never ask for readable text, scoreboards or signs — generated text is always wrong.${brief ? `\n- ${brief}` : ""}${notes ? `\n- CREATOR'S NOTES (follow them unless they conflict with the facts or these rules): ${notes}` : ""}${research ? "" : "\n- NO VERIFIED RESEARCH IS AVAILABLE for this video. If it is about real people or historical events, only state facts you are highly confident are widely documented (well-known names, dates, places). Do NOT invent occupations, causes of death, locations, quotes, numbers or document details. When a story is a legend, a newspaper claim or disputed, say so explicitly (e.g. 'anlatılana göre', 'dönemin gazetelerine göre', 'according to the newspapers of the time'). Accuracy beats drama."}${research ? `\n\nVERIFIED RESEARCH BRIEF — the ONLY source of truth for any claim about real events, people, numbers, dates or outcomes. Build the script on these facts, do not invent or "remember" others, and do not contradict them:\n${research}` : ""}${plan ? planBlock(plan) : ""}${exampleBlock(style)}`;
+- If the topic involves real people, teams, companies or brands: videoPrompts must NOT depict identifiable real people, faces, logos, crests or jersey names. Show atmosphere, places, objects, crowds and colours instead (e.g. "fans in red-and-yellow striped shirts"), and never ask for readable text, scoreboards or signs — generated text is always wrong.${look ? `\n- VISUAL STYLE: every image and clip is rendered as "${look.label}" (${look.clip}). Write videoPrompts and the thumbnailIdea for that look: describe subject, composition, light and mood; do NOT write "photoreal", "photorealistic", "film still" or camera/lens words that fight the style.` : ""}${brief ? `\n- ${brief}` : ""}${notes ? `\n- CREATOR'S NOTES (follow them unless they conflict with the facts or these rules): ${notes}` : ""}${research ? "" : "\n- NO VERIFIED RESEARCH IS AVAILABLE for this video. If it is about real people or historical events, only state facts you are highly confident are widely documented (well-known names, dates, places). Do NOT invent occupations, causes of death, locations, quotes, numbers or document details. When a story is a legend, a newspaper claim or disputed, say so explicitly (e.g. 'anlatılana göre', 'dönemin gazetelerine göre', 'according to the newspapers of the time'). Accuracy beats drama."}${research ? `\n\nVERIFIED RESEARCH BRIEF — the ONLY source of truth for any claim about real events, people, numbers, dates or outcomes. Build the script on these facts, do not invent or "remember" others, and do not contradict them:\n${research}` : ""}${plan ? planBlock(plan) : ""}${exampleBlock(style)}`;
 
   const userPrompt = `Video idea: ${idea}
 Platform: ${platform}

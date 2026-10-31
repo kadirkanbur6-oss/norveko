@@ -48,6 +48,7 @@ import { musicCredit, pickMusicTrack, type MusicTrack } from "@/lib/pipeline/mus
 import { defaultOrientation, languageCode } from "@/lib/pipeline/options";
 import { narrationWordCount, rangeForMeasuredRatio } from "@/lib/pipeline/narration";
 import { RESEARCH_MODEL, SCRIPT_MODEL, llmUsageKey } from "@/lib/pipeline/llm";
+import { captionStyle, clipPrompt } from "@/lib/pipeline/visual-styles";
 import { WATERMARK_PUBLIC_PATH } from "@/lib/pipeline/watermark-policy";
 import {
   estimateCostUsd,
@@ -97,7 +98,14 @@ export interface JobRow {
   duration: string | null;
   output_language: string | null;
   /** Optional UI choices stored on the job (orientation, template id). */
-  options?: { orientation?: "vertical" | "horizontal"; template?: string | null; notes?: string | null } | null;
+  options?: {
+    orientation?: "vertical" | "horizontal";
+    template?: string | null;
+    notes?: string | null;
+    /** Look presets (lib/pipeline/visual-styles.ts). */
+    visualStyle?: string | null;
+    captionStyle?: string | null;
+  } | null;
   status: "queued" | "running" | "completed" | "failed";
   current_step: string | null;
   steps: Record<string, StepRecord>;
@@ -462,7 +470,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
       };
       try {
         clip.taskId = await providers.submitTextToVideo({
-          prompt,
+          prompt: clipPrompt(prompt, visualStyleOf(job)),
           duration: String(VIDEO_CLIP_SECONDS) as "5" | "10",
           aspectRatio,
           mode: "std",
@@ -589,6 +597,10 @@ export function createPipelineRunner(deps: RunnerDeps) {
     return Boolean(job.steps?.video?.plan) && Boolean(job.steps?.render);
   }
 
+  function visualStyleOf(job: JobRow): string | null {
+    return job.options?.visualStyle ?? null;
+  }
+
   function orientationOf(job: JobRow): "vertical" | "horizontal" {
     return (job.options?.orientation ?? defaultOrientation(job.platform ?? "")) === "vertical"
       ? "vertical"
@@ -678,7 +690,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
       if (slot.kind !== "kling" || !textClips) continue;
       try {
         slot.taskId = await providers.submitTextToVideo({
-          prompt: slot.prompt,
+          prompt: clipPrompt(slot.prompt, visualStyleOf(job)),
           duration: String(VIDEO_CLIP_SECONDS) as "5" | "10",
           aspectRatio,
           mode: "std",
@@ -797,7 +809,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
         changed = true;
         const startedAt = now();
         try {
-          const img = await providers.generateSceneImage(slot.prompt, job.id, job.user_id, slot.index + 1, orientationOf(job));
+          const img = await providers.generateSceneImage(slot.prompt, job.id, job.user_id, slot.index + 1, orientationOf(job), visualStyleOf(job));
           slot.imageUrl = img.imageUrl;
           await logUsage(job, "thumbnail", {
             usageKey: `gemini:${process.env.GEMINI_SCENE_IMAGE_MODEL || "gemini-nano-banana-2.1"}`,
@@ -812,7 +824,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
           continue;
         }
         try {
-          slot.fal = await providers.submitImageToVideo({ prompt: slot.prompt, imageUrl: slot.imageUrl, aspectRatio });
+          slot.fal = await providers.submitImageToVideo({ prompt: clipPrompt(slot.prompt, visualStyleOf(job)), imageUrl: slot.imageUrl, aspectRatio });
           slot.submittedAt = new Date(now()).toISOString();
           slot.status = "processing";
         } catch (err) {
@@ -841,7 +853,8 @@ export function createPipelineRunner(deps: RunnerDeps) {
           job.id,
           job.user_id,
           slot.index + 1,
-          orientationOf(job)
+          orientationOf(job),
+          visualStyleOf(job)
         );
         stills[key] = img.imageUrl;
         slot.url = img.imageUrl;
@@ -927,7 +940,14 @@ export function createPipelineRunner(deps: RunnerDeps) {
         // Burned-in captions are uppercase; do it here with the output
         // language's rules (Turkish İ/ı) — the renderer's textTransform is
         // locale-blind and turned "piramidi" into "PIRAMIDI".
-        .upload(path, Buffer.from(cuesToSrt(cues, { uppercase: languageCode(job.output_language ?? "English") }), "utf8"), { contentType: "application/x-subrip", upsert: true });
+        .upload(
+          path,
+          Buffer.from(
+            cuesToSrt(cues, captionStyle(job.options?.captionStyle).uppercase ? { uppercase: languageCode(job.output_language ?? "English") } : {}),
+            "utf8"
+          ),
+          { contentType: "application/x-subrip", upsert: true }
+        );
       if (error) {
         console.warn(`[pipeline] ${job.id} srt upload failed, rendering without subtitles:`, error.message);
       } else {
@@ -961,6 +981,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
       fallbackImageUrl: typeof job.steps?.thumbnail?.image_url === "string" ? job.steps.thumbnail.image_url : undefined,
       hookText: typeof job.steps?.script?.hook === "string" ? job.steps.script.hook : undefined,
       languageCode: languageCode(job.output_language ?? "English"),
+      captionStyle: job.options?.captionStyle ?? undefined,
     });
 
     const renderId = await providers.submitRender(edit);
@@ -1108,6 +1129,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
           brief: getTemplate(job.options?.template)?.brief ?? null,
           research: typeof job.steps?.research?.brief === "string" ? (job.steps.research.brief as string) : null,
           notes: job.options?.notes ?? null,
+          visualStyle: visualStyleOf(job),
         });
       } catch (err) {
         await logUsage(job, "script", {
@@ -1303,7 +1325,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
       const startedAt = now();
       let result: Awaited<ReturnType<typeof providers.generateThumbnail>>;
       try {
-        result = await providers.generateThumbnail(idea, job.id, orientation);
+        result = await providers.generateThumbnail(idea, job.id, orientation, visualStyleOf(job));
       } catch (err) {
         await logUsage(job, "thumbnail", {
           unit: "images",

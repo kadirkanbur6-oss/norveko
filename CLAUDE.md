@@ -170,6 +170,16 @@ Business 5000/$59.
   yükleme için Google OAuth doğrulaması + YouTube API denetimi gerekir. Testing modundaki OAuth
   uygulamasında refresh token 7 günde düşer. Yükleme kotası ~100 birim (Aralık 2025'ten beri), ayrı havuz.
   **Kurulum ✅ 31 Ekim:** Google "Norveko Web" istemcisi (yönlendirme `/api/youtube/callback`, yeni secret), Data access'e iki kapsam + gerekçe, uygulama "In production" (doğrulanmamış: 100 kullanıcı sınırı + uyarı ekranı), Vercel `GOOGLE_OAUTH_CLIENT_ID/SECRET`, Supabase tablo. Canlı test: "Kara Delikler" private yüklendi (`REFtvoBF2FI`, thumbnail da set edildi). Google izin ekranı kutuları ayrı ayrı gösterir; "YouTube videolarınızı yönetin" işaretlenmezse bağlantı reddedilir (`missing_permission`).
+- **Görsel stil + altyazı stili (31 Ekim)**: `lib/pipeline/visual-styles.ts` tek kaynak. 8 görsel stil
+  (cinematic varsayılan, archive, dark, anime, 3d, painting, comic, watercolor): `stillPrompt()` sahne
+  görsellerinin başına stil metnini koyar (metin yasağı her zaman), `clipPrompt()` text→video ve
+  image→video istemine ekler (cinematic'te değiştirmez), thumbnail'a `thumbnail` ipucu; senaryo yazarına
+  "VISUAL STYLE" kuralı (prompt v`…-look`). 4 altyazı stili (bold=eski karaoke sarı, neon, box=konuşulan
+  kelime mor kutuda `active.font.background` + `animation:"highlight"`, clean=küçük harf animasyonsuz);
+  `buildEdit({captionStyle})`, SRT büyük harfi yalnız `uppercase` stillerde. Seçimler
+  `pipeline_jobs.options.visualStyle/captionStyle` (start route doğrular). UI `app/components/StylePickers.tsx`
+  (görsel stil her zaman, altyazı stili tam videoda). Önizleme görselleri `videos/previews/styles/<id>.jpg`
+  (lab `style-previews`, Gemini, 3:4 480 px); yoksa gradient.
 - Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
 - Bitince sonuç `projects.content` JSONB'ye yazılır; başlık = AI'nin ilk title'ı.
 

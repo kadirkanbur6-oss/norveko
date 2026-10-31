@@ -9,6 +9,8 @@ import PipelineProgress from "../components/PipelineProgress";
 
 import { DURATIONS, LANGUAGE_OPTIONS, LANGUAGES, ORIENTATIONS, PLATFORMS, STYLES, defaultOrientation, languageOption, type OrientationId } from "@/lib/pipeline/options";
 import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
+import { CaptionStylePicker, VisualStylePicker } from "../components/StylePickers";
+import { DEFAULT_CAPTION_STYLE, DEFAULT_VISUAL_STYLE, isCaptionStyle, isVisualStyle } from "@/lib/pipeline/visual-styles";
 import {
   fullVideoPlan,
   FULL_VIDEO_DURATIONS,
@@ -64,6 +66,8 @@ interface Draft {
   voiceId: string;
   orientation?: OrientationId;
   template?: string | null;
+  visualStyle?: string;
+  captionStyle?: string;
 }
 
 function readDraft(): Partial<Draft> {
@@ -96,6 +100,8 @@ function ChatContent() {
   const [includeFullVideo, setIncludeFullVideo] = useState(false);
   const [footage, setFootage] = useState<FootageMode>("hybrid");
   const [clipMode, setClipMode] = useState<ClipMode>("image");
+  const [visualStyle, setVisualStyle] = useState<string>(DEFAULT_VISUAL_STYLE);
+  const [captionStyleId, setCaptionStyleId] = useState<string>(DEFAULT_CAPTION_STYLE);
   const [fullVideoAvailable, setFullVideoAvailable] = useState(false);
   const [trialVideoAvailable, setTrialVideoAvailable] = useState(false);
   const [generationAvailable, setGenerationAvailable] = useState(true);
@@ -162,6 +168,8 @@ function ChatContent() {
         setOrientationTouched(true);
       }
       if (typeof draft.template === "string") setTemplateId(draft.template);
+      if (isVisualStyle(draft.visualStyle)) setVisualStyle(draft.visualStyle);
+      if (isCaptionStyle(draft.captionStyle)) setCaptionStyleId(draft.captionStyle);
       // Landing-page template links: /chat?template=<id> wins over the draft.
       const fromUrl = NICHE_TEMPLATES.find((x) => x.id === searchParams.get("template"));
       if (fromUrl) {
@@ -182,12 +190,12 @@ function ChatContent() {
 
   useEffect(() => {
     try {
-      const draft: Draft = { idea, notes, platform, style, duration, language, includeVoiceover, includeResearch, includeSubtitles, includeFullVideo, footage, clipMode, voiceId, orientation, template: templateId };
+      const draft: Draft = { idea, notes, platform, style, duration, language, includeVoiceover, includeResearch, includeSubtitles, includeFullVideo, footage, clipMode, voiceId, orientation, template: templateId, visualStyle, captionStyle: captionStyleId };
       sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     } catch {
       // storage unavailable
     }
-  }, [idea, notes, platform, style, duration, language, includeVoiceover, includeResearch, includeSubtitles, includeFullVideo, footage, clipMode, voiceId, orientation, templateId]);
+  }, [idea, notes, platform, style, duration, language, includeVoiceover, includeResearch, includeSubtitles, includeFullVideo, footage, clipMode, voiceId, orientation, templateId, visualStyle, captionStyleId]);
 
   // Keep orientation in step with the platform until the user picks one explicitly.
   function choosePlatform(next: string) {
@@ -385,6 +393,8 @@ function ChatContent() {
           clipMode,
           orientation,
           template: templateId,
+          visualStyle,
+          captionStyle: captionStyleId,
         }),
       });
 
@@ -633,6 +643,8 @@ function ChatContent() {
                 })}
               </div>
             </div>
+
+            <VisualStylePicker value={visualStyle} onChange={setVisualStyle} />
 
             {/* Web research before the script */}
             <div
@@ -1107,6 +1119,8 @@ function ChatContent() {
                     </div>
                   </div>
                 )}
+
+                {fullVideoOn && <CaptionStylePicker value={captionStyleId} onChange={setCaptionStyleId} />}
               </div>
             )}
 

@@ -3,6 +3,7 @@
 // Server-side only — service role key kullanır.
 
 import { createClient } from "@supabase/supabase-js";
+import { stillPrompt, visualStyle } from "./visual-styles";
 
 if (!process.env.GEMINI_API_KEY) {
   throw new Error("GEMINI_API_KEY is not set.");
@@ -33,7 +34,8 @@ interface ThumbnailResult {
 export async function generateThumbnail(
   prompt: string,
   jobId: string,
-  orientation: "vertical" | "horizontal" = "horizontal"
+  orientation: "vertical" | "horizontal" = "horizontal",
+  styleId?: string | null
 ): Promise<ThumbnailResult> {
   const aspectRatio = orientation === "vertical" ? "9:16" : "16:9";
   // 1) Gemini'den görseli iste
@@ -50,7 +52,7 @@ export async function generateThumbnail(
           {
             parts: [
               {
-                text: `${orientation === "vertical" ? "Vertical short-form cover" : "YouTube thumbnail"}, ${aspectRatio} aspect ratio, high contrast, bold and readable overlay text, cinematic lighting. ${prompt}`,
+                text: `${orientation === "vertical" ? "Vertical short-form cover" : "YouTube thumbnail"}, ${aspectRatio} aspect ratio, high contrast, bold and readable overlay text, ${styleId ? visualStyle(styleId).thumbnail : "cinematic lighting."} ${prompt}`,
               },
             ],
           },
@@ -127,7 +129,8 @@ export async function generateSceneImage(
   jobId: string,
   userId: string,
   sceneNumber: number,
-  orientation: "vertical" | "horizontal" = "vertical"
+  orientation: "vertical" | "horizontal" = "vertical",
+  styleId?: string | null
 ): Promise<SceneImageResult> {
   const aspectRatio = orientation === "vertical" ? "9:16" : "16:9";
   const res = await fetch(
@@ -143,7 +146,7 @@ export async function generateSceneImage(
           {
             parts: [
               {
-                text: `Photorealistic cinematic film still from a high-budget documentary, ${aspectRatio} aspect ratio, shot on a full-frame cinema camera with a 35mm lens, shallow depth of field, volumetric light, rich colour grading, fine skin/surface texture, strong subject in focus. Absolutely no text, letters, captions, subtitles, watermarks or logos anywhere in the image. ${prompt}`,
+                text: stillPrompt(prompt, styleId, aspectRatio),
               },
             ],
           },

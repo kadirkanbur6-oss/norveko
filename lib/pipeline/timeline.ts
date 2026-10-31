@@ -11,6 +11,7 @@
 // Fixed-length slots make the plan (and the bill) predictable; a Kling clip
 // is slowed/trimmed to its slot, stills get a Ken Burns move.
 
+import { captionStyle } from "./visual-styles";
 import { upper, type CaptionCue } from "./captions";
 import { SLOT_SECONDS } from "./steps";
 import { MUSIC_VOLUME } from "./music";
@@ -120,6 +121,8 @@ export interface EditInput {
   musicUrl?: string;
   /** Free-trial "Made with Norveko" badge (PNG URL), top-right for the whole video. */
   watermarkUrl?: string;
+  /** Caption look preset id (lib/pipeline/visual-styles.ts); default "bold". */
+  captionStyle?: string;
 }
 
 /** Seconds the hook title stays on screen. */
@@ -225,6 +228,7 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
   }
 
   if (input.subtitlesUrl) {
+    const cap = captionStyle(input.captionStyle);
     tracks.push({
       clips: [
         {
@@ -232,17 +236,25 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
             type: "rich-caption",
             src: input.subtitlesUrl,
             font: {
-              family: "Montserrat ExtraBold",
-              size: orientation === "vertical" ? 58 : 44,
-              color: "#ffffff",
-              weight: 800,
+              family: cap.font,
+              size: orientation === "vertical" ? cap.size : Math.round(cap.size * 0.76),
+              color: cap.color,
+              weight: cap.font.includes("ExtraBold") ? 800 : 600,
             },
-            stroke: { width: 5, color: "#000000", opacity: 1 },
-            // Viral-shorts style: the spoken word lights up yellow.
-            animation: { style: "karaoke" },
-            active: { font: { color: "#FFD60A" } },
+            ...(cap.stroke ? { stroke: { width: cap.stroke.width, color: cap.stroke.color, opacity: 1 } } : {}),
+            animation: { style: cap.animation },
+            ...(cap.active || cap.activeBackground
+              ? {
+                  active: {
+                    font: {
+                      ...(cap.active ? { color: cap.active } : {}),
+                      ...(cap.activeBackground ? { background: cap.activeBackground } : {}),
+                    },
+                  },
+                }
+              : {}),
             align: { vertical: "middle" },
-            // Uppercase is applied in the SRT itself (locale-aware), not here.
+            // Uppercase (when the style wants it) is applied in the SRT itself (locale-aware).
           },
           start: 0,
           length: "end",
