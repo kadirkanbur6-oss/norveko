@@ -180,3 +180,15 @@ test("word budget is language-aware and the measured-ratio range shrinks a long 
   assert.equal(r.target, 107);
   assert.ok(r.min < r.target && r.max > r.target);
 });
+
+test("estimateAlignment spreads characters over the audio length with pauses at punctuation", async () => {
+  // tts.ts imports "server-only"; load the pure helper through a tiny shim.
+  const mod = await import("./tts-estimate");
+  const a = mod.estimateAlignment("Bir. İki, üç", 10);
+  assert.equal(a.characters.length, 12);
+  assert.ok(a.character_end_times_seconds.at(-1)! <= 10 && a.character_end_times_seconds.at(-1)! > 9.5);
+  const dot = a.characters.indexOf(".");
+  const durDot = a.character_end_times_seconds[dot] - a.character_start_times_seconds[dot];
+  const durB = a.character_end_times_seconds[0] - a.character_start_times_seconds[0];
+  assert.ok(durDot > durB * 4, "full stop is a longer pause");
+});
