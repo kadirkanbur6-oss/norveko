@@ -512,3 +512,79 @@ test("brand kit: snapshot, validation and edit layers", () => {
   const noLogo = buildEdit({ slots: slots as never, voiceoverUrl: "v", orientation: "vertical", totalSeconds: 30, brand: { ...snap, videoLogo: false } }) as typeof edit;
   assert.ok(!noLogo.timeline.tracks.some((t) => t.clips[0].asset.src === "https://cdn/logo.png"));
 });
+
+import { claimReferral, rewardReferrer, revokeReferralReward, rewardFor, isReferralCode, newCode } from "../referrals/referrals";
+
+/** Tiny in-memory stand-in for the few Supabase calls the referral code makes. */
+function fakeReferralDb(seed: Record<string, Array<Record<string, unknown>>>) {
+  const tables = seed;
+  const rpcCalls: Array<Record<string, unknown>> = [];
+  const from = (name: string) => {
+    tables[name] ??= [];
+    const rows = tables[name];
+    const filters: Array<[string, unknown]> = [];
+    let op: "select" | "insert" | "update" | "delete" = "select";
+    let payload: Record<string, unknown> = {};
+    let head = false;
+    const match = () => rows.filter((r) => filters.every(([k, v]) => r[k] === v));
+    const q: Record<string, unknown> = {
+      select: (_c?: string, opts?: { head?: boolean }) => ((head = Boolean(opts?.head)), q),
+      eq: (k: string, v: unknown) => (filters.push([k, v]), q),
+      insert: (row: Record<string, unknown>) => {
+        const pk = name === "referral_codes" ? "user_id" : name === "referrals" ? "referred_user_id" : "paddle_transaction_id";
+        if (rows.some((r) => r[pk] === row[pk])) return Promise.resolve({ error: { code: "23505" } });
+        rows.push({ ...row });
+        return Promise.resolve({ error: null });
+      },
+      update: (p: Record<string, unknown>) => ((op = "update"), (payload = p), q),
+      delete: () => ((op = "delete"), q),
+      maybeSingle: () => {
+        const m = match();
+        if (op === "update") m.forEach((r) => Object.assign(r, payload));
+        return Promise.resolve({ data: m[0] ?? null, error: null });
+      },
+      then: (resolve: (v: unknown) => void) => {
+        const m = match();
+        if (op === "update") m.forEach((r) => Object.assign(r, payload));
+        if (op === "delete") m.forEach((r) => rows.splice(rows.indexOf(r), 1));
+        resolve({ data: head ? null : m, count: m.length, error: null });
+      },
+    };
+    return q;
+  };
+  const db = { from, rpc: (_fn: string, args: Record<string, unknown>) => (rpcCalls.push(args), Promise.resolve({ error: null })) };
+  return { db: db as never, tables, rpcCalls };
+}
+
+test("referrals: claim rules, 20% reward once per transaction, refund reversal", async () => {
+  assert.ok(isReferralCode(newCode()));
+  assert.ok(!isReferralCode("../x"));
+  assert.equal(rewardFor(500), 100);
+  const now = new Date("2026-11-01T00:00:00Z");
+  const { db, tables, rpcCalls } = fakeReferralDb({
+    referral_codes: [{ user_id: "alice", code: "abc23456" }],
+    credit_purchases: [{ id: 1, user_id: "old-buyer" }],
+  });
+  assert.equal(await claimReferral(db, { id: "alice", created_at: "2026-10-31T00:00:00Z" }, "abc23456", now), "own_code");
+  assert.equal(await claimReferral(db, { id: "bob", created_at: "2026-10-01T00:00:00Z" }, "abc23456", now), "too_old");
+  assert.equal(await claimReferral(db, { id: "old-buyer", created_at: "2026-10-31T00:00:00Z" }, "abc23456", now), "has_purchases");
+  assert.equal(await claimReferral(db, { id: "bob", created_at: "2026-10-31T00:00:00Z" }, "zzzzzzzz", now), "no_code");
+  assert.equal(await claimReferral(db, { id: "bob", created_at: "2026-10-31T00:00:00Z" }, "abc23456", now), "claimed");
+  assert.equal(await claimReferral(db, { id: "bob", created_at: "2026-10-31T00:00:00Z" }, "abc23456", now), "already");
+
+  const r = await rewardReferrer(db, { referredUserId: "bob", transactionId: "txn_1", credits: 2000, packName: "Pro" }, now);
+  assert.deepEqual(r, { referrer: "alice", credits: 400 });
+  assert.equal(await rewardReferrer(db, { referredUserId: "bob", transactionId: "txn_1", credits: 2000, packName: "Pro" }, now), null);
+  assert.equal(await rewardReferrer(db, { referredUserId: "carol", transactionId: "txn_2", credits: 500, packName: "Starter" }, now), null);
+  assert.equal(rpcCalls.length, 1);
+  assert.equal(rpcCalls[0].p_amount, 400);
+
+  assert.equal(await revokeReferralReward(db, "txn_1"), 400);
+  assert.equal(await revokeReferralReward(db, "txn_1"), 0);
+  assert.equal(rpcCalls[1].p_amount, -400);
+  assert.equal(tables.referral_rewards[0].status, "refunded");
+
+  // Purchases after the 12-month window earn nothing.
+  const later = new Date("2027-12-01T00:00:00Z");
+  assert.equal(await rewardReferrer(db, { referredUserId: "bob", transactionId: "txn_3", credits: 500, packName: "Starter" }, later), null);
+});

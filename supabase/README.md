@@ -212,6 +212,39 @@ create table if not exists public.voice_clones (
 alter table public.voice_clones enable row level security;
 ```
 
+## Invite & earn (`referral_codes`, `referrals`, `referral_rewards`, 31 Oct 2026)
+
+Service role only (`lib/referrals/referrals.ts`). Inviter earns 20% of the credits of every pack the
+invited account buys in its first 12 months; `referral_rewards` is keyed by the Paddle transaction
+(idempotent) and flips to `refunded` when Paddle refunds it. Credit type `referral`.
+
+```sql
+create table if not exists public.referral_codes (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  code text not null unique,
+  created_at timestamptz not null default now()
+);
+create table if not exists public.referrals (
+  referred_user_id uuid primary key references auth.users(id) on delete cascade,
+  referrer_user_id uuid not null references auth.users(id) on delete cascade,
+  code text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists referrals_referrer_idx on public.referrals (referrer_user_id);
+create table if not exists public.referral_rewards (
+  paddle_transaction_id text primary key,
+  referrer_user_id uuid not null references auth.users(id) on delete cascade,
+  referred_user_id uuid not null,
+  credits int not null,
+  status text not null default 'earned',
+  created_at timestamptz not null default now()
+);
+create index if not exists referral_rewards_referrer_idx on public.referral_rewards (referrer_user_id);
+alter table public.referral_codes enable row level security;
+alter table public.referrals enable row level security;
+alter table public.referral_rewards enable row level security;
+```
+
 ## Series autopilot (`series`, `series_episodes`, 31 Oct 2026)
 
 ```sql

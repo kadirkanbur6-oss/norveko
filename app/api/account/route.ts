@@ -19,6 +19,7 @@ const USER_TABLES = [
   "series",
   "brand_kits",
   "voice_clones",
+  "referral_codes",
   "credit_transactions",
   "credit_purchases",
   "pipeline_jobs",

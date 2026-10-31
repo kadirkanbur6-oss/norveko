@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import { FREE_TRIAL_RULES, JOB_COSTS, PAID_INCLUDES, planDetails } from "@/lib/plans";
+import ReferralCard from "../components/ReferralCard";
 import { usePaddle } from "@/lib/usePaddle";
 import {
   RESEARCH_CREDITS,
@@ -133,6 +134,7 @@ export default function BillingPage() {
   function transactionIcon(type: string) {
     switch (type) {
       case "welcome":
+      case "referral":
         return <Gift size={16} className="text-green-400" />;
       case "purchase":
         return <ArrowUpCircle size={16} className="text-green-400" />;
@@ -331,6 +333,10 @@ export default function BillingPage() {
                     </li>
                   ))}
                 </ul>
+              </div>
+
+              <div className="mt-8">
+                <ReferralCard />
               </div>
 
               {/* Transaction history */}

@@ -151,6 +151,15 @@ async function handleTransactionCompleted(event: TransactionCompletedEvent) {
     `[paddle-webhook] ${txnId}: +${pkg.credits} credits -> user ${userId}`
   );
 
+  // Invite & earn: the inviter gets a share of the credits (idempotent per transaction).
+  try {
+    const { rewardReferrer } = await import("@/lib/referrals/referrals");
+    const reward = await rewardReferrer(supabaseAdmin, { referredUserId: userId, transactionId: txnId, credits: pkg.credits, packName: pkg.name });
+    if (reward) console.log(`[paddle-webhook] ${txnId}: referral +${reward.credits} credits -> user ${reward.referrer}`);
+  } catch (err) {
+    console.error(`[paddle-webhook] ${txnId}: referral reward failed:`, err);
+  }
+
   // First purchase lifts the free-trial watermark, also on earlier work.
   // Never fail the webhook over it (credits are already granted).
   try {
@@ -217,4 +226,12 @@ async function handleAdjustment(
   console.log(
     `[paddle-webhook] refund ${adjustment.id}: -${purchase.credits} credits <- user ${purchase.user_id}`
   );
+
+  try {
+    const { revokeReferralReward } = await import("@/lib/referrals/referrals");
+    const taken = await revokeReferralReward(supabaseAdmin, txnId);
+    if (taken) console.log(`[paddle-webhook] refund ${adjustment.id}: referral reward -${taken} reversed`);
+  } catch (err) {
+    console.error(`[paddle-webhook] refund ${adjustment.id}: referral reversal failed:`, err);
+  }
 }

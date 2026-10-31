@@ -164,8 +164,10 @@ export default function PrivacyPage() {
         <h2>5. Cookies</h2>
         <p>
           We use essential cookies to keep you signed in and to operate core
-          functionality of the Service. We do not use third-party advertising
-          cookies.
+          functionality of the Service. If you arrive through a friend&apos;s
+          invite link, a first-party cookie (nv_ref) remembers the invite code
+          for up to 60 days so the invite can be credited after you sign up.
+          We do not use third-party advertising cookies.
         </p>
       </section>
 

@@ -246,6 +246,13 @@ Business 5000/$59.
   başkasının klonunu reddeder; `addLibraryVoice(..., protectedIds)` klonları slot boşaltmak için SİLMEZ. Fiyat ElevenLabs
   sesi gibi. **Kısıt:** ElevenLabs Starter 10 özel ses yuvası (kütüphane sesleri + klonlar) → kullanıcı arttıkça
   Creator (30) / Pro (160) plan gerekir. Seriler yalnız Gemini sesleri (klon yok). Hesap silmede ElevenLabs'te de silinir.
+- **Invite & earn / affiliate (31 Ekim akşam)**: `lib/referrals/referrals.ts`. Link `norveko.app/?ref=<kod>` → middleware
+  `nv_ref` çerezi (60 gün, httpOnly, ilk link kazanır) → dashboard `ReferralClaim` → `POST /api/referrals/claim` (kayıttan
+  ≤7 gün, kendi kodu/önceden satın alan hesap yok). Ödül: davet edilen hesabın ilk **12 ay**ındaki her paketinin
+  kredisinin **%20**'si davet edene kredi olarak (`rewardReferrer`, Paddle webhook'ta, işlem başına idempotent
+  `referral_rewards`); Paddle iadesinde geri alınır (`revokeReferralReward`). Kredi türü `referral`. Nakit ödeme yok (sahte
+  kayıt kazanç getirmez). UI: Ayarlar + Billing `ReferralCard` (link, kayıt/satın alan/kazanılan). Tablolar
+  `referral_codes/referrals/referral_rewards` (SQL `supabase/README.md`). Gizlilik politikası 5. madde çerez notu.
 - Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
 - Bitince sonuç `projects.content` JSONB'ye yazılır; başlık = AI'nin ilk title'ı.
 
@@ -480,7 +487,7 @@ X video" satırı `steps.ts`'ten hesaplanır. **Paket kredileri/fiyatları 29
 Ekim'de gözden geçirildi, Kadir "şimdilik değiştirme" dedi** — Starter 500 ile
 yalnızca 1×30 sn video çıkıyor; ileride tekrar bakılacak) →
 ~~YouTube'a doğrudan yükleme~~ (31 Ekim, Google kurulumu + denetim bekliyor) → ~~seri modu/zamanlama~~ + ~~TikTok~~ (31 Ekim; TikTok uygulaması + denetim bekliyor) → ~~brand kit~~ → ~~ses klonlama~~ →
-affiliate. Ertelenen: timeline editör, AI avatar, mobil app.
+~~affiliate~~ (kredi bazlı davet). Ertelenen: timeline editör, AI avatar, mobil app.
 
 Teknik borç: sahne düzeyinde yeniden üretim + versiyon geçmişi +
 `media_assets`/`projects.job_id` şeması; Supabase custom domain (Google
