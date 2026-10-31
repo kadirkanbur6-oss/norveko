@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Captions, Check, ChevronDown, Download } from "lucide-react";
 import { cuesToSrt, cuesToVtt, type CaptionCue } from "@/lib/pipeline/captions";
+import { downloadHref } from "@/lib/download";
 
 export function downloadText(filename: string, text: string, type: string) {
   const blob = new Blob([text], { type });
@@ -98,7 +99,7 @@ export default function VoiceoverDownloads({
           )}
         </div>
       )}
-      <a href={audioUrl} download={`${baseName}.${audioExt}`} className={btn}>
+      <a href={downloadHref(audioUrl, `${baseName}.${audioExt}`)} download={`${baseName}.${audioExt}`} className={btn}>
         <Download size={14} />
         {audioExt.toUpperCase()}
       </a>

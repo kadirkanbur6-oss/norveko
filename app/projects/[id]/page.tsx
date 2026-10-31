@@ -35,6 +35,7 @@ import ConfirmDialog from "../../components/ConfirmDialog";
 import StockFootagePicker from "../../components/StockFootagePicker";
 import { defaultOrientation } from "@/lib/pipeline/options";
 import type { StockClip } from "@/lib/pipeline/pexels";
+import { downloadHref, safeFileName } from "@/lib/download";
 
 interface VideoScene {
   sceneNumber: number;
@@ -656,8 +657,8 @@ export default function ProjectDetailPage() {
                         <p className="text-xs text-gray-400">1080p MP4 with narration and burned-in subtitles</p>
                       </div>
                       <a
-                        href={normalizedProjectContent.finalVideoUrl}
-                        download={`${slugify(project.title)}.mp4`}
+                        href={downloadHref(normalizedProjectContent.finalVideoUrl, `${safeFileName(project.title)}.mp4`)}
+                        download={`${safeFileName(project.title)}.mp4`}
                         className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:opacity-90"
                       >
                         <Download size={15} />

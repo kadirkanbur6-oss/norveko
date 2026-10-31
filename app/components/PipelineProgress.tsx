@@ -11,6 +11,7 @@ import AudioPlayer from "./AudioPlayer";
 import VideoPlayer from "./VideoPlayer";
 import VoiceoverDownloads from "./VoiceoverDownloads";
 import GenerationStage, { type StageStep } from "./GenerationStage";
+import { downloadHref } from "@/lib/download";
 
 interface StepInfo {
   status: "pending" | "running" | "completed" | "failed" | "skipped";
@@ -242,7 +243,7 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
               )}
             </div>
             <a
-              href={job.steps.render.video_url}
+              href={downloadHref(job.steps.render.video_url, `norveko-video-${job.id.slice(0, 8)}.mp4`)}
               download={`norveko-video-${job.id.slice(0, 8)}.mp4`}
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:opacity-90"
             >
