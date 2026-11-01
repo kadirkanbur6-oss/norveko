@@ -258,17 +258,16 @@ Business 5000/$59.
   `job_in_progress` + `jobId` döner (eskiden 2'ye izin veriyordu). `GET /api/pipeline/active` → çalışan iş;
   `/chat` `?job=` yoksa açılışta bunu sorar ve ilerlemeyi geri getirir (başka sayfaya gidip dönünce render ekranı
   kaybolmuyor). `PipelineProgress onStatus` → iş sürerken Generate / "Run again" / "Start a new generation" gizli/pasif.
-- **Abonelikler (1 Kasım, YARIM — Paddle fiyatları bekliyor)**: `lib/subscriptions.ts` (Creator/Pro × haftalık/aylık/
+- **Abonelikler (1 Kasım, sandbox'ta ✅ — Pro yıllık test satın alma: +4.000 kredi, sonraki aylık kredi 1 Aralık, "Manage plan" portalı açılıyor)**: `lib/subscriptions.ts` (Creator/Pro × haftalık/aylık/
   yıllık: $6/380 hf, $19/1.500 ay, $190/1.500 her ay; Pro $15/1.000 hf, $49/4.000 ay, $490/4.000 her ay; yıllık
   "2 ay bedava" ≈ %31–33 kâr, diğerleri ≥ %40). Paddle price id: env `NEXT_PUBLIC_PADDLE_PRICE_{CREATOR,PRO}_{WEEK,MONTH,YEAR}`,
-  sandbox yedekleri `SANDBOX` (henüz BOŞ → billing'de "Coming soon"). `lib/subscriptions-server.ts`: webhook
+  sandbox yedekleri `SANDBOX` (Paddle sandbox ürünleri "Norveko Creator plan"/"Norveko Pro plan", max adet 1). `lib/subscriptions-server.ts`: webhook
   `transaction.completed` + `subscriptionId` → `grantForTransaction` (credit_purchases satırı = idempotent; iade/filigran/
   referans akışları aynen çalışır), yıllık plan ayda bir `runSubscriptionGrants` (saatlik `/api/series/tick`),
   `subscription.*` → `syncSubscription`, iade → `stopYearlyGrants`. Tablolar `subscriptions`, `subscription_grants`
   (✅ Supabase'de oluşturuldu). `/api/billing/subscription`, `/api/billing/portal` (Paddle müşteri portalı: iptal/kart).
   UI `SubscriptionPlans` (landing + billing, dönem sekmesi), paketler "Top-up packs". Terms §4 + Refund policy güncel.
-  Hesap silmede abonelik Paddle'da hemen iptal. **Kalan:** Paddle sandbox'ta 6 recurring fiyat + bildirim hedefine
-  `subscription.*` olayları, id'leri `SANDBOX`'a yaz, test satın alma; canlıda aynı + Vercel env.
+  Hesap silmede abonelik Paddle'da hemen iptal. **Kalan (canlı):** aynı ürünler + bildirim olayları + Vercel env; Paddle API anahtarlarının süresi doluyor (sandbox 1 Kasım'da doldu → portal 502), yenisi süresiz (sandbox).
 - Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
 - Bitince sonuç `projects.content` JSONB'ye yazılır; başlık = AI'nin ilk title'ı.
 
