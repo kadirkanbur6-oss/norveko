@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { PageHeader } from "../components/PageTabs";
 import Link from "next/link";
 import { ArrowUpDown, FolderOpen, Loader2, Search, Trash2, Wand2, X } from "lucide-react";
 import Sidebar from "../components/Sidebar";
@@ -133,17 +134,7 @@ export default function ProjectsPage() {
       <main id="main-content" className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
         <div className="mx-auto max-w-4xl">
           {/* Header */}
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-400/30 bg-blue-500/10">
-              <FolderOpen className="text-blue-300" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">Projects</h1>
-              <p className="text-sm text-gray-400">
-                Your saved video projects
-              </p>
-            </div>
-          </div>
+          <PageHeader title="Projects" subtitle="Your saved video projects" />
 
           {!loading && projects.length > 0 && (
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">

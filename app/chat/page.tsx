@@ -2,15 +2,17 @@
 
 import { Fragment, Suspense, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Captions, CheckCircle2, Film, Globe, ChevronDown, Clapperboard, Coins, LayoutTemplate, Loader2, Mic, Play, Search, Sparkles, Square, Wand2 } from "lucide-react";
+import { Captions, CheckCircle2, Film, Globe, ChevronDown, Clapperboard, Coins, LayoutTemplate, Palette, Loader2, Mic, Play, Search, Sparkles, Square } from "lucide-react";
 import Link from "next/link";
+import Disclosure from "../components/Disclosure";
+import { PageHeader } from "../components/PageTabs";
 import Sidebar from "../components/Sidebar";
 import PipelineProgress from "../components/PipelineProgress";
 
 import { DURATIONS, LANGUAGE_OPTIONS, LANGUAGES, ORIENTATIONS, PLATFORMS, STYLES, defaultOrientation, languageOption, type OrientationId } from "@/lib/pipeline/options";
 import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
 import { CaptionStylePicker, VisualStylePicker } from "../components/StylePickers";
-import { DEFAULT_CAPTION_STYLE, DEFAULT_VISUAL_STYLE, isCaptionStyle, isVisualStyle } from "@/lib/pipeline/visual-styles";
+import { DEFAULT_CAPTION_STYLE, DEFAULT_VISUAL_STYLE, isCaptionStyle, isVisualStyle, VISUAL_STYLES } from "@/lib/pipeline/visual-styles";
 import {
   fullVideoPlan,
   FULL_VIDEO_DURATIONS,
@@ -463,17 +465,7 @@ function ChatContent() {
 
       <main id="main-content" className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
         <div className="mx-auto max-w-4xl">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-400/30 bg-blue-500/10">
-              <Wand2 className="text-blue-300" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">AI Workspace</h1>
-              <p className="text-sm text-gray-400">
-                Generate a full content package with thumbnail and optional voiceover
-              </p>
-            </div>
-          </div>
+          <PageHeader title="AI Workspace" subtitle="Generate a full content package with thumbnail and optional voiceover" />
 
           {jobId && !formOpen && (
             <button
@@ -499,13 +491,50 @@ function ChatContent() {
           )}
 
           <div className={`mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6 ${jobId && !formOpen ? "hidden" : ""}`}>
-            {/* Niche templates */}
-            <div className="mb-5">
-              <div className="flex items-center gap-2 text-sm text-gray-400">
-                <LayoutTemplate size={15} className="text-purple-300" />
-                Start from a template <span className="text-gray-500">(optional)</span>
+            <label className="text-sm text-gray-400">Video Idea</label>
+            <textarea
+              value={idea}
+              onChange={(e) => setIdea(e.target.value)}
+              placeholder="e.g. The mystery of planes lost in the Bermuda Triangle..."
+              rows={3}
+              className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] p-4 text-white placeholder-gray-500 outline-none focus:border-blue-400/50"
+            />
+
+            {notesOpen ? (
+              <div className="mt-3">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="creator-notes" className="text-sm text-gray-400">
+                    Angle &amp; notes <span className="text-gray-500">(optional)</span>
+                  </label>
+                  <span className="text-[11px] text-gray-500">{notes.length}/500</span>
+                </div>
+                <textarea
+                  id="creator-notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value.slice(0, 500))}
+                  placeholder="e.g. Focus on Flight 19, keep the scientific explanation for the end, avoid aliens."
+                  rows={2}
+                  className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm text-white placeholder-gray-500 outline-none focus:border-blue-400/50"
+                />
               </div>
-              <div className="mt-2 flex flex-wrap gap-2">
+            ) : (
+              <button
+                type="button"
+                onClick={() => setNotesOpen(true)}
+                className="mt-2 text-xs text-blue-300 transition hover:text-blue-200"
+              >
+                + Add an angle or notes for the writer
+              </button>
+            )}
+
+            {/* Niche templates (optional) */}
+            <Disclosure
+              className="mt-3"
+              title="Start from a template"
+              icon={<LayoutTemplate size={15} />}
+              summary={templateId ? NICHE_TEMPLATES.find((t) => t.id === templateId)?.name : "Optional — ready-made settings and idea examples for popular niches"}
+            >
+              <div className="mt-3 flex flex-wrap gap-2">
                 {NICHE_TEMPLATES.map((t) => {
                   const active = templateId === t.id;
                   return (
@@ -544,43 +573,7 @@ function ChatContent() {
                   </div>
                 </div>
               )}
-            </div>
-
-            <label className="text-sm text-gray-400">Video Idea</label>
-            <textarea
-              value={idea}
-              onChange={(e) => setIdea(e.target.value)}
-              placeholder="e.g. The mystery of planes lost in the Bermuda Triangle..."
-              rows={3}
-              className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] p-4 text-white placeholder-gray-500 outline-none focus:border-blue-400/50"
-            />
-
-            {notesOpen ? (
-              <div className="mt-3">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="creator-notes" className="text-sm text-gray-400">
-                    Angle &amp; notes <span className="text-gray-500">(optional)</span>
-                  </label>
-                  <span className="text-[11px] text-gray-500">{notes.length}/500</span>
-                </div>
-                <textarea
-                  id="creator-notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value.slice(0, 500))}
-                  placeholder="e.g. Focus on Flight 19, keep the scientific explanation for the end, avoid aliens."
-                  rows={2}
-                  className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm text-white placeholder-gray-500 outline-none focus:border-blue-400/50"
-                />
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setNotesOpen(true)}
-                className="mt-2 text-xs text-blue-300 transition hover:text-blue-200"
-              >
-                + Add an angle or notes for the writer
-              </button>
-            )}
+            </Disclosure>
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>
@@ -644,8 +637,15 @@ function ChatContent() {
               </div>
             </div>
 
+            {/* Look: format, visual style, brand kit */}
+            <Disclosure
+              className="mt-4"
+              title="Look"
+              icon={<Palette size={15} />}
+              summary={`${orientation === "vertical" ? "Vertical 9:16" : "Horizontal 16:9"} · ${VISUAL_STYLES.find((v) => v.id === visualStyle)?.label ?? "Cinematic"}${brandKit ? (useBrandKit ? " · brand kit on" : " · brand kit off") : ""}`}
+            >
             {/* Orientation */}
-            <div className="mt-4">
+            <div className="mt-3">
               <label className="text-sm text-gray-400">Output format</label>
               <div className="mt-2 grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Output format">
                 {ORIENTATIONS.map((o) => {
@@ -704,6 +704,8 @@ function ChatContent() {
                 </span>
               </label>
             )}
+
+            </Disclosure>
 
             {/* Web research before the script */}
             <div

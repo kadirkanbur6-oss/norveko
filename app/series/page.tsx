@@ -4,6 +4,7 @@
 // subject for every episode, makes the video and publishes it.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { PageHeader } from "../components/PageTabs";
 import Link from "next/link";
 import { CalendarClock, Loader2, Pause, Play, Plus, Repeat, Trash2, Zap } from "lucide-react";
 import Sidebar from "../components/Sidebar";
@@ -216,15 +217,7 @@ export default function SeriesPage() {
       <main id="main-content" className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
         <div className="mx-auto max-w-4xl">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-400/30 bg-blue-500/10">
-                <Repeat className="text-blue-300" aria-hidden />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold">Series</h1>
-                <p className="text-sm text-gray-400">Autopilot: a new video on your schedule, made and published for you.</p>
-              </div>
-            </div>
+            <PageHeader title="Series" subtitle="Autopilot: a new video on your schedule, made and published for you." />
             {available && !blocked && !showForm && (
               <button
                 type="button"
