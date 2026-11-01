@@ -268,6 +268,7 @@ Business 5000/$59.
   (✅ Supabase'de oluşturuldu). `/api/billing/subscription`, `/api/billing/portal` (Paddle müşteri portalı: iptal/kart).
   UI `SubscriptionPlans` (landing + billing, dönem sekmesi), paketler "Top-up packs". Terms §4 + Refund policy güncel.
   Hesap silmede abonelik Paddle'da hemen iptal. **Kalan (canlı):** aynı ürünler + bildirim olayları + Vercel env; Paddle API anahtarlarının süresi doluyor (sandbox 1 Kasım'da doldu → portal 502), yenisi süresiz (sandbox).
+- **Sade arayüz (1 Kasım, Kadir: "premium ama basit, sayfalar uzamasın")**: ince koyu scrollbar (`globals.css`, `nv-no-scrollbar`), kompakt Sidebar; `app/components/PageTabs.tsx` (`PageTabs` + `?tab=` `useTabParam`, `PageHeader`) ve `Disclosure.tsx`. Ayarlar/Billing/proje detay (Video · Publish · Script & assets) sekmeli; /chat'te şablon, görünüm ve klip/altyazı ayarları katlanır; proje listesi kompakt satırlar.
 - Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
 - Bitince sonuç `projects.content` JSONB'ye yazılır; başlık = AI'nin ilk title'ı.
 
