@@ -239,18 +239,23 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3) Reject if the user already has a job in flight (cheap rate limit)
-    const { count: inFlight } = await supabaseAdmin
+    // 3) One generation at a time (series episodes run on their own schedule).
+    const { data: inFlight } = await supabaseAdmin
       .from("pipeline_jobs")
-      .select("id", { count: "exact", head: true })
+      .select("id")
       .eq("user_id", user.id)
-      .eq("status", "running");
+      .eq("status", "running")
+      .is("options->series", null)
+      .limit(1)
+      .maybeSingle();
 
-    if ((inFlight ?? 0) >= 2) {
+    if (inFlight) {
       return NextResponse.json(
         {
           success: false,
-          error: "You already have generations in progress. Please wait for them to finish.",
+          code: "job_in_progress",
+          jobId: inFlight.id,
+          error: "Your video is still being made. You can start the next one when it finishes.",
         },
         { status: 429 }
       );

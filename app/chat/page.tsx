@@ -125,6 +125,9 @@ function ChatContent() {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
   const [jobId, setJobId] = useState<string | null>(null);
+  // Status of the shown job (from PipelineProgress); a running job locks "new video".
+  const [jobStatus, setJobStatus] = useState<string | null>(null);
+  const jobRunning = jobId !== null && (jobStatus === null || jobStatus === "running" || jobStatus === "queued");
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const [voiceQuery, setVoiceQuery] = useState("");
   const [voiceListOpen, setVoiceListOpen] = useState(false);
@@ -193,6 +196,18 @@ function ChatContent() {
       if (job && /^[0-9a-f-]{36}$/i.test(job)) {
         setJobId(job);
         setFormOpen(false);
+      } else {
+        // Came back from another page while a video is still being made: show it again.
+        fetch("/api/pipeline/active", { cache: "no-store" })
+          .then((r) => r.json())
+          .then((d) => {
+            if (typeof d?.jobId === "string") {
+              setJobId(d.jobId);
+              setFormOpen(false);
+              router.replace(`${pathname}?job=${d.jobId}`, { scroll: false });
+            }
+          })
+          .catch(() => undefined);
       }
     }, 0);
     return () => clearTimeout(id);
@@ -415,9 +430,17 @@ function ChatContent() {
       const data = await res.json();
 
       if (!data.success) {
+        // Another video is still running: bring its progress back instead.
+        if (data.code === "job_in_progress" && typeof data.jobId === "string") {
+          setJobStatus(null);
+          setJobId(data.jobId);
+          setFormOpen(false);
+          router.replace(`${pathname}?job=${data.jobId}`, { scroll: false });
+        }
         throw new Error(data.error || "Pipeline could not start.");
       }
 
+      setJobStatus(null);
       setJobId(data.jobId);
       setFormOpen(false);
       router.replace(`${pathname}?job=${data.jobId}`, { scroll: false });
@@ -1249,6 +1272,7 @@ function ChatContent() {
                     !generationAvailable ||
                     (balance !== null && balance < totalCost) ||
                     (jobId !== null && !error) ||
+                    jobRunning ||
                     (includeVoiceover && (!effectiveVoiceId || voicesLoading))
                   }
                   className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-3 font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:opacity-90 disabled:opacity-50 disabled:shadow-none"
@@ -1271,14 +1295,21 @@ function ChatContent() {
           </div>
 
           <div ref={progressRef} className="scroll-mt-20">
-            {jobId && <PipelineProgress jobId={jobId} />}
+            {jobId && <PipelineProgress jobId={jobId} onStatus={setJobStatus} />}
           </div>
 
-          {jobId && (
+          {jobId && jobRunning && (
+            <p className="mt-4 text-sm text-gray-400">
+              You can start your next video when this one finishes. It keeps going if you leave this page — come back here or check Projects.
+            </p>
+          )}
+
+          {jobId && !jobRunning && (
             <div className="mt-4 flex flex-wrap gap-4">
               <button
                 onClick={() => {
                   setJobId(null);
+                  setJobStatus(null);
                   setError("");
                   setFormOpen(true);
                   router.replace(pathname, { scroll: false });
@@ -1291,6 +1322,7 @@ function ChatContent() {
               <button
                 onClick={() => {
                   setJobId(null);
+                  setJobStatus(null);
                   setIdea("");
                   setNotes("");
                   setNotesOpen(false);

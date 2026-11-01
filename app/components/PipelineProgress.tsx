@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Circle, Clapperboard, Download, Loader2, XCircle, Copy } from "lucide-react";
 import { PIPELINE_STEP_ORDER, type PipelineStepId } from "@/lib/pipeline/steps";
@@ -80,7 +80,18 @@ const STEP_ORDER = PIPELINE_STEP_ORDER.map(({ id, label }) => ({ id, label }));
 // Stop polling after this long; the server reaper will settle the job.
 const POLL_TIMEOUT_MS = 15 * 60 * 1000;
 
-export default function PipelineProgress({ jobId }: { jobId: string }) {
+export default function PipelineProgress({
+  jobId,
+  onStatus,
+}: {
+  jobId: string;
+  /** Reports the job status on every poll (the workspace locks "new video" while running). */
+  onStatus?: (status: string) => void;
+}) {
+  const onStatusRef = useRef(onStatus);
+  useEffect(() => {
+    onStatusRef.current = onStatus;
+  }, [onStatus]);
   const [job, setJob] = useState<JobData | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [timedOut, setTimedOut] = useState(false);
@@ -96,6 +107,7 @@ export default function PipelineProgress({ jobId }: { jobId: string }) {
         const data = await res.json();
         if (active && data.success) {
           setJob(data.job);
+          onStatusRef.current?.(data.job.status);
           if (data.job.status === "completed" || data.job.status === "failed") {
             return;
           }
