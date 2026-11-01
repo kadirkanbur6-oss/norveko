@@ -7,6 +7,7 @@
 import "server-only";
 import type { CharacterAlignment } from "./captions";
 import { estimateAlignment } from "./tts-estimate";
+import { mapLimit, mergeAlignments, mp3Seconds, splitForTts } from "./tts-chunks";
 
 export interface NarrationResult {
   audio: Buffer;
@@ -22,13 +23,25 @@ export async function synthesizeNarration(
   voiceId: string,
   options: { speed?: number } = {}
 ): Promise<NarrationResult> {
-  const { isGeminiVoiceId, geminiVoiceName, generateGeminiSpeech, GEMINI_TTS_MODEL } = await import("./gemini-tts");
+  const { isGeminiVoiceId, geminiVoiceName, generateGeminiSpeech, pcmToWav, GEMINI_TTS_MODEL } = await import("./gemini-tts");
   if (isGeminiVoiceId(voiceId)) {
     const name = geminiVoiceName(voiceId);
     if (!name) throw new Error(`Unknown Gemini voice: ${voiceId}`);
     const speed = options.speed ?? 1;
     const pace = speed > 1.03 ? "faster" : speed < 0.97 ? "slower" : null;
-    const speech = await generateGeminiSpeech(text, name, { pace });
+    const chunks = splitForTts(text);
+    let speech: { audio: Buffer; contentType: "audio/wav"; seconds: number };
+    if (chunks.length <= 1) {
+      speech = await generateGeminiSpeech(text, name, { pace });
+    } else {
+      // Long narration: speak the chunks (a few at a time), join the PCM with
+      // a short breath between them, then align the whole thing once.
+      const parts = await mapLimit(chunks, 4, (chunk) => generateGeminiSpeech(chunk, name, { pace }));
+      const rate = parts[0].sampleRate;
+      const gap = Buffer.alloc(Math.round(rate * 0.35) * 2);
+      const pcm = Buffer.concat(parts.flatMap((p, i) => (i ? [gap, p.pcm] : [p.pcm])));
+      speech = { audio: pcmToWav(pcm, rate), contentType: "audio/wav", seconds: pcm.length / (rate * 2) };
+    }
     let alignment: CharacterAlignment | null = null;
     try {
       const { forceAlign } = await import("./elevenlabs");
@@ -43,6 +56,25 @@ export async function synthesizeNarration(
     return { audio: speech.audio, alignment, contentType: speech.contentType, ext: "wav", usageKey: `gemini:${GEMINI_TTS_MODEL}` };
   }
   const { generateSpeech } = await import("./elevenlabs");
+  const chunks = splitForTts(text);
+  if (chunks.length > 1) {
+    // ElevenLabs caps one request; speak in order and stitch MP3 + timings.
+    const parts = await mapLimit(chunks, 2, (chunk) => generateSpeech(chunk, voiceId, { speed: options.speed }));
+    const offsets: number[] = [];
+    let t = 0;
+    for (const p of parts) {
+      offsets.push(t);
+      t += mp3Seconds(p.audio.byteLength);
+    }
+    const aligned = parts.every((p) => p.alignment);
+    return {
+      audio: Buffer.concat(parts.map((p) => p.audio)),
+      alignment: aligned ? mergeAlignments(parts.map((p) => p.alignment!), offsets) : estimateAlignment(text, t),
+      contentType: "audio/mpeg",
+      ext: "mp3",
+      usageKey: "elevenlabs:eleven_multilingual_v2",
+    };
+  }
   const out = await generateSpeech(text, voiceId, { speed: options.speed });
   return { audio: out.audio, alignment: out.alignment, contentType: "audio/mpeg", ext: "mp3", usageKey: "elevenlabs:eleven_multilingual_v2" };
 }

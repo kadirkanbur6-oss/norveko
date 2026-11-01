@@ -18,7 +18,7 @@ export const STYLES = [
   "Cinematic",
 ] as const;
 
-export const DURATIONS = ["30 seconds", "60 seconds", "3 minutes", "8 minutes"] as const;
+export const DURATIONS = ["30 seconds", "60 seconds", "3 minutes", "10 minutes"] as const;
 
 /**
  * Output languages. Every entry is supported by ElevenLabs Multilingual v2

@@ -24,6 +24,7 @@ import {
   buildEdit,
   narrationSeconds,
   planSlots,
+  stockQueryFromPrompt,
   type TimelineSlot,
 } from "@/lib/pipeline/timeline";
 import "server-only";
@@ -35,6 +36,8 @@ import {
   optionsFromSteps,
   VIDEO_CLIP_CREDITS,
   STILL_SCENE_CREDITS,
+  STOCK_SLOT_CREDITS,
+  SHORT_FORM_MAX_SECONDS,
   RESEARCH_CREDITS,
   creditBreakdown,
   type FullVideoPlan,
@@ -58,6 +61,7 @@ import {
   type UsageRecord,
 } from "@/lib/pipeline/usage";
 import { captureError } from "@/lib/observability";
+import type { StockClip } from "@/lib/pipeline/pexels";
 
 /** A step that has been running longer than this is considered dead. */
 export const STEP_TIMEOUT_MS = 8 * 60 * 1000;
@@ -144,6 +148,8 @@ export interface RunnerDeps {
     watermarkThumbnail?: typeof import("@/lib/pipeline/watermark").watermarkStoredThumbnail;
     /** Brand kit logo on the thumbnail (optional; tests leave it out). */
     brandThumbnail?: typeof import("@/lib/pipeline/watermark").brandStoredThumbnail;
+    /** Stock footage search (Pixabay/Pexels). Optional: without it stock slots become AI stills. */
+    searchStock?: typeof import("@/lib/pipeline/pexels").searchStockClips;
   };
   kick: (jobId: string) => Promise<void>;
   now: () => number;
@@ -355,7 +361,13 @@ export function createPipelineRunner(deps: RunnerDeps) {
         case "stills": {
           const slots = (steps.video?.slots as TimelineSlot[] | undefined) ?? [];
           const perStill = (steps.video?.plan as Partial<FullVideoPlan> | undefined)?.stillCredits;
-          total += slots.filter((x) => x.kind === "still" && x.status === "succeed").length * (typeof perStill === "number" ? perStill : STILL_SCENE_CREDITS);
+          total += slots.filter((x) => x.kind === "still" && !x.stockFallback && x.status === "succeed").length * (typeof perStill === "number" ? perStill : STILL_SCENE_CREDITS);
+          break;
+        }
+        case "stock": {
+          const slots = (steps.video?.slots as TimelineSlot[] | undefined) ?? [];
+          const perStock = (steps.video?.plan as Partial<FullVideoPlan> | undefined)?.stockCredits;
+          total += slots.filter((x) => (x.kind === "stock" || x.stockFallback) && x.status === "succeed").length * (typeof perStock === "number" ? perStock : STOCK_SLOT_CREDITS);
           break;
         }
         case "video": // legacy clips-only option: paid per succeeded clip
@@ -604,6 +616,10 @@ export function createPipelineRunner(deps: RunnerDeps) {
 
   /** Stills generated per poll invocation (keeps each worker run short). */
   const STILLS_PER_POLL = 2;
+  /** Long-form timelines (dozens of slots) draw more images per poll, in parallel. */
+  const LONG_IMAGES_PER_POLL = 6;
+  /** Stock slots resolved per poll (search only, no download). */
+  const STOCK_PER_POLL = 20;
 
   function isFullVideo(job: JobRow): boolean {
     return Boolean(job.steps?.video?.plan) && Boolean(job.steps?.render);
@@ -679,7 +695,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
   async function submitFullVideoVisuals(job: JobRow): Promise<void> {
     const plan = job.steps!.video!.plan as FullVideoPlan;
     const scenes = Array.isArray(job.steps?.script?.scenes)
-      ? (job.steps!.script!.scenes as Array<{ sceneNumber?: number; videoPrompt?: string; description?: string }>)
+      ? (job.steps!.script!.scenes as Array<{ sceneNumber?: number; videoPrompt?: string; description?: string; stockQuery?: string }>)
       : [];
     const cues = job.steps?.voiceover?.captions as CaptionCue[] | undefined;
     const total = narrationSeconds(cues, plan.seconds);
@@ -688,10 +704,12 @@ export function createPipelineRunner(deps: RunnerDeps) {
         sceneNumber: sc.sceneNumber ?? i + 1,
         videoPrompt: String(sc.videoPrompt ?? ""),
         description: sc.description,
+        stockQuery: typeof sc.stockQuery === "string" ? sc.stockQuery : undefined,
       })),
       total,
       plan.slots,
-      plan.klingSlots
+      plan.klingSlots,
+      plan.stockSlots ?? 0
     );
     if (!slots.length) throw new Error("No scene prompts available for the video.");
 
@@ -810,19 +828,99 @@ export function createPipelineRunner(deps: RunnerDeps) {
 
     // 2) Image→video clips: draw the slot's still, then hand it to the video
     // model. Clips go first (they take longest); they share the per-poll
-    // image budget with plain stills.
+    // image budget with plain stills. Images in one poll run in parallel.
+    const budget = slots.length > 12 ? LONG_IMAGES_PER_POLL : STILLS_PER_POLL;
     let generated = 0;
     if (clipModeOf(job) === "image") {
       const aspectRatio: "9:16" | "16:9" = orientationOf(job) === "vertical" ? "9:16" : "16:9";
-      for (const slot of slots) {
-        if (slot.kind !== "kling" || slot.status !== "pending") continue;
-        if (generated >= STILLS_PER_POLL) break;
-        generated += 1;
-        changed = true;
+      const batch = slots.filter((slot) => slot.kind === "kling" && slot.status === "pending").slice(0, budget);
+      generated += batch.length;
+      if (batch.length) changed = true;
+      await Promise.all(
+        batch.map(async (slot) => {
+          const startedAt = now();
+          try {
+            const img = await providers.generateSceneImage(slot.prompt, job.id, job.user_id, slot.index + 1, orientationOf(job), visualStyleOf(job));
+            slot.imageUrl = img.imageUrl;
+            await logUsage(job, "thumbnail", {
+              usageKey: `gemini:${process.env.GEMINI_SCENE_IMAGE_MODEL || "gemini-nano-banana-2.1"}`,
+              unit: "images",
+              quantity: 1,
+              durationMs: now() - startedAt,
+              status: "ok",
+            });
+          } catch (err) {
+            slot.status = "failed";
+            slot.error = err instanceof Error ? err.message : "Image failed";
+            return;
+          }
+          try {
+            slot.fal = await providers.submitImageToVideo({ prompt: clipPrompt(slot.prompt, visualStyleOf(job)), imageUrl: slot.imageUrl, aspectRatio });
+            slot.submittedAt = new Date(now()).toISOString();
+            slot.status = "processing";
+          } catch (err) {
+            // Keep the still as this slot's visual; the clip credits are refunded at settle.
+            slot.status = "failed";
+            slot.error = err instanceof Error ? err.message : "Submit failed";
+          }
+        })
+      );
+    }
+
+    // 2b) Stock footage: search per scene, never reuse a clip; nothing found
+    // → the slot becomes an AI still (at our cost, it was sold as stock).
+    const stockPending = slots.filter((s) => s.kind === "stock" && s.status === "pending").slice(0, STOCK_PER_POLL);
+    if (stockPending.length) {
+      changed = true;
+      const used = new Set(slots.filter((s) => s.stock).map((s) => `${s.stock!.provider}:${s.stock!.id}`));
+      const cache = new Map<string, StockClip[]>();
+      const orientation = orientationOf(job);
+      for (const slot of stockPending) {
+        const query = slot.stockQuery?.trim() || stockQueryFromPrompt(slot.prompt);
+        let found: StockClip | undefined;
+        if (providers.searchStock) {
+          try {
+            if (!cache.has(query)) cache.set(query, await providers.searchStock(query, orientation, 15));
+            found = cache
+              .get(query)!
+              .filter((c) => c.durationSeconds >= Math.min(6, slot.length))
+              .find((c) => !used.has(`${c.provider}:${c.id}`));
+          } catch (err) {
+            console.warn(`[pipeline] ${job.id} stock search failed:`, err instanceof Error ? err.message : err);
+          }
+        }
+        if (found) {
+          used.add(`${found.provider}:${found.id}`);
+          slot.url = found.videoUrl;
+          slot.posterUrl = found.previewImage;
+          slot.sourceSeconds = found.durationSeconds;
+          slot.stock = { provider: found.provider, id: found.id, pageUrl: found.url, author: found.author };
+          slot.status = "succeed";
+        } else {
+          slot.kind = "still";
+          slot.stockFallback = true;
+        }
+      }
+    }
+
+    // 3) Stills: a few per invocation (in parallel), one image per slot. Slots
+    // that share a scene get a varied camera angle so the picture changes.
+    const ANGLES = ["wide establishing shot", "close-up detail", "low angle", "over-the-shoulder view", "aerial view", "dramatic side light"];
+    const stillBatch = slots.filter((s) => s.kind === "still" && s.status === "pending").slice(0, Math.max(0, budget - generated));
+    if (stillBatch.length) changed = true;
+    await Promise.all(
+      stillBatch.map(async (slot) => {
+        const key = `slot-${slot.index}`;
         const startedAt = now();
         try {
-          const img = await providers.generateSceneImage(slot.prompt, job.id, job.user_id, slot.index + 1, orientationOf(job), visualStyleOf(job));
-          slot.imageUrl = img.imageUrl;
+          const sameScene = slots.filter((s) => s.kind === "still" && s.sceneNumber === slot.sceneNumber);
+          const variant = sameScene.findIndex((s) => s.index === slot.index);
+          const prompt = sameScene.length > 1 ? `${slot.prompt} (${ANGLES[variant % ANGLES.length]})` : slot.prompt;
+          const img = await providers.generateSceneImage(prompt, job.id, job.user_id, slot.index + 1, orientationOf(job), visualStyleOf(job));
+          stills[key] = img.imageUrl;
+          slot.url = img.imageUrl;
+          slot.storage_path = img.storagePath;
+          slot.status = "succeed";
           await logUsage(job, "thumbnail", {
             usageKey: `gemini:${process.env.GEMINI_SCENE_IMAGE_MODEL || "gemini-nano-banana-2.1"}`,
             unit: "images",
@@ -833,65 +931,16 @@ export function createPipelineRunner(deps: RunnerDeps) {
         } catch (err) {
           slot.status = "failed";
           slot.error = err instanceof Error ? err.message : "Image failed";
-          continue;
+          await logUsage(job, "thumbnail", {
+            unit: "images",
+            quantity: 1,
+            durationMs: now() - startedAt,
+            status: "failed",
+            error: slot.error,
+          });
         }
-        try {
-          slot.fal = await providers.submitImageToVideo({ prompt: clipPrompt(slot.prompt, visualStyleOf(job)), imageUrl: slot.imageUrl, aspectRatio });
-          slot.submittedAt = new Date(now()).toISOString();
-          slot.status = "processing";
-        } catch (err) {
-          // Keep the still as this slot's visual; the clip credits are refunded at settle.
-          slot.status = "failed";
-          slot.error = err instanceof Error ? err.message : "Submit failed";
-        }
-      }
-    }
-
-    // 3) Stills: a few per invocation, one image per slot. Slots that share a
-    // scene get a varied camera angle so the picture visibly changes.
-    const ANGLES = ["wide establishing shot", "close-up detail", "low angle", "over-the-shoulder view", "aerial view", "dramatic side light"];
-    for (const slot of slots) {
-      if (slot.kind !== "still" || slot.status !== "pending") continue;
-      const key = `slot-${slot.index}`;
-      if (generated >= STILLS_PER_POLL) continue;
-      generated += 1;
-      const startedAt = now();
-      try {
-        const sameScene = slots.filter((s) => s.kind === "still" && s.sceneNumber === slot.sceneNumber);
-        const variant = sameScene.findIndex((s) => s.index === slot.index);
-        const prompt = sameScene.length > 1 ? `${slot.prompt} (${ANGLES[variant % ANGLES.length]})` : slot.prompt;
-        const img = await providers.generateSceneImage(
-          prompt,
-          job.id,
-          job.user_id,
-          slot.index + 1,
-          orientationOf(job),
-          visualStyleOf(job)
-        );
-        stills[key] = img.imageUrl;
-        slot.url = img.imageUrl;
-        slot.storage_path = img.storagePath;
-        slot.status = "succeed";
-        await logUsage(job, "thumbnail", {
-          usageKey: `gemini:${process.env.GEMINI_SCENE_IMAGE_MODEL || "gemini-nano-banana-2.1"}`,
-          unit: "images",
-          quantity: 1,
-          durationMs: now() - startedAt,
-          status: "ok",
-        });
-      } catch (err) {
-        slot.status = "failed";
-        slot.error = err instanceof Error ? err.message : "Image failed";
-        await logUsage(job, "thumbnail", {
-          unit: "images",
-          quantity: 1,
-          durationMs: now() - startedAt,
-          status: "failed",
-          error: slot.error,
-        });
-      }
-      changed = true;
-    }
+      })
+    );
 
     const settled = slots.every((s) => s.status === "succeed" || s.status === "failed");
     const patch: Record<string, unknown> = { last_polled_at: new Date(now()).toISOString() };
@@ -988,6 +1037,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
       voiceoverUrl,
       subtitlesUrl,
       musicUrl,
+      musicSeconds: music.seconds,
       orientation: orientationOf(job),
       totalSeconds: total,
       fallbackImageUrl: typeof job.steps?.thumbnail?.image_url === "string" ? job.steps.thumbnail.image_url : undefined,
@@ -1226,7 +1276,9 @@ export function createPipelineRunner(deps: RunnerDeps) {
       let rewritten = false;
       const targetSeconds = Number((job.steps?.render?.plan as { seconds?: number } | undefined)?.seconds);
       let measured = spokenSeconds(speech.alignment);
-      if (isFullVideo(job) && targetSeconds > 0 && measured > 0) {
+      // Long-form (> 60 s) keeps the first take: a retake would double a
+      // multi-minute synthesis, and the timeline follows the real length anyway.
+      if (isFullVideo(job) && targetSeconds > 0 && targetSeconds <= SHORT_FORM_MAX_SECONDS && measured > 0) {
         let ratio = measured / targetSeconds;
 
         // Way off (>15 %): the text itself is the wrong length for this
@@ -1759,6 +1811,8 @@ function getRunner() {
           (await import("@/lib/pipeline/watermark")).watermarkStoredThumbnail(...args),
         brandThumbnail: async (...args) =>
           (await import("@/lib/pipeline/watermark")).brandStoredThumbnail(...args),
+        searchStock: async (...args) =>
+          (await import("@/lib/pipeline/pexels")).searchStockClips(...args),
       },
       kick: kickJob,
       now: Date.now,

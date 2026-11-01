@@ -48,7 +48,7 @@ async function jobForProject(userId: string, projectId: string): Promise<Job | n
 }
 
 function slotView(slot: TimelineSlot) {
-  const clip = slot.kind === "kling" && slot.status === "succeed" && !slot.editedStillUrl;
+  const clip = (slot.kind === "kling" || slot.kind === "stock") && slot.status === "succeed" && !slot.editedStillUrl;
   return {
     index: slot.index,
     start: slot.start,
@@ -57,7 +57,7 @@ function slotView(slot: TimelineSlot) {
     kind: clip ? "clip" : "image",
     edited: Boolean(slot.editedStillUrl),
     // What the viewer sees for this slot (a clip shows its source still if it has one).
-    imageUrl: slot.editedStillUrl ?? (slot.kind === "still" ? slot.url : slot.imageUrl) ?? null,
+    imageUrl: slot.editedStillUrl ?? (slot.kind === "still" ? slot.url : slot.imageUrl ?? slot.posterUrl) ?? null,
     clipUrl: clip ? slot.url ?? null : null,
     history: (slot.editHistory ?? []).map((h) => ({ url: h.url, at: h.at })),
   };
@@ -66,7 +66,14 @@ function slotView(slot: TimelineSlot) {
 /** What a slot currently shows (for its history when it changes). */
 function currentPicture(slot: TimelineSlot): { url: string; original: boolean } | null {
   if (slot.editedStillUrl) return { url: slot.editedStillUrl, original: false };
-  const url = slot.kind === "still" ? slot.url : slot.kind === "kling" && slot.status === "succeed" ? slot.imageUrl ?? slot.url : slot.imageUrl;
+  const url =
+    slot.kind === "still"
+      ? slot.url
+      : slot.kind === "stock"
+        ? slot.posterUrl
+        : slot.kind === "kling" && slot.status === "succeed"
+          ? slot.imageUrl ?? slot.url
+          : slot.imageUrl;
   return url ? { url, original: true } : null;
 }
 

@@ -166,7 +166,7 @@ const FAQS = [
   },
   {
     q: "Does Norveko generate the video files?",
-    a: "Every generation gives you the script, scene plan, cinematic video prompts, a generated thumbnail image and full SEO metadata. Add AI voiceover and word-timed subtitles (.srt/.vtt) with one toggle. Full MP4 rendering — AI visuals, voice and subtitles cut to a 30 or 60 second video like the examples above — is rolling out in beta.",
+    a: "Every generation gives you the script, scene plan, cinematic video prompts, a generated thumbnail image and full SEO metadata. Add AI voiceover and word-timed subtitles (.srt/.vtt) with one toggle. Full MP4 rendering — AI visuals, voice and subtitles cut to a Short or a long-form video of up to 10 minutes — is rolling out in beta.",
   },
   {
     q: "How does the credit system work?",

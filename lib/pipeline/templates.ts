@@ -25,7 +25,7 @@ export const NICHE_TEMPLATES: NicheTemplate[] = [
     tagline: "Long-form, narrated, archival feel",
     platform: "YouTube Long-form",
     style: "Documentary",
-    duration: "8 minutes",
+    duration: "10 minutes",
     examples: [
       "The last days of Pompeii, told through one family",
       "How the Library of Alexandria was really lost",
@@ -40,7 +40,7 @@ export const NICHE_TEMPLATES: NicheTemplate[] = [
     tagline: "Tense, factual, case-driven",
     platform: "YouTube Long-form",
     style: "Mystery",
-    duration: "8 minutes",
+    duration: "10 minutes",
     examples: [
       "The disappearance that was solved by a parking ticket",
       "A cold case reopened by a single DNA match",

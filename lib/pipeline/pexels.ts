@@ -32,21 +32,7 @@ export function stockProvider(): StockProvider | null {
   return null;
 }
 
-/**
- * Turn a cinematic scene prompt into a short stock-search query:
- * keep the first clause, drop camera/lighting jargon.
- */
-export function stockQueryFromPrompt(prompt: string): string {
-  const first = prompt.split(/[.;:\n]/)[0] ?? prompt;
-  return first
-    .replace(/\b(cinematic|slow[- ]?motion|close[- ]?up|wide shot|drone|aerial|4k|8k|hyper[- ]?realistic|dramatic lighting|golden hour|volumetric|bokeh|depth of field|dolly|pan|tilt|tracking shot|film grain|photorealistic|ultra[- ]?detailed)\b/gi, "")
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .split(" ")
-    .slice(0, 6)
-    .join(" ") || "abstract background";
-}
+export { stockQueryFromPrompt } from "./timeline";
 
 export async function searchStockClips(
   query: string,

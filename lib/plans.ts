@@ -19,7 +19,7 @@ export const JOB_COSTS = {
   video30: totalPipelineCredits({ research: true, fullVideo: true, footage: "hybrid", duration: "30 seconds" }),
   video60: totalPipelineCredits({ research: true, fullVideo: true, footage: "hybrid", duration: "60 seconds" }),
   /** 8-minute long-form script package with a Norveko narrator. */
-  longForm: totalPipelineCredits({ research: true, voiceover: true, subtitles: true, duration: "8 minutes" }),
+  longForm: totalPipelineCredits({ research: true, voiceover: true, subtitles: true, duration: "10 minutes" }),
 };
 
 export interface PlanDetail {
@@ -60,7 +60,7 @@ export function planDetails(): PlanDetail[] {
       n(c, JOB_COSTS.video60) > 0
         ? `or ≈ ${plural(n(c, JOB_COSTS.video60), "finished 60 s video", "finished 60 s videos")} (≈ ${n(c, JOB_COSTS.video30)} × 30 s)`
         : `or ≈ ${plural(n(c, JOB_COSTS.video30), "finished 30 s video", "finished 30 s videos")}`,
-      `or ≈ ${plural(n(c, JOB_COSTS.longForm), "8-minute narrated long-form script", "8-minute narrated long-form scripts")}`,
+      `or ≈ ${plural(n(c, JOB_COSTS.longForm), "10-minute narrated long-form script", "10-minute narrated long-form scripts")}`,
     ];
     return { pack, ...COPY[pack.id], buys };
   });

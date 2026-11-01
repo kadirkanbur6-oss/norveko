@@ -15,7 +15,9 @@ import { CaptionStylePicker, VisualStylePicker } from "../components/StylePicker
 import { DEFAULT_CAPTION_STYLE, DEFAULT_VISUAL_STYLE, isCaptionStyle, isVisualStyle, VISUAL_STYLES, CAPTION_STYLES } from "@/lib/pipeline/visual-styles";
 import {
   fullVideoPlan,
+  footageModesFor,
   FULL_VIDEO_DURATIONS,
+  SHORT_FORM_MAX_SECONDS,
   RESEARCH_CREDITS,
   subtitlesCredits,
   isTrialVideoShape,
@@ -91,7 +93,7 @@ function ChatContent() {
   const [style, setStyle] = useState<string>(STYLES[0]);
   const [duration, setDuration] = useState<string>(DURATIONS[1]);
   const [language, setLanguage] = useState<string>(LANGUAGES[0]);
-  const [orientation, setOrientation] = useState<OrientationId>(defaultOrientation(PLATFORMS[0]));
+  const [orientationPick, setOrientation] = useState<OrientationId>(defaultOrientation(PLATFORMS[0]));
   const [orientationTouched, setOrientationTouched] = useState(false);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [includeVoiceover, setIncludeVoiceover] = useState(false);
@@ -100,7 +102,7 @@ function ChatContent() {
   const [includeVideo, setIncludeVideo] = useState(false);
   const [videoAvailable, setVideoAvailable] = useState(false);
   const [includeFullVideo, setIncludeFullVideo] = useState(false);
-  const [footage, setFootage] = useState<FootageMode>("hybrid");
+  const [footagePick, setFootage] = useState<FootageMode>("hybrid");
   const [clipMode, setClipMode] = useState<ClipMode>("image");
   const [visualStyle, setVisualStyle] = useState<string>(DEFAULT_VISUAL_STYLE);
   const [captionStyleId, setCaptionStyleId] = useState<string>(DEFAULT_CAPTION_STYLE);
@@ -137,7 +139,12 @@ function ChatContent() {
   const progressRef = useRef<HTMLDivElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Long-form (> 60 s) offers stock / hybrid / stills only and renders 16:9.
+  const footageModes = footageModesFor(duration);
+  const footage: FootageMode = footageModes.includes(footagePick) ? footagePick : "stock";
   const fullVideoOn = includeFullVideo && fullVideoAvailable && Boolean(fullVideoPlan(duration, footage));
+  const longFullVideo = fullVideoOn && (FULL_VIDEO_DURATIONS[duration] ?? 0) > SHORT_FORM_MAX_SECONDS;
+  const orientation: OrientationId = longFullVideo ? "horizontal" : orientationPick;
   const costOptions = {
     research: includeResearch,
     voiceover: includeVoiceover || fullVideoOn,
@@ -176,7 +183,7 @@ function ChatContent() {
       if (typeof draft.includeSubtitles === "boolean") setIncludeSubtitles(draft.includeSubtitles);
       if (typeof draft.includeResearch === "boolean") setIncludeResearch(draft.includeResearch);
       if (typeof draft.includeFullVideo === "boolean") setIncludeFullVideo(draft.includeFullVideo);
-      if (draft.footage === "hybrid" || draft.footage === "cinematic" || draft.footage === "stills") setFootage(draft.footage);
+      if (draft.footage === "hybrid" || draft.footage === "cinematic" || draft.footage === "stills" || draft.footage === "stock") setFootage(draft.footage);
       if (draft.clipMode === "image" || draft.clipMode === "text") setClipMode(draft.clipMode);
       if (typeof draft.voiceId === "string") setVoiceId(draft.voiceId);
       if (draft.orientation === "vertical" || draft.orientation === "horizontal") {
@@ -218,12 +225,12 @@ function ChatContent() {
 
   useEffect(() => {
     try {
-      const draft: Draft = { idea, notes, platform, style, duration, language, includeVoiceover, includeResearch, includeSubtitles, includeFullVideo, footage, clipMode, voiceId, orientation, template: templateId, visualStyle, captionStyle: captionStyleId };
+      const draft: Draft = { idea, notes, platform, style, duration, language, includeVoiceover, includeResearch, includeSubtitles, includeFullVideo, footage: footagePick, clipMode, voiceId, orientation: orientationPick, template: templateId, visualStyle, captionStyle: captionStyleId };
       sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     } catch {
       // storage unavailable
     }
-  }, [idea, notes, platform, style, duration, language, includeVoiceover, includeResearch, includeSubtitles, includeFullVideo, footage, clipMode, voiceId, orientation, templateId, visualStyle, captionStyleId]);
+  }, [idea, notes, platform, style, duration, language, includeVoiceover, includeResearch, includeSubtitles, includeFullVideo, footagePick, clipMode, voiceId, orientationPick, templateId, visualStyle, captionStyleId]);
 
   // Keep orientation in step with the platform until the user picks one explicitly.
   function choosePlatform(next: string) {
@@ -480,7 +487,7 @@ function ChatContent() {
                   {includeResearch ? " · research" : ""}
                   {includeVoiceover ? " · voiceover" : ""}
                   {includeVoiceover && includeSubtitles ? " · subtitles" : ""}
-                  {fullVideoOn ? ` · full video (${footage}${footage === "stills" ? "" : clipMode === "text" ? ", text→video" : ", image→video"})` : ""}
+                  {fullVideoOn ? ` · full video (${footage}${footage === "stills" || footage === "stock" ? "" : clipMode === "text" ? ", text→video" : ", image→video"})` : ""}
                   {templateId ? ` · ${NICHE_TEMPLATES.find((t) => t.id === templateId)?.name}` : ""}
                 </span>
               </span>
@@ -647,20 +654,24 @@ function ChatContent() {
             {/* Orientation */}
             <div className="mt-3">
               <label className="text-sm text-gray-400">Output format</label>
+              {longFullVideo && <p className="mt-0.5 text-xs text-gray-500">Full videos longer than 60 seconds are made for YouTube in 16:9.</p>}
               <div className="mt-2 grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Output format">
                 {ORIENTATIONS.map((o) => {
                   const active = orientation === o.id;
+                  const locked = longFullVideo && o.id === "vertical";
                   return (
                     <button
                       key={o.id}
                       type="button"
                       role="radio"
                       aria-checked={active}
+                      disabled={locked}
+                      title={locked ? "Videos longer than 60 seconds are 16:9" : undefined}
                       onClick={() => {
                         setOrientation(o.id);
                         setOrientationTouched(true);
                       }}
-                      className={`flex items-center gap-3 rounded-xl border p-3 text-left transition ${
+                      className={`flex items-center gap-3 rounded-xl border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-40 ${
                         active
                           ? "border-blue-400/50 bg-blue-500/10"
                           : "border-white/10 bg-[#12121c] hover:border-white/20"
@@ -1095,14 +1106,15 @@ function ChatContent() {
                 )}
 
                 {fullVideoOn && (
-                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                  <div className={`mt-4 grid gap-2 ${footageModes.length > 3 ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
                     {(
                       [
+                        { id: "stock", name: "Stock + AI", hint: "Real stock video for most scenes, AI stills for the key moments. Lowest cost." },
                         { id: "hybrid", name: "Hybrid", hint: "AI video clips for key moments, cinematic stills in between" },
                         { id: "cinematic", name: "Cinematic", hint: "Every scene is an AI video clip" },
                         { id: "stills", name: "Stills", hint: "Cinematic AI stills with camera motion, no video clips" },
                       ] as Array<{ id: FootageMode; name: string; hint: string }>
-                    ).map((m) => {
+                    ).filter((m) => footageModes.includes(m.id)).map((m) => {
                       const plan = fullVideoPlan(duration, m.id, clipMode);
                       const active = footage === m.id;
                       return (
@@ -1126,8 +1138,8 @@ function ChatContent() {
                           <span className="mt-1 block text-xs text-gray-500">{m.hint}</span>
                           {plan && (
                             <span className="mt-1 block text-[11px] text-gray-500">
-                              {plan.klingSlots > 0 ? `${plan.klingSlots} AI clips` : "no AI clips"}
-                              {plan.stillSlots > 0 ? ` · ${plan.stillSlots} stills` : ""} · {plan.seconds}s render
+                              {plan.stockSlots > 0 ? `${plan.stockSlots} stock clips` : plan.klingSlots > 0 ? `${plan.klingSlots} AI clips` : "no AI clips"}
+                              {plan.stillSlots > 0 ? ` · ${plan.stillSlots} stills` : ""} · {plan.seconds >= 120 ? `${plan.seconds / 60} min` : `${plan.seconds}s`} render
                             </span>
                           )}
                         </button>
@@ -1140,9 +1152,9 @@ function ChatContent() {
                 <Disclosure
                   className="mt-3"
                   title="Clips & subtitles"
-                  summary={`${footage === "stills" ? "No AI clips" : clipMode === "text" ? "Text → video clips" : "Image → video clips"} · ${CAPTION_STYLES.find((c) => c.id === captionStyleId)?.label ?? "Bold pop"} subtitles`}
+                  summary={`${footage === "stills" ? "No AI clips" : footage === "stock" ? "Stock clips" : clipMode === "text" ? "Text → video clips" : "Image → video clips"} · ${CAPTION_STYLES.find((c) => c.id === captionStyleId)?.label ?? "Bold pop"} subtitles`}
                 >
-                {footage !== "stills" && (
+                {footage !== "stills" && footage !== "stock" && (
                   <div className="mt-3">
                     <p className="mb-2 text-xs font-medium text-gray-400">How AI clips are made</p>
                     <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Clip type">

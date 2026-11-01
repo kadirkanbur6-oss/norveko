@@ -47,7 +47,7 @@ export function geminiVoiceName(voiceId: string): string | null {
   return GEMINI_VOICES.some((v) => v.name === name) ? name : null;
 }
 
-function pcmToWav(pcm: Buffer, sampleRate: number): Buffer {
+export function pcmToWav(pcm: Buffer, sampleRate: number): Buffer {
   const header = Buffer.alloc(44);
   header.write("RIFF", 0);
   header.writeUInt32LE(36 + pcm.length, 4);
@@ -69,6 +69,9 @@ export interface GeminiSpeech {
   audio: Buffer;
   contentType: "audio/wav";
   seconds: number;
+  /** Raw 16-bit mono PCM and its rate (for stitching long narrations). */
+  pcm: Buffer;
+  sampleRate: number;
 }
 
 /**
@@ -114,5 +117,5 @@ export async function generateGeminiSpeech(
   const mime: string = part.inlineData.mimeType ?? "audio/L16;rate=24000";
   const rate = Number(mime.match(/rate=(\d+)/)?.[1] ?? 24000);
   const pcm = Buffer.from(part.inlineData.data, "base64");
-  return { audio: pcmToWav(pcm, rate), contentType: "audio/wav", seconds: pcm.length / (rate * 2) };
+  return { audio: pcmToWav(pcm, rate), contentType: "audio/wav", seconds: pcm.length / (rate * 2), pcm, sampleRate: rate };
 }

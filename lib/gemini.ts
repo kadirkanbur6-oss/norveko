@@ -223,7 +223,7 @@ Rules:
 - Write ALL text content (hook, script, scene descriptions, titles, description, tags, thumbnail idea) in ${lang}.
 - EXCEPTION: videoPrompt fields must ALWAYS be in English, because they will be pasted into AI video tools like Kling or Runway.
 - The script length must match the target duration.
-- Scene count must match the duration (4-6 scenes for 30-60 seconds, 8-10 for 3 minutes, 12-15 for 8 minutes).
+- Scene count must match the duration (4-6 scenes for 30-60 seconds, 8-10 for 3 minutes, 20-30 for 10 minutes).
 - videoPrompt fields must be detailed, cinematic English prompts ready to paste into AI video generators.
 - Titles should drive clicks without being dishonest clickbait.
 

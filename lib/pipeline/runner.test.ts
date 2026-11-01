@@ -26,7 +26,11 @@ import {
   scriptCredits,
   voiceoverCredits,
   subtitlesCredits,
+  fullVideoPlan,
+  STOCK_SLOT_CREDITS,
 } from "./steps";
+import { splitForTts, mergeAlignments, mp3Seconds } from "./tts-chunks";
+import { buildEdit } from "./timeline";
 
 type Row = Record<string, any>;
 
@@ -257,6 +261,22 @@ function makeRunner(
         return { id, status, url: status === "done" ? "https://shotstack/final.mp4" : undefined, duration: 60 };
       },
       downloadRender: async () => Buffer.from("mp4-final"),
+      searchStock: async (query) => {
+        calls.push(`stock:${query}`);
+        if (query.includes("3")) return []; // nothing for scene 3 → AI still fallback
+        return [1, 2, 3, 4, 5, 6, 7, 8].map((n) => ({
+          id: Number(`${query.replace(/\D/g, "") || 0}${n}`),
+          provider: "pixabay" as const,
+          url: `https://pixabay/${query}/${n}`,
+          previewImage: `https://pixabay/${query}/${n}.jpg`,
+          videoUrl: `https://pixabay/${query}/${n}.mp4`,
+          width: 1920,
+          height: 1080,
+          durationSeconds: 14,
+          author: "someone",
+          authorUrl: "https://pixabay/u",
+        }));
+      },
     },
     kick: async (id) => {
       kicked.push(id);
@@ -516,7 +536,7 @@ test("full video (hybrid, 60 s): 12 slots, 3 Kling + stills, render to final MP4
   // Image→video (Seedance) is the default clip mode and much cheaper per clip.
   assert.equal(totalPipelineCredits({ fullVideo: true, footage: "hybrid", duration: "60 seconds" }), base60 + 3 * IMAGE_CLIP_CREDITS + 9 * STILL_SCENE_CREDITS + 2 * RENDER_CREDITS_PER_30S);
   assert.equal(totalPipelineCredits({ fullVideo: true, footage: "stills", duration: "30 seconds" }), base30 + 6 * STILL_SCENE_CREDITS + RENDER_CREDITS_PER_30S);
-  assert.equal(totalPipelineCredits({ fullVideo: true, duration: "8 minutes" }), scriptCredits("8 minutes") + THUMBNAIL_CREDITS, "unsupported duration → plain package");
+  assert.equal(totalPipelineCredits({ fullVideo: true, duration: "5 minutes" }), scriptCredits("5 minutes") + THUMBNAIL_CREDITS, "unsupported duration → plain package");
 
   const { runner, rows, rpc, seedJob, calls, klingStatuses, renderStatus, edit, projects } = makeRunner();
   const id = seedFullVideoJob(seedJob);
@@ -701,4 +721,77 @@ test("full video, image→video clips: still first, then the video model; a fail
   assert.equal(atFailed.asset.src, failedSlot.imageUrl);
   assert.equal(clips.filter((x: any) => x.asset.type === "video").length, 2);
   renderStatus.value = "done";
+});
+
+
+test("long-form full video (3 min, stock + AI): 10 s slots, stock clips with AI stills, no length retakes, music loops", async () => {
+  const opts = { fullVideo: true, footage: "stock" as const, duration: "3 minutes" };
+  const plan = fullVideoPlan("3 minutes", "stock")!;
+  assert.equal(plan.slots, 18);
+  assert.equal(plan.slotSeconds, 10);
+  assert.equal(plan.stockSlots, 12);
+  assert.equal(plan.stillSlots, 6);
+  assert.equal(fullVideoPlan("3 minutes", "cinematic"), null, "no all-clips footage for long-form");
+  assert.equal(fullVideoPlan("10 minutes", "hybrid")!.klingSlots, 10, "hybrid long-form: a clip every 6th slot");
+  assert.equal(plan.credits.total, 12 * STOCK_SLOT_CREDITS + 6 * STILL_SCENE_CREDITS + 6 * RENDER_CREDITS_PER_30S);
+
+  const { runner, rows, rpc, seedJob, calls, edit } = makeRunner();
+  const steps = initialStepsState(opts) as Record<string, any>;
+  steps.script.queued_at = new Date(0).toISOString();
+  steps.voiceover.voice_id = "v1";
+  const id = seedJob(false, { steps, credits_charged: totalPipelineCredits(opts), options: { orientation: "horizontal" } });
+
+  for (let i = 0; i < 3; i++) await runner.runNextStep(id); // script, voiceover, thumbnail
+  assert.deepEqual(calls.filter((c) => c.startsWith("voiceover") || c.startsWith("revise")), ["voiceover"], "long-form keeps the first take");
+  assert.equal(await runner.runNextStep(id), "advanced"); // visuals: plan
+  let job = rows.get(id)!;
+  assert.equal(job.steps.video.slots.filter((s: any) => s.kind === "stock").length, 12);
+  assert.equal(job.steps.video.slots[0].kind, "still", "the opening is an AI still");
+
+  for (let i = 0; i < 10 && rows.get(id)!.steps.video.status !== "completed"; i++) await runner.runNextStep(id);
+  job = rows.get(id)!;
+  assert.equal(job.steps.video.status, "completed");
+  const slots = job.steps.video.slots as any[];
+  const stock = slots.filter((s) => s.kind === "stock");
+  const fallback = slots.filter((s) => s.stockFallback);
+  assert.ok(fallback.length > 0, "scene 3 found no stock → AI stills");
+  assert.equal(stock.length + fallback.length, 12);
+  assert.equal(new Set(stock.map((s) => s.url)).size, stock.length, "no stock clip is used twice");
+  assert.ok(stock.every((s) => s.status === "succeed" && s.posterUrl && s.stock?.provider === "pixabay"));
+  assert.ok(calls.filter((c) => c.startsWith("still:")).length === 6 + fallback.length);
+  assert.deepEqual(rpc, [], "nothing refunded");
+
+  await runner.runNextStep(id); // render submit
+  const tracks = (edit()!.timeline as any).tracks;
+  const clips = tracks.find((t: any) => t.clips?.length >= 18).clips;
+  const stockClip = clips.find((x: any) => x.asset.type === "video");
+  assert.equal(stockClip.asset.speed, 1, "stock plays at normal speed, trimmed");
+  assert.equal(stockClip.asset.trim, 1);
+});
+
+test("long narration: split into sentence chunks and stitched with offsets", () => {
+  const sentence = "The keepers vanished without a trace. ";
+  const text = sentence.repeat(100);
+  const chunks = splitForTts(text, 400);
+  assert.ok(chunks.length > 5);
+  assert.ok(chunks.every((c) => c.length <= 400 && /\.$/.test(c)), "chunks end on sentence boundaries");
+  assert.equal(chunks.join(" ").replace(/\s+/g, " "), text.trim().replace(/\s+/g, " "));
+  const a = { characters: ["A", "b"], character_start_times_seconds: [0, 0.1], character_end_times_seconds: [0.1, 0.2] };
+  const merged = mergeAlignments([a, a], [0, 5]);
+  assert.deepEqual(merged.characters, ["A", "b", " ", "A", "b"]);
+  assert.deepEqual(merged.character_start_times_seconds, [0, 0.1, 5, 5, 5.1]);
+  assert.equal(Math.round(mp3Seconds(16000)), 1);
+});
+
+test("music repeats under a long video", () => {
+  const edit = buildEdit({
+    slots: [{ index: 0, sceneNumber: 1, kind: "still", start: 0, length: 300, prompt: "p", status: "succeed", url: "https://x/1.png" }],
+    voiceoverUrl: "https://x/v.wav",
+    musicUrl: "https://x/m.mp3",
+    musicSeconds: 120,
+    orientation: "horizontal",
+    totalSeconds: 300,
+  });
+  const music = (edit.timeline as any).tracks.find((t: any) => t.clips[0].asset.type === "audio").clips;
+  assert.deepEqual(music.map((c: any) => [c.start, c.length]), [[0, 120], [120, 120], [240, 60]]);
 });

@@ -17,6 +17,7 @@ import {
   totalPipelineCredits,
   isTrialVideoShape,
   type FootageMode,
+  SHORT_FORM_MAX_SECONDS,
   type PipelineOptions,
   initialStepsState,
 } from "@/lib/pipeline/steps";
@@ -145,7 +146,14 @@ export async function POST(req: NextRequest) {
     }
     if (fullVideoRequested && !fullVideoPlan(duration, footage)) {
       return NextResponse.json(
-        { success: false, error: "Full videos are available for 30 and 60 second durations for now." },
+        { success: false, error: "This footage option isn't available for that duration (long videos use stock, hybrid or stills)." },
+        { status: 400 }
+      );
+    }
+    // Long-form full videos are horizontal YouTube videos.
+    if (fullVideoRequested && (fullVideoPlan(duration, footage)?.seconds ?? 0) > SHORT_FORM_MAX_SECONDS && orientation !== "horizontal") {
+      return NextResponse.json(
+        { success: false, error: "Videos longer than 60 seconds are rendered in 16:9 (horizontal)." },
         { status: 400 }
       );
     }

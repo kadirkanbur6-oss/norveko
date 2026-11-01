@@ -43,9 +43,10 @@ interface StepInfo {
   slots?: Array<{
     index: number;
     sceneNumber: number;
-    kind: "kling" | "still";
+    kind: "kling" | "still" | "stock";
     status: "pending" | "processing" | "succeed" | "failed";
     url?: string;
+    posterUrl?: string;
     error?: string;
   }>;
   /** Full video: render step */
@@ -282,12 +283,12 @@ export default function PipelineProgress({
               {job.steps?.render?.status === "running" ? " · rendering the final video" : ""}
             </span>
           </div>
-          <div className="mt-3 grid grid-cols-6 gap-1.5 sm:grid-cols-12">
+          <div className={`mt-3 grid gap-1.5 ${videoStep.slots.length > 12 ? "grid-cols-10 sm:grid-cols-15" : "grid-cols-6 sm:grid-cols-12"}`}>
             {videoStep.slots.map((slot) => (
               <div
                 key={slot.index}
-                title={`Slot ${slot.index + 1} · scene ${slot.sceneNumber} · ${slot.kind === "kling" ? "AI clip" : "AI still"} · ${slot.status}`}
-                className={`flex aspect-[9/16] items-center justify-center overflow-hidden rounded-md border text-[10px] ${
+                title={`Slot ${slot.index + 1} · scene ${slot.sceneNumber} · ${slot.kind === "kling" ? "AI clip" : slot.kind === "stock" ? "stock clip" : "AI still"} · ${slot.status}`}
+                className={`flex ${(videoStep.slots?.length ?? 0) > 12 ? "aspect-video" : "aspect-[9/16]"} items-center justify-center overflow-hidden rounded-md border text-[10px] ${
                   slot.status === "succeed"
                     ? "border-green-400/30 bg-green-500/10"
                     : slot.status === "failed"
@@ -295,9 +296,9 @@ export default function PipelineProgress({
                     : "border-white/10 bg-white/[0.03]"
                 }`}
               >
-                {slot.status === "succeed" && slot.url && slot.kind === "still" ? (
+                {slot.status === "succeed" && (slot.kind === "still" ? slot.url : slot.posterUrl) ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={slot.url} alt="" className="h-full w-full object-cover" />
+                  <img src={(slot.kind === "still" ? slot.url : slot.posterUrl)!} alt="" className="h-full w-full object-cover" />
                 ) : slot.status === "succeed" ? (
                   <Clapperboard size={12} className="text-green-300" />
                 ) : slot.status === "failed" ? (

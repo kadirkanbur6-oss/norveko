@@ -26,8 +26,8 @@ export interface StepDefinition {
 }
 
 /** How the visuals of a full video are sourced. */
-export type FootageMode = "hybrid" | "cinematic" | "stills";
-export const FOOTAGE_MODES: FootageMode[] = ["hybrid", "cinematic", "stills"];
+export type FootageMode = "hybrid" | "cinematic" | "stills" | "stock";
+export const FOOTAGE_MODES: FootageMode[] = ["hybrid", "cinematic", "stills", "stock"];
 
 /**
  * How AI clips are made (31 Oct 2026, chosen in the model lab):
@@ -179,29 +179,59 @@ export const STILL_SCENE_CREDITS = creditsForCost(0.04); // 7
 export const RENDER_CREDITS_PER_30S = creditsForCost(0.1); // 16
 /** Thumbnail: Gemini 3.1 Flash Image ≈ $0.067. */
 export const THUMBNAIL_CREDITS = creditsForCost(0.067); // 11
-/** Timeline slot length a full video is planned in (one visual per slot). */
+/** Timeline slot length a short full video is planned in (one visual per slot). */
 export const SLOT_SECONDS = 5;
+/**
+ * Long-form (> 60 s, 1 Nov 2026): one visual every 10 s, like the long-form
+ * tools (LongStories, Fliki): calm pacing, and half the images of 5 s slots.
+ */
+export const LONG_SLOT_SECONDS = 10;
+export function slotSecondsFor(seconds: number): number {
+  return seconds > 60 ? LONG_SLOT_SECONDS : SLOT_SECONDS;
+}
 
-/** Full videos are limited to these durations (label → seconds) for now. */
+/** Full-video durations (label → seconds). Long ones are horizontal YouTube long-form only. */
 export const FULL_VIDEO_DURATIONS: Record<string, number> = {
   "30 seconds": 30,
   "60 seconds": 60,
+  "3 minutes": 180,
+  "10 minutes": 600,
 };
+/** Durations above this are long-form: 16:9 only, no "all clips" (cinematic) footage. */
+export const SHORT_FORM_MAX_SECONDS = 60;
+
+/** Footage modes offered for a duration (cinematic = every slot a clip, short videos only). */
+export function footageModesFor(duration: string | undefined): FootageMode[] {
+  const seconds = FULL_VIDEO_DURATIONS[duration ?? ""] ?? 0;
+  return seconds > SHORT_FORM_MAX_SECONDS ? ["stock", "hybrid", "stills"] : FOOTAGE_MODES;
+}
+
+/**
+ * Stock footage slot (Pixabay/Pexels, free licence): search + copy into our
+ * bucket. If nothing fits, the slot gets an AI still at our cost.
+ */
+export const STOCK_SLOT_CREDITS = 1;
 
 export interface FullVideoPlan {
   seconds: number;
   /** Number of ~5 s visual slots on the timeline. */
   slots: number;
-  /** Slots filled with a Kling clip; the rest get AI stills. */
+  /** Seconds per slot (5 for Shorts, 10 for long-form). */
+  slotSeconds: number;
+  /** Slots filled with an AI clip; the rest get AI stills or stock footage. */
   klingSlots: number;
   stillSlots: number;
+  /** Slots filled with stock footage ("stock" footage mode). */
+  stockSlots: number;
   renderBlocks: number;
   clipMode: ClipMode;
   /** Credits per AI clip for this plan (refunds use the same number). */
   clipCredits: number;
   /** Credits per AI still for this plan (refunds use the same number). */
   stillCredits: number;
-  credits: { kling: number; stills: number; render: number; total: number };
+  /** Credits per stock slot for this plan. */
+  stockCredits: number;
+  credits: { kling: number; stills: number; stock: number; render: number; total: number };
 }
 
 /**
@@ -215,24 +245,35 @@ export function fullVideoPlan(
 ): FullVideoPlan | null {
   const seconds = FULL_VIDEO_DURATIONS[duration ?? ""];
   if (!seconds) return null;
-  const slots = Math.ceil(seconds / SLOT_SECONDS);
-  const klingSlots = footage === "cinematic" ? slots : footage === "stills" ? 0 : Math.ceil(slots / 4);
-  const stillSlots = slots - klingSlots;
+  const long = seconds > SHORT_FORM_MAX_SECONDS;
+  if (long && footage === "cinematic") return null; // 60–120 clips: not offered
+  const slotSeconds = slotSecondsFor(seconds);
+  const slots = Math.ceil(seconds / slotSeconds);
+  // Hybrid: a clip every 4th slot in Shorts, every 6th in long-form.
+  // Stock: two of three slots stock footage, every third an AI still (incl. the opening).
+  const klingSlots =
+    footage === "cinematic" ? slots : footage === "hybrid" ? Math.ceil(slots / (long ? 6 : 4)) : 0;
+  const stockSlots = footage === "stock" ? slots - Math.ceil(slots / 3) : 0;
+  const stillSlots = slots - klingSlots - stockSlots;
   const renderBlocks = Math.ceil(seconds / 30);
   const perClip = clipCredits(clipMode);
   const kling = klingSlots * perClip;
   const stills = stillSlots * STILL_SCENE_CREDITS;
+  const stock = stockSlots * STOCK_SLOT_CREDITS;
   const render = renderBlocks * RENDER_CREDITS_PER_30S;
   return {
     seconds,
     slots,
+    slotSeconds,
     klingSlots,
     stillSlots,
+    stockSlots,
     renderBlocks,
     clipMode,
     clipCredits: perClip,
     stillCredits: STILL_SCENE_CREDITS,
-    credits: { kling, stills, render, total: kling + stills + render },
+    stockCredits: STOCK_SLOT_CREDITS,
+    credits: { kling, stills, stock, render, total: kling + stills + stock + render },
   };
 }
 
@@ -341,6 +382,7 @@ export function creditBreakdown(opts: boolean | PipelineOptions = false): Array<
           credits: plan.credits.kling,
         });
       if (plan.stillSlots) items.push({ id: "stills", label: `AI scenes × ${plan.stillSlots}`, credits: plan.credits.stills });
+      if (plan.stockSlots) items.push({ id: "stock", label: `Stock footage × ${plan.stockSlots}`, credits: plan.credits.stock });
       continue;
     }
     if (step.id === "render" && plan) {
@@ -428,7 +470,7 @@ export function initialStepsState(
   if (n.fullVideo) {
     const full = fullVideoPlan(n.duration, n.footage, n.clipMode)!;
     const plan = n.trialVideo
-      ? { ...full, clipCredits: 0, stillCredits: 0, credits: { kling: 0, stills: 0, render: 0, total: 0 } }
+      ? { ...full, clipCredits: 0, stillCredits: 0, stockCredits: 0, credits: { kling: 0, stills: 0, stock: 0, render: 0, total: 0 } }
       : full;
     state.video.plan = { ...plan, footage: n.footage, duration: n.duration, ...(n.trialVideo ? { trial: true } : {}) };
     state.render.plan = { seconds: plan.seconds, renderBlocks: plan.renderBlocks };

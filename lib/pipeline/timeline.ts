@@ -17,7 +17,8 @@ import { upper, type CaptionCue } from "./captions";
 import { SLOT_SECONDS } from "./steps";
 import { MUSIC_VOLUME } from "./music";
 
-export type SlotKind = "kling" | "still";
+/** kling = AI clip (text→video or image→video), still = AI image, stock = licensed stock video. */
+export type SlotKind = "kling" | "still" | "stock";
 export type SlotStatus = "pending" | "processing" | "succeed" | "failed";
 
 export interface TimelineSlot {
@@ -53,13 +54,43 @@ export interface TimelineSlot {
   editHistory?: Array<{ url: string; prompt?: string; at: string }>;
   /** Clip credits already given back for this slot. */
   refunded?: boolean;
+  /** Stock slots: preview frame and attribution of the chosen clip. */
+  posterUrl?: string;
+  stock?: { provider: string; id: number; pageUrl: string; author: string };
+  /** Stock slots: what to search for (from the scene's stockQuery). */
+  stockQuery?: string;
+  /** A stock slot that found nothing and was filled with an AI still instead. */
+  stockFallback?: boolean;
 }
 
 export interface SceneInput {
   sceneNumber: number;
   videoPrompt: string;
   description?: string;
+  /** 2–4 plain English words to search stock footage for this scene. */
+  stockQuery?: string;
 }
+
+/**
+ * Turn a cinematic scene prompt into a short stock-search query:
+ * keep the first clause, drop camera/lighting jargon.
+ */
+export function stockQueryFromPrompt(prompt: string): string {
+  // Scene prompts open with the shot type ("extreme close-up, 85mm, …"):
+  // skip clauses that are only camera talk.
+  const clauses = prompt.split(/[.;:,\n]/).map((c) => c.trim()).filter(Boolean);
+  const camera = /^(extreme |medium |wide |tight |slow |low |high |over|aerial|establishing|close|shot|lens|\d+ ?mm|macro|tracking|static|handheld|dolly|crane|top[- ]down|bird)/i;
+  const first = clauses.find((c) => !camera.test(c) && !/\b(shot|lens|\d+ ?mm)\b/i.test(c)) ?? clauses[0] ?? prompt;
+  return first
+    .replace(/\b(cinematic|slow[- ]?motion|close[- ]?up|wide shot|drone|aerial|4k|8k|hyper[- ]?realistic|dramatic lighting|golden hour|volumetric|bokeh|depth of field|dolly|pan|tilt|tracking shot|film grain|photorealistic|ultra[- ]?detailed)\b/gi, "")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .slice(0, 6)
+    .join(" ") || "abstract background";
+}
+
 
 /** Narration length from the last caption cue (plus a short tail). */
 export function narrationSeconds(cues: CaptionCue[] | undefined, fallback: number): number {
@@ -77,7 +108,8 @@ export function planSlots(
   scenes: SceneInput[],
   totalSeconds: number,
   slotCount: number,
-  klingSlots: number
+  klingSlots: number,
+  stockSlots = 0
 ): TimelineSlot[] {
   const usable = scenes.filter((s) => s.videoPrompt?.trim());
   if (!usable.length || slotCount <= 0) return [];
@@ -90,16 +122,33 @@ export function planSlots(
     for (let k = 0; k < Math.min(klingSlots, slotCount); k++) klingIdx.add(Math.round(k * step));
   }
 
+  // Stock footage: of the slots left, an evenly spread set (starting with the
+  // opening) stays an AI still — those carry the story's key moments — and
+  // the rest are stock clips.
+  const stockIdx = new Set<number>();
+  const free = [...Array(slotCount).keys()].filter((i) => !klingIdx.has(i));
+  const stockCount = Math.min(Math.max(0, stockSlots), free.length);
+  if (stockCount > 0) {
+    const stillCount = free.length - stockCount;
+    const stillPos = new Set<number>();
+    if (stillCount > 0) {
+      const step = free.length / stillCount;
+      for (let k = 0; k < stillCount; k++) stillPos.add(free[Math.min(free.length - 1, Math.round(k * step))]);
+    }
+    for (const i of free) if (!stillPos.has(i) && stockIdx.size < stockCount) stockIdx.add(i);
+  }
+
   const slots: TimelineSlot[] = [];
   for (let i = 0; i < slotCount; i++) {
     const scene = usable[Math.min(usable.length - 1, Math.floor((i * usable.length) / slotCount))];
     slots.push({
       index: i,
       sceneNumber: scene.sceneNumber,
-      kind: klingIdx.has(i) ? "kling" : "still",
+      kind: klingIdx.has(i) ? "kling" : stockIdx.has(i) ? "stock" : "still",
       start: Math.round(i * length * 100) / 100,
       length: i === slotCount - 1 ? Math.round((totalSeconds - i * length) * 100) / 100 : length,
       prompt: scene.videoPrompt.trim(),
+      ...(stockIdx.has(i) && scene.stockQuery?.trim() ? { stockQuery: scene.stockQuery.trim() } : {}),
       status: "pending",
     });
   }
@@ -126,8 +175,10 @@ export interface EditInput {
   hookText?: string;
   /** ISO code of the narration language — drives locale-aware uppercase. */
   languageCode?: string;
-  /** Background music (already ≥ the video length); mixed well under the voice. */
+  /** Background music; mixed well under the voice. */
   musicUrl?: string;
+  /** Length of the music track; shorter than the video → it repeats. */
+  musicSeconds?: number;
   /** Free-trial "Made with Norveko" badge (PNG URL), top-right for the whole video. */
   watermarkUrl?: string;
   /** Caption look preset id (lib/pipeline/visual-styles.ts); default "bold". */
@@ -186,7 +237,14 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
       }
       return;
     }
-    if (v.kind === "kling") {
+    if (v.kind === "stock") {
+      // Stock clips are usually longer than the slot: play at normal speed, trimmed;
+      // skip the first second (fade-ins/titles in many stock clips).
+      const src = v.sourceSeconds && v.sourceSeconds > 0 ? v.sourceSeconds : slot.length;
+      const trim = src - 1 >= slot.length ? 1 : 0;
+      const speed = Math.max(0.5, Math.min(1, Math.round(((src - trim) / slot.length) * 100) / 100));
+      clips.push({ ...base, asset: { type: "video", src: v.url, volume: 0, speed, trim, transcode: true } });
+    } else if (v.kind === "kling") {
       // Slow a short clip down to fill its slot (never below 0.5×), trim a long one.
       const src = v.sourceSeconds && v.sourceSeconds > 0 ? v.sourceSeconds : SLOT_SECONDS;
       const speed = Math.max(0.5, Math.min(1, Math.round((src / slot.length) * 100) / 100));
@@ -292,15 +350,18 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
   // Background music as its own audio track (the soundtrack slot is the
   // voice): quiet, fades in/out, trimmed to the narration.
   if (input.musicUrl) {
-    tracks.push({
-      clips: [
-        {
-          asset: { type: "audio", src: input.musicUrl, volume: MUSIC_VOLUME, effect: "fadeInFadeOut" },
-          start: 0,
-          length: Math.round(totalSeconds * 100) / 100,
-        },
-      ],
-    });
+    // Long-form: a track shorter than the video is repeated back to back
+    // (each pass fades in/out) instead of going silent after its end.
+    const piece = input.musicSeconds && input.musicSeconds > 20 ? input.musicSeconds : totalSeconds;
+    const musicClips: Array<Record<string, unknown>> = [];
+    for (let start = 0; start < totalSeconds - 0.5; start += piece) {
+      musicClips.push({
+        asset: { type: "audio", src: input.musicUrl, volume: MUSIC_VOLUME, effect: "fadeInFadeOut" },
+        start: Math.round(start * 100) / 100,
+        length: Math.round(Math.min(piece, totalSeconds - start) * 100) / 100,
+      });
+    }
+    tracks.push({ clips: musicClips });
   }
 
   // End card: the creator's call to action over the last seconds.

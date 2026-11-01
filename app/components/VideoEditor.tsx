@@ -276,7 +276,7 @@ export default function VideoEditor({ projectId, vertical }: { projectId: string
                   className="w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-sm text-white outline-none focus:border-blue-400/50"
                 />
                 {slot.kind === "clip" && (
-                  <p className="mt-1 text-xs text-gray-500">This scene is an AI clip; the new image replaces it as a still with a slow camera move.</p>
+                  <p className="mt-1 text-xs text-gray-500">This scene is a video clip; the new image replaces it as a still with a slow camera move.</p>
                 )}
                 <button
                   type="button"

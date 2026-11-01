@@ -19,6 +19,8 @@ export interface ScriptResult {
     sceneNumber: number;
     description: string;
     videoPrompt: string;
+    /** 2–4 plain English words for a stock-footage search. */
+    stockQuery?: string;
   }>;
   titles: string[];
   description: string;
@@ -132,6 +134,13 @@ Hook options (pick or sharpen one; it must stay literally true): ${plan.hooks.jo
   }`;
 }
 
+/** Scene count for a narration length: long-form needs many distinct shots (one visual per ~10 s). */
+export function sceneRange(seconds: number): string {
+  if (seconds <= 60) return "5-8";
+  if (seconds <= 180) return "12-16";
+  return "26-34";
+}
+
 export async function generateScript(params: ScriptParams): Promise<ScriptResult> {
   const { idea, platform, style, duration, outputLanguage, orientation, brief, research, notes } = params;
   const look = params.visualStyle && params.visualStyle !== DEFAULT_VISUAL_STYLE ? visualStyle(params.visualStyle) : null;
@@ -169,7 +178,8 @@ Respond ONLY with a valid JSON object, no markdown, no extra text. Schema:
     {
       "sceneNumber": 1,
       "description": "what happens in this scene, in output language",
-      "videoPrompt": "cinematic ENGLISH text-to-video prompt for this scene (see the VISUAL PROMPT rules)"
+      "videoPrompt": "cinematic ENGLISH text-to-video prompt for this scene (see the VISUAL PROMPT rules)",
+      "stockQuery": "2–4 plain ENGLISH words a stock-video site would match for this scene's subject and setting (e.g. 'stormy sea lighthouse', 'medieval town street') — no names, dates or camera terms"
     }
   ],
   "titles": ["title option 1", "title option 2", "title option 3", "title option 4", "title option 5"],
@@ -183,7 +193,7 @@ Rules:
 - every "videoPrompt" must ALWAYS be in English regardless of output language.
 - "thumbnailIdea" must ALWAYS be in English regardless of output language.
 - return 5 titles exactly.
-- return 5-8 scenes in the same order as the narration; scene 1 is the hook moment; each scene illustrates what the narrator is saying at that point.
+- return ${sceneRange(range.seconds)} scenes in the same order as the narration; scene 1 is the hook moment; each scene illustrates what the narrator is saying at that point.
 - "tags" should be concise SEO tags without # symbols.
 - "musicMood" picks the background music for THIS story's emotional tone, not the genre label: tragic = deaths, disasters, loss, grief; eerie = horror, hauntings, the paranormal; tense = crimes, investigations, danger, unexplained threats; mysterious = puzzles, ancient secrets, unexplained phenomena without a death toll at their centre; epic = battles, empires, great feats; wonder = science, nature, how things work, curiosity; upbeat = ads, positive or fun topics. When people died, choose tragic, eerie or tense — never wonder or upbeat.
 - Match the tone to the platform and style.
@@ -231,6 +241,7 @@ Target duration: ${duration ?? "60 seconds"}`;
         sceneNumber?: number;
         description?: string;
         videoPrompt?: string;
+        stockQuery?: string;
       };
 
       return {
@@ -240,6 +251,9 @@ Target duration: ${duration ?? "60 seconds"}`;
             : index + 1,
         description: typedScene.description ?? "",
         videoPrompt: typedScene.videoPrompt ?? "",
+        ...(typeof typedScene.stockQuery === "string" && typedScene.stockQuery.trim()
+          ? { stockQuery: typedScene.stockQuery.trim().slice(0, 60) }
+          : {}),
       };
     })
     .filter(
