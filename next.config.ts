@@ -78,7 +78,11 @@ const nextConfig: NextConfig = {
   // prefix verified for the app: https://norveko.app/media/videos/).
   async rewrites() {
     return supabaseHost
-      ? [{ source: "/media/videos/:path*", destination: `https://${supabaseHost}/storage/v1/object/public/videos/:path*` }]
+      ? [
+          // /media/videos/r2/… is our own route (Cloudflare R2, app/media/videos/r2):
+          // array rewrites run before dynamic routes, so keep r2/ out of the Supabase proxy.
+          { source: "/media/videos/:path((?!r2/).*)", destination: `https://${supabaseHost}/storage/v1/object/public/videos/:path` },
+        ]
       : [];
   },
   async headers() {
