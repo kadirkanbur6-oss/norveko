@@ -54,7 +54,10 @@ export function wordRange(
   const d = (duration ?? "60 seconds").toLowerCase();
   const n = Number(d.match(/\d+/)?.[0] ?? 60);
   const seconds = d.includes("minute") ? n * 60 : n;
-  const target = Math.round(seconds * wordsPerSecond(languageCode));
+  // Long-form: the Norveko narrators read ~6 % faster than our per-language
+  // rates (10-min Turkish test: 962 words → 8:11), and long drafts tend to
+  // come in short, so aim a little higher.
+  const target = Math.round(seconds * wordsPerSecond(languageCode) * (seconds > 60 ? 1.06 : 1));
   return { min: Math.round(target * 0.92), target, max: Math.round(target * 1.08), seconds };
 }
 
@@ -69,3 +72,17 @@ export function narrationWordCount(hook: string, script: string): number {
   return `${hook} ${script}`.split(/\s+/).filter(Boolean).length;
 }
 
+/** Splice `text` in after each exact `after` sentence (first match; unknown anchors are skipped). */
+export function insertAdditions(script: string, additions: Array<{ after?: unknown; text?: unknown }>): string {
+  let out = script;
+  for (const a of additions) {
+    const after = typeof a.after === "string" ? a.after.trim() : "";
+    const text = typeof a.text === "string" ? a.text.replace(/\s+/g, " ").trim() : "";
+    if (!after || !text || after.length < 12) continue;
+    const at = out.indexOf(after);
+    if (at < 0) continue;
+    const end = at + after.length;
+    out = `${out.slice(0, end)} ${text}${out.slice(end)}`;
+  }
+  return out;
+}

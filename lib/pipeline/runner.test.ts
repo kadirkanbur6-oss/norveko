@@ -823,3 +823,17 @@ test("archive photos: only PD / CC0 / CC BY, no maps; stock slots of real subjec
   assert.equal(parsed[0].author, "Ann");
   assert.match(archiveCredits(parsed)!, /Mount Ararat from Igdir — Ann \(CC BY 4\.0\)/);
 });
+
+test("long-form length: wider target, sentences spliced in place", async () => {
+  const { wordRange } = await import("./narration");
+  const { insertAdditions } = await import("./narration");
+  assert.equal(wordRange("60 seconds", "tr").target, Math.round(60 * 1.85));
+  assert.equal(wordRange("10 minutes", "tr").target, Math.round(600 * 1.85 * 1.06));
+  const s = "The ark was said to rest high on the mountain. Climbers went looking in 1955. Nothing was proven.";
+  const out = insertAdditions(s, [
+    { after: "Climbers went looking in 1955.", text: "They found old wood in the ice." },
+    { after: "not in the script at all.", text: "skip me" },
+    { after: "short", text: "skip" },
+  ]);
+  assert.equal(out, "The ark was said to rest high on the mountain. Climbers went looking in 1955. They found old wood in the ice. Nothing was proven.");
+});

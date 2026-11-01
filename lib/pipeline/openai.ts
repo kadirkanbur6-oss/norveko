@@ -3,7 +3,7 @@
 
 import { DEFAULT_VISUAL_STYLE, visualStyle } from "./visual-styles";
 import { languageCode, languagePromptName } from "./options";
-import { narrationWordCount, wordRange, wordsPerSecond } from "./narration";
+import { insertAdditions, narrationWordCount, wordRange, wordsPerSecond } from "./narration";
 import { chatJSON, llmUsageKey, type LlmUsage } from "./llm";
 import { exampleBlock } from "./script-examples";
 import { MUSIC_MOODS, isMusicMood } from "./music";
@@ -136,6 +136,14 @@ Hook options (pick or sharpen one; it must stay literally true): ${plan.hooks.jo
   }`;
 }
 
+/** Long-form (> 60 s) structure: paragraph budget so the draft actually reaches the length. */
+function longFormCraft(range: { target: number; seconds: number }): string {
+  const paragraphs = Math.max(6, Math.round(range.target / 110));
+  const per = Math.round(range.target / paragraphs);
+  return `- LONG-FORM STRUCTURE (${Math.round(range.seconds / 60)}-minute documentary): write the "script" as exactly ${paragraphs} paragraphs separated by a blank line, each about ${per} words (count them). Order: (1) hook + the question the video answers, (2) context — place, era, people, (3…) the story beats in chronological order, one paragraph each, every paragraph adding NEW facts or a new angle, a re-hook (a new open question) around the middle, then the evidence, the explanations and theories and what experts say, (last) the answer as far as it is known and a closing thought. Never pad: if a paragraph runs out of facts, describe the real place, the period and the people more vividly.
+`;
+}
+
 /** Scene count for a narration length: long-form needs many distinct shots (one visual per ~10 s). */
 export function sceneRange(seconds: number): string {
   if (seconds <= 60) return "5-8";
@@ -201,7 +209,7 @@ Rules:
 - "musicMood" picks the background music for THIS story's emotional tone, not the genre label: tragic = deaths, disasters, loss, grief; eerie = horror, hauntings, the paranormal; tense = crimes, investigations, danger, unexplained threats; mysterious = puzzles, ancient secrets, unexplained phenomena without a death toll at their centre; epic = battles, empires, great feats; wonder = science, nature, how things work, curiosity; upbeat = ads, positive or fun topics. When people died, choose tragic, eerie or tense — never wonder or upbeat.
 - Match the tone to the platform and style.
 - STORY FIRST: the script tells ONE story as a single connected thread — chronological or cause → effect. Each sentence must follow logically from the one before it; a listener who hears only the audio must always know who and what is being talked about. Never a list of disconnected claims.
-- SCRIPT CRAFT (retention structure for Shorts, written in your own words — do not copy stock phrases): (1) HOOK 0–3 s: the hook sentence. (2) PROMISE: one sentence that opens a curiosity loop about THIS story. (3) CONTEXT: at most 2 sentences — who, where, when. (4) PAYOFF: 2–3 concrete beats (names, dates, places, what actually happened), each a new image; optionally one mid-point re-hook if the story genuinely has a second twist. (5) CLOSE every loop you opened, then one final line that lands an emotion or a question for the comments. Rhythm: vary sentence length (short punch, then 12–16 words, then short again); no sentence over 18 words; no nested clauses; no filler transitions, no greetings, no "in this video", no restating.
+${range.seconds > 60 ? longFormCraft(range) : ""}- SCRIPT CRAFT (retention structure${range.seconds > 60 ? " — for this long-form video apply it to the opening minute and keep the rhythm rules throughout" : " for Shorts"}, written in your own words — do not copy stock phrases): (1) HOOK 0–3 s: the hook sentence. (2) PROMISE: one sentence that opens a curiosity loop about THIS story. (3) CONTEXT: at most 2 sentences — who, where, when. (4) PAYOFF: 2–3 concrete beats (names, dates, places, what actually happened), each a new image; optionally one mid-point re-hook if the story genuinely has a second twist. (5) CLOSE every loop you opened, then one final line that lands an emotion or a question for the comments. Rhythm: vary sentence length (short punch, then 12–16 words, then short again); no sentence over 18 words; no nested clauses; no filler transitions, no greetings, no "in this video", no restating.
 - NO SPOILERS, NO FALSE CLAIMS: the hook must create mystery WITHOUT revealing the answer or verdict — tease, don't tell (never open with "it's just a legend" or "it was all a lie"). But it must not assert as proven fact something the story later shows to be doubtful; phrase it as an intriguing true claim, contradiction or open question that the ending pays off. The hook is a factual claim like any other: it must be literally true and supported by the research (no dramatic exaggeration). Explanations, theories and debunking come after the events, near the end.
 - NO FILLER, NO META: never write sentences about the video, the footage, archive photos, "documents", "sources" or "the clipping" themselves (e.g. "archive photos show the streets", "the documents are partly contradictory") unless a specific document IS the story. Never repeat a fact in new words to gain length. If facts are thin, reach the length with true, vivid context (the place, the era, the people's situation) — never with invented details or empty sentences.
 - WRITE FOR THE VOICE: this text is read by a TTS narrator. Use commas and full stops to create natural breaths, an ellipsis "…" for a dramatic pause before a reveal, and spell numbers the way they are spoken in the output language when ambiguous. No abbreviations (write "December", "Naval Air Station"), no semicolons, no parentheses. Proofread spelling and diacritics carefully (for Turkish: ç ğ ı İ ö ş ü, apostrophes in proper-noun suffixes like "Keops'un"); a single typo is burned into the subtitles.
@@ -289,8 +297,11 @@ Target duration: ${duration ?? "60 seconds"}`;
   let hook = String(parsed.hook);
   let script = String(parsed.script);
 
+  // Long-form: the length pass must always get its turn, so the optional
+  // passes need more time left before they start.
+  const long = range.seconds > 60;
   // Stage 3 — editor pass: coherence, contradictions, filler, fluency.
-  if (timeLeft() > 90_000) {
+  if (timeLeft() > (long ? 150_000 : 90_000)) {
     const edited = await editNarration({ hook, script, idea, research, range, outputLanguage, model }).catch(() => null);
     if (edited) {
       hook = edited.hook;
@@ -301,7 +312,7 @@ Target duration: ${duration ?? "60 seconds"}`;
 
   // Stage 4 — fact check against the research brief (only when there is one).
   let factCheck: { checked: boolean; issues: FactCheckIssue[] } = { checked: false, issues: [] };
-  if (research && timeLeft() > 60_000) {
+  if (research && timeLeft() > (long ? 110_000 : 60_000)) {
     const fc = await factCheckNarration({ hook, script, research, range, outputLanguage, model }).catch((err) => {
       console.warn("[script] fact check failed:", err instanceof Error ? err.message : err);
       return null;
@@ -316,8 +327,20 @@ Target duration: ${duration ?? "60 seconds"}`;
 
   // Length guard: if the narration misses the range, ask for one rewrite of
   // hook + script only (scenes etc. stay), then accept whatever comes back.
-  const count = narrationWordCount(hook, script);
-  if ((count < range.min || count > range.max) && timeLeft() > 45_000) {
+  let count = narrationWordCount(hook, script);
+  // Long-form and short: add sentences in place (fast, keeps the edited text),
+  // up to two rounds, instead of rewriting a thousand words.
+  for (let round = 0; long && count < range.min && round < 2 && timeLeft() > 30_000; round++) {
+    const grown = await expandNarration({ hook, script, range, research: research ?? null, outputLanguage, model, count }).catch((err) => {
+      console.warn("[script] expand failed:", err instanceof Error ? err.message : err);
+      return null;
+    });
+    if (!grown) break;
+    script = grown.script;
+    addUsage(grown.usage);
+    count = narrationWordCount(hook, script);
+  }
+  if ((count < range.min || count > range.max) && !(long && count < range.min) && timeLeft() > 45_000) {
     const fixed = await reviseNarrationLength({ hook, script, range, outputLanguage, model, count }).catch(() => null);
     if (fixed) {
       hook = fixed.hook;
@@ -425,6 +448,39 @@ Respond ONLY with JSON: {"issues": [{"sentence": "original sentence", "problem":
   // A fact check that rewrote the hook keeps the script consistent with it.
   if (!fixed.script.startsWith(fixed.hook)) fixed.script = `${fixed.hook} ${fixed.script}`;
   return { ...fixed, issues };
+}
+
+/**
+ * Long-form length fix: ask for NEW sentences to insert after given sentences
+ * (≈ the missing word count) instead of rewriting the whole narration — quick,
+ * and the edited/fact-checked text stays as it is.
+ */
+export async function expandNarration(args: {
+  hook: string;
+  script: string;
+  range: { min: number; target: number; max: number; seconds: number };
+  research: string | null;
+  outputLanguage: string;
+  model: string;
+  count: number;
+}): Promise<{ script: string; usage?: LlmUsage } | null> {
+  const { hook, script, range, research, outputLanguage, model, count } = args;
+  const missing = Math.max(0, range.target - count);
+  if (!missing) return null;
+  const language = languagePromptName(outputLanguage);
+  const { data, usage } = await chatJSON({
+    model,
+    effort: "low",
+    timeoutMs: 90_000,
+    system: `You lengthen a documentary voice-over by INSERTING new sentences into it. Respond ONLY with JSON {"additions": [{"after": "<one sentence copied EXACTLY from the script>", "text": "<1–4 new sentences in ${language}>"}]}.
+Rules: the additions together must be about ${missing} words. Spread them across the whole script (beginning, middle, end), never after the first sentence. Every new sentence must fit the sentence before and after it, deepen what is being told (the real place, the period, the people, how the evidence was found, what experts say) and must be TRUE${research ? " — use only facts from the research brief or common, well-documented knowledge" : " — only widely documented facts"}; never invent names, numbers, dates or quotes, never repeat a point, never talk about the video. Write for the ear: no abbreviations, no semicolons, no parentheses, correct spelling and diacritics.`,
+    user: `${research ? `RESEARCH BRIEF:\n${research}\n\n` : ""}The narration below is ${count} words; it must reach about ${range.target} words (${range.seconds} seconds). Add about ${missing} words.\n\nHOOK:\n${hook}\n\nSCRIPT:\n${script}`,
+  });
+  const additions = Array.isArray((data as { additions?: unknown }).additions)
+    ? ((data as { additions: Array<{ after?: unknown; text?: unknown }> }).additions)
+    : [];
+  const out = insertAdditions(script, additions);
+  return out === script ? null : { script: out, usage };
 }
 
 export async function reviseNarrationLength(args: {
