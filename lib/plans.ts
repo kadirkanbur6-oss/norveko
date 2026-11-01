@@ -66,7 +66,7 @@ export function planDetails(): PlanDetail[] {
   });
 }
 
-/** Included in every paid pack (packs differ only in how many credits you get). */
+/** Included in every paid plan and pack (they differ only in how many credits you get). */
 export const PAID_INCLUDES = [
   "No Norveko watermark on thumbnails and videos",
   "Commercial use of everything you generate",
@@ -89,7 +89,7 @@ export const FREE_TRIAL_RULES = [
   "Every feature unlocked so you can judge the quality",
   "One free trial per person — temporary emails aren't eligible",
   "Thumbnails and videos carry a small Norveko watermark",
-  "Buy any pack and the watermark disappears — also from what you already made",
+  "Subscribe or buy any pack and the watermark disappears — also from what you already made",
 ];
 
 /** "Why Norveko" comparison. The right column is deliberately generic. */
@@ -101,6 +101,6 @@ export const COMPARISON: Array<{ feature: string; detail: string }> = [
   { feature: "Clips animated from each scene's image", detail: "Visuals match what the narrator says" },
   { feature: "Music chosen by the story's tone", detail: "Licensed tracks, credit added for you" },
   { feature: "Word-timed, language-aware subtitles", detail: "Correct Turkish İ/ı, exportable .srt/.vtt" },
-  { feature: "Pay per video, credits never expire", detail: "No monthly subscription to cancel" },
+  { feature: "Plans or pay as you go, credits never expire", detail: "Weekly, monthly or yearly — cancel anytime" },
   { feature: "Automatic refunds on failed steps", detail: "You only pay for what was delivered" },
 ];

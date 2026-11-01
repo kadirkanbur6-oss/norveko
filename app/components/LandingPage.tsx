@@ -11,6 +11,7 @@ import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
 import SignOutButton from "./SignOutButton";
 import BrandMark from "./BrandMark";
 import { COMPARISON, FREE_TRIAL_CREDITS, PAID_INCLUDES, TRIAL_VIDEO_PUBLIC, planDetails } from "@/lib/plans";
+import SubscriptionPlans from "./SubscriptionPlans";
 import {
   RESEARCH_CREDITS,
   SUBTITLES_CREDITS_PER_MIN,
@@ -394,11 +395,22 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           <SectionTitle
             eyebrow="Pricing"
             title="Start free. Scale when you're ready."
-            subtitle={`Every account starts with ${FREE_TRIAL_CREDITS} free credits${TRIAL_VIDEO_PUBLIC ? " and one free 30-second video" : ""}. One-time packs, no subscription — credits never expire.`}
+            subtitle={`Every account starts with ${FREE_TRIAL_CREDITS} free credits${TRIAL_VIDEO_PUBLIC ? " and one free 30-second video" : ""}. Pick a weekly, monthly or yearly plan — or pay as you go. Credits never expire.`}
           />
         </Reveal>
 
-        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Reveal>
+          <div className="mt-8">
+            <SubscriptionPlans mode="landing" />
+          </div>
+        </Reveal>
+
+        <Reveal>
+          <h3 className="mt-12 text-center text-lg font-bold text-white">Or pay as you go</h3>
+          <p className="mt-1 text-center text-sm text-gray-400">One-time credit packs, no subscription.</p>
+        </Reveal>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {PRICING.map((plan, i) => (
             <Reveal key={plan.name} delay={i * 60}>
               <GlassCard

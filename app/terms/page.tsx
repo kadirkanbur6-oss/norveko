@@ -52,8 +52,17 @@ export default function TermsPage() {
         <h2>4. Credits and Payments</h2>
         <p>
           The Service operates on a prepaid credit system. Credits are consumed
-          when you use AI generation features. Credit packages are one-time
-          purchases, not subscriptions.
+          when you use AI generation features. You can buy credits as one-time
+          packages or through a subscription plan (weekly, monthly or yearly).
+        </p>
+        <p>
+          Subscriptions renew automatically at the end of each billing period
+          until you cancel. Each period adds the plan&apos;s credits to your
+          balance; yearly plans are billed once a year and add their credits
+          every month. You can cancel at any time from the Billing page
+          (&quot;Manage plan&quot;); the cancellation takes effect at the end of
+          the current billing period and you keep the credits already added.
+          Unused credits do not expire.
         </p>
         <p>
           Payments are processed by our merchant of record, Paddle.com Market

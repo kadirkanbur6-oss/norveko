@@ -588,3 +588,21 @@ test("referrals: claim rules, 20% reward once per transaction, refund reversal",
   const later = new Date("2027-12-01T00:00:00Z");
   assert.equal(await rewardReferrer(db, { referredUserId: "bob", transactionId: "txn_3", credits: 500, packName: "Starter" }, later), null);
 });
+
+import { SUBSCRIPTION_PLANS, addOneMonth, monthlyCredits, getSubscriptionPlan } from "../subscriptions";
+
+test("subscriptions: plan margins and monthly grant dates", async () => {
+  const { REVENUE_PER_CREDIT_USD } = await import("./steps");
+  // Net revenue per credit after Paddle (5% + $0.50). Yearly plans grant 12 × credits.
+  for (const p of SUBSCRIPTION_PLANS) {
+    const net = p.priceUsd * 0.95 - 0.5;
+    const credits = p.period === "year" ? p.credits * 12 : p.credits;
+    const margin = 1 - (credits * REVENUE_PER_CREDIT_USD * 0.6) / net; // cost share = 60% of baseline revenue
+    assert.ok(margin >= (p.period === "year" ? 0.28 : 0.4), `${p.id}: ${(margin * 100).toFixed(1)}%`);
+  }
+  assert.equal(getSubscriptionPlan("pro-month")?.credits, 4000);
+  assert.equal(monthlyCredits(getSubscriptionPlan("creator-week")!), Math.round((380 * 52) / 12));
+  assert.equal(addOneMonth(new Date("2026-01-31T10:00:00Z")).toISOString(), "2026-02-28T10:00:00.000Z");
+  assert.equal(addOneMonth(new Date("2026-11-15T08:30:00Z")).toISOString(), "2026-12-15T08:30:00.000Z");
+  assert.equal(addOneMonth(new Date("2026-12-20T00:00:00Z")).toISOString(), "2027-01-20T00:00:00.000Z");
+});

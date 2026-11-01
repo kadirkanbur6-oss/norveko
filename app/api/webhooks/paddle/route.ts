@@ -16,6 +16,8 @@ import {
   type TransactionCompletedEvent,
   type AdjustmentCreatedEvent,
   type AdjustmentUpdatedEvent,
+  type SubscriptionCreatedEvent,
+  type SubscriptionUpdatedEvent,
 } from "@paddle/paddle-node-sdk";
 import { getPackageByPriceId } from "@/lib/packages";
 import { getPaddleEnvironment } from "@/lib/paddle-env";
@@ -60,6 +62,15 @@ export async function POST(req: Request) {
       case EventName.TransactionCompleted:
         await handleTransactionCompleted(event as TransactionCompletedEvent);
         break;
+      case EventName.SubscriptionCreated:
+      case EventName.SubscriptionUpdated:
+      case EventName.SubscriptionActivated:
+      case EventName.SubscriptionCanceled:
+      case EventName.SubscriptionPaused:
+      case EventName.SubscriptionResumed:
+      case EventName.SubscriptionPastDue:
+        await handleSubscription(event as SubscriptionCreatedEvent | SubscriptionUpdatedEvent);
+        break;
       case EventName.AdjustmentCreated:
       case EventName.AdjustmentUpdated:
         await handleAdjustment(
@@ -94,6 +105,28 @@ async function handleTransactionCompleted(event: TransactionCompletedEvent) {
   const txnId = txn.id;
 
   const customData = txn.customData as { userId?: string } | null;
+
+  // Subscription payments (first payment and every renewal).
+  if (txn.subscriptionId) {
+    const claimed = customData?.userId && (await userExists(customData.userId)) ? customData.userId : null;
+    const { grantForTransaction } = await import("@/lib/subscriptions-server");
+    const result = await grantForTransaction(supabaseAdmin, {
+      id: txnId,
+      subscriptionId: txn.subscriptionId,
+      priceId: txn.items?.[0]?.price?.id ?? null,
+      userId: claimed,
+      customerId: txn.customerId ?? null,
+      billedAt: txn.billedAt ?? null,
+    });
+    if (result.status === "granted") {
+      console.log(`[paddle-webhook] ${txnId}: subscription ${txn.subscriptionId} +${result.credits} credits`);
+      await liftWatermarks(customData?.userId ?? null, txn.subscriptionId, txnId);
+    } else {
+      console.log(`[paddle-webhook] ${txnId}: subscription grant ${result.status}`);
+    }
+    return;
+  }
+
   const userId = customData?.userId;
   if (!userId) {
     console.error(`[paddle-webhook] ${txnId}: customData.userId missing`);
@@ -171,6 +204,36 @@ async function handleTransactionCompleted(event: TransactionCompletedEvent) {
   }
 }
 
+/** First paid subscription also lifts the free-trial watermark. */
+async function liftWatermarks(claimedUserId: string | null, subscriptionId: string, txnId: string) {
+  try {
+    const { data } = await supabaseAdmin.from("subscriptions").select("user_id").eq("paddle_subscription_id", subscriptionId).maybeSingle();
+    const userId = (data?.user_id as string | undefined) ?? claimedUserId;
+    if (!userId) return;
+    const { removeWatermarksForUser } = await import("@/lib/pipeline/unwatermark");
+    await removeWatermarksForUser(userId);
+  } catch (err) {
+    console.error(`[paddle-webhook] ${txnId}: watermark removal failed:`, err);
+  }
+}
+
+async function handleSubscription(event: SubscriptionCreatedEvent | SubscriptionUpdatedEvent) {
+  const sub = event.data;
+  const claimed = (sub.customData as { userId?: string } | null)?.userId ?? null;
+  const userId = claimed && (await userExists(claimed)) ? claimed : null;
+  const { syncSubscription } = await import("@/lib/subscriptions-server");
+  const result = await syncSubscription(supabaseAdmin, {
+    id: sub.id,
+    status: sub.status,
+    customerId: sub.customerId ?? null,
+    priceId: sub.items?.[0]?.price?.id ?? null,
+    userId,
+    periodEnd: sub.currentBillingPeriod?.endsAt ?? null,
+    scheduledCancelAt: sub.scheduledChange?.action === "cancel" ? sub.scheduledChange.effectiveAt : null,
+  });
+  console.log(`[paddle-webhook] ${event.eventType} ${sub.id}: ${sub.status} (${result})`);
+}
+
 /**
  * A refund in Paddle arrives as an adjustment on the original transaction.
  * When it is approved we take the purchased credits back. The
@@ -226,6 +289,13 @@ async function handleAdjustment(
   console.log(
     `[paddle-webhook] refund ${adjustment.id}: -${purchase.credits} credits <- user ${purchase.user_id}`
   );
+
+  try {
+    const { stopYearlyGrants } = await import("@/lib/subscriptions-server");
+    await stopYearlyGrants(supabaseAdmin, txnId);
+  } catch (err) {
+    console.error(`[paddle-webhook] refund ${adjustment.id}: stopping yearly grants failed:`, err);
+  }
 
   try {
     const { revokeReferralReward } = await import("@/lib/referrals/referrals");

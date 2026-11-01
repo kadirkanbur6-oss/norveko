@@ -12,9 +12,10 @@ export default function RefundPage() {
       <section>
         <h2>1. Overview</h2>
         <p>
-          {BRAND_NAME} operates on a prepaid credit system. Credit packages are
-          one-time purchases processed by our merchant of record, Paddle. This
-          policy explains when purchases are eligible for a refund.
+          {BRAND_NAME} operates on a prepaid credit system. Credits are sold as
+          one-time packages and as subscription plans, both processed by our
+          merchant of record, Paddle. This policy explains when purchases are
+          eligible for a refund.
         </p>
       </section>
 
@@ -30,6 +31,13 @@ export default function RefundPage() {
             <strong className="text-white">Used credits:</strong> once you
             begin using credits from a purchase, that purchase is no longer
             eligible for a refund.
+          </li>
+          <li>
+            <strong className="text-white">Subscriptions:</strong> you can
+            cancel anytime from the Billing page and no further payments are
+            taken; cancelling stops the next renewal. A renewal payment whose
+            credits you have not used can be refunded within 14 days of that
+            payment. A refunded yearly plan stops its remaining monthly credits.
           </li>
           <li>
             <strong className="text-white">Failed generations:</strong> if an

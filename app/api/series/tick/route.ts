@@ -19,5 +19,14 @@ export async function GET(request: Request) {
   const raw = Number(new URL(request.url).searchParams.get("lookahead"));
   const lookahead = Number.isFinite(raw) && raw >= 1 && raw <= 26 ? raw : undefined;
   const summary = await runSeriesTick(undefined, new Date(), lookahead);
-  return NextResponse.json({ success: true, ...summary });
+  // Same hourly heartbeat: monthly credits of yearly subscription plans.
+  let grants = 0;
+  try {
+    const { runSubscriptionGrants } = await import("@/lib/subscriptions-server");
+    const { adminDb } = await import("@/lib/series/run");
+    grants = (await runSubscriptionGrants(adminDb())).granted;
+  } catch (err) {
+    console.error("[tick] subscription grants failed:", err);
+  }
+  return NextResponse.json({ success: true, ...summary, subscriptionGrants: grants });
 }

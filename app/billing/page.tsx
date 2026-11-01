@@ -16,6 +16,8 @@ import {
 import Sidebar from "../components/Sidebar";
 import { FREE_TRIAL_RULES, JOB_COSTS, PAID_INCLUDES, planDetails } from "@/lib/plans";
 import ReferralCard from "../components/ReferralCard";
+import SubscriptionPlans from "../components/SubscriptionPlans";
+import type { SubscriptionPlan } from "@/lib/subscriptions";
 import { usePaddle } from "@/lib/usePaddle";
 import {
   RESEARCH_CREDITS,
@@ -51,6 +53,10 @@ const COST_ROWS: Array<[string, string]> = [
   ["Finished 60 s video (beta)", `${JOB_COSTS.video60} credits`],
 ];
 
+function fmtDate(d: string): string {
+  return new Date(d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
 export default function BillingPage() {
   const [credits, setCredits] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -59,8 +65,23 @@ export default function BillingPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [purchaseNotice, setPurchaseNotice] = useState("");
   const [freeTrial, setFreeTrial] = useState(false);
+  const [subscription, setSubscription] = useState<{
+    planId: string;
+    name: string;
+    period: "week" | "month" | "year";
+    credits: number;
+    grantEvery: "week" | "month";
+    priceUsd: number;
+    status: string;
+    active: boolean;
+    renewsAt: string | null;
+    endsAt: string | null;
+    nextMonthlyCreditsAt: string | null;
+  } | null>(null);
+  const [portalBusy, setPortalBusy] = useState(false);
   // Latest balance for the Paddle callback (which is created once).
   const creditsRef = useRef<number | null>(null);
+  const loadSubscriptionRef = useRef<(() => Promise<void>) | null>(null);
 
   const loadCredits = useCallback(async () => {
     try {
@@ -96,6 +117,7 @@ export default function BillingPage() {
       const latest = await loadCredits();
       if ((latest !== null && latest > before) || attempts >= 15) {
         clearInterval(timer);
+        void loadSubscriptionRef.current?.();
         setPurchaseNotice(
           latest !== null && latest > before
             ? "Credits added. Happy creating!"
@@ -112,6 +134,38 @@ export default function BillingPage() {
     }, 0);
     return () => clearTimeout(id);
   }, [loadCredits]);
+
+  const loadSubscription = useCallback(async () => {
+    const d = await fetch("/api/billing/subscription", { cache: "no-store" }).then((r) => r.json()).catch(() => null);
+    setSubscription(d?.subscription ?? null);
+  }, []);
+
+  useEffect(() => {
+    loadSubscriptionRef.current = loadSubscription;
+    const id = setTimeout(() => void loadSubscription(), 0);
+    return () => clearTimeout(id);
+  }, [loadSubscription]);
+
+  async function openPortal() {
+    setPortalBusy(true);
+    try {
+      const d = await fetch("/api/billing/portal", { method: "POST" }).then((r) => r.json());
+      if (!d.success) throw new Error(d.error || "Couldn't open the portal.");
+      window.open(d.url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't open the portal.");
+    } finally {
+      setPortalBusy(false);
+    }
+  }
+
+  function handleSubscribe(plan: SubscriptionPlan) {
+    if (!paddle || !userId || !plan.paddlePriceId) return;
+    paddle.Checkout.open({
+      items: [{ priceId: plan.paddlePriceId, quantity: 1 }],
+      customData: { userId },
+    });
+  }
 
   useEffect(() => {
     async function loadUser() {
@@ -226,7 +280,7 @@ export default function BillingPage() {
                     <div>
                       <p className="text-sm font-semibold text-white">You&apos;re on the free trial</p>
                       <p className="mt-0.5 text-xs text-gray-400">
-                        Thumbnails and videos you make now carry a small &ldquo;Made with Norveko&rdquo; badge. Buy any pack and it
+                        Thumbnails and videos you make now carry a small &ldquo;Made with Norveko&rdquo; badge. Subscribe or buy any pack and it
                         disappears — also from everything you already made.
                       </p>
                     </div>
@@ -234,10 +288,54 @@ export default function BillingPage() {
                 </div>
               )}
 
-              {/* Packages */}
-              <h2 className="mt-12 text-xl font-bold">Credit packs</h2>
+              {/* Subscription */}
+              <h2 className="mt-12 text-xl font-bold">Plans</h2>
               <p className="mt-1 text-sm text-gray-400">
-                One-time purchases, no subscription. Every pack unlocks every feature — packs differ only in how much you can make.
+                Fresh credits every week or month. Unused credits roll over and never expire. Cancel anytime.
+              </p>
+              {subscription && (
+                <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-green-400/25 bg-green-500/[0.06] p-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-white">
+                      {subscription.name} · {subscription.period === "week" ? "Weekly" : subscription.period === "month" ? "Monthly" : "Yearly"}{" "}
+                      <span className={`ml-1 rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wider ${subscription.active ? "bg-green-500/20 text-green-200" : "bg-white/10 text-gray-300"}`}>
+                        {subscription.status.replace("_", " ")}
+                      </span>
+                    </p>
+                    <p className="mt-1 text-xs text-gray-400">
+                      {subscription.credits.toLocaleString()} credits every {subscription.grantEvery}
+                      {subscription.endsAt
+                        ? ` · ends ${fmtDate(subscription.endsAt)}`
+                        : subscription.renewsAt
+                          ? ` · renews ${fmtDate(subscription.renewsAt)}`
+                          : ""}
+                      {subscription.nextMonthlyCreditsAt ? ` · next credits ${fmtDate(subscription.nextMonthlyCreditsAt)}` : ""}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openPortal}
+                    disabled={portalBusy}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-green-400/50 disabled:opacity-50"
+                  >
+                    {portalBusy ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <CreditCard size={15} aria-hidden />}
+                    Manage plan
+                  </button>
+                </div>
+              )}
+              <div className="mt-6">
+                <SubscriptionPlans
+                  mode="billing"
+                  onSubscribe={handleSubscribe}
+                  currentPlanId={subscription?.active ? subscription.planId : null}
+                  disabled={!paddle || !userId}
+                />
+              </div>
+
+              {/* Packages */}
+              <h2 className="mt-12 text-xl font-bold">Top-up packs</h2>
+              <p className="mt-1 text-sm text-gray-400">
+                One-time purchases for when you need extra — with or without a plan. Credits never expire.
               </p>
 
               <div className="mt-6 grid gap-4 lg:grid-cols-3">
@@ -299,7 +397,7 @@ export default function BillingPage() {
               {/* What every pack includes + how credits are spent */}
               <div className="mt-6 grid gap-4 lg:grid-cols-2">
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-                  <h3 className="font-semibold">Every pack includes</h3>
+                  <h3 className="font-semibold">Every plan and pack includes</h3>
                   <ul className="mt-3 space-y-2 text-sm text-gray-300">
                     {PAID_INCLUDES.map((line) => (
                       <li key={line} className="flex gap-2">

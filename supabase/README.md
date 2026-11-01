@@ -245,6 +245,39 @@ alter table public.referrals enable row level security;
 alter table public.referral_rewards enable row level security;
 ```
 
+## Subscriptions (`subscriptions`, `subscription_grants`, 1 Nov 2026)
+
+Service role only (`lib/subscriptions-server.ts`, Paddle webhook). Every paid subscription transaction is
+also a `credit_purchases` row (refunds, watermark removal and referral rewards reuse it). Yearly plans
+grant monthly from the hourly heartbeat (`/api/series/tick`).
+
+```sql
+create table if not exists public.subscriptions (
+  paddle_subscription_id text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  plan_id text not null,
+  status text not null,
+  customer_id text,
+  current_period_end timestamptz,
+  cancel_at timestamptz,
+  next_grant_at timestamptz,
+  year_grants_left int not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists subscriptions_user_idx on public.subscriptions (user_id);
+create index if not exists subscriptions_grant_idx on public.subscriptions (next_grant_at) where year_grants_left > 0;
+create table if not exists public.subscription_grants (
+  grant_key text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  paddle_subscription_id text not null,
+  credits int not null,
+  created_at timestamptz not null default now()
+);
+alter table public.subscriptions enable row level security;
+alter table public.subscription_grants enable row level security;
+```
+
 ## Series autopilot (`series`, `series_episodes`, 31 Oct 2026)
 
 ```sql

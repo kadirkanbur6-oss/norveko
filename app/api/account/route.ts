@@ -20,6 +20,8 @@ const USER_TABLES = [
   "brand_kits",
   "voice_clones",
   "referral_codes",
+  "subscription_grants",
+  "subscriptions",
   "credit_transactions",
   "credit_purchases",
   "pipeline_jobs",
@@ -128,6 +130,31 @@ export async function DELETE(req: Request) {
         console.error(`[account] storage cleanup ${bucket} failed:`, err);
       }
     }
+    // Stop any paid plan at Paddle so the deleted account is never charged again.
+    try {
+      const { data: subs } = await client
+        .from("subscriptions")
+        .select("paddle_subscription_id, status")
+        .eq("user_id", user.id);
+      const live = (subs ?? []).filter((s: { status: string }) => ["active", "trialing", "past_due", "paused"].includes(s.status));
+      if (live.length) {
+        const { Paddle, Environment } = await import("@paddle/paddle-node-sdk");
+        const { getPaddleEnvironment } = await import("@/lib/paddle-env");
+        const paddle = new Paddle(process.env.PADDLE_API_KEY!, {
+          environment: getPaddleEnvironment() === "production" ? Environment.production : Environment.sandbox,
+        });
+        for (const s of live as Array<{ paddle_subscription_id: string }>) {
+          await paddle.subscriptions.cancel(s.paddle_subscription_id, { effectiveFrom: "immediately" });
+        }
+      }
+    } catch (err) {
+      console.error("[account] subscription cancel failed:", err);
+      return NextResponse.json(
+        { success: false, error: "We couldn't cancel your subscription. Cancel it from Billing → Manage plan, then try again." },
+        { status: 502 }
+      );
+    }
+
     // The cloned voice lives in the shared ElevenLabs account: remove it there.
     try {
       const { data: clone } = await client.from("voice_clones").select("voice_id").eq("user_id", user.id).maybeSingle();

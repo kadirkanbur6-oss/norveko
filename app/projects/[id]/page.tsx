@@ -706,7 +706,7 @@ export default function ProjectDetailPage() {
                       Made on the free trial: the thumbnail and video carry a small &ldquo;Made with Norveko&rdquo; badge.
                     </p>
                     <Link href="/billing" className="shrink-0 font-semibold text-purple-200 hover:text-white">
-                      Remove it with any pack →
+                      Remove it with any plan or pack →
                     </Link>
                   </div>
                 )}
