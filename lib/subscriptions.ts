@@ -30,12 +30,12 @@ export interface SubscriptionPlan {
 
 // Sandbox price IDs (created 1 Nov 2026 in the Paddle sandbox). Production sets env vars.
 const SANDBOX: Record<SubscriptionPlan["id"], string> = {
-  "creator-week": "",
-  "creator-month": "",
-  "creator-year": "",
-  "pro-week": "",
-  "pro-month": "",
-  "pro-year": "",
+  "creator-week": "pri_01m6c0bhxqphkfg1jn61adspbv",
+  "creator-month": "pri_01m6c0cbdagd3gy5rbq33p1ymq",
+  "creator-year": "pri_01m6c0d52pjj37bs29cr0apaz5",
+  "pro-week": "pri_01m6c0ey3qfxnkfy71989z91kh",
+  "pro-month": "pri_01m6c0fhwhrm5manpdzxhnr5pn",
+  "pro-year": "pri_01m6c0g64gg45qcesbfmf31xjk",
 };
 
 const ENV: Record<SubscriptionPlan["id"], string | undefined> = {
