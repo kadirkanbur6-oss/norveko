@@ -615,7 +615,7 @@ function ChatContent() {
                 >
                   {DURATIONS.map((d) => (
                     <option key={d} value={d}>
-                      {d}
+                      {fullVideoAvailable && !FULL_VIDEO_DURATIONS[d] ? `${d} · script & voice only` : d}
                     </option>
                   ))}
                 </select>
@@ -1064,7 +1064,7 @@ function ChatContent() {
                       <span className="mt-0.5 block text-xs text-gray-500">
                         {fullVideoSupported
                           ? "Finished MP4 with narration, burned-in subtitles and AI visuals — ready to upload."
-                          : "Available for 30 and 60 second videos for now."}
+                          : "Full videos are 30 or 60 seconds for now. Longer durations give you the script, voiceover and thumbnail."}
                       </span>
                     </span>
                   </label>
