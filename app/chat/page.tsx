@@ -2,7 +2,7 @@
 
 import { Fragment, Suspense, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Captions, CheckCircle2, Film, Globe, ChevronDown, Clapperboard, Coins, LayoutTemplate, Palette, Loader2, Mic, Play, Search, Sparkles, Square } from "lucide-react";
+import { Captions, CheckCircle2, Film, Globe, ChevronDown, ChevronUp, Clapperboard, Coins, LayoutTemplate, Palette, Loader2, Mic, Play, Search, Sparkles, Square } from "lucide-react";
 import Link from "next/link";
 import Disclosure from "../components/Disclosure";
 import { PageHeader } from "../components/PageTabs";
@@ -498,6 +498,17 @@ function ChatContent() {
           )}
 
           <div className={`mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6 ${jobId && !formOpen ? "hidden" : ""}`}>
+            {jobId && (
+              <div className="-mt-1 mb-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setFormOpen(false)}
+                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-gray-400 transition hover:bg-white/[0.05] hover:text-white"
+                >
+                  Hide settings <ChevronUp size={14} />
+                </button>
+              </div>
+            )}
             <label className="text-sm text-gray-400">Video Idea</label>
             <textarea
               value={idea}
