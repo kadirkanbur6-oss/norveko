@@ -8,7 +8,6 @@ import {
   Check,
   Copy,
   Download,
-  FolderOpen,
   Loader2,
   Pencil,
   Save,
@@ -24,6 +23,7 @@ import ScriptFeedback from "../../components/ScriptFeedback";
 import YouTubePublish from "../../components/YouTubePublish";
 import VideoEditor from "../../components/VideoEditor";
 import TikTokPublish from "../../components/TikTokPublish";
+import PageTabs, { useTabParam } from "../../components/PageTabs";
 
 function slugify(s: string): string {
   return (
@@ -108,6 +108,12 @@ interface Project {
   created_at: string;
 }
 
+const SECTIONS = [
+  { id: "video", label: "Video" },
+  { id: "publish", label: "Publish" },
+  { id: "content", label: "Script & assets" },
+];
+
 const TABS = [
   { id: "script", label: "Script" },
   { id: "scenes", label: "Scene Plan" },
@@ -156,6 +162,7 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<TabId>("script");
+  const [sectionParam, setSection] = useTabParam(SECTIONS, "");
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -338,6 +345,10 @@ export default function ProjectDetailPage() {
   const normalizedProjectContent = project?.content
     ? normalizeContent(project.content)
     : null;
+
+  // One section at a time keeps the page short: Video / Publish / Script & assets.
+  const hasVideo = Boolean(normalizedProjectContent?.finalVideoUrl);
+  const section = !hasVideo ? "content" : SECTIONS.some((t) => t.id === sectionParam) ? sectionParam : "video";
 
   const voiceoverUrl =
     normalizedProjectContent?.voiceoverUrl ??
@@ -555,18 +566,13 @@ export default function ProjectDetailPage() {
             <>
               {/* Header */}
               <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-400/30 bg-blue-500/10">
-                    <FolderOpen className="text-blue-300" />
-                  </div>
-                  <div className="min-w-0">
-                    <h1 className="break-words text-xl font-bold sm:text-2xl">{project.title}</h1>
-                    {project.idea && (
-                      <p className="mt-1 text-sm text-gray-400">
-                        {project.idea}
-                      </p>
-                    )}
-                  </div>
+                <div className="min-w-0">
+                  <h1 className="break-words text-[26px] font-semibold tracking-tight">{project.title}</h1>
+                  {project.idea && (
+                    <p className="mt-1 line-clamp-2 text-sm text-gray-400" title={project.idea}>
+                      {project.idea}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex shrink-0 flex-wrap gap-2">
@@ -597,27 +603,9 @@ export default function ProjectDetailPage() {
                 </div>
               </div>
 
-              {/* Meta tags */}
-              <div className="mt-4 flex flex-wrap gap-2 text-xs">
-                {project.platform && (
-                  <span className="rounded-lg border border-blue-400/30 bg-blue-500/10 px-2 py-1 text-blue-200">
-                    {project.platform}
-                  </span>
-                )}
-                {project.style && (
-                  <span className="rounded-lg border border-purple-400/30 bg-purple-500/10 px-2 py-1 text-purple-200">
-                    {project.style}
-                  </span>
-                )}
-                {project.duration && (
-                  <span className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1 text-gray-300">
-                    {project.duration}
-                  </span>
-                )}
-                <span className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1 text-gray-400">
-                  {formatDate(project.created_at)}
-                </span>
-              </div>
+              <p className="mt-3 text-xs text-gray-500">
+                {[project.platform, project.style, project.duration, formatDate(project.created_at)].filter(Boolean).join(" · ")}
+              </p>
 
               {saveMessage && !editing && (
                 <p className="mt-4 rounded-xl border border-green-400/30 bg-green-500/10 p-3 text-sm text-green-300">
@@ -630,7 +618,12 @@ export default function ProjectDetailPage() {
                 renderEditForm()
               ) : project.content ? (
                 <>
-                {normalizedProjectContent?.research?.brief && (
+                {hasVideo && (
+                  <div className="mt-6">
+                    <PageTabs tabs={SECTIONS} active={section} onChange={setSection} />
+                  </div>
+                )}
+                {section === "content" && normalizedProjectContent?.research?.brief && (
                   <details className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
                     <summary className="cursor-pointer text-sm font-semibold text-gray-300">
                       Research brief
@@ -652,8 +645,8 @@ export default function ProjectDetailPage() {
                     )}
                   </details>
                 )}
-                {normalizedProjectContent?.finalVideoUrl && (
-                  <div className="mt-8 rounded-2xl border border-purple-400/30 bg-gradient-to-br from-purple-500/10 to-blue-500/5 p-4 sm:p-6">
+                {section === "video" && normalizedProjectContent?.finalVideoUrl && (
+                  <div className="mt-6 rounded-2xl border border-purple-400/30 bg-gradient-to-br from-purple-500/10 to-blue-500/5 p-4 sm:p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <h3 className="text-sm font-semibold text-white">Final video</h3>
@@ -676,7 +669,7 @@ export default function ProjectDetailPage() {
                     />
                   </div>
                 )}
-                {normalizedProjectContent?.finalVideoUrl && (
+                {section === "publish" && normalizedProjectContent?.finalVideoUrl && (
                   <YouTubePublish
                     projectId={projectId}
                     titles={normalizedProjectContent.titles.length ? normalizedProjectContent.titles : [project.title]}
@@ -685,7 +678,7 @@ export default function ProjectDetailPage() {
                     initial={(project.content as { youtube?: Parameters<typeof YouTubePublish>[0]["initial"] } | null)?.youtube ?? null}
                   />
                 )}
-                {normalizedProjectContent?.finalVideoUrl && (
+                {section === "publish" && normalizedProjectContent?.finalVideoUrl && (
                   <TikTokPublish
                     projectId={projectId}
                     defaultCaption={[
@@ -697,10 +690,10 @@ export default function ProjectDetailPage() {
                     watermarked={(project.content as { watermarked?: boolean } | null)?.watermarked === true}
                   />
                 )}
-                {normalizedProjectContent?.finalVideoUrl && (
+                {section === "video" && normalizedProjectContent?.finalVideoUrl && (
                   <VideoEditor projectId={projectId} vertical={project.platform !== "YouTube Long-form"} />
                 )}
-                {(project.content as { watermarked?: boolean } | null)?.watermarked === true && (
+                {section !== "content" && (project.content as { watermarked?: boolean } | null)?.watermarked === true && (
                   <div className="mt-6 flex flex-col gap-2 rounded-xl border border-purple-400/30 bg-purple-500/10 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-gray-200">
                       Made on the free trial: the thumbnail and video carry a small &ldquo;Made with Norveko&rdquo; badge.
@@ -710,7 +703,7 @@ export default function ProjectDetailPage() {
                     </Link>
                   </div>
                 )}
-                {normalizedProjectContent?.script && (
+                {section === "content" && normalizedProjectContent?.script && (
                   <ScriptFeedback
                     projectId={projectId}
                     initial={
@@ -718,7 +711,8 @@ export default function ProjectDetailPage() {
                     }
                   />
                 )}
-                <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+                {section === "content" && (
+                <div className="mt-6 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:p-6">
                   {/* Tabs */}
                   <div className="flex flex-wrap gap-2">
                     {TABS.map((tab) => (
@@ -855,6 +849,7 @@ export default function ProjectDetailPage() {
                     </div>
                   )}
                 </div>
+                )}
                 </>
               ) : (
                 <p className="mt-8 rounded-xl border border-white/10 bg-white/[0.03] p-6 text-sm text-gray-400">
