@@ -6,7 +6,6 @@ import {
   Loader2,
   Mail,
   Save,
-  Settings as SettingsIcon,
   Video,
 } from "lucide-react";
 import Sidebar from "../components/Sidebar";
@@ -17,6 +16,14 @@ import TikTokConnectionCard from "../components/TikTokConnectionCard";
 import BrandKitCard from "../components/BrandKitCard";
 import VoiceCloneCard from "../components/VoiceCloneCard";
 import ReferralCard from "../components/ReferralCard";
+import PageTabs, { PageHeader, useTabParam, type PageTab } from "../components/PageTabs";
+
+const SETTINGS_TABS: PageTab[] = [
+  { id: "account", label: "Account" },
+  { id: "brand", label: "Brand & voice" },
+  { id: "connections", label: "Connected channels" },
+  { id: "invite", label: "Invite & earn" },
+];
 
 interface UserSettings {
   email: string;
@@ -25,6 +32,15 @@ interface UserSettings {
 }
 
 export default function SettingsPage() {
+  const [tab, setTab] = useTabParam(SETTINGS_TABS, "account");
+  // Coming back from connecting YouTube/TikTok: show the connections tab.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.has("youtube") || q.has("tiktok")) {
+      const t = setTimeout(() => setTab("connections"), 0);
+      return () => clearTimeout(t);
+    }
+  }, [setTab]);
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -105,17 +121,9 @@ export default function SettingsPage() {
 
       <main id="main-content" className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
         <div className="mx-auto max-w-3xl">
-          {/* Header */}
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-400/30 bg-blue-500/10">
-              <SettingsIcon className="text-blue-300" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">Settings</h1>
-              <p className="text-sm text-gray-400">
-                Account and channel management
-              </p>
-            </div>
+          <PageHeader title="Settings" subtitle="Your account, brand, voice and connected channels." />
+          <div className="mt-6">
+            <PageTabs tabs={SETTINGS_TABS} active={tab} onChange={setTab} />
           </div>
 
           {loading ? (
@@ -127,7 +135,9 @@ export default function SettingsPage() {
               {error}
             </p>
           ) : settings ? (
-            <div className="mt-8 space-y-6">
+            <div className="mt-6 space-y-5">
+              {tab === "account" && (
+              <>
               {/* Profile card */}
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
                 <div className="flex items-center gap-2">
@@ -219,17 +229,25 @@ export default function SettingsPage() {
                 )}
               </div>
 
-              <ReferralCard />
-
-              <BrandKitCard />
-
-              <VoiceCloneCard />
-
-              <YouTubeConnectionCard />
-
-              <TikTokConnectionCard />
-
               <AccountSecurity />
+              </>
+              )}
+
+              {tab === "brand" && (
+                <>
+                  <BrandKitCard />
+                  <VoiceCloneCard />
+                </>
+              )}
+
+              {tab === "connections" && (
+                <>
+                  <YouTubeConnectionCard />
+                  <TikTokConnectionCard />
+                </>
+              )}
+
+              {tab === "invite" && <ReferralCard />}
             </div>
           ) : null}
         </div>

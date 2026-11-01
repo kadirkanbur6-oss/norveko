@@ -121,95 +121,80 @@ export default function Sidebar() {
         }`}
       />
 
-      {/* Sidebar: drawer on mobile/tablet, static column on desktop */}
+      {/* Sidebar: drawer on mobile/tablet, static column on desktop.
+          Compact on purpose: the whole menu fits any laptop height without an
+          inner scrollbar. */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col overflow-y-auto border-r border-white/10 bg-[#0a0a12] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] transition-transform duration-300 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:max-w-none lg:translate-x-0 lg:bg-white/[0.03] lg:shrink-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 max-w-[85vw] flex-col border-r border-white/[0.06] bg-[#0a0a12] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5 transition-transform duration-300 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:max-w-none lg:translate-x-0 lg:shrink-0 lg:bg-[#0c0c15] ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between px-2">
           <Link
             href="/"
             aria-label="Norveko home"
             onClick={() => setOpen(false)}
-            className="group flex items-center gap-3 rounded-2xl transition hover:opacity-90"
+            className="flex items-center gap-2.5 rounded-xl transition hover:opacity-90"
           >
-            <BrandMark size={48} className="shadow-[0_8px_24px_rgba(99,102,241,0.35)]" />
-
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">NORVEKO</h1>
-              <p className="text-xs text-gray-400">Creator Studio</p>
-            </div>
+            <BrandMark size={34} className="shadow-[0_6px_18px_rgba(99,102,241,0.35)]" />
+            <span className="text-[17px] font-semibold tracking-[0.08em] text-white">NORVEKO</span>
           </Link>
 
           <button
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Close menu"
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-gray-300 transition hover:text-white lg:hidden"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 transition hover:bg-white/5 hover:text-white lg:hidden"
           >
             <X size={18} />
           </button>
         </div>
 
-        <div className="mt-10 flex-1 overflow-y-auto">
-          <p className="mb-4 text-sm uppercase tracking-[4px] text-gray-500">
-            Menu
-          </p>
+        <nav aria-label="Main" className="nv-no-scrollbar mt-8 flex-1 space-y-0.5 overflow-y-auto">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
 
-          <div className="space-y-3">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                onClick={() => setOpen(false)}
+                aria-current={isActive ? "page" : undefined}
+                className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14.5px] transition ${
+                  isActive ? "bg-white/[0.07] font-medium text-white" : "text-gray-400 hover:bg-white/[0.04] hover:text-gray-100"
+                }`}
+              >
+                {isActive && <span aria-hidden className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-gradient-to-b from-blue-400 to-purple-500" />}
+                <Icon size={17} className={isActive ? "text-blue-300" : "text-gray-500 transition group-hover:text-gray-300"} />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
 
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  className={`block w-full rounded-2xl border px-4 py-4 text-left transition ${
-                    isActive
-                      ? "border-blue-400/40 bg-blue-500/10 text-white"
-                      : "border-white/10 bg-white/[0.03] text-gray-300 hover:border-white/20 hover:text-white"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon size={18} className="text-blue-300" />
-                    {item.label}
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Credit balance — links to Billing */}
-        <Link
-          href="/billing"
-          onClick={() => setOpen(false)}
-          className="mt-6 block rounded-2xl border border-yellow-400/20 bg-yellow-500/5 px-4 py-4 transition hover:border-yellow-400/40 hover:bg-yellow-500/10"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Coins size={18} className="text-yellow-400" />
-              <span className="text-sm text-gray-300">Credits</span>
-            </div>
-            <span className="text-lg font-bold text-yellow-300">
-              {creditsLabel}
+        {/* Credits + account in one quiet block */}
+        <div className="mt-4 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-3">
+          <Link
+            href="/billing"
+            onClick={() => setOpen(false)}
+            className="flex items-center justify-between rounded-xl px-2 py-1.5 transition hover:bg-white/[0.04]"
+          >
+            <span className="flex items-center gap-2 text-sm text-gray-400">
+              <Coins size={15} className="text-yellow-400" />
+              Credits
             </span>
+            <span className="text-base font-semibold tabular-nums text-yellow-200">{creditsLabel}</span>
+          </Link>
+          <div className="mt-2 flex items-center justify-between gap-2 border-t border-white/[0.06] px-2 pt-2.5">
+            <p className="min-w-0 truncate text-xs text-gray-500" title={email ?? undefined}>
+              {email ?? "—"}
+            </p>
+            <SignOutButton
+              onDone={() => setOpen(false)}
+              className="flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-gray-400 transition hover:bg-red-500/10 hover:text-red-200 disabled:opacity-60"
+            />
           </div>
-        </Link>
-
-        {/* Account */}
-        <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-          <div className="min-w-0">
-            <p className="text-xs uppercase tracking-wide text-gray-500">Signed in as</p>
-            <p className="truncate text-sm text-gray-200">{email ?? "—"}</p>
-          </div>
-          <SignOutButton
-            onDone={() => setOpen(false)}
-            className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-gray-300 transition hover:border-red-400/40 hover:text-red-200 disabled:opacity-60"
-          />
         </div>
       </aside>
     </>

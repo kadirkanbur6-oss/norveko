@@ -234,3 +234,39 @@ body {
 .nv-hero-wall { transition: opacity 1.2s ease; }
 .nv-hero-wall.nv-hero-wall-ready { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .nv-hero-wall { display: none; } }
+
+/* ---------- Scrollbars (1 Nov 2026) ----------
+   Quiet, thin scrollbars that match the dark UI instead of the bright
+   system ones (the white track in the sidebar looked broken). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.24);
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
+  width: 0;
+}
+.nv-no-scrollbar {
+  scrollbar-width: none;
+}
+.nv-no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

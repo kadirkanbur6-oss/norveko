@@ -17,6 +17,14 @@ import Sidebar from "../components/Sidebar";
 import { FREE_TRIAL_RULES, JOB_COSTS, PAID_INCLUDES, planDetails } from "@/lib/plans";
 import ReferralCard from "../components/ReferralCard";
 import SubscriptionPlans from "../components/SubscriptionPlans";
+import PageTabs, { PageHeader, useTabParam, type PageTab } from "../components/PageTabs";
+
+const BILLING_TABS: PageTab[] = [
+  { id: "plans", label: "Plans" },
+  { id: "topup", label: "Top-up packs" },
+  { id: "history", label: "Usage history" },
+  { id: "invite", label: "Invite & earn" },
+];
 import type { SubscriptionPlan } from "@/lib/subscriptions";
 import { usePaddle } from "@/lib/usePaddle";
 import {
@@ -25,7 +33,6 @@ import {
   THUMBNAIL_CREDITS,
   VOICE_CREDITS_PER_MIN,
   scriptCredits,
-  totalPipelineCredits,
 } from "@/lib/pipeline/steps";
 import { supabase } from "../lib/supabase";
 
@@ -37,9 +44,6 @@ interface Transaction {
   created_at: string;
 }
 
-const PIPELINE_COST = totalPipelineCredits(false);
-const PIPELINE_COST_WITH_VOICEOVER = totalPipelineCredits(true);
-const PIPELINE_COST_WITH_SUBTITLES = totalPipelineCredits({ voiceover: true, subtitles: true });
 
 const PLANS = planDetails();
 
@@ -58,6 +62,7 @@ function fmtDate(d: string): string {
 }
 
 export default function BillingPage() {
+  const [tab, setTab] = useTabParam(BILLING_TABS, "plans");
   const [credits, setCredits] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -216,17 +221,19 @@ export default function BillingPage() {
 
       <main id="main-content" className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
         <div className="mx-auto max-w-4xl">
-          {/* Header */}
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-400/30 bg-blue-500/10">
-              <CreditCard className="text-blue-300" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">Billing</h1>
-              <p className="text-sm text-gray-400">
-                Credits, packages and usage history
-              </p>
-            </div>
+          <PageHeader
+            title="Billing"
+            subtitle="Plans, top-ups and where your credits went."
+            action={
+              <div className="flex items-center gap-2.5 rounded-2xl border border-yellow-400/20 bg-yellow-500/[0.06] px-4 py-2.5">
+                <Coins size={18} className="text-yellow-400" aria-hidden />
+                <span className="text-2xl font-semibold tabular-nums text-yellow-200">{credits ?? "—"}</span>
+                <span className="text-sm text-gray-400">credits</span>
+              </div>
+            }
+          />
+          <div className="mt-6">
+            <PageTabs tabs={BILLING_TABS} active={tab} onChange={setTab} />
           </div>
 
           {error && (
@@ -241,31 +248,6 @@ export default function BillingPage() {
             </div>
           ) : (
             <>
-              {/* Balance card */}
-              <div className="mt-8 rounded-2xl border border-yellow-400/20 bg-gradient-to-br from-yellow-500/10 to-orange-500/5 p-6 sm:p-8">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm text-gray-400">Current balance</p>
-                    <div className="mt-2 flex items-center gap-3">
-                      <Coins size={28} className="text-yellow-400" />
-                      <span className="text-4xl font-bold text-yellow-300">
-                        {credits ?? 0}
-                      </span>
-                      <span className="text-gray-400">credits</span>
-                    </div>
-                  </div>
-                  <div className="text-sm text-gray-400 sm:text-right">
-                    <p>Content package + thumbnail: {PIPELINE_COST} credits</p>
-                    <p className="mt-1 text-lg font-semibold text-white">
-                      With voiceover: {PIPELINE_COST_WITH_VOICEOVER} credits
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      + auto subtitles: {PIPELINE_COST_WITH_SUBTITLES} credits
-                    </p>
-                  </div>
-                </div>
-              </div>
-
               {purchaseNotice && (
                 <p className="mt-4 rounded-xl border border-green-400/20 bg-green-500/5 px-4 py-3 text-sm text-green-200">
                   {purchaseNotice}
@@ -288,9 +270,9 @@ export default function BillingPage() {
                 </div>
               )}
 
-              {/* Subscription */}
-              <h2 className="mt-12 text-xl font-bold">Plans</h2>
-              <p className="mt-1 text-sm text-gray-400">
+              {tab === "plans" && (
+              <>
+              <p className="mt-6 text-sm text-gray-400">
                 Fresh credits every week or month. Unused credits roll over and never expire. Cancel anytime.
               </p>
               {subscription && (
@@ -332,9 +314,12 @@ export default function BillingPage() {
                 />
               </div>
 
-              {/* Packages */}
-              <h2 className="mt-12 text-xl font-bold">Top-up packs</h2>
-              <p className="mt-1 text-sm text-gray-400">
+              </>
+              )}
+
+              {tab === "topup" && (
+              <>
+              <p className="mt-6 text-sm text-gray-400">
                 One-time purchases for when you need extra — with or without a plan. Credits never expire.
               </p>
 
@@ -433,12 +418,17 @@ export default function BillingPage() {
                 </ul>
               </div>
 
-              <div className="mt-8">
-                <ReferralCard />
-              </div>
+              </>
+              )}
 
-              {/* Transaction history */}
-              <h2 className="mt-12 text-xl font-bold">Usage history</h2>
+              {tab === "invite" && (
+                <div className="mt-6">
+                  <ReferralCard />
+                </div>
+              )}
+
+              {tab === "history" && (
+              <>
 
               {transactions.length === 0 ? (
                 <p className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-6 text-sm text-gray-400">
@@ -476,6 +466,8 @@ export default function BillingPage() {
                     </div>
                   ))}
                 </div>
+              )}
+              </>
               )}
             </>
           )}
