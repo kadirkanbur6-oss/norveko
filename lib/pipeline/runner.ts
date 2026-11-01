@@ -62,6 +62,7 @@ import {
 } from "@/lib/pipeline/usage";
 import { captureError } from "@/lib/observability";
 import type { StockClip } from "@/lib/pipeline/pexels";
+import { archiveCredits, type ArchiveImage } from "@/lib/pipeline/commons";
 
 /** A step that has been running longer than this is considered dead. */
 export const STEP_TIMEOUT_MS = 8 * 60 * 1000;
@@ -153,6 +154,8 @@ export interface RunnerDeps {
      * null when not configured → the render goes to the Supabase `videos` bucket.
      */
     storeFinalVideo?: (sourceUrl: string, key: string) => Promise<{ url: string; bytes: number } | null>;
+    /** Real archive photos (Wikimedia Commons). Optional: without it stock slots use stock video only. */
+    searchArchive?: typeof import("@/lib/pipeline/commons").searchArchiveImages;
     /** Stock footage search (Pixabay/Pexels). Optional: without it stock slots become AI stills. */
     searchStock?: typeof import("@/lib/pipeline/pexels").searchStockClips;
   };
@@ -372,7 +375,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
         case "stock": {
           const slots = (steps.video?.slots as TimelineSlot[] | undefined) ?? [];
           const perStock = (steps.video?.plan as Partial<FullVideoPlan> | undefined)?.stockCredits;
-          total += slots.filter((x) => (x.kind === "stock" || x.stockFallback) && x.status === "succeed").length * (typeof perStock === "number" ? perStock : STOCK_SLOT_CREDITS);
+          total += slots.filter((x) => (x.kind === "stock" || x.kind === "archive" || x.stockFallback) && x.status === "succeed").length * (typeof perStock === "number" ? perStock : STOCK_SLOT_CREDITS);
           break;
         }
         case "video": // legacy clips-only option: paid per succeeded clip
@@ -446,10 +449,17 @@ export function createPipelineRunner(deps: RunnerDeps) {
   }
 
   /** CC BY attribution for the background track, appended once to the description. */
-  function withMusicCredit(description: unknown, music: unknown): unknown {
+  function withMusicCredit(description: unknown, music: unknown, slots?: unknown): unknown {
+    if (typeof description !== "string") return description;
+    let out = description;
     const credit = (music as { credit?: string } | null | undefined)?.credit;
-    if (typeof description !== "string" || !credit || description.includes(credit)) return description;
-    return `${description.trimEnd()}\n\n${credit}`;
+    if (credit && !out.includes(credit)) out = `${out.trimEnd()}\n\n${credit}`;
+    // Archive photos: credit each one (CC BY requires it).
+    const archive = archiveCredits(
+      ((Array.isArray(slots) ? slots : []) as TimelineSlot[]).filter((s) => s.kind === "archive" && s.archive).map((s) => s.archive!)
+    );
+    if (archive && !out.includes("Archive photos (Wikimedia Commons)")) out = `${out.trimEnd()}\n\n${archive}`;
+    return out;
   }
 
   function stepOrder(job: Pick<JobRow, "steps">): PipelineStepId[] {
@@ -700,7 +710,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
   async function submitFullVideoVisuals(job: JobRow): Promise<void> {
     const plan = job.steps!.video!.plan as FullVideoPlan;
     const scenes = Array.isArray(job.steps?.script?.scenes)
-      ? (job.steps!.script!.scenes as Array<{ sceneNumber?: number; videoPrompt?: string; description?: string; stockQuery?: string }>)
+      ? (job.steps!.script!.scenes as Array<{ sceneNumber?: number; videoPrompt?: string; description?: string; stockQuery?: string; archiveQuery?: string }>)
       : [];
     const cues = job.steps?.voiceover?.captions as CaptionCue[] | undefined;
     const total = narrationSeconds(cues, plan.seconds);
@@ -710,6 +720,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
         videoPrompt: String(sc.videoPrompt ?? ""),
         description: sc.description,
         stockQuery: typeof sc.stockQuery === "string" ? sc.stockQuery : undefined,
+        archiveQuery: typeof sc.archiveQuery === "string" ? sc.archiveQuery : undefined,
       })),
       total,
       plan.slots,
@@ -877,10 +888,36 @@ export function createPipelineRunner(deps: RunnerDeps) {
     const stockPending = slots.filter((s) => s.kind === "stock" && s.status === "pending").slice(0, STOCK_PER_POLL);
     if (stockPending.length) {
       changed = true;
-      const used = new Set(slots.filter((s) => s.stock).map((s) => `${s.stock!.provider}:${s.stock!.id}`));
+      const used = new Set(
+        slots.flatMap((s) => [
+          ...(s.stock ? [`${s.stock.provider}:${s.stock.id}`] : []),
+          ...(s.kind === "archive" && s.archive ? [`commons:${s.archive.pageUrl}`] : []),
+        ])
+      );
       const cache = new Map<string, StockClip[]>();
+      const archiveCache = new Map<string, ArchiveImage[]>();
       const orientation = orientationOf(job);
       for (const slot of stockPending) {
+        // A scene about a real place/person/event gets genuine archive photos
+        // (Wikimedia Commons, PD/CC0/CC BY) — at most two per scene.
+        const perScene = slots.filter((s) => s.kind === "archive" && s.sceneNumber === slot.sceneNumber).length;
+        if (slot.archiveQuery && providers.searchArchive && perScene < 2) {
+          try {
+            const q = slot.archiveQuery;
+            if (!archiveCache.has(q)) archiveCache.set(q, await providers.searchArchive(q, 10));
+            const photo = archiveCache.get(q)!.find((p) => !used.has(`commons:${p.pageUrl}`));
+            if (photo) {
+              used.add(`commons:${photo.pageUrl}`);
+              slot.kind = "archive";
+              slot.url = photo.url;
+              slot.archive = { title: photo.title, author: photo.author, license: photo.license, pageUrl: photo.pageUrl };
+              slot.status = "succeed";
+              continue;
+            }
+          } catch (err) {
+            console.warn(`[pipeline] ${job.id} archive search failed:`, err instanceof Error ? err.message : err);
+          }
+        }
         const query = slot.stockQuery?.trim() || stockQueryFromPrompt(slot.prompt);
         let found: StockClip | undefined;
         if (providers.searchStock) {
@@ -1497,7 +1534,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
     const content = {
       ...((project.content ?? {}) as Record<string, unknown>),
       finalVideoUrl,
-      description: withMusicCredit(fresh.steps?.script?.description, fresh.steps?.render?.music),
+      description: withMusicCredit(fresh.steps?.script?.description, fresh.steps?.render?.music, fresh.steps?.video?.slots),
       // A clean re-render after the first purchase clears the badge.
       ...(fresh.steps?.render?.watermarked === true ? {} : { watermarked: fresh.steps?.thumbnail?.watermarked === true }),
     };
@@ -1544,7 +1581,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
             script: script.script,
             scenes,
             titles: script.titles,
-            description: withMusicCredit(script.description, fresh.steps?.render?.music),
+            description: withMusicCredit(script.description, fresh.steps?.render?.music, fresh.steps?.video?.slots),
             tags: script.tags,
             thumbnailIdea: script.thumbnailIdea,
             thumbnailUrl: thumb.image_url,
@@ -1852,6 +1889,8 @@ function getRunner() {
           (await import("@/lib/pipeline/watermark")).brandStoredThumbnail(...args),
         searchStock: async (...args) =>
           (await import("@/lib/pipeline/pexels")).searchStockClips(...args),
+        searchArchive: async (...args) =>
+          (await import("@/lib/pipeline/commons")).searchArchiveImages(...args),
         storeFinalVideo: async (sourceUrl, key) => {
           const r2 = await import("@/lib/storage/r2");
           if (!r2.r2Configured()) return null;

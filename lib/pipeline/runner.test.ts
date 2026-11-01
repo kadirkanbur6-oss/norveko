@@ -804,3 +804,22 @@ test("R2 url helpers: own keys only, no traversal", async () => {
   assert.equal(r2KeyFromUrl("https://norveko.app/media/videos/u1/j1/final.mp4"), null);
   assert.equal(r2KeyFromUrl("http://evil.com/media/videos/r2/a.mp4"), null);
 });
+
+
+test("archive photos: only PD / CC0 / CC BY, no maps; stock slots of real subjects use them and credit them", async () => {
+  const { usableLicense, parseCommons, archiveCredits } = await import("./commons");
+  assert.ok(usableLicense("Public domain"));
+  assert.ok(usableLicense("CC BY 4.0"));
+  assert.ok(usableLicense("CC0"));
+  assert.ok(!usableLicense("CC BY-SA 4.0"));
+  assert.ok(!usableLicense("CC BY-NC 2.0"));
+  const page = (title: string, license: string, mime = "image/jpeg") => ({
+    pageid: title.length,
+    title: `File:${title}.jpg`,
+    imageinfo: [{ url: "u", thumburl: "t", width: 3000, height: 2000, mime, descriptionurl: `https://c/${title}`, extmetadata: { LicenseShortName: { value: license }, Artist: { value: "<a>Ann</a>" } } }],
+  });
+  const parsed = parseCommons([page("Mount Ararat from Igdir", "CC BY 4.0"), page("Ararat map", "Public domain"), page("Ark site", "CC BY-SA 3.0")]);
+  assert.deepEqual(parsed.map((p) => p.title), ["Mount Ararat from Igdir"]);
+  assert.equal(parsed[0].author, "Ann");
+  assert.match(archiveCredits(parsed)!, /Mount Ararat from Igdir — Ann \(CC BY 4\.0\)/);
+});

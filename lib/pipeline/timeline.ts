@@ -17,8 +17,11 @@ import { upper, type CaptionCue } from "./captions";
 import { SLOT_SECONDS } from "./steps";
 import { MUSIC_VOLUME } from "./music";
 
-/** kling = AI clip (text→video or image→video), still = AI image, stock = licensed stock video. */
-export type SlotKind = "kling" | "still" | "stock";
+/**
+ * kling = AI clip (text→video or image→video), still = AI image, stock = licensed
+ * stock video, archive = real photo from Wikimedia Commons (a stock slot that found one).
+ */
+export type SlotKind = "kling" | "still" | "stock" | "archive";
 export type SlotStatus = "pending" | "processing" | "succeed" | "failed";
 
 export interface TimelineSlot {
@@ -59,6 +62,10 @@ export interface TimelineSlot {
   stock?: { provider: string; id: number; pageUrl: string; author: string };
   /** Stock slots: what to search for (from the scene's stockQuery). */
   stockQuery?: string;
+  /** Stock slots: real subject to look up genuine archive photos for. */
+  archiveQuery?: string;
+  /** Archive photo attribution (credited in the description). */
+  archive?: { title: string; author: string; license: string; pageUrl: string };
   /** A stock slot that found nothing and was filled with an AI still instead. */
   stockFallback?: boolean;
 }
@@ -69,6 +76,8 @@ export interface SceneInput {
   description?: string;
   /** 2–4 plain English words to search stock footage for this scene. */
   stockQuery?: string;
+  /** Real subject (place/person/event) to find archive photos of. */
+  archiveQuery?: string;
 }
 
 /**
@@ -149,6 +158,7 @@ export function planSlots(
       length: i === slotCount - 1 ? Math.round((totalSeconds - i * length) * 100) / 100 : length,
       prompt: scene.videoPrompt.trim(),
       ...(stockIdx.has(i) && scene.stockQuery?.trim() ? { stockQuery: scene.stockQuery.trim() } : {}),
+      ...(stockIdx.has(i) && scene.archiveQuery?.trim() ? { archiveQuery: scene.archiveQuery.trim() } : {}),
       status: "pending",
     });
   }

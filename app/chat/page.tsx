@@ -1120,7 +1120,7 @@ function ChatContent() {
                   <div className={`mt-4 grid gap-2 ${footageModes.length > 3 ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
                     {(
                       [
-                        { id: "stock", name: "Stock + AI", hint: "Real stock video for most scenes, AI stills for the key moments. Lowest cost." },
+                        { id: "stock", name: "Stock + AI", hint: "Real stock video and archive photos of real places for most scenes, AI stills for the key moments. Lowest cost." },
                         { id: "hybrid", name: "Hybrid", hint: "AI video clips for key moments, cinematic stills in between" },
                         { id: "cinematic", name: "Cinematic", hint: "Every scene is an AI video clip" },
                         { id: "stills", name: "Stills", hint: "Cinematic AI stills with camera motion, no video clips" },

@@ -21,6 +21,8 @@ export interface ScriptResult {
     videoPrompt: string;
     /** 2–4 plain English words for a stock-footage search. */
     stockQuery?: string;
+    /** Name of a real subject to look up genuine archive photos for. */
+    archiveQuery?: string;
   }>;
   titles: string[];
   description: string;
@@ -179,7 +181,8 @@ Respond ONLY with a valid JSON object, no markdown, no extra text. Schema:
       "sceneNumber": 1,
       "description": "what happens in this scene, in output language",
       "videoPrompt": "cinematic ENGLISH text-to-video prompt for this scene (see the VISUAL PROMPT rules)",
-      "stockQuery": "2–4 plain ENGLISH words a stock-video site would match for this scene's subject and setting (e.g. 'stormy sea lighthouse', 'medieval town street') — no names, dates or camera terms"
+      "stockQuery": "2–4 plain ENGLISH words a stock-video site would match for this scene's subject and setting (e.g. 'stormy sea lighthouse', 'medieval town street') — no names, dates or camera terms",
+      "archiveQuery": "ONLY when this scene shows a REAL, photographed place, object, person or event: its English name as it would be titled on Wikimedia Commons (e.g. 'Mount Ararat', 'Durupınar site', 'Flannan Isles lighthouse'); otherwise an empty string. Never invent a name"
     }
   ],
   "titles": ["title option 1", "title option 2", "title option 3", "title option 4", "title option 5"],
@@ -242,6 +245,7 @@ Target duration: ${duration ?? "60 seconds"}`;
         description?: string;
         videoPrompt?: string;
         stockQuery?: string;
+        archiveQuery?: string;
       };
 
       return {
@@ -253,6 +257,9 @@ Target duration: ${duration ?? "60 seconds"}`;
         videoPrompt: typedScene.videoPrompt ?? "",
         ...(typeof typedScene.stockQuery === "string" && typedScene.stockQuery.trim()
           ? { stockQuery: typedScene.stockQuery.trim().slice(0, 60) }
+          : {}),
+        ...(typeof typedScene.archiveQuery === "string" && typedScene.archiveQuery.trim()
+          ? { archiveQuery: typedScene.archiveQuery.trim().slice(0, 80) }
           : {}),
       };
     })

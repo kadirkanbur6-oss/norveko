@@ -43,7 +43,7 @@ interface StepInfo {
   slots?: Array<{
     index: number;
     sceneNumber: number;
-    kind: "kling" | "still" | "stock";
+    kind: "kling" | "still" | "stock" | "archive";
     status: "pending" | "processing" | "succeed" | "failed";
     url?: string;
     posterUrl?: string;
@@ -287,7 +287,7 @@ export default function PipelineProgress({
             {videoStep.slots.map((slot) => (
               <div
                 key={slot.index}
-                title={`Slot ${slot.index + 1} · scene ${slot.sceneNumber} · ${slot.kind === "kling" ? "AI clip" : slot.kind === "stock" ? "stock clip" : "AI still"} · ${slot.status}`}
+                title={`Slot ${slot.index + 1} · scene ${slot.sceneNumber} · ${slot.kind === "kling" ? "AI clip" : slot.kind === "stock" ? "stock clip" : slot.kind === "archive" ? "archive photo" : "AI still"} · ${slot.status}`}
                 className={`flex ${(videoStep.slots?.length ?? 0) > 12 ? "aspect-video" : "aspect-[9/16]"} items-center justify-center overflow-hidden rounded-md border text-[10px] ${
                   slot.status === "succeed"
                     ? "border-green-400/30 bg-green-500/10"
@@ -296,9 +296,9 @@ export default function PipelineProgress({
                     : "border-white/10 bg-white/[0.03]"
                 }`}
               >
-                {slot.status === "succeed" && (slot.kind === "still" ? slot.url : slot.posterUrl) ? (
+                {slot.status === "succeed" && (slot.kind === "still" || slot.kind === "archive" ? slot.url : slot.posterUrl) ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={(slot.kind === "still" ? slot.url : slot.posterUrl)!} alt="" className="h-full w-full object-cover" />
+                  <img src={(slot.kind === "still" || slot.kind === "archive" ? slot.url : slot.posterUrl)!} alt="" className="h-full w-full object-cover" />
                 ) : slot.status === "succeed" ? (
                   <Clapperboard size={12} className="text-green-300" />
                 ) : slot.status === "failed" ? (

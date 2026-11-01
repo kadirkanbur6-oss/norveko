@@ -57,7 +57,7 @@ function slotView(slot: TimelineSlot) {
     kind: clip ? "clip" : "image",
     edited: Boolean(slot.editedStillUrl),
     // What the viewer sees for this slot (a clip shows its source still if it has one).
-    imageUrl: slot.editedStillUrl ?? (slot.kind === "still" ? slot.url : slot.imageUrl ?? slot.posterUrl) ?? null,
+    imageUrl: slot.editedStillUrl ?? (slot.kind === "still" || slot.kind === "archive" ? slot.url : slot.imageUrl ?? slot.posterUrl) ?? null,
     clipUrl: clip ? slot.url ?? null : null,
     history: (slot.editHistory ?? []).map((h) => ({ url: h.url, at: h.at })),
   };
@@ -67,7 +67,7 @@ function slotView(slot: TimelineSlot) {
 function currentPicture(slot: TimelineSlot): { url: string; original: boolean } | null {
   if (slot.editedStillUrl) return { url: slot.editedStillUrl, original: false };
   const url =
-    slot.kind === "still"
+    slot.kind === "still" || slot.kind === "archive"
       ? slot.url
       : slot.kind === "stock"
         ? slot.posterUrl
