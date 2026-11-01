@@ -15,7 +15,8 @@ export default async function AnalyticsDashboard() {
     <main className="flex min-h-screen overflow-x-hidden bg-[#0a0a12] text-white">
       <Sidebar />
 
-      <section id="main-content" className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-10">
+      <section id="main-content" className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
+        <div className="mx-auto max-w-5xl">
         <Header />
 
         {/* Creator Studio overview: quick action, credits, recent projects */}
@@ -31,13 +32,10 @@ export default async function AnalyticsDashboard() {
             <RecentVideos />
           </>
         ) : (
-          <div className="mt-10 rounded-[28px] border border-white/10 bg-white/[0.03] p-6">
+          <div className="mt-10 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-6">
             <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[2px] text-violet-300/80">
-                  Optional
-                </p>
-                <h3 className="mt-1 text-lg font-bold text-white">
+                <h3 className="text-lg font-semibold text-white">
                   Connect your YouTube channel
                 </h3>
                 <p className="mt-1.5 max-w-md text-sm text-gray-400">
@@ -54,6 +52,7 @@ export default async function AnalyticsDashboard() {
             </div>
           </div>
         )}
+        </div>
       </section>
     </main>
   );
