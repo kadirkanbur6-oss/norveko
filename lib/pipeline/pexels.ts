@@ -165,6 +165,8 @@ async function searchPixabay(
     q: query.slice(0, 100),
     per_page: "40",
     safesearch: "true",
+    // Real footage only: animations (cartoons, motion graphics) break a documentary.
+    video_type: "film",
   });
   const res = await fetch(`https://pixabay.com/api/videos/?${params}`, { cache: "no-store" });
   if (!res.ok) {
