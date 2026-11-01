@@ -12,7 +12,7 @@ import PipelineProgress from "../components/PipelineProgress";
 import { DURATIONS, LANGUAGE_OPTIONS, LANGUAGES, ORIENTATIONS, PLATFORMS, STYLES, defaultOrientation, languageOption, type OrientationId } from "@/lib/pipeline/options";
 import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
 import { CaptionStylePicker, VisualStylePicker } from "../components/StylePickers";
-import { DEFAULT_CAPTION_STYLE, DEFAULT_VISUAL_STYLE, isCaptionStyle, isVisualStyle, VISUAL_STYLES } from "@/lib/pipeline/visual-styles";
+import { DEFAULT_CAPTION_STYLE, DEFAULT_VISUAL_STYLE, isCaptionStyle, isVisualStyle, VISUAL_STYLES, CAPTION_STYLES } from "@/lib/pipeline/visual-styles";
 import {
   fullVideoPlan,
   FULL_VIDEO_DURATIONS,
@@ -1136,7 +1136,13 @@ function ChatContent() {
                   </div>
                 )}
 
-                {fullVideoOn && footage !== "stills" && (
+                {fullVideoOn && (
+                <Disclosure
+                  className="mt-3"
+                  title="Clips & subtitles"
+                  summary={`${footage === "stills" ? "No AI clips" : clipMode === "text" ? "Text → video clips" : "Image → video clips"} · ${CAPTION_STYLES.find((c) => c.id === captionStyleId)?.label ?? "Bold pop"} subtitles`}
+                >
+                {footage !== "stills" && (
                   <div className="mt-3">
                     <p className="mb-2 text-xs font-medium text-gray-400">How AI clips are made</p>
                     <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Clip type">
@@ -1183,7 +1189,9 @@ function ChatContent() {
                   </div>
                 )}
 
-                {fullVideoOn && <CaptionStylePicker value={captionStyleId} onChange={setCaptionStyleId} />}
+                <CaptionStylePicker value={captionStyleId} onChange={setCaptionStyleId} />
+                </Disclosure>
+                )}
               </div>
             )}
 
