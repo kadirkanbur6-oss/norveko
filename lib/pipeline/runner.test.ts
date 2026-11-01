@@ -795,3 +795,12 @@ test("music repeats under a long video", () => {
   const music = (edit.timeline as any).tracks.find((t: any) => t.clips[0].asset.type === "audio").clips;
   assert.deepEqual(music.map((c: any) => [c.start, c.length]), [[0, 120], [120, 120], [240, 60]]);
 });
+
+test("R2 url helpers: own keys only, no traversal", async () => {
+  const { r2KeyFromUrl } = await import("../storage/r2-url");
+  assert.equal(r2KeyFromUrl("https://norveko.app/media/videos/r2/u1/j1/final.mp4"), "u1/j1/final.mp4");
+  assert.equal(r2KeyFromUrl("https://norveko.app/media/videos/r2/u1/../x.mp4"), "x.mp4", "URL parsing resolves dot segments");
+  assert.equal(r2KeyFromUrl("https://norveko.app/media/videos/r2/u1/%2F..%2Fx.mp4"), null);
+  assert.equal(r2KeyFromUrl("https://norveko.app/media/videos/u1/j1/final.mp4"), null);
+  assert.equal(r2KeyFromUrl("http://evil.com/media/videos/r2/a.mp4"), null);
+});

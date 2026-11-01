@@ -3,6 +3,7 @@
 // record the result on the project (content.youtube). Shared by the project
 // page route and series autopilot.
 
+import { r2KeyFromUrl } from "@/lib/storage/r2-url";
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ProjectYouTubeUpload } from "@/lib/project-content";
@@ -10,11 +11,21 @@ import { accessTokenFor } from "./oauth";
 import { PRIVACY_OPTIONS, buildVideoResource, type YouTubePrivacy } from "./metadata";
 import { friendlyUploadError, setThumbnail, uploadVideo } from "./upload";
 
-const MAX_VIDEO_BYTES = 256 * 1024 * 1024;
+// Long-form (10 min) renders reach several hundred MB.
+const MAX_VIDEO_BYTES = 900 * 1024 * 1024;
 
 /** Only our own Supabase Storage files are fetched server-side (no SSRF). */
 export function ownStorageUrl(value: unknown): string | null {
   if (typeof value !== "string") return null;
+  // Finished videos in Cloudflare R2 are served from our own domain.
+  if (r2KeyFromUrl(value)) {
+    try {
+      const site = new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://norveko.app");
+      return new URL(value).host === site.host ? value : null;
+    } catch {
+      return null;
+    }
+  }
   try {
     const u = new URL(value);
     const own = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "");
@@ -25,7 +36,10 @@ export function ownStorageUrl(value: unknown): string | null {
 }
 
 export async function downloadOwn(url: string, max: number): Promise<{ bytes: Buffer; type: string }> {
-  const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(60_000) });
+  // R2 videos: read the private object through a signed URL (no round trip via our site).
+  const key = r2KeyFromUrl(url);
+  const source = key ? await (await import("@/lib/storage/r2")).signedR2Url(key) : url;
+  const res = await fetch(source, { cache: "no-store", signal: AbortSignal.timeout(key ? 240_000 : 60_000) });
   if (!res.ok) throw new Error(`Could not read the file (${res.status}).`);
   const length = Number(res.headers.get("content-length") ?? 0);
   if (length > max) throw new Error("The file is too large to upload.");

@@ -162,6 +162,12 @@ export async function DELETE(req: Request) {
     } catch (err) {
       console.error("[account] voice clone cleanup failed:", err);
     }
+    // Finished videos stored in Cloudflare R2 live under <user>/.
+    try {
+      await (await import("@/lib/storage/r2")).deleteR2Prefix(`${user.id}/`);
+    } catch (err) {
+      console.error("[account] R2 video cleanup failed:", err);
+    }
     // Brand kit logos live under videos/brand/<user>/.
     try {
       await emptyPrefix(client, "videos", `brand/${user.id}`);

@@ -53,7 +53,7 @@ interface StepInfo {
   video_url?: string;
   provider_status?: string;
   total_seconds?: number;
-  hosted_by?: "supabase" | "shotstack";
+  hosted_by?: "supabase" | "shotstack" | "r2";
   /** Research step */
   brief?: string;
   sources?: Array<{ title: string; url: string }>;

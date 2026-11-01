@@ -214,6 +214,8 @@ export function tiktokCaption(text: string): string {
 
 /** Our own public media URL (verified URL prefix in the TikTok portal) for PULL_FROM_URL. */
 export function pullUrlFor(storageUrl: string): string | null {
+  // R2 videos already live under our verified https://norveko.app/media/videos/ prefix.
+  if (storageUrl.includes("/media/videos/r2/")) return storageUrl;
   const m = storageUrl.match(/\/storage\/v1\/object\/public\/videos\/(.+)$/);
   return m ? `${siteUrl()}/media/videos/${m[1]}` : null;
 }

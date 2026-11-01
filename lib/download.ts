@@ -22,7 +22,8 @@ export function safeFileName(title: string, fallback = "norveko"): string {
 
 /** Same URL, but Supabase Storage will serve it as a download named `filename`. */
 export function downloadHref(url: string, filename: string): string {
-  if (!url.includes("/storage/v1/object/public/")) return url;
+  // Supabase Storage and our R2 video route both honour ?download=<name>.
+  if (!url.includes("/storage/v1/object/public/") && !url.includes("/media/videos/r2/")) return url;
   try {
     const u = new URL(url);
     u.searchParams.set("download", filename);

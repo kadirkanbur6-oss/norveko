@@ -443,7 +443,9 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
       size,
       // "medium" keeps a 60 s 1080×1920 file well under Supabase's 50 MB
       // per-object limit (free plan); "high" produced >50 MB for 70 s.
-      quality: "medium",
+      // Long-form: "medium" came out at ~9 Mbit/s (193 MB for 3 min); "low" roughly
+      // halves the file at little visible cost, which matters for 10-minute videos.
+      quality: totalSeconds > 60 ? "low" : "medium",
       // Trim the output to the narration even if the last clip runs long.
       range: { start: 0, length: Math.round(totalSeconds * 100) / 100 },
     },

@@ -148,6 +148,11 @@ export interface RunnerDeps {
     watermarkThumbnail?: typeof import("@/lib/pipeline/watermark").watermarkStoredThumbnail;
     /** Brand kit logo on the thumbnail (optional; tests leave it out). */
     brandThumbnail?: typeof import("@/lib/pipeline/watermark").brandStoredThumbnail;
+    /**
+     * Store a finished render outside Supabase (Cloudflare R2, streamed). Returns
+     * null when not configured → the render goes to the Supabase `videos` bucket.
+     */
+    storeFinalVideo?: (sourceUrl: string, key: string) => Promise<{ url: string; bytes: number } | null>;
     /** Stock footage search (Pixabay/Pexels). Optional: without it stock slots become AI stills. */
     searchStock?: typeof import("@/lib/pipeline/pexels").searchStockClips;
   };
@@ -1082,11 +1087,41 @@ export function createPipelineRunner(deps: RunnerDeps) {
       await patchStep(job, "render", patch);
       return false;
     }
-    const buffer = await providers.downloadRender(result.url);
     // Re-renders (e.g. different music) get a new file name so CDN caches and
     // the original never serve a stale video.
     const version = Number(job.steps?.render?.version) || 0;
     const storagePath = `${job.user_id}/${job.id}/final${version ? `-v${version}` : ""}.mp4`;
+
+    // Cloudflare R2 (when configured): streamed straight from the renderer, any size.
+    if (providers.storeFinalVideo) {
+      let stored: { url: string; bytes: number } | null = null;
+      try {
+        stored = await providers.storeFinalVideo(result.url, storagePath);
+      } catch (err) {
+        console.warn(`[pipeline] ${job.id} R2 upload failed, trying Supabase:`, err instanceof Error ? err.message : err);
+        await captureError(err, { jobId: job.id, step: "render", area: "pipeline.render.r2" });
+      }
+      if (stored) {
+        await logUsage(job, "render", {
+          unit: "seconds",
+          quantity: result.duration ?? Number(job.steps?.render?.total_seconds) ?? 0,
+          durationMs: submittedAgoMs(job),
+          status: "ok",
+        });
+        await patchStep(job, "render", {
+          ...patch,
+          status: "completed",
+          video_url: stored.url,
+          storage_path: storagePath,
+          provider_url: result.url,
+          hosted_by: "r2",
+          bytes: stored.bytes,
+        });
+        return true;
+      }
+    }
+
+    const buffer = await providers.downloadRender(result.url);
     const { error: uploadError } = await db.storage
       .from("videos")
       .upload(storagePath, buffer, { contentType: "video/mp4", upsert: true });
@@ -1817,6 +1852,12 @@ function getRunner() {
           (await import("@/lib/pipeline/watermark")).brandStoredThumbnail(...args),
         searchStock: async (...args) =>
           (await import("@/lib/pipeline/pexels")).searchStockClips(...args),
+        storeFinalVideo: async (sourceUrl, key) => {
+          const r2 = await import("@/lib/storage/r2");
+          if (!r2.r2Configured()) return null;
+          const bytes = await r2.copyUrlToR2(sourceUrl, key, "video/mp4");
+          return { url: r2.r2PublicUrl(key), bytes };
+        },
       },
       kick: kickJob,
       now: Date.now,
