@@ -21,6 +21,8 @@ export interface StockClip {
   durationSeconds: number;
   author: string;
   authorUrl: string;
+  /** What the clip shows per the provider (Pixabay tags / Pexels page slug). */
+  tags?: string;
 }
 
 export type StockOrientation = "vertical" | "horizontal";
@@ -106,6 +108,7 @@ async function searchPexels(
         durationSeconds: v.duration,
         author: v.user.name,
         authorUrl: v.user.url,
+        tags: v.url.replace(/[-/]/g, " "),
       };
     })
     .filter((c): c is StockClip => c !== null);
@@ -194,6 +197,7 @@ async function searchPixabay(
         height: best.height,
         durationSeconds: v.duration,
         author: v.user,
+        tags: v.tags ?? "",
         authorUrl: `https://pixabay.com/users/${encodeURIComponent(v.user)}-${v.user_id}/`,
       };
     })

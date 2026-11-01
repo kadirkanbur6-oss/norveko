@@ -63,6 +63,8 @@ import {
 import { captureError } from "@/lib/observability";
 import type { StockClip } from "@/lib/pipeline/pexels";
 import { archiveCredits, type ArchiveImage } from "@/lib/pipeline/commons";
+import { offTopicTags } from "@/lib/pipeline/stock-check";
+import { mapLimit } from "@/lib/pipeline/tts-chunks";
 
 /** A step that has been running longer than this is considered dead. */
 export const STEP_TIMEOUT_MS = 8 * 60 * 1000;
@@ -158,6 +160,8 @@ export interface RunnerDeps {
     searchArchive?: typeof import("@/lib/pipeline/commons").searchArchiveImages;
     /** Fetch an archive photo with our User-Agent (copied into our bucket before render). */
     downloadArchiveImage?: typeof import("@/lib/pipeline/commons").downloadArchiveImage;
+    /** Vision check: which candidate frames fit the narration (null = unavailable → keep all). */
+    checkFit?: typeof import("@/lib/pipeline/stock-check").pickFittingFrames;
     /** Stock footage search (Pixabay/Pexels). Optional: without it stock slots become AI stills. */
     searchStock?: typeof import("@/lib/pipeline/pexels").searchStockClips;
   };
@@ -887,6 +891,9 @@ export function createPipelineRunner(deps: RunnerDeps) {
 
     // 2b) Stock footage: search per scene, never reuse a clip; nothing found
     // → the slot becomes an AI still (at our cost, it was sold as stock).
+    // Candidates are fetched once per query (in parallel), cleaned of
+    // off-topic tags and, when available, checked by a vision model against
+    // what the narrator is saying (a violinist matched "rock snow mountain").
     const stockPending = slots.filter((s) => s.kind === "stock" && s.status === "pending").slice(0, STOCK_PER_POLL);
     if (stockPending.length) {
       changed = true;
@@ -896,43 +903,66 @@ export function createPipelineRunner(deps: RunnerDeps) {
           ...(s.kind === "archive" && s.archive ? [`commons:${s.archive.pageUrl}`] : []),
         ])
       );
+      const orientation = orientationOf(job);
+      const scenes = (Array.isArray(job.steps?.script?.scenes) ? job.steps!.script!.scenes : []) as Array<{ sceneNumber?: number; description?: string }>;
+      const sceneText = (slot: TimelineSlot) => scenes.find((sc) => sc.sceneNumber === slot.sceneNumber)?.description ?? slot.prompt;
+      const firstSlotFor = (pick: (s: TimelineSlot) => string | undefined, q: string) => stockPending.find((s) => pick(s) === q)!;
+      const stockQueryOf = (s: TimelineSlot) => s.stockQuery?.trim() || stockQueryFromPrompt(s.prompt);
+
       const cache = new Map<string, StockClip[]>();
       const archiveCache = new Map<string, ArchiveImage[]>();
-      const orientation = orientationOf(job);
+      const archiveQueries = providers.searchArchive
+        ? [...new Set(stockPending.map((s) => s.archiveQuery).filter((q): q is string => Boolean(q)))]
+        : [];
+      const stockQueries = providers.searchStock ? [...new Set(stockPending.map(stockQueryOf))] : [];
+
+      await mapLimit(archiveQueries, 4, async (q) => {
+        try {
+          let photos = await providers.searchArchive!(q, 10);
+          const slot = firstSlotFor((s) => s.archiveQuery, q);
+          if (providers.checkFit && photos.length) {
+            const fit = await providers.checkFit({ scene: sceneText(slot), prompt: slot.prompt, subject: q, previews: photos.slice(0, 8).map((p) => p.url) });
+            if (fit) photos = fit.map((i) => photos[i]).filter(Boolean);
+          }
+          archiveCache.set(q, photos);
+        } catch (err) {
+          console.warn(`[pipeline] ${job.id} archive search failed:`, err instanceof Error ? err.message : err);
+          archiveCache.set(q, []);
+        }
+      });
+      await mapLimit(stockQueries, 4, async (q) => {
+        try {
+          let clips = (await providers.searchStock!(q, orientation, 15)).filter((c) => !offTopicTags(c.tags ?? "", q));
+          const slot = firstSlotFor(stockQueryOf, q);
+          if (providers.checkFit && clips.length) {
+            const fit = await providers.checkFit({ scene: sceneText(slot), prompt: slot.prompt, previews: clips.slice(0, 8).map((c) => c.previewImage) });
+            if (fit) clips = fit.map((i) => clips[i]).filter(Boolean);
+          }
+          cache.set(q, clips);
+        } catch (err) {
+          console.warn(`[pipeline] ${job.id} stock search failed:`, err instanceof Error ? err.message : err);
+          cache.set(q, []);
+        }
+      });
+
       for (const slot of stockPending) {
         // A scene about a real place/person/event gets genuine archive photos
         // (Wikimedia Commons, PD/CC0/CC BY) — at most two per scene.
         const perScene = slots.filter((s) => s.kind === "archive" && s.sceneNumber === slot.sceneNumber).length;
-        if (slot.archiveQuery && providers.searchArchive && perScene < 2) {
-          try {
-            const q = slot.archiveQuery;
-            if (!archiveCache.has(q)) archiveCache.set(q, await providers.searchArchive(q, 10));
-            const photo = archiveCache.get(q)!.find((p) => !used.has(`commons:${p.pageUrl}`));
-            if (photo) {
-              used.add(`commons:${photo.pageUrl}`);
-              slot.kind = "archive";
-              slot.url = photo.url;
-              slot.archive = { title: photo.title, author: photo.author, license: photo.license, pageUrl: photo.pageUrl };
-              slot.status = "succeed";
-              continue;
-            }
-          } catch (err) {
-            console.warn(`[pipeline] ${job.id} archive search failed:`, err instanceof Error ? err.message : err);
+        if (slot.archiveQuery && perScene < 2) {
+          const photo = (archiveCache.get(slot.archiveQuery) ?? []).find((p) => !used.has(`commons:${p.pageUrl}`));
+          if (photo) {
+            used.add(`commons:${photo.pageUrl}`);
+            slot.kind = "archive";
+            slot.url = photo.url;
+            slot.archive = { title: photo.title, author: photo.author, license: photo.license, pageUrl: photo.pageUrl };
+            slot.status = "succeed";
+            continue;
           }
         }
-        const query = slot.stockQuery?.trim() || stockQueryFromPrompt(slot.prompt);
-        let found: StockClip | undefined;
-        if (providers.searchStock) {
-          try {
-            if (!cache.has(query)) cache.set(query, await providers.searchStock(query, orientation, 15));
-            found = cache
-              .get(query)!
-              .filter((c) => c.durationSeconds >= Math.min(6, slot.length))
-              .find((c) => !used.has(`${c.provider}:${c.id}`));
-          } catch (err) {
-            console.warn(`[pipeline] ${job.id} stock search failed:`, err instanceof Error ? err.message : err);
-          }
-        }
+        const found = (cache.get(stockQueryOf(slot)) ?? [])
+          .filter((c) => c.durationSeconds >= Math.min(6, slot.length))
+          .find((c) => !used.has(`${c.provider}:${c.id}`));
         if (found) {
           used.add(`${found.provider}:${found.id}`);
           slot.url = found.videoUrl;
@@ -941,6 +971,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
           slot.stock = { provider: found.provider, id: found.id, pageUrl: found.url, author: found.author };
           slot.status = "succeed";
         } else {
+          // Nothing that fits: an AI still of exactly this scene beats a wrong clip.
           slot.kind = "still";
           slot.stockFallback = true;
         }
@@ -1923,6 +1954,8 @@ function getRunner() {
           (await import("@/lib/pipeline/pexels")).searchStockClips(...args),
         searchArchive: async (...args) =>
           (await import("@/lib/pipeline/commons")).searchArchiveImages(...args),
+        checkFit: async (...args) =>
+          (await import("@/lib/pipeline/stock-check")).pickFittingFrames(...args),
         downloadArchiveImage: async (...args) =>
           (await import("@/lib/pipeline/commons")).downloadArchiveImage(...args),
         storeFinalVideo: async (sourceUrl, key) => {

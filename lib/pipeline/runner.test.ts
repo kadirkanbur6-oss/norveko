@@ -837,3 +837,10 @@ test("long-form length: wider target, sentences spliced in place", async () => {
   ]);
   assert.equal(out, "The ark was said to rest high on the mountain. Climbers went looking in 1955. They found old wood in the ice. Nothing was proven.");
 });
+
+test("stock: clips about something else are dropped by their tags", async () => {
+  const { offTopicTags } = await import("./stock-check");
+  assert.equal(offTopicTags("violin, man, mountain, snow, rock", "rock snow mountain"), true);
+  assert.equal(offTopicTags("mountain, snow, rock, peak", "rock snow mountain"), false);
+  assert.equal(offTopicTags("violin, concert", "violin concert hall"), false, "unless the scene asks for it");
+});
