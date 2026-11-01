@@ -87,7 +87,7 @@ async function searchPexels(
   }
   const data = (await res.json()) as { videos?: PexelsVideo[] };
 
-  return (data.videos ?? [])
+  const clips = (data.videos ?? [])
     .map((v): StockClip | null => {
       const files = v.video_files
         .filter((f) => f.file_type === "video/mp4" && f.width && f.height)
@@ -109,6 +109,28 @@ async function searchPexels(
       };
     })
     .filter((c): c is StockClip => c !== null);
+  // Pexels has no tags; its page slug describes the clip ("/video/old-castle-walls-123/").
+  return rankByRelevance(clips, query, (x) => x.url);
+}
+
+const STOP = new Set(["the", "and", "with", "from", "into", "over", "under", "for", "old", "new"]);
+
+/** Clips whose description shares a meaningful word (or its stem) with the query, most shared first. */
+export function rankByRelevance<T>(clips: T[], query: string, text: (c: T) => string): T[] {
+  const words = query
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w.length > 2 && !STOP.has(w))
+    .map((w) => w.replace(/(ies|es|s)$/, ""));
+  if (!words.length) return clips;
+  const scored = clips.map((c, i) => {
+    const hay = text(c).toLowerCase();
+    return { c, i, score: words.filter((w) => hay.includes(w)).length };
+  });
+  return scored
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score || a.i - b.i)
+    .map((x) => x.c);
 }
 
 // --------------------------------------------------------------- Pixabay
@@ -125,6 +147,7 @@ interface PixabayVideo {
   id: number;
   pageURL: string;
   duration: number;
+  tags?: string;
   user: string;
   user_id: number;
   videos: Partial<Record<"large" | "medium" | "small" | "tiny", PixabayRendition>>;
@@ -174,7 +197,11 @@ async function searchPixabay(
     })
     .filter((c): c is StockClip => c !== null);
 
-  const matching = mapped.filter((c) => (c.height > c.width) === wantVertical);
+  // Pixabay matches loosely (an aeroplane for "medieval armies battlefield"):
+  // keep clips whose own tags share a word with the query, best match first.
+  const tagsById = new Map((data.hits ?? []).map((v) => [v.id, v.tags ?? ""]));
+  const relevant = rankByRelevance(mapped, query, (c) => tagsById.get(c.id) ?? "");
+  const matching = relevant.filter((c) => (c.height > c.width) === wantVertical);
   // Fall back to any orientation rather than returning nothing.
-  return (matching.length >= 3 ? matching : mapped).slice(0, perPage);
+  return (matching.length >= 3 ? matching : relevant).slice(0, perPage);
 }

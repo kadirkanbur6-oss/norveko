@@ -1697,7 +1697,11 @@ export function createPipelineRunner(deps: RunnerDeps) {
           return "kicked";
         }
       }
-      if (current - started > (isAsync ? ASYNC_STEP_TIMEOUT_MS : STEP_TIMEOUT_MS)) {
+      // Long-form renders take longer (a 3-minute video rendered in ~13 min):
+      // allow 5 s of waiting per second of video on top of the base limit.
+      const planSeconds = Number((steps.render?.plan as { seconds?: number } | undefined)?.seconds) || 0;
+      const asyncLimit = ASYNC_STEP_TIMEOUT_MS + Math.max(0, planSeconds - 60) * 5000;
+      if (current - started > (isAsync ? asyncLimit : STEP_TIMEOUT_MS)) {
         await failJob(job.id, `Step "${runningId}" timed out.`);
         return "failed";
       }
