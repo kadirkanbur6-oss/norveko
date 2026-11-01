@@ -105,3 +105,18 @@ export function archiveCredits(items: Array<{ title: string; author: string; lic
     .map((i) => `• ${i.title} — ${i.author} (${i.license}), ${i.pageUrl}`);
   return lines.length ? `Archive photos (Wikimedia Commons):\n${lines.join("\n")}` : null;
 }
+
+/**
+ * Download a Commons photo with our User-Agent. Wikimedia refuses generic
+ * fetchers (the renderer got "Asset URL not downloadable"), so archive photos
+ * are copied into our own bucket before rendering.
+ */
+export async function downloadArchiveImage(url: string): Promise<{ bytes: Buffer; type: string }> {
+  const u = new URL(url);
+  if (u.protocol !== "https:" || !/(^|\.)wikimedia\.org$/.test(u.hostname)) throw new Error("Not a Wikimedia URL.");
+  const res = await fetch(url, { headers: { "User-Agent": UA }, cache: "no-store", signal: AbortSignal.timeout(30_000) });
+  if (!res.ok) throw new Error(`Archive photo download failed (HTTP ${res.status}).`);
+  const bytes = Buffer.from(await res.arrayBuffer());
+  if (bytes.length > 25 * 1024 * 1024) throw new Error("Archive photo is too large.");
+  return { bytes, type: res.headers.get("content-type") ?? "image/jpeg" };
+}

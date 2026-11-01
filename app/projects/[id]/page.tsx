@@ -24,6 +24,7 @@ import YouTubePublish from "../../components/YouTubePublish";
 import VideoEditor from "../../components/VideoEditor";
 import TikTokPublish from "../../components/TikTokPublish";
 import PageTabs, { useTabParam } from "../../components/PageTabs";
+import RetryRender from "../../components/RetryRender";
 
 function slugify(s: string): string {
   return (
@@ -618,6 +619,7 @@ export default function ProjectDetailPage() {
                 renderEditForm()
               ) : project.content ? (
                 <>
+                {!hasVideo && <RetryRender projectId={projectId} />}
                 {hasVideo && (
                   <div className="mt-6">
                     <PageTabs tabs={SECTIONS} active={section} onChange={setSection} />

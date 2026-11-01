@@ -81,3 +81,40 @@ export async function queueRerender(
   await kickJob(jobId);
   return { version };
 }
+
+/** A failed render can be tried again for free (the failure was ours), a couple of times. */
+export const MAX_RENDER_RETRIES = 2;
+
+/**
+ * Retry a job whose visuals were made but whose final render failed. Credits
+ * for the render were refunded by failJob; the retry is free, and a second
+ * failure refunds nothing more (failJob refunds once). On success the partial
+ * project gets the video (finalizeJob → refreshProjectVideo).
+ */
+export async function retryFailedRender(db: SupabaseClient, jobId: string, userId: string): Promise<void> {
+  const { data: job } = await db.from("pipeline_jobs").select("*").eq("id", jobId).maybeSingle();
+  if (!job || job.user_id !== userId) throw new Error("Video not found.");
+  const steps = (job.steps ?? {}) as Record<string, Record<string, unknown>>;
+  if (job.status !== "failed" || steps.render?.status !== "failed" || steps.video?.status !== "completed") {
+    throw new Error("Only a video whose final render failed can be retried.");
+  }
+  const retries = Number(steps.render.retries) || 0;
+  if (retries >= MAX_RENDER_RETRIES) throw new Error("This render has already been retried. Please contact support.");
+  steps.render = {
+    ...steps.render,
+    status: "pending",
+    render_id: null,
+    provider_status: null,
+    error: null,
+    retries: retries + 1,
+    queued_at: new Date().toISOString(),
+  };
+  const { error } = await db
+    .from("pipeline_jobs")
+    .update({ steps, status: "running", current_step: "render", error: null })
+    .eq("id", jobId)
+    .eq("status", "failed");
+  if (error) throw new Error(error.message);
+  const { kickJob } = await import("./runner");
+  await kickJob(jobId);
+}

@@ -156,6 +156,8 @@ export interface RunnerDeps {
     storeFinalVideo?: (sourceUrl: string, key: string) => Promise<{ url: string; bytes: number } | null>;
     /** Real archive photos (Wikimedia Commons). Optional: without it stock slots use stock video only. */
     searchArchive?: typeof import("@/lib/pipeline/commons").searchArchiveImages;
+    /** Fetch an archive photo with our User-Agent (copied into our bucket before render). */
+    downloadArchiveImage?: typeof import("@/lib/pipeline/commons").downloadArchiveImage;
     /** Stock footage search (Pixabay/Pexels). Optional: without it stock slots become AI stills. */
     searchStock?: typeof import("@/lib/pipeline/pexels").searchStockClips;
   };
@@ -1027,8 +1029,38 @@ export function createPipelineRunner(deps: RunnerDeps) {
     return publicUrl;
   }
 
+  /**
+   * Archive photos still pointing at Wikimedia: copy them into our bucket (the
+   * renderer is refused by Wikimedia). A photo that can't be copied falls back
+   * to a neighbouring visual (status failed).
+   */
+  async function localizeArchivePhotos(job: JobRow, slots: TimelineSlot[]): Promise<void> {
+    if (!providers.downloadArchiveImage) return;
+    const remote = slots.filter((s) => s.kind === "archive" && s.status === "succeed" && s.url && /wikimedia\.org\//.test(s.url));
+    if (!remote.length) return;
+    await Promise.all(
+      remote.map(async (slot) => {
+        try {
+          const img = await providers.downloadArchiveImage!(slot.url!);
+          const ext = img.type.includes("png") ? "png" : "jpg";
+          const path = `${job.user_id}/${job.id}/archive-${slot.index}.${ext}`;
+          const { error } = await db.storage.from("videos").upload(path, img.bytes, { contentType: img.type, upsert: true });
+          if (error) throw new Error(error.message);
+          slot.url = db.storage.from("videos").getPublicUrl(path).data.publicUrl;
+          slot.storage_path = path;
+        } catch (err) {
+          console.warn(`[pipeline] ${job.id} archive photo ${slot.index} unavailable:`, err instanceof Error ? err.message : err);
+          slot.status = "failed";
+          slot.error = "Archive photo unavailable";
+        }
+      })
+    );
+    await patchStep(job, "video", { slots });
+  }
+
   async function submitRenderJob(job: JobRow): Promise<void> {
     const slots = (job.steps?.video?.slots as TimelineSlot[] | undefined) ?? [];
+    await localizeArchivePhotos(job, slots);
     const voiceoverUrl = job.steps?.voiceover?.audio_url;
     if (typeof voiceoverUrl !== "string" || !voiceoverUrl) throw new Error("Voiceover is missing; cannot render.");
     const total = Number(job.steps?.video?.total_seconds) || (job.steps?.render?.plan as { seconds?: number } | undefined)?.seconds || 60;
@@ -1891,6 +1923,8 @@ function getRunner() {
           (await import("@/lib/pipeline/pexels")).searchStockClips(...args),
         searchArchive: async (...args) =>
           (await import("@/lib/pipeline/commons")).searchArchiveImages(...args),
+        downloadArchiveImage: async (...args) =>
+          (await import("@/lib/pipeline/commons")).downloadArchiveImage(...args),
         storeFinalVideo: async (sourceUrl, key) => {
           const r2 = await import("@/lib/storage/r2");
           if (!r2.r2Configured()) return null;
