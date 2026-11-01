@@ -213,62 +213,31 @@ export default function ProjectsPage() {
               <p className="text-xs text-gray-500">
                 Showing {shown.length} of {filtered.length}{hasFilters ? " matching" : ""} project{filtered.length === 1 ? "" : "s"}
               </p>
+              <ul className="divide-y divide-white/[0.06] overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.02]">
               {shown.map((project) => (
-                <div
-                  key={project.id}
-                  className="relative rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition focus-within:border-blue-400/40 hover:border-blue-400/40 hover:bg-white/[0.05]"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <Link
-                      href={`/projects/${project.id}`}
-                      className="min-w-0 flex-1 outline-none after:absolute after:inset-0 after:rounded-2xl focus-visible:after:ring-2 focus-visible:after:ring-blue-400/60"
-                    >
-                      <h2 className="truncate text-lg font-semibold">
-                        {project.title}
-                      </h2>
-                      {project.idea && (
-                        <p className="mt-1 truncate text-sm text-gray-400">
-                          {project.idea}
-                        </p>
-                      )}
-                      <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                        {project.platform && (
-                          <span className="rounded-lg border border-blue-400/30 bg-blue-500/10 px-2 py-1 text-blue-200">
-                            {project.platform}
-                          </span>
-                        )}
-                        {project.style && (
-                          <span className="rounded-lg border border-purple-400/30 bg-purple-500/10 px-2 py-1 text-purple-200">
-                            {project.style}
-                          </span>
-                        )}
-                        {project.duration && (
-                          <span className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1 text-gray-300">
-                            {project.duration}
-                          </span>
-                        )}
-                        <span className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1 text-gray-400">
-                          {formatDate(project.created_at)}
-                        </span>
-                      </div>
-                    </Link>
-
-                    <button
-                      type="button"
-                      onClick={() => setPendingDelete(project)}
-                      disabled={deletingId === project.id}
-                      className="relative z-10 flex shrink-0 items-center gap-2 rounded-xl border border-red-400/20 bg-red-500/5 px-3 py-2 text-sm text-red-300 transition hover:bg-red-500/15 disabled:opacity-50"
-                    >
-                      {deletingId === project.id ? (
-                        <Loader2 size={16} className="animate-spin" />
-                      ) : (
-                        <Trash2 size={16} />
-                      )}
-                      Delete
-                    </button>
-                  </div>
-                </div>
+                <li key={project.id} className="group relative flex items-center gap-4 px-4 py-3.5 transition hover:bg-white/[0.04] focus-within:bg-white/[0.04] sm:px-5">
+                  <Link
+                    href={`/projects/${project.id}`}
+                    className="min-w-0 flex-1 outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-blue-400/60"
+                  >
+                    <h2 className="truncate text-[15px] font-medium text-white">{project.title}</h2>
+                    <p className="mt-0.5 truncate text-xs text-gray-500">
+                      {[project.platform, project.style, project.duration, formatDate(project.created_at)].filter(Boolean).join(" · ")}
+                    </p>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setPendingDelete(project)}
+                    disabled={deletingId === project.id}
+                    aria-label={`Delete ${project.title}`}
+                    title="Delete project"
+                    className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-500 opacity-60 transition hover:bg-red-500/10 hover:text-red-300 group-hover:opacity-100 focus-visible:opacity-100 disabled:opacity-50"
+                  >
+                    {deletingId === project.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                  </button>
+                </li>
               ))}
+              </ul>
 
               {visible < filtered.length && (
                 <button
