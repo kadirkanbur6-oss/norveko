@@ -153,8 +153,10 @@ export async function createEpisode(db: SupabaseClient, series: SeriesRow, sched
   const options = episodeOptions(series.settings);
   const resolved = resolvePipelineOptions(options);
   const cost = totalPipelineCredits(options);
+  const { payerFor } = await import("@/lib/teams");
+  const payer = await payerFor(db, series.user_id);
   const { data: paid, error: deductError } = await db.rpc("deduct_credits", {
-    p_user_id: series.user_id,
+    p_user_id: payer,
     p_amount: cost,
     p_reason: `Series "${series.name.slice(0, 60)}": episode (full video, ${series.settings.duration})`,
   });
@@ -185,6 +187,7 @@ export async function createEpisode(db: SupabaseClient, series: SeriesRow, sched
         visualStyle: series.settings.visualStyle,
         captionStyle: series.settings.captionStyle,
         brand: brand ?? undefined,
+        billedTo: payer !== series.user_id ? payer : undefined,
         fullVideo: resolved.fullVideo,
         footage: series.settings.footage,
         clipMode: "image",
@@ -198,7 +201,7 @@ export async function createEpisode(db: SupabaseClient, series: SeriesRow, sched
     .select("id")
     .single();
   if (jobError || !job) {
-    await db.rpc("add_credits", { p_user_id: series.user_id, p_amount: cost, p_type: "refund", p_reason: "Refund: series episode could not start" });
+    await db.rpc("add_credits", { p_user_id: payer, p_amount: cost, p_type: "refund", p_reason: "Refund: series episode could not start" });
     return skip("The video could not be started.");
   }
   await db.from("series_episodes").update({ job_id: job.id, status: "generating" }).eq("id", episode.id);

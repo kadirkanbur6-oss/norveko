@@ -327,14 +327,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Charge credits (nothing for the free-trial video)
+    // Charge credits (nothing for the free-trial video). Team members spend the owner's pool.
+    const { payerFor } = await import("@/lib/teams");
+    const payer = await payerFor(supabaseAdmin, user.id);
     const cost = totalPipelineCredits(options);
     const { data: deducted, error: deductError } = cost === 0
       ? { data: true, error: null }
       : await supabaseAdmin.rpc(
       "deduct_credits",
       {
-        p_user_id: user.id,
+        p_user_id: payer,
         p_amount: cost,
         p_reason: `AI pipeline generation (${resolved.research ? "research + " : ""}content package + thumbnail${resolved.voiceover ? " + voiceover" : ""}${resolved.subtitles ? " + subtitles" : ""}${resolved.fullVideo ? ` + full video (${footage}${footage === "stills" ? "" : `, ${clipMode === "text" ? "text→video" : "image→video"}`})` : ""}${videoRequested ? " + video clips" : ""})`,
       }
@@ -388,7 +390,7 @@ export async function POST(req: NextRequest) {
         style,
         duration,
         output_language: outputLanguage,
-        options: { orientation, template, notes, sourceUrl: sourceUrl ?? undefined, visualStyle, captionStyle, brand: brand ?? undefined, cast: cast.length ? cast : undefined, review: resolved.fullVideo && body.review === true ? true : undefined, ...freeMarkers, trialVideo: options.trialVideo === true || undefined, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined, clipMode: resolved.fullVideo ? clipMode : undefined },
+        options: { orientation, template, notes, sourceUrl: sourceUrl ?? undefined, billedTo: payer !== user.id ? payer : undefined, visualStyle, captionStyle, brand: brand ?? undefined, cast: cast.length ? cast : undefined, review: resolved.fullVideo && body.review === true ? true : undefined, ...freeMarkers, trialVideo: options.trialVideo === true || undefined, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined, clipMode: resolved.fullVideo ? clipMode : undefined },
         status: "running",
         current_step: firstStep.id,
         steps,
@@ -399,7 +401,7 @@ export async function POST(req: NextRequest) {
 
     if (jobError || !job) {
       await supabaseAdmin.rpc("add_credits", {
-        p_user_id: user.id,
+        p_user_id: payer,
         p_amount: cost,
         p_type: "refund",
         p_reason: "Refund: pipeline job could not be created",

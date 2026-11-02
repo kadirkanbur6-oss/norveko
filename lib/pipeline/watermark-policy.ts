@@ -33,6 +33,20 @@ export function isWatermarkExempt(userId: string): boolean {
 
 /** True when the user has at least one completed (non-refunded) credit purchase. */
 export async function hasPurchased(db: SupabaseClient, userId: string): Promise<boolean> {
+  const own = await purchasedBy(db, userId);
+  if (own) return true;
+  // Team members share their owner's paid status (lib/teams.ts).
+  try {
+    const { data } = await db.from("team_members").select("teams(owner_id)").eq("user_id", userId).maybeSingle();
+    const owner = (data?.teams as { owner_id?: string } | null | undefined)?.owner_id;
+    if (owner && owner !== userId) return isWatermarkExempt(owner) || (await purchasedBy(db, owner));
+  } catch {
+    // no team tables yet
+  }
+  return false;
+}
+
+async function purchasedBy(db: SupabaseClient, userId: string): Promise<boolean> {
   const { data, error } = await db
     .from("credit_purchases")
     .select("id")

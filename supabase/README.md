@@ -215,6 +215,37 @@ create index if not exists api_keys_user_idx on public.api_keys(user_id);
 alter table public.api_keys enable row level security;
 ```
 
+## Teams (`teams`, `team_members`, `team_invites`, 2 Nov 2026)
+
+Shared credit pool: members' jobs charge (and refund to) the owner (`lib/teams.ts` `payerFor`, `pipeline_jobs.options.billedTo`). Service role only.
+
+```sql
+create table if not exists public.teams (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null unique references auth.users(id) on delete cascade,
+  name text not null,
+  created_at timestamptz not null default now()
+);
+create table if not exists public.team_members (
+  team_id uuid not null references public.teams(id) on delete cascade,
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  joined_at timestamptz not null default now()
+);
+create table if not exists public.team_invites (
+  id uuid primary key default gen_random_uuid(),
+  team_id uuid not null references public.teams(id) on delete cascade,
+  token_hash text not null unique,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  accepted_at timestamptz,
+  accepted_by uuid references auth.users(id) on delete set null
+);
+create index if not exists team_members_team_idx on public.team_members(team_id);
+alter table public.teams enable row level security;
+alter table public.team_members enable row level security;
+alter table public.team_invites enable row level security;
+```
+
 ## Brand kit (`brand_kits`, 31 Oct 2026)
 
 Written only by `/api/brand` (service role). Logos: `videos/brand/<user>/logo-<uuid>.png`.

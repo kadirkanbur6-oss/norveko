@@ -133,6 +133,8 @@ export interface JobRow {
     short?: { sourceJobId: string; from: number; to: number; title?: string; hook?: string } | null;
     /** "Make it from a link": the page the research brief is written from. */
     sourceUrl?: string | null;
+    /** Team seats: the owner whose credits paid for this job (refunds go back there). */
+    billedTo?: string | null;
   } | null;
   status: "queued" | "running" | "completed" | "failed";
   current_step: string | null;
@@ -208,6 +210,12 @@ export interface RunnerDeps {
 /* ----------------------------------------------------------------------- */
 /* Worker addressing                                                        */
 /* ----------------------------------------------------------------------- */
+
+/** Whose balance a job's credits came from (team owner for team members). */
+export function payerOf(job: Pick<JobRow, "user_id" | "options">): string {
+  const billed = job.options?.billedTo;
+  return typeof billed === "string" && billed ? billed : job.user_id;
+}
 
 export function getBaseUrl(): string {
   if (process.env.NEXT_PUBLIC_SITE_URL) {
@@ -432,7 +440,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
       .eq("id", jobId)
       .eq("status", "running")
       .or("credits_refunded.is.null,credits_refunded.eq.0")
-      .select("id, user_id, credits_charged, steps")
+      .select("id, user_id, credits_charged, steps, options")
       .maybeSingle();
 
     if (claimError) {
@@ -447,7 +455,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
     const refund = Math.max(0, charged - consumedCredits(steps) - alreadyRefunded);
     if (refund > 0) {
       const { error } = await db.rpc("add_credits", {
-        p_user_id: claimed.user_id,
+        p_user_id: payerOf(claimed as Pick<JobRow, "user_id" | "options">),
         p_amount: refund,
         p_type: "refund",
         p_reason: `Refund: unfinished steps of a failed generation (${message.slice(0, 100)})`,
@@ -503,7 +511,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
     if (unusedClips <= 0) return;
     const amount = unusedClips * VIDEO_CLIP_CREDITS;
     const { error } = await db.rpc("add_credits", {
-      p_user_id: job.user_id,
+      p_user_id: payerOf(job),
       p_amount: amount,
       p_type: "refund",
       p_reason: `Refund: ${unusedClips} unused video clip${unusedClips === 1 ? "" : "s"}`,
@@ -692,7 +700,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
     const paid = typeof job.steps?.research?.credits === "number" ? (job.steps.research.credits as number) : RESEARCH_CREDITS;
     if (already <= 0 && paid > 0) {
       const { error } = await db.rpc("add_credits", {
-        p_user_id: job.user_id,
+        p_user_id: payerOf(job),
         p_amount: paid,
         p_type: "refund",
         p_reason: `Refund: web research skipped (${reason.slice(0, 100)})`,
@@ -760,7 +768,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
       Math.max(0, stillUnused) * (typeof perStill === "number" ? perStill : STILL_SCENE_CREDITS);
     if (amount <= 0) return;
     const { error } = await db.rpc("add_credits", {
-      p_user_id: job.user_id,
+      p_user_id: payerOf(job),
       p_amount: amount,
       p_type: "refund",
       p_reason: `Refund: unused visuals (${klingUnused} clip${klingUnused === 1 ? "" : "s"}, ${stillUnused} scene${stillUnused === 1 ? "" : "s"})`,

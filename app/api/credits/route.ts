@@ -13,11 +13,14 @@ export async function GET() {
       );
     }
 
-    const { data: creditData } = await supabase
-      .from("user_credits")
-      .select("credits")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    // Team members see (and spend) their team owner's shared balance.
+    const { payerFor } = await import("@/lib/teams");
+    const { adminDb } = await import("@/lib/api-keys");
+    const payer = await payerFor(adminDb(), user.id);
+    const { data: creditData } =
+      payer === user.id
+        ? await supabase.from("user_credits").select("credits").eq("user_id", user.id).maybeSingle()
+        : await adminDb().from("user_credits").select("credits").eq("user_id", payer).maybeSingle();
 
     const { data: transactions } = await supabase
       .from("credit_transactions")
@@ -37,6 +40,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       credits: creditData?.credits ?? 0,
+      teamPool: payer !== user.id,
       transactions: transactions ?? [],
       freeTrial: isForcedTrialUser(user.id) || (!isWatermarkExempt(user.id) && (purchases ?? 0) === 0),
     });

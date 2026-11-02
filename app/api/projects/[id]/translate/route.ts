@@ -153,8 +153,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const music = source.steps.render?.music as { id?: string } | null | undefined;
   if (music?.id) steps.render = { ...steps.render, music_id: music.id };
 
+  const { payerFor } = await import("@/lib/teams");
+  const payer = await payerFor(db, user.id);
   const { data: deducted, error: deductError } = await db.rpc("deduct_credits", {
-    p_user_id: user.id,
+    p_user_id: payer,
     p_amount: total,
     p_reason: `Translate video to ${language} (${items.map((i) => i.label.toLowerCase()).join(" + ")})`,
   });
@@ -181,6 +183,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         brand: srcOptions.brand,
         cast: srcOptions.cast,
         fullVideo: true,
+        billedTo: payer !== user.id ? payer : undefined,
         footage: p.footage,
         clipMode: p.clipMode,
         translate: { sourceJobId: source.id, fromLanguage: source.output_language ?? "English" },
@@ -194,7 +197,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .single();
 
   if (error || !job) {
-    await db.rpc("add_credits", { p_user_id: user.id, p_amount: total, p_type: "refund", p_reason: "Refund: translation could not be started" });
+    await db.rpc("add_credits", { p_user_id: payer, p_amount: total, p_type: "refund", p_reason: "Refund: translation could not be started" });
     return NextResponse.json({ success: false, error: "Could not start the translation." }, { status: 500 });
   }
 

@@ -15,6 +15,7 @@ import YouTubeConnectionCard from "../components/YouTubeConnectionCard";
 import TikTokConnectionCard from "../components/TikTokConnectionCard";
 import InstagramConnectionCard from "../components/InstagramConnectionCard";
 import ApiKeysCard from "../components/ApiKeysCard";
+import TeamCard from "../components/TeamCard";
 import BrandKitCard from "../components/BrandKitCard";
 import VoiceCloneCard from "../components/VoiceCloneCard";
 import CharactersCard from "../components/CharactersCard";
@@ -27,6 +28,7 @@ const SETTINGS_TABS: PageTab[] = [
   { id: "characters", label: "Characters" },
   { id: "connections", label: "Connected channels" },
   { id: "invite", label: "Invite & earn" },
+  { id: "team", label: "Team" },
   { id: "api", label: "API" },
 ];
 
@@ -256,6 +258,8 @@ export default function SettingsPage() {
               )}
 
               {tab === "invite" && <ReferralCard />}
+
+              {tab === "team" && <TeamCard />}
 
               {tab === "api" && <ApiKeysCard />}
             </div>

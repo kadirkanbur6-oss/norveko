@@ -214,8 +214,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       typeof body.prompt === "string" && body.prompt.trim() ? body.prompt.trim().replace(/\s+/g, " ").slice(0, 800) : slot.prompt;
 
     // Charge first (like any generation); refund if the image fails.
+    const { payerFor } = await import("@/lib/teams");
+    const payer = await payerFor(db, user.id);
     const { data: ok, error: deductError } = await db.rpc("deduct_credits", {
-      p_user_id: user.id,
+      p_user_id: payer,
       p_amount: STILL_SCENE_CREDITS,
       p_reason: "Edit video: new scene image",
     });
@@ -266,7 +268,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     } catch (err) {
       console.error("[edit] regenerate failed:", err);
       await db.rpc("add_credits", {
-        p_user_id: user.id,
+        p_user_id: payer,
         p_amount: STILL_SCENE_CREDITS,
         p_type: "refund",
         p_reason: "Refund: edit video image failed",
