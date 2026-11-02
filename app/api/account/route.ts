@@ -19,6 +19,7 @@ const USER_TABLES = [
   "series",
   "brand_kits",
   "voice_clones",
+  "characters",
   "referral_codes",
   "subscription_grants",
   "subscriptions",
@@ -161,6 +162,12 @@ export async function DELETE(req: Request) {
       if (clone?.voice_id) await (await import("@/lib/pipeline/elevenlabs")).deleteVoice(clone.voice_id);
     } catch (err) {
       console.error("[account] voice clone cleanup failed:", err);
+    }
+    // Character reference photos (private bucket) live under <user>/.
+    try {
+      await emptyPrefix(client, "characters", user.id);
+    } catch (err) {
+      console.error("[account] character photo cleanup failed:", err);
     }
     // Finished videos stored in Cloudflare R2 live under <user>/.
     try {

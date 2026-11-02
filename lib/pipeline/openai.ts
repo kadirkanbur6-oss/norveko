@@ -23,6 +23,8 @@ export interface ScriptResult {
     stockQuery?: string;
     /** Name of a real subject to look up genuine archive photos for. */
     archiveQuery?: string;
+    /** Cast members visible in this scene (names from params.cast). */
+    characters?: string[];
   }>;
   titles: string[];
   description: string;
@@ -59,6 +61,8 @@ interface ScriptParams {
   notes?: string | null;
   /** Visual look preset id (lib/pipeline/visual-styles.ts). */
   visualStyle?: string | null;
+  /** Recurring characters the creator chose (their reference images keep faces consistent). */
+  cast?: Array<{ name: string; kind: string; description?: string }>;
 }
 
 /** Bump when the script prompts change; stored on every job for comparisons. */
@@ -136,6 +140,16 @@ Hook options (pick or sharpen one; it must stay literally true): ${plan.hooks.jo
   }`;
 }
 
+/** The creator's recurring characters: who they are and how to use them in scenes. */
+function castBlock(cast: ScriptParams["cast"]): string {
+  if (!cast?.length) return "";
+  const lines = cast.map((c) => `  • "${c.name}" — ${c.kind === "historical" ? "historical figure" : c.kind === "fictional" ? "invented character" : c.kind === "self" ? "the creator, appearing in their own video" : "a real person who agreed to appear"}${c.description ? `: ${c.description}` : ""}`);
+  return `- CAST: these recurring characters appear in this video; their faces come from reference photos, so the image model needs only their NAME in a videoPrompt plus what they are doing, wearing and where:
+${lines.join("\n")}
+  Put the cast at the heart of the story and in most scenes (always the hook scene). For every scene list the cast members visible on screen in "characters" (exact names, [] if none). Write their action, pose, expression, clothing and setting in the videoPrompt and refer to them by name; do not describe their facial features (the references define them). Never put words in a real person's mouth that they did not say in the research.
+`;
+}
+
 /** Long-form (> 60 s) structure: paragraph budget so the draft actually reaches the length. */
 function longFormCraft(range: { target: number; seconds: number }): string {
   const paragraphs = Math.max(6, Math.round(range.target / 110));
@@ -190,6 +204,7 @@ Respond ONLY with a valid JSON object, no markdown, no extra text. Schema:
       "description": "what happens in this scene, in output language",
       "videoPrompt": "cinematic ENGLISH text-to-video prompt for this scene (see the VISUAL PROMPT rules)",
       "stockQuery": "2–4 plain ENGLISH words a stock-video site would match for this scene's subject and setting (e.g. 'stormy sea lighthouse', 'medieval town street') — no names, dates or camera terms",
+      "characters": ["names of CAST members visible in this scene, [] if none"],
       "archiveQuery": "ONLY when this scene shows a REAL, photographed place, object, person or event: its English name as it would be titled on Wikimedia Commons (e.g. 'Mount Ararat', 'Durupınar site', 'Flannan Isles lighthouse'); otherwise an empty string. Never invent a name"
     }
   ],
@@ -216,7 +231,7 @@ ${range.seconds > 60 ? longFormCraft(range) : ""}- SCRIPT CRAFT (retention struc
 - VISUAL PROMPT rules — each videoPrompt is a complete shot description for a photoreal AI video/image model, 35–60 words, in this order: (1) shot type and lens (e.g. "extreme close-up, 85mm" / "wide aerial establishing shot"), (2) the single clear subject and what it is doing, (3) environment and era-accurate details, (4) lighting and time of day, (5) colour palette/mood, (6) one slow steady camera move. Every scene must show a DIFFERENT subject or location — never two scenes of the same thing; alternate wide and close shots; keep one consistent palette across the video. Prefer physical, filmable things (objects, places, hands, textures, weather, crowds from behind) over abstract concepts. No text, signs, maps with labels, diagrams, or UI in any shot.
 - STRICT LENGTH: the hook + script together are read aloud at ~${wordsPerSecond(languageCode(outputLanguage))} words per second in ${languagePromptName(outputLanguage)}. For the target duration they MUST total between ${range.min} and ${range.max} words (aim for ${range.target}). Count the words before answering; do not go under or over.
 - The video is ${aspect}; compose every videoPrompt and the thumbnail for that framing (subjects centred, room above and below the subject for vertical). Do NOT write the words "vertical", "portrait", "tall framing", "9:16", "horizontal" or "16:9" inside a videoPrompt — the aspect ratio is set separately, and those words make the video model rotate the picture. Describe a steady, level camera (slow push-in, gentle pan, static); never ask for camera roll, spinning, flipping or orbiting.
-- If the topic involves real people, teams, companies or brands: videoPrompts must NOT depict identifiable real people, faces, logos, crests or jersey names. Show atmosphere, places, objects, crowds and colours instead (e.g. "fans in red-and-yellow striped shirts"), and never ask for readable text, scoreboards or signs — generated text is always wrong.${look ? `\n- VISUAL STYLE: every image and clip is rendered as "${look.label}" (${look.clip}). Write videoPrompts and the thumbnailIdea for that look: describe subject, composition, light and mood; do NOT write "photoreal", "photorealistic", "film still" or camera/lens words that fight the style.` : ""}${brief ? `\n- ${brief}` : ""}${notes ? `\n- CREATOR'S NOTES (follow them unless they conflict with the facts or these rules): ${notes}` : ""}${research ? "" : "\n- NO VERIFIED RESEARCH IS AVAILABLE for this video. If it is about real people or historical events, only state facts you are highly confident are widely documented (well-known names, dates, places). Do NOT invent occupations, causes of death, locations, quotes, numbers or document details. When a story is a legend, a newspaper claim or disputed, say so explicitly (e.g. 'anlatılana göre', 'dönemin gazetelerine göre', 'according to the newspapers of the time'). Accuracy beats drama."}${research ? `\n\nVERIFIED RESEARCH BRIEF — the ONLY source of truth for any claim about real events, people, numbers, dates or outcomes. Build the script on these facts, do not invent or "remember" others, and do not contradict them:\n${research}` : ""}${plan ? planBlock(plan) : ""}${exampleBlock(style)}`;
+${castBlock(params.cast)}- If the topic involves real people, teams, companies or brands${params.cast?.length ? " (other than the CAST above)" : ""}: videoPrompts must NOT depict identifiable real people, faces, logos, crests or jersey names. Show atmosphere, places, objects, crowds and colours instead (e.g. "fans in red-and-yellow striped shirts"), and never ask for readable text, scoreboards or signs — generated text is always wrong.${look ? `\n- VISUAL STYLE: every image and clip is rendered as "${look.label}" (${look.clip}). Write videoPrompts and the thumbnailIdea for that look: describe subject, composition, light and mood; do NOT write "photoreal", "photorealistic", "film still" or camera/lens words that fight the style.` : ""}${brief ? `\n- ${brief}` : ""}${notes ? `\n- CREATOR'S NOTES (follow them unless they conflict with the facts or these rules): ${notes}` : ""}${research ? "" : "\n- NO VERIFIED RESEARCH IS AVAILABLE for this video. If it is about real people or historical events, only state facts you are highly confident are widely documented (well-known names, dates, places). Do NOT invent occupations, causes of death, locations, quotes, numbers or document details. When a story is a legend, a newspaper claim or disputed, say so explicitly (e.g. 'anlatılana göre', 'dönemin gazetelerine göre', 'according to the newspapers of the time'). Accuracy beats drama."}${research ? `\n\nVERIFIED RESEARCH BRIEF — the ONLY source of truth for any claim about real events, people, numbers, dates or outcomes. Build the script on these facts, do not invent or "remember" others, and do not contradict them:\n${research}` : ""}${plan ? planBlock(plan) : ""}${exampleBlock(style)}`;
 
   const userPrompt = `Video idea: ${idea}
 Platform: ${platform}
@@ -254,6 +269,7 @@ Target duration: ${duration ?? "60 seconds"}`;
         videoPrompt?: string;
         stockQuery?: string;
         archiveQuery?: string;
+        characters?: unknown;
       };
 
       return {
@@ -265,6 +281,15 @@ Target duration: ${duration ?? "60 seconds"}`;
         videoPrompt: typedScene.videoPrompt ?? "",
         ...(typeof typedScene.stockQuery === "string" && typedScene.stockQuery.trim()
           ? { stockQuery: typedScene.stockQuery.trim().slice(0, 60) }
+          : {}),
+        ...(Array.isArray(typedScene.characters) && params.cast?.length
+          ? {
+              characters: (typedScene.characters as unknown[])
+                .filter((n): n is string => typeof n === "string")
+                .filter((n) => params.cast!.some((c) => c.name.toLowerCase() === n.trim().toLowerCase()))
+                .map((n) => params.cast!.find((c) => c.name.toLowerCase() === n.trim().toLowerCase())!.name)
+                .slice(0, 3),
+            }
           : {}),
         ...(typeof typedScene.archiveQuery === "string" && typedScene.archiveQuery.trim()
           ? { archiveQuery: typedScene.archiveQuery.trim().slice(0, 80) }

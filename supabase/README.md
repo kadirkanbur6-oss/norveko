@@ -351,3 +351,23 @@ select cron.schedule('norveko-series-tick', '5 * * * *', $job$
 $job$);
 -- check: select created, status_code, left(content,100) from net._http_response order by created desc limit 5;
 ```
+
+## Characters (2 Nov 2026)
+
+Recurring characters (lib/characters/characters.ts). Service role only (RLS on, no policies).
+Reference images live in the PRIVATE storage bucket `characters` (created by the API on first use).
+
+```sql
+create table if not exists public.characters (
+  id uuid primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  kind text not null check (kind in ('self','person','historical','fictional')),
+  description text,
+  reference_paths text[] not null default '{}',
+  consent_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create index if not exists characters_user_idx on public.characters(user_id);
+alter table public.characters enable row level security;
+```

@@ -7,6 +7,7 @@ import { NextRequest, NextResponse, after } from "next/server";
 import { requireUser } from "@/lib/supabase-server";
 import { createClient } from "@supabase/supabase-js";
 import { brandSnapshot, rowToKit, type BrandSnapshot } from "@/lib/brand/kit";
+import { castSnapshot } from "@/lib/characters/characters";
 import {
   buildPipelineSteps,
   FOOTAGE_MODES,
@@ -340,6 +341,16 @@ export async function POST(req: NextRequest) {
       brand = brandSnapshot(rowToKit(kitRow as Record<string, unknown> | null));
     }
 
+    // Recurring characters: the chosen ones (the user's own, ≤ 3) are copied onto the job.
+    let cast: Awaited<ReturnType<typeof castSnapshot>> = [];
+    if (Array.isArray(body.characterIds) && body.characterIds.length) {
+      try {
+        cast = await castSnapshot(supabaseAdmin, user.id, body.characterIds);
+      } catch (err) {
+        console.warn("[pipeline/start] cast lookup failed:", err);
+      }
+    }
+
     // 5) Insert the job with every step pending
     const steps = initialStepsState(options) as Record<string, Record<string, unknown>>;
     const firstStep = buildPipelineSteps(options)[0];
@@ -357,7 +368,7 @@ export async function POST(req: NextRequest) {
         style,
         duration,
         output_language: outputLanguage,
-        options: { orientation, template, notes, visualStyle, captionStyle, brand: brand ?? undefined, ...freeMarkers, trialVideo: options.trialVideo === true || undefined, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined, clipMode: resolved.fullVideo ? clipMode : undefined },
+        options: { orientation, template, notes, visualStyle, captionStyle, brand: brand ?? undefined, cast: cast.length ? cast : undefined, ...freeMarkers, trialVideo: options.trialVideo === true || undefined, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined, clipMode: resolved.fullVideo ? clipMode : undefined },
         status: "running",
         current_step: firstStep.id,
         steps,

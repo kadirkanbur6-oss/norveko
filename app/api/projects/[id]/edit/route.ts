@@ -192,7 +192,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const orientation = ((job.options?.orientation as string | undefined) ?? defaultOrientation(job.platform ?? "")) === "vertical" ? "vertical" : "horizontal";
       // Unique file name per edit so CDN caches never show the old picture.
       const fileNumber = 1000 + slot.index * 100 + (Number(job.steps.render.edit_count) || 0) + 1;
-      const img = await generateSceneImage(prompt, job.id, user.id, fileNumber, orientation, (job.options?.visualStyle as string | undefined) ?? null);
+      // Cast members of this scene keep their faces in the new picture too.
+      const { readCast, loadReferenceImages } = await import("@/lib/characters/characters");
+      const castInSlot = readCast(job.options?.cast).filter((c) => (slot.characters ?? []).includes(c.name));
+      const refs = await Promise.all(
+        castInSlot.map(async (c) => ({ name: c.name, description: c.description, images: await loadReferenceImages(db, c.refs).catch(() => []) }))
+      );
+      const img = await generateSceneImage(prompt, job.id, user.id, fileNumber, orientation, (job.options?.visualStyle as string | undefined) ?? null, refs.length ? refs : undefined);
 
       // Re-read and patch only this slot (another edit may have landed meanwhile).
       const { data: fresh } = await db.from("pipeline_jobs").select("steps").eq("id", job.id).maybeSingle();

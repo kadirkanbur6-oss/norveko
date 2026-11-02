@@ -64,6 +64,8 @@ import { captureError } from "@/lib/observability";
 import type { StockClip } from "@/lib/pipeline/pexels";
 import { archiveCredits, type ArchiveImage } from "@/lib/pipeline/commons";
 import { offTopicTags } from "@/lib/pipeline/stock-check";
+import { readCast } from "@/lib/characters/characters";
+import type { CharacterRef } from "@/lib/pipeline/gemini-image";
 import { mapLimit } from "@/lib/pipeline/tts-chunks";
 
 /** A step that has been running longer than this is considered dead. */
@@ -115,6 +117,8 @@ export interface JobRow {
     captionStyle?: string | null;
     /** Brand kit snapshot taken at start (lib/brand/kit.ts). */
     brand?: unknown;
+    /** Recurring characters chosen at start (lib/characters/characters.ts). */
+    cast?: unknown;
   } | null;
   status: "queued" | "running" | "completed" | "failed";
   current_step: string | null;
@@ -156,6 +160,8 @@ export interface RunnerDeps {
      * null when not configured → the render goes to the Supabase `videos` bucket.
      */
     storeFinalVideo?: (sourceUrl: string, key: string) => Promise<{ url: string; bytes: number } | null>;
+    /** Reference images of the job's cast members (private bucket). Optional: tests leave it out. */
+    loadCharacterRefs?: (paths: string[]) => Promise<Array<{ mimeType: string; data: string }>>;
     /** Real archive photos (Wikimedia Commons). Optional: without it stock slots use stock video only. */
     searchArchive?: typeof import("@/lib/pipeline/commons").searchArchiveImages;
     /** Fetch an archive photo with our User-Agent (copied into our bucket before render). */
@@ -677,6 +683,25 @@ export function createPipelineRunner(deps: RunnerDeps) {
     await patchStep(job, "research", { status: "skipped", error: reason.slice(0, 300), refunded, brief: null, sources: [] });
   }
 
+  /** Reference images per cast member, loaded once per runner instance. */
+  const castRefCache = new Map<string, Promise<Array<{ mimeType: string; data: string }>>>();
+  /**
+   * Character references for an image: the named cast members (a scene), or
+   * the first two of the cast (thumbnail). Undefined when the job has no cast.
+   */
+  async function refsFor(job: Pick<JobRow, "options">, names?: string[]): Promise<CharacterRef[] | undefined> {
+    const cast = readCast(job.options?.cast);
+    if (!cast.length || !providers.loadCharacterRefs) return undefined;
+    const chosen = names ? cast.filter((c) => names.includes(c.name)) : cast.slice(0, 2);
+    if (!chosen.length) return undefined;
+    return Promise.all(
+      chosen.map(async (c) => {
+        if (!castRefCache.has(c.id)) castRefCache.set(c.id, providers.loadCharacterRefs!(c.refs).catch(() => []));
+        return { name: c.name, description: c.description, images: await castRefCache.get(c.id)! };
+      })
+    );
+  }
+
   /** Give back credits for planned visuals that were never produced. */
   /** Credits per AI clip for this job (image→video and text→video differ). */
   function clipCreditsOf(job: Pick<JobRow, "steps">): number {
@@ -716,7 +741,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
   async function submitFullVideoVisuals(job: JobRow): Promise<void> {
     const plan = job.steps!.video!.plan as FullVideoPlan;
     const scenes = Array.isArray(job.steps?.script?.scenes)
-      ? (job.steps!.script!.scenes as Array<{ sceneNumber?: number; videoPrompt?: string; description?: string; stockQuery?: string; archiveQuery?: string }>)
+      ? (job.steps!.script!.scenes as Array<{ sceneNumber?: number; videoPrompt?: string; description?: string; stockQuery?: string; archiveQuery?: string; characters?: string[] }>)
       : [];
     const cues = job.steps?.voiceover?.captions as CaptionCue[] | undefined;
     const total = narrationSeconds(cues, plan.seconds);
@@ -727,6 +752,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
         description: sc.description,
         stockQuery: typeof sc.stockQuery === "string" ? sc.stockQuery : undefined,
         archiveQuery: typeof sc.archiveQuery === "string" ? sc.archiveQuery : undefined,
+        characters: Array.isArray(sc.characters) ? sc.characters : undefined,
       })),
       total,
       plan.slots,
@@ -862,7 +888,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
         batch.map(async (slot) => {
           const startedAt = now();
           try {
-            const img = await providers.generateSceneImage(slot.prompt, job.id, job.user_id, slot.index + 1, orientationOf(job), visualStyleOf(job));
+            const img = await providers.generateSceneImage(slot.prompt, job.id, job.user_id, slot.index + 1, orientationOf(job), visualStyleOf(job), await refsFor(job, slot.characters ?? []));
             slot.imageUrl = img.imageUrl;
             await logUsage(job, "thumbnail", {
               usageKey: `gemini:${process.env.GEMINI_SCENE_IMAGE_MODEL || "gemini-nano-banana-2.1"}`,
@@ -887,6 +913,14 @@ export function createPipelineRunner(deps: RunnerDeps) {
           }
         })
       );
+    }
+
+    // Scenes with cast members are always drawn (stock footage can't show them).
+    for (const s of slots) {
+      if (s.kind === "stock" && s.status === "pending" && s.characters?.length) {
+        s.kind = "still";
+        s.stockFallback = true;
+      }
     }
 
     // 2b) Stock footage: search per scene, never reuse a clip; nothing found
@@ -991,7 +1025,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
           const sameScene = slots.filter((s) => s.kind === "still" && s.sceneNumber === slot.sceneNumber);
           const variant = sameScene.findIndex((s) => s.index === slot.index);
           const prompt = sameScene.length > 1 ? `${slot.prompt} (${ANGLES[variant % ANGLES.length]})` : slot.prompt;
-          const img = await providers.generateSceneImage(prompt, job.id, job.user_id, slot.index + 1, orientationOf(job), visualStyleOf(job));
+          const img = await providers.generateSceneImage(prompt, job.id, job.user_id, slot.index + 1, orientationOf(job), visualStyleOf(job), await refsFor(job, slot.characters ?? []));
           stills[key] = img.imageUrl;
           slot.url = img.imageUrl;
           slot.storage_path = img.storagePath;
@@ -1328,6 +1362,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
           research: typeof job.steps?.research?.brief === "string" ? (job.steps.research.brief as string) : null,
           notes: job.options?.notes ?? null,
           visualStyle: visualStyleOf(job),
+          cast: readCast(job.options?.cast).map((c) => ({ name: c.name, kind: c.kind, description: c.description })),
         });
       } catch (err) {
         await logUsage(job, "script", {
@@ -1525,7 +1560,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
       const startedAt = now();
       let result: Awaited<ReturnType<typeof providers.generateThumbnail>>;
       try {
-        result = await providers.generateThumbnail(idea, job.id, orientation, visualStyleOf(job));
+        result = await providers.generateThumbnail(idea, job.id, orientation, visualStyleOf(job), await refsFor(job));
       } catch (err) {
         await logUsage(job, "thumbnail", {
           unit: "images",
@@ -1952,6 +1987,8 @@ function getRunner() {
           (await import("@/lib/pipeline/watermark")).brandStoredThumbnail(...args),
         searchStock: async (...args) =>
           (await import("@/lib/pipeline/pexels")).searchStockClips(...args),
+        loadCharacterRefs: async (paths) =>
+          (await import("@/lib/characters/characters")).loadReferenceImages(productionDb(), paths),
         searchArchive: async (...args) =>
           (await import("@/lib/pipeline/commons")).searchArchiveImages(...args),
         checkFit: async (...args) =>

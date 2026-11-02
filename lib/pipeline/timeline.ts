@@ -64,6 +64,8 @@ export interface TimelineSlot {
   stockQuery?: string;
   /** Stock slots: real subject to look up genuine archive photos for. */
   archiveQuery?: string;
+  /** Cast members in this slot's scene (stills drawn from their references). */
+  characters?: string[];
   /** Archive photo attribution (credited in the description). */
   archive?: { title: string; author: string; license: string; pageUrl: string };
   /** A stock slot that found nothing and was filled with an AI still instead. */
@@ -78,6 +80,8 @@ export interface SceneInput {
   stockQuery?: string;
   /** Real subject (place/person/event) to find archive photos of. */
   archiveQuery?: string;
+  /** Cast members on screen (their reference images keep faces consistent). */
+  characters?: string[];
 }
 
 /**
@@ -159,6 +163,7 @@ export function planSlots(
       prompt: scene.videoPrompt.trim(),
       ...(stockIdx.has(i) && scene.stockQuery?.trim() ? { stockQuery: scene.stockQuery.trim() } : {}),
       ...(stockIdx.has(i) && scene.archiveQuery?.trim() ? { archiveQuery: scene.archiveQuery.trim() } : {}),
+      ...(scene.characters?.length ? { characters: scene.characters } : {}),
       status: "pending",
     });
   }

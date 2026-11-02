@@ -15,12 +15,14 @@ import YouTubeConnectionCard from "../components/YouTubeConnectionCard";
 import TikTokConnectionCard from "../components/TikTokConnectionCard";
 import BrandKitCard from "../components/BrandKitCard";
 import VoiceCloneCard from "../components/VoiceCloneCard";
+import CharactersCard from "../components/CharactersCard";
 import ReferralCard from "../components/ReferralCard";
 import PageTabs, { PageHeader, useTabParam, type PageTab } from "../components/PageTabs";
 
 const SETTINGS_TABS: PageTab[] = [
   { id: "account", label: "Account" },
   { id: "brand", label: "Brand & voice" },
+  { id: "characters", label: "Characters" },
   { id: "connections", label: "Connected channels" },
   { id: "invite", label: "Invite & earn" },
 ];
@@ -239,6 +241,8 @@ export default function SettingsPage() {
                   <VoiceCloneCard />
                 </>
               )}
+
+              {tab === "characters" && <CharactersCard />}
 
               {tab === "connections" && (
                 <>

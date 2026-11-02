@@ -117,6 +117,19 @@ function ChatContent() {
       })
       .catch(() => undefined);
   }, []);
+  // Recurring characters (Settings → Characters): up to 3 per video.
+  const [characters, setCharacters] = useState<Array<{ id: string; name: string; kind: string; previews: string[] }>>([]);
+  const [charactersAllowed, setCharactersAllowed] = useState(false);
+  const [castIds, setCastIds] = useState<string[]>([]);
+  useEffect(() => {
+    fetch("/api/characters")
+      .then((r) => r.json())
+      .then((d) => {
+        setCharacters(d?.characters ?? []);
+        setCharactersAllowed(Boolean(d?.allowed));
+      })
+      .catch(() => undefined);
+  }, []);
   const [fullVideoAvailable, setFullVideoAvailable] = useState(false);
   const [trialVideoAvailable, setTrialVideoAvailable] = useState(false);
   const [generationAvailable, setGenerationAvailable] = useState(true);
@@ -433,6 +446,7 @@ function ChatContent() {
           visualStyle,
           captionStyle: captionStyleId,
           useBrandKit: Boolean(brandKit) && useBrandKit,
+          characterIds: castIds.filter((id) => characters.some((c) => c.id === id)),
         }),
       });
 
@@ -728,6 +742,55 @@ function ChatContent() {
             )}
 
             </Disclosure>
+
+            {(characters.length > 0 || charactersAllowed) && (
+              <Disclosure
+                className="mt-4"
+                title="Characters"
+                summary={
+                  castIds.length
+                    ? characters.filter((c) => castIds.includes(c.id)).map((c) => c.name).join(", ")
+                    : characters.length
+                      ? "Nobody yet — pick up to 3"
+                      : "Put yourself or a historical figure in your videos"
+                }
+              >
+                {characters.length ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {characters.map((c) => {
+                      const on = castIds.includes(c.id);
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() =>
+                            setCastIds((prev) => (on ? prev.filter((x) => x !== c.id) : prev.length >= 3 ? prev : [...prev, c.id]))
+                          }
+                          className={`flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-sm transition ${
+                            on ? "border-sky-400/60 bg-sky-500/15 text-white" : "border-white/10 text-gray-300 hover:border-white/25"
+                          }`}
+                        >
+                          {c.previews[0] ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={c.previews[0]} alt="" className="h-7 w-7 rounded-full object-cover" />
+                          ) : (
+                            <span className="h-7 w-7 rounded-full bg-white/10" />
+                          )}
+                          {c.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+                <p className="mt-3 text-xs text-gray-500">
+                  Chosen characters appear in the story with the same face in every scene (AI scenes and clips).{" "}
+                  <Link href="/settings?tab=characters" className="text-sky-300 hover:text-white">
+                    {characters.length ? "Manage characters" : "Create a character"}
+                  </Link>
+                </p>
+              </Disclosure>
+            )}
 
             {/* Web research before the script */}
             <div
