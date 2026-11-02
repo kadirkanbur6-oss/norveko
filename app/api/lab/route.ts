@@ -100,6 +100,33 @@ export async function POST(req: Request) {
         );
         return NextResponse.json({ success: true, handle, ms: Date.now() - started });
       }
+      // Presenter debugging: submit a job's presenter audio + portrait to any fal avatar model.
+      case "avatar-submit": {
+        const db = admin();
+        const { data: job } = await db.from("pipeline_jobs").select("id, user_id, options").eq("id", String(body.jobId ?? "")).eq("user_id", user.id).maybeSingle();
+        if (!job) return NextResponse.json({ success: false, error: "job not found" }, { status: 404 });
+        const { readCast } = await import("@/lib/characters/characters");
+        const member = readCast((job.options as Record<string, unknown> | null)?.cast)[0];
+        if (!member) return NextResponse.json({ success: false, error: "no cast" }, { status: 400 });
+        const { data: signed } = await db.storage.from("characters").createSignedUrl(member.refs[0], 3600);
+        const slot = Number(body.slot ?? 1);
+        const ext = String(body.ext ?? "wav");
+        const audioUrl = db.storage.from("videos").getPublicUrl(`${job.user_id}/${job.id}/presenter-${slot}.${ext}`).data.publicUrl;
+        const model = String(body.model ?? "fal-ai/kling-video/ai-avatar/v2/pro");
+        const input = { image_url: signed?.signedUrl, audio_url: audioUrl, prompt: String(body.prompt ?? "The person speaks to the camera."), ...((body.extra as Record<string, unknown>) ?? {}) };
+        const res = await fetch(`https://queue.fal.run/${model}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Key ${process.env.FAL_KEY}` },
+          body: JSON.stringify(input),
+        });
+        return NextResponse.json({ success: res.ok, status: res.status, body: (await res.text()).slice(0, 1500), audioUrl });
+      }
+      case "fal-raw": {
+        const url = String(body.url ?? "");
+        if (!/^https:\/\/queue\.fal\.run\//.test(url)) return NextResponse.json({ success: false, error: "fal queue urls only" }, { status: 400 });
+        const res = await fetch(url, { headers: { Authorization: `Key ${process.env.FAL_KEY}` } });
+        return NextResponse.json({ success: res.ok, status: res.status, body: (await res.text()).slice(0, 3000) });
+      }
       case "poll": {
         const handle = body.handle as VideoHandle;
         const r = await labVideoPoll(handle);
