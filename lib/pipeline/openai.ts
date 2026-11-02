@@ -676,6 +676,43 @@ Rules:
 
 /* ---------------- Research (web search before the script) ---------------- */
 
+/**
+ * Research from a link the creator gave (article, blog post, wiki page): the
+ * page's own text becomes the brief, so the video tells what the page says.
+ */
+export async function researchFromUrl(params: {
+  url: string;
+  idea: string;
+  outputLanguage: string;
+  model: string;
+  notes?: string | null;
+}): Promise<ResearchResult & { title?: string }> {
+  const { fetchArticle } = await import("./source-url");
+  const page = await fetchArticle(params.url);
+  const language = languagePromptName(params.outputLanguage);
+  const { data, usage } = await chatJSON({
+    model: params.model,
+    effort: "low",
+    timeoutMs: 90_000,
+    system: `You turn a web page into the research brief for a short documentary video. Respond ONLY with JSON {"brief": "...", "title": "..."}.
+Rules for "brief" (in ${language}, 180–320 words, plain paragraphs):
+- Use ONLY what the page says. Never add outside facts, names, numbers or dates. If the page reports claims, say whose claims they are.
+- Keep the page's most important and most surprising points, in an order that tells a story; include the concrete details (who, what, when, where, numbers, outcomes, notable quotes).
+- Ignore navigation, ads, cookie notices, comments and "related articles".
+- If the page is an opinion piece, say it is the author's view.
+"title": the page's subject in a few words, in ${language}.`,
+    user: `Creator's idea: ${params.idea}${params.notes ? `\nCreator's angle: ${params.notes}` : ""}\n\nPAGE TITLE: ${page.title}\nPAGE URL: ${page.url}\n\nPAGE TEXT:\n${page.text}`,
+  });
+  const brief = typeof (data as { brief?: unknown }).brief === "string" ? (data as { brief: string }).brief.trim() : "";
+  if (brief.length < 80) throw new Error("The page couldn't be summarised.");
+  return {
+    brief,
+    title: typeof (data as { title?: unknown }).title === "string" ? (data as { title: string }).title.trim() : page.title,
+    sources: [{ title: page.title || new URL(page.url).hostname, url: page.url }],
+    usage: usage ? { inputTokens: usage.inputTokens ?? 0, outputTokens: usage.outputTokens ?? 0 } : undefined,
+  };
+}
+
 export interface ResearchSource {
   title: string;
   url: string;

@@ -1026,3 +1026,22 @@ test("map scenes: a scene with places becomes an animated map (frames + labels) 
   const labels = e.timeline.tracks.at(-2).clips.map((c: any) => c.asset.text);
   assert.deepEqual(labels, ["Samarkand", "Ankara"]);
 });
+
+test("from a link: only public web pages, readable article text without menus or scripts", async () => {
+  const { cleanSourceUrl, isPrivateAddress, extractArticle } = await import("./source-url");
+  assert.equal(cleanSourceUrl("en.wikipedia.org/wiki/Battle_of_Ankara#x"), "https://en.wikipedia.org/wiki/Battle_of_Ankara");
+  assert.equal(cleanSourceUrl("javascript:alert(1)"), null);
+  assert.equal(cleanSourceUrl("http://user:pw@example.com"), null);
+  for (const ip of ["127.0.0.1", "10.1.2.3", "172.20.0.1", "192.168.1.1", "169.254.169.254", "::1", "fd00::1", "::ffff:127.0.0.1", "100.64.0.1"]) {
+    assert.equal(isPrivateAddress(ip), true, ip);
+  }
+  assert.equal(isPrivateAddress("93.184.216.34"), false);
+  const page = extractArticle(
+    `<html><head><title>Battle of Ankara – Wiki</title><script>var x=1</script></head><body><nav>Home | About</nav>
+     <article><h1>Battle of Ankara</h1><p>Fought on 20 July 1402 &amp; won by Timur.</p><p>Bayezid was captured.</p></article>
+     <footer>© 2026</footer></body></html>`
+  );
+  assert.equal(page.title, "Battle of Ankara – Wiki");
+  assert.match(page.text, /20 July 1402 & won by Timur/);
+  assert.doesNotMatch(page.text, /Home \| About|var x|© 2026/);
+});

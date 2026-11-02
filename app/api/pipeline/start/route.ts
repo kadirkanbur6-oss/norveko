@@ -76,7 +76,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const idea = typeof body.idea === "string" ? body.idea.trim() : "";
+    // "Make it from a link": a public article/blog page becomes the research brief.
+    const { cleanSourceUrl, fetchArticle } = await import("@/lib/pipeline/source-url");
+    const sourceUrl = cleanSourceUrl(body.sourceUrl);
+    if (body.sourceUrl && typeof body.sourceUrl === "string" && body.sourceUrl.trim() && !sourceUrl) {
+      return NextResponse.json({ success: false, error: "That link doesn't look like a web address." }, { status: 400 });
+    }
+    let sourceTitle = "";
+    if (sourceUrl) {
+      try {
+        sourceTitle = (await fetchArticle(sourceUrl)).title;
+      } catch (err) {
+        return NextResponse.json(
+          { success: false, error: err instanceof Error ? err.message : "We couldn't read that page." },
+          { status: 400 }
+        );
+      }
+    }
+    let idea = typeof body.idea === "string" ? body.idea.trim() : "";
+    if (!idea && sourceUrl) idea = sourceTitle ? `A video about: ${sourceTitle}` : `A video about the article at ${sourceUrl}`;
     // Optional creator notes for the writer (angle, focus, things to avoid).
     const notes =
       typeof body.notes === "string" && body.notes.trim() ? body.notes.trim().replace(/\s+/g, " ").slice(0, 500) : null;
@@ -159,7 +177,8 @@ export async function POST(req: NextRequest) {
       );
     }
     const options: PipelineOptions = {
-      research: body.includeResearch !== false,
+      // A linked page is read in the research step, so research is always on with a link.
+      research: Boolean(sourceUrl) || body.includeResearch !== false,
       voiceover: voiceoverEnabled || fullVideoRequested,
       subtitles: subtitlesRequested || fullVideoRequested,
       video: videoRequested,
@@ -369,7 +388,7 @@ export async function POST(req: NextRequest) {
         style,
         duration,
         output_language: outputLanguage,
-        options: { orientation, template, notes, visualStyle, captionStyle, brand: brand ?? undefined, cast: cast.length ? cast : undefined, review: resolved.fullVideo && body.review === true ? true : undefined, ...freeMarkers, trialVideo: options.trialVideo === true || undefined, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined, clipMode: resolved.fullVideo ? clipMode : undefined },
+        options: { orientation, template, notes, sourceUrl: sourceUrl ?? undefined, visualStyle, captionStyle, brand: brand ?? undefined, cast: cast.length ? cast : undefined, review: resolved.fullVideo && body.review === true ? true : undefined, ...freeMarkers, trialVideo: options.trialVideo === true || undefined, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined, clipMode: resolved.fullVideo ? clipMode : undefined },
         status: "running",
         current_step: firstStep.id,
         steps,

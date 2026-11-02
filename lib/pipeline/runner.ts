@@ -131,6 +131,8 @@ export interface JobRow {
     translate?: { sourceJobId: string; fromLanguage?: string | null } | null;
     /** A Short cut from a long video: this window of the source's narration and visuals. */
     short?: { sourceJobId: string; from: number; to: number; title?: string; hook?: string } | null;
+    /** "Make it from a link": the page the research brief is written from. */
+    sourceUrl?: string | null;
   } | null;
   status: "queued" | "running" | "completed" | "failed";
   current_step: string | null;
@@ -150,6 +152,8 @@ export interface RunnerDeps {
   providers: {
     generateScript: typeof import("@/lib/pipeline/openai").generateScript;
     researchTopic: typeof import("@/lib/pipeline/openai").researchTopic;
+    /** Brief from a page the creator linked (optional: tests may leave it out). */
+    researchFromUrl?: typeof import("@/lib/pipeline/openai").researchFromUrl;
     generateSpeech: typeof import("@/lib/pipeline/tts").synthesizeNarration;
     reviseNarration: typeof import("@/lib/pipeline/openai").reviseNarrationLength;
     generateThumbnail: typeof import("@/lib/pipeline/gemini-image").generateThumbnail;
@@ -1368,13 +1372,23 @@ export function createPipelineRunner(deps: RunnerDeps) {
       const startedAt = now();
       let result: Awaited<ReturnType<typeof providers.researchTopic>>;
       try {
-        result = await providers.researchTopic({
-          idea: job.idea,
-          outputLanguage: job.output_language ?? "EN",
-          model,
-          today: new Date(now()).toISOString().slice(0, 10),
-          notes: job.options?.notes ?? null,
-        });
+        const sourceUrl = job.options?.sourceUrl;
+        result =
+          sourceUrl && providers.researchFromUrl
+            ? await providers.researchFromUrl({
+                url: sourceUrl,
+                idea: job.idea,
+                outputLanguage: job.output_language ?? "EN",
+                model,
+                notes: job.options?.notes ?? null,
+              })
+            : await providers.researchTopic({
+                idea: job.idea,
+                outputLanguage: job.output_language ?? "EN",
+                model,
+                today: new Date(now()).toISOString().slice(0, 10),
+                notes: job.options?.notes ?? null,
+              });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         await logUsage(job, "research", {
@@ -2163,6 +2177,8 @@ function getRunner() {
           (await import("@/lib/pipeline/openai")).generateScript(...args),
         researchTopic: async (...args) =>
           (await import("@/lib/pipeline/openai")).researchTopic(...args),
+        researchFromUrl: async (...args) =>
+          (await import("@/lib/pipeline/openai")).researchFromUrl(...args),
         reviseNarration: async (...args) =>
           (await import("@/lib/pipeline/openai")).reviseNarrationLength(...args),
         generateSpeech: async (...args) =>

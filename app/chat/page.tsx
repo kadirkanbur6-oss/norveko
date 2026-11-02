@@ -91,6 +91,9 @@ function ChatContent() {
   const [idea, setIdea] = useState("");
   const [notes, setNotes] = useState("");
   const [notesOpen, setNotesOpen] = useState(false);
+  // "Make it from a link": an article/blog page becomes the research brief.
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [sourceOpen, setSourceOpen] = useState(false);
   const [platform, setPlatform] = useState<string>(PLATFORMS[0]);
   const [style, setStyle] = useState<string>(STYLES[0]);
   const [duration, setDuration] = useState<string>(DURATIONS[1]);
@@ -163,7 +166,7 @@ function ChatContent() {
   const longFullVideo = fullVideoOn && (FULL_VIDEO_DURATIONS[duration] ?? 0) > SHORT_FORM_MAX_SECONDS;
   const orientation: OrientationId = longFullVideo ? "horizontal" : orientationPick;
   const costOptions = {
-    research: includeResearch,
+    research: includeResearch || Boolean(sourceUrl.trim()),
     voiceover: includeVoiceover || fullVideoOn,
     subtitles: (includeVoiceover && includeSubtitles) || fullVideoOn,
     video: !fullVideoOn && includeVideo && videoAvailable,
@@ -410,7 +413,7 @@ function ChatContent() {
   }
 
   async function handleGenerate() {
-    if (idea.trim().length < 5) {
+    if (idea.trim().length < 5 && !sourceUrl.trim()) {
       setError("Please describe your video idea in a bit more detail.");
       return;
     }
@@ -431,6 +434,7 @@ function ChatContent() {
         body: JSON.stringify({
           idea,
           notes: notes.trim() || null,
+          sourceUrl: sourceUrl.trim() || undefined,
           platform,
           style,
           duration,
@@ -536,6 +540,46 @@ function ChatContent() {
               rows={3}
               className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] p-4 text-white placeholder-gray-500 outline-none focus:border-blue-400/50"
             />
+
+            {sourceOpen ? (
+              <div className="mt-3">
+                <label htmlFor="source-url" className="text-sm text-gray-400">
+                  Make it from a link <span className="text-gray-500">(article, blog post, Wikipedia page)</span>
+                </label>
+                <div className="mt-2 flex gap-2">
+                  <input
+                    id="source-url"
+                    type="url"
+                    inputMode="url"
+                    value={sourceUrl}
+                    onChange={(e) => setSourceUrl(e.target.value.slice(0, 2000))}
+                    placeholder="https://…"
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm text-white placeholder-gray-500 outline-none focus:border-blue-400/50"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSourceUrl("");
+                      setSourceOpen(false);
+                    }}
+                    className="shrink-0 rounded-xl px-3 text-xs text-gray-400 hover:text-white"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <p className="mt-1 text-[11px] text-gray-500">
+                  The script tells what the page says (research is included). The idea above is optional — use it for your angle.
+                </p>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setSourceOpen(true)}
+                className="mr-4 mt-2 text-xs text-blue-300 transition hover:text-blue-200"
+              >
+                + Make it from a link
+              </button>
+            )}
 
             {notesOpen ? (
               <div className="mt-3">
