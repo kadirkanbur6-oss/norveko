@@ -549,8 +549,8 @@ export function translationJob(opts: PipelineOptions): {
 
 /* ---------------- Shorts from a long video (2 Nov 2026) ----------------
  * A 25–58 s window of a finished long video, re-framed vertically with its
- * own hook card and subtitles. Narration, visuals and music are reused, so
- * only the render is charged.
+ * own hook card, subtitles and vertical cover. Narration, visuals and music
+ * are reused, so only the cover and the render are charged.
  */
 export const SHORT_MIN_SECONDS = 20;
 export const SHORT_MAX_SECONDS = 59;
@@ -566,8 +566,10 @@ export function shortJob(opts: PipelineOptions & { seconds: number }): {
   const steps = initialStepsState(full);
   const plan = fullVideoPlan(duration, "stills");
   if (!plan || !steps.video) throw new Error("This video can't be cut into Shorts.");
-  for (const id of ["script", "voiceover", "thumbnail"]) steps[id].credits = 0;
+  for (const id of ["script", "voiceover"]) steps[id].credits = 0;
   steps.voiceover.subtitles_credits = 0;
+  // Its own vertical cover with the Short's hook.
+  steps.thumbnail.credits = THUMBNAIL_CREDITS;
   steps.render.credits = plan.credits.render;
   steps.video.plan = {
     ...(steps.video.plan as Record<string, unknown>),
@@ -577,5 +579,5 @@ export function shortJob(opts: PipelineOptions & { seconds: number }): {
     credits: { ...plan.credits, kling: 0, stills: 0, stock: 0, total: plan.credits.render },
     short: true,
   };
-  return { steps, total: plan.credits.render, duration };
+  return { steps, total: plan.credits.render + THUMBNAIL_CREDITS, duration };
 }

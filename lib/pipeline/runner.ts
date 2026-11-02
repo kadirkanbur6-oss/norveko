@@ -1422,7 +1422,8 @@ export function createPipelineRunner(deps: RunnerDeps) {
           titles: title ? [title] : Array.isArray(src.titles) ? src.titles : [],
           description: src.description ?? "",
           tags: Array.isArray(src.tags) ? [...(src.tags as string[]), "shorts"] : ["shorts"],
-          thumbnailIdea: src.thumbnailIdea ?? null,
+          // A vertical cover of its own, carrying the Short's hook.
+          thumbnailIdea: `${typeof src.thumbnailIdea === "string" ? src.thumbnailIdea : title || source!.idea} Vertical 9:16 cover.${hook ? ` Use exactly this overlay text instead of any other: "${hook}".` : ""}`,
           music_mood: src.music_mood ?? null,
           cut_from: source!.id,
         });
@@ -1735,20 +1736,6 @@ export function createPipelineRunner(deps: RunnerDeps) {
 
     if (stepId === "render") {
       await submitRenderJob(job);
-      return;
-    }
-
-    if (stepId === "thumbnail" && job.options?.short) {
-      // A Short cut from a long video keeps the long video's cover.
-      const source = await translationSource(job);
-      const t = source!.steps?.thumbnail ?? {};
-      await patchStep(job, "thumbnail", {
-        status: "completed",
-        image_url: t.image_url ?? null,
-        storage_path: t.storage_path ?? null,
-        reused_from: source!.id,
-        ...(t.watermarked === true ? { watermarked: true, clean_url: t.clean_url, clean_path: t.clean_path } : {}),
-      });
       return;
     }
 

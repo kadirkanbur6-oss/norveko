@@ -941,7 +941,7 @@ test("Shorts: a window of a long video — its narration (trimmed), captions shi
   assert.deepEqual(cutCues([{ start: 14, end: 16, text: "a" }, { start: 30, end: 31, text: "b" }], 15, 28), [{ start: 0, end: 1, text: "a" }]);
   const s = shortJob({ seconds: 45 });
   assert.equal(s.duration, "60 seconds");
-  assert.equal(s.total, s.steps.render.credits);
+  assert.equal(s.total, (s.steps.render.credits as number) + THUMBNAIL_CREDITS);
   assert.equal(s.steps.script.credits, 0);
 
   const { runner, rows, seedJob, calls, renderStatus, edit, projects, rpc } = makeRunner();
@@ -971,6 +971,7 @@ test("Shorts: a window of a long video — its narration (trimmed), captions shi
   assert.equal(job.steps.video.slots[0].url, "https://cdn/long-3.png");
   assert.equal(job.steps.video.total_seconds, 45);
   assert.ok(!calls.some((c) => c === "voiceover" || c === "script" || c.startsWith("still:")), "nothing regenerated");
+  assert.ok(calls.includes("thumbnail"), "its own vertical cover");
   assert.equal(await runner.runNextStep(id), "advanced"); // render submit
   const e = edit() as any;
   assert.equal(e.output.size.width, 1080, "vertical");
