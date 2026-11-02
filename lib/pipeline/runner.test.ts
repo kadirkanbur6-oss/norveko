@@ -984,3 +984,20 @@ test("Shorts: a window of a long video — its narration (trimmed), captions shi
   assert.deepEqual(projects.at(-1)?.content?.titles, ["The moment"]);
   assert.deepEqual(rpc, []);
 });
+
+test("timeline editor: a scene replaced with your own/stock video plays that clip", () => {
+  const e = buildEdit({
+    slots: [
+      { index: 0, sceneNumber: 1, kind: "still", start: 0, length: 4, prompt: "p", status: "succeed", url: "https://cdn/a.png", editedClip: { url: "https://cdn/mine.mp4", seconds: 8, source: "upload" } },
+      { index: 1, sceneNumber: 2, kind: "still", start: 4, length: 6, prompt: "p", status: "succeed", url: "https://cdn/b.png" },
+    ] as any,
+    voiceoverUrl: "https://cdn/v.mp3",
+    orientation: "vertical",
+    totalSeconds: 10,
+  }) as any;
+  const visuals = e.timeline.tracks.at(-1).clips;
+  assert.equal(visuals[0].asset.type, "video");
+  assert.equal(visuals[0].asset.src, "https://cdn/mine.mp4");
+  assert.equal(visuals[0].length, 4);
+  assert.equal(visuals[1].asset.src, "https://cdn/b.png");
+});

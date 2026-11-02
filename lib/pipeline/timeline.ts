@@ -53,8 +53,14 @@ export interface TimelineSlot {
    * the original purchase accounting (consumedCredits) is untouched.
    */
   editedStillUrl?: string;
+  /**
+   * Set by the timeline editor: a video (the creator's upload or a stock clip
+   * they picked) that replaces whatever this slot showed. Mutually exclusive
+   * with editedStillUrl.
+   */
+  editedClip?: { url: string; seconds?: number; poster?: string; source: "upload" | "stock"; credit?: string };
   /** Earlier pictures of this slot (newest first), for "go back" in the editor. */
-  editHistory?: Array<{ url: string; prompt?: string; at: string }>;
+  editHistory?: Array<{ url: string; prompt?: string; at: string; clip?: { seconds?: number; poster?: string; source: "upload" | "stock"; credit?: string } }>;
   /** Clip credits already given back for this slot. */
   refunded?: boolean;
   /** Stock slots: preview frame and attribution of the chosen clip. */
@@ -268,6 +274,7 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
   // Visual to show for each slot: its own if ready, else the nearest ready one.
   const ready = slots.filter((s) => s.status === "succeed" && s.url);
   const visualFor = (slot: TimelineSlot): TimelineSlot | null => {
+    if (slot.editedClip) return { ...slot, kind: "stock", status: "succeed", url: slot.editedClip.url, sourceSeconds: slot.editedClip.seconds };
     if (slot.editedStillUrl) return { ...slot, kind: "still", status: "succeed", url: slot.editedStillUrl };
     if (slot.status === "succeed" && slot.url) return slot;
     // A failed image→video clip still has its own scene still: use it.

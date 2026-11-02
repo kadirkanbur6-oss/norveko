@@ -13,6 +13,8 @@ import { STILL_SCENE_CREDITS } from "@/lib/pipeline/steps";
 import { MAX_RENDER_RETRIES, MAX_RERENDERS, queueRerender, retryFailedRender, type RenderVersion } from "@/lib/pipeline/rerender";
 import { DEFAULT_CAPTION_STYLE } from "@/lib/pipeline/visual-styles";
 import type { TimelineSlot } from "@/lib/pipeline/timeline";
+import type { CaptionCue } from "@/lib/pipeline/captions";
+import { randomUUID } from "node:crypto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,6 +50,20 @@ async function jobForProject(userId: string, projectId: string): Promise<Job | n
 }
 
 function slotView(slot: TimelineSlot) {
+  if (slot.editedClip) {
+    return {
+      index: slot.index,
+      start: slot.start,
+      length: slot.length,
+      prompt: slot.prompt,
+      kind: "clip" as const,
+      edited: true,
+      source: slot.editedClip.source,
+      imageUrl: slot.editedClip.poster ?? null,
+      clipUrl: slot.editedClip.url,
+      history: (slot.editHistory ?? []).map((h) => ({ url: h.url, at: h.at, poster: h.clip?.poster ?? null, clip: Boolean(h.clip) })),
+    };
+  }
   const clip = (slot.kind === "kling" || slot.kind === "stock") && slot.status === "succeed" && !slot.editedStillUrl;
   return {
     index: slot.index,
@@ -59,12 +75,16 @@ function slotView(slot: TimelineSlot) {
     // What the viewer sees for this slot (a clip shows its source still if it has one).
     imageUrl: slot.editedStillUrl ?? (slot.kind === "still" || slot.kind === "archive" ? slot.url : slot.imageUrl ?? slot.posterUrl) ?? null,
     clipUrl: clip ? slot.url ?? null : null,
-    history: (slot.editHistory ?? []).map((h) => ({ url: h.url, at: h.at })),
+    history: (slot.editHistory ?? []).map((h) => ({ url: h.url, at: h.at, poster: h.clip?.poster ?? null, clip: Boolean(h.clip) })),
   };
 }
 
 /** What a slot currently shows (for its history when it changes). */
-function currentPicture(slot: TimelineSlot): { url: string; original: boolean } | null {
+function currentPicture(slot: TimelineSlot): { url: string; original: boolean; clip?: NonNullable<TimelineSlot["editHistory"]>[number]["clip"] } | null {
+  if (slot.editedClip) {
+    const { url, ...clip } = slot.editedClip;
+    return { url, original: false, clip };
+  }
   if (slot.editedStillUrl) return { url: slot.editedStillUrl, original: false };
   const url =
     slot.kind === "still" || slot.kind === "archive"
@@ -79,6 +99,21 @@ function currentPicture(slot: TimelineSlot): { url: string; original: boolean } 
 
 /** Original clip/still marker: restoring it clears the edit. */
 const ORIGINAL = "original";
+
+function historyEntry(was: NonNullable<ReturnType<typeof currentPicture>>, prompt: string) {
+  return {
+    url: was.original ? ORIGINAL : was.url,
+    prompt,
+    at: new Date().toISOString(),
+    ...(was.clip && !was.original ? { clip: was.clip } : {}),
+  };
+}
+
+/** Allowed hosts for a stock clip picked in the editor. */
+const STOCK_HOSTS = /^https:\/\/([a-z0-9-]+\.)*(pixabay\.com|pexels\.com)\//i;
+/** Uploaded media limits (Supabase free plan: 50 MB per object). */
+const MAX_UPLOAD_BYTES = { image: 10 * 1024 * 1024, video: 50 * 1024 * 1024 };
+const MIN_SLOT_SECONDS = 1;
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -121,6 +156,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     stillCredits: STILL_SCENE_CREDITS,
     rerendersLeft: Math.max(0, MAX_RERENDERS - version),
     pendingEdits: Boolean(job.steps.render.edits_pending),
+    totalSeconds: Number(job.steps.video?.total_seconds) || slots.reduce((m, x) => Math.max(m, x.start + x.length), 0),
+    hook: typeof job.steps.script?.hook === "string" ? job.steps.script.hook : "",
+    cues: ((job.steps.voiceover?.captions as CaptionCue[] | undefined) ?? []).map((c, i) => ({ index: i, start: c.start, end: c.end, text: c.text })),
+    orientation: ((job.options?.orientation as string | undefined) ?? "") === "horizontal" || job.platform === "YouTube Long-form" ? "horizontal" : "vertical",
   });
 }
 
@@ -207,10 +246,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         if (s.index !== slot.index) return s;
         const was = currentPicture(s);
         const history = [
-          ...(was ? [{ url: was.original ? ORIGINAL : was.url, prompt: s.prompt, at: new Date().toISOString() }] : []),
+          ...(was ? [historyEntry(was, s.prompt)] : []),
           ...(s.editHistory ?? []),
         ].slice(0, 8);
-        return { ...s, editedStillUrl: img.imageUrl, prompt, editHistory: history };
+        const next: TimelineSlot = { ...s, editedStillUrl: img.imageUrl, prompt, editHistory: history };
+        delete next.editedClip;
+        return next;
       });
       steps.video = { ...steps.video, slots: freshSlots };
       steps.render = {
@@ -244,16 +285,178 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!slot || !entry) return NextResponse.json({ success: false, error: "That picture isn't in this scene's history." }, { status: 400 });
     const was = currentPicture(slot);
     const history = [
-      ...(was ? [{ url: was.original ? ORIGINAL : was.url, prompt: slot.prompt, at: new Date().toISOString() }] : []),
+      ...(was ? [historyEntry(was, slot.prompt)] : []),
       ...(slot.editHistory ?? []).filter((h) => h.url !== url),
     ].slice(0, 8);
     const restored: TimelineSlot = { ...slot, editHistory: history, prompt: entry.prompt ?? slot.prompt };
-    if (url === ORIGINAL) delete restored.editedStillUrl;
-    else restored.editedStillUrl = url;
+    delete restored.editedStillUrl;
+    delete restored.editedClip;
+    if (url !== ORIGINAL) {
+      if (entry.clip) restored.editedClip = { url, ...entry.clip };
+      else restored.editedStillUrl = url;
+    }
     steps.video = { ...steps.video, slots: slots.map((s) => (s.index === index ? restored : s)) };
     steps.render = { ...steps.render, edits_pending: true };
     await db.from("pipeline_jobs").update({ steps }).eq("id", job.id);
     return NextResponse.json({ success: true, slot: slotView(restored) });
+  }
+
+  /** Re-read the job's steps, change them, mark the render out of date. */
+  async function mutate(change: (steps: Record<string, Record<string, unknown>>) => string | null) {
+    const { data: fresh } = await db.from("pipeline_jobs").select("steps").eq("id", job!.id).maybeSingle();
+    const steps = structuredClone((fresh?.steps ?? job!.steps) as Record<string, Record<string, unknown>>);
+    const problem = change(steps);
+    if (problem) return NextResponse.json({ success: false, error: problem }, { status: 400 });
+    steps.render = { ...steps.render, edits_pending: true };
+    const { error } = await db.from("pipeline_jobs").update({ steps }).eq("id", job!.id);
+    if (error) return NextResponse.json({ success: false, error: "Could not save the change." }, { status: 500 });
+    return NextResponse.json({ success: true, slots: ((steps.video?.slots as TimelineSlot[] | undefined) ?? []).map(slotView) });
+  }
+
+  /** Put a video (upload or stock) on a slot, keeping what it showed in its history. */
+  function setClip(steps: Record<string, Record<string, unknown>>, index: number, clip: NonNullable<TimelineSlot["editedClip"]>): string | null {
+    const slots = (steps.video?.slots as TimelineSlot[] | undefined) ?? [];
+    const slot = slots.find((s) => s.index === index);
+    if (!slot) return "Unknown scene.";
+    const was = currentPicture(slot);
+    const next: TimelineSlot = {
+      ...slot,
+      editedClip: clip,
+      editHistory: [...(was ? [historyEntry(was, slot.prompt)] : []), ...(slot.editHistory ?? [])].slice(0, 8),
+    };
+    delete next.editedStillUrl;
+    steps.video = { ...steps.video, slots: slots.map((s) => (s.index === index ? next : s)) };
+    return null;
+  }
+
+  // Move the cuts between scenes: `cuts` are the new start times of scenes 2…n.
+  if (body.action === "retime") {
+    const cuts = Array.isArray(body.cuts) ? body.cuts.map(Number) : [];
+    return mutate((steps) => {
+      const slots = [...((steps.video?.slots as TimelineSlot[] | undefined) ?? [])].sort((a, b) => a.start - b.start);
+      if (cuts.length !== slots.length - 1 || cuts.some((c) => !Number.isFinite(c))) return "The timeline changed. Reload and try again.";
+      const total = slots[slots.length - 1].start + slots[slots.length - 1].length;
+      const bounds = [0, ...cuts.map((c) => Math.round(c * 100) / 100), Math.round(total * 100) / 100];
+      for (let i = 1; i < bounds.length; i++) {
+        if (bounds[i] - bounds[i - 1] < MIN_SLOT_SECONDS) return `Every scene needs at least ${MIN_SLOT_SECONDS} second on screen.`;
+      }
+      steps.video = {
+        ...steps.video,
+        slots: slots.map((s, i) => ({ ...s, start: bounds[i], length: Math.round((bounds[i + 1] - bounds[i]) * 100) / 100 })),
+      };
+      return null;
+    });
+  }
+
+  // Swap what two scenes show (their timing stays).
+  if (body.action === "swap") {
+    const a = Number(body.a);
+    const b = Number(body.b);
+    return mutate((steps) => {
+      const slots = (steps.video?.slots as TimelineSlot[] | undefined) ?? [];
+      const sa = slots.find((s) => s.index === a);
+      const sb = slots.find((s) => s.index === b);
+      if (!sa || !sb || a === b) return "Pick two different scenes.";
+      const timing = (s: TimelineSlot) => ({ index: s.index, start: s.start, length: s.length });
+      steps.video = {
+        ...steps.video,
+        slots: slots.map((s) => (s.index === a ? { ...sb, ...timing(sa) } : s.index === b ? { ...sa, ...timing(sb) } : s)),
+      };
+      return null;
+    });
+  }
+
+  // Your own picture or video for a scene: a signed upload URL (the file goes straight to storage).
+  if (body.action === "uploadUrl") {
+    const type = typeof body.type === "string" ? body.type : "";
+    const size = Number(body.size) || 0;
+    const kind = /^image\/(jpeg|png|webp)$/.test(type) ? "image" : /^video\/(mp4|webm|quicktime)$/.test(type) ? "video" : null;
+    if (!kind) return NextResponse.json({ success: false, error: "Use a JPG, PNG or WebP picture, or an MP4, WebM or MOV video." }, { status: 400 });
+    if (size > MAX_UPLOAD_BYTES[kind]) {
+      return NextResponse.json({ success: false, error: kind === "image" ? "Pictures can be up to 10 MB." : "Videos can be up to 50 MB." }, { status: 400 });
+    }
+    const ext = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov" }[type];
+    const path = `${user.id}/${job.id}/upload-${randomUUID()}.${ext}`;
+    const { data, error } = await db.storage.from("videos").createSignedUploadUrl(path);
+    if (error || !data) return NextResponse.json({ success: false, error: "Could not prepare the upload." }, { status: 500 });
+    return NextResponse.json({ success: true, path, token: data.token, signedUrl: data.signedUrl, kind });
+  }
+
+  if (body.action === "useUpload") {
+    const index = Number(body.index);
+    const path = typeof body.path === "string" ? body.path : "";
+    // Only files this user uploaded for this video.
+    if (!new RegExp(`^${user.id}/${job.id}/upload-[0-9a-f-]{36}\\.(jpg|png|webp|mp4|webm|mov)$`).test(path)) {
+      return NextResponse.json({ success: false, error: "Unknown upload." }, { status: 400 });
+    }
+    const url = db.storage.from("videos").getPublicUrl(path).data.publicUrl;
+    const isVideo = /\.(mp4|webm|mov)$/.test(path);
+    const seconds = Number(body.seconds) || undefined;
+    return mutate((steps) => {
+      if (isVideo) return setClip(steps, index, { url, seconds, source: "upload" });
+      const slots = (steps.video?.slots as TimelineSlot[] | undefined) ?? [];
+      const slot = slots.find((s) => s.index === index);
+      if (!slot) return "Unknown scene.";
+      const was = currentPicture(slot);
+      const next: TimelineSlot = {
+        ...slot,
+        editedStillUrl: url,
+        editHistory: [...(was ? [historyEntry(was, slot.prompt)] : []), ...(slot.editHistory ?? [])].slice(0, 8),
+      };
+      delete next.editedClip;
+      steps.video = { ...steps.video, slots: slots.map((s) => (s.index === index ? next : s)) };
+      return null;
+    });
+  }
+
+  // Stock footage: search, then put a clip on a scene.
+  if (body.action === "stockSearch") {
+    const query = typeof body.query === "string" ? body.query.trim().slice(0, 80) : "";
+    if (query.length < 2) return NextResponse.json({ success: false, error: "Type what the clip should show." }, { status: 400 });
+    try {
+      const { searchStockClips } = await import("@/lib/pipeline/pexels");
+      const vertical = ((job.options?.orientation as string | undefined) ?? "vertical") === "vertical" && job.platform !== "YouTube Long-form";
+      const clips = await searchStockClips(query, vertical ? "vertical" : "horizontal", 12);
+      return NextResponse.json({
+        success: true,
+        clips: clips.map((c) => ({ id: c.id, provider: c.provider, preview: c.previewImage, videoUrl: c.videoUrl, seconds: c.durationSeconds, author: c.author, pageUrl: c.url })),
+      });
+    } catch {
+      return NextResponse.json({ success: false, error: "Stock search isn't available right now." }, { status: 502 });
+    }
+  }
+
+  if (body.action === "useStock") {
+    const index = Number(body.index);
+    const url = typeof body.videoUrl === "string" ? body.videoUrl : "";
+    const poster = typeof body.preview === "string" && STOCK_HOSTS.test(body.preview) ? body.preview : undefined;
+    if (!STOCK_HOSTS.test(url)) return NextResponse.json({ success: false, error: "Pick a clip from the search." }, { status: 400 });
+    const author = typeof body.author === "string" ? body.author.slice(0, 80) : "";
+    return mutate((steps) =>
+      setClip(steps, index, { url, poster, seconds: Number(body.seconds) || undefined, source: "stock", credit: author || undefined })
+    );
+  }
+
+  // Fix subtitle words (timing stays) and the on-screen hook.
+  if (body.action === "text") {
+    return mutate((steps) => {
+      if (typeof body.hook === "string") {
+        const hook = body.hook.trim().replace(/\s+/g, " ").slice(0, 200);
+        if (!hook) return "The hook can't be empty.";
+        steps.script = { ...steps.script, hook };
+      }
+      if (Array.isArray(body.cues)) {
+        const cues = [...((steps.voiceover?.captions as CaptionCue[] | undefined) ?? [])];
+        for (const raw of body.cues as Array<{ index?: unknown; text?: unknown }>) {
+          const i = Number(raw?.index);
+          const text = typeof raw?.text === "string" ? raw.text.replace(/\s+/g, " ").trim().slice(0, 160) : "";
+          if (!cues[i] || !text) continue;
+          cues[i] = { ...cues[i], text };
+        }
+        steps.voiceover = { ...steps.voiceover, captions: cues };
+      }
+      return null;
+    });
   }
 
   if (body.action === "useVersion") {
