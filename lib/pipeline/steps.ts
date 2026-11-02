@@ -501,3 +501,46 @@ export function optionsFromSteps(steps: Record<string, unknown> | null | undefin
         : "gemini",
   };
 }
+
+/* ---------------- One-click translation (2 Nov 2026) ----------------
+ * A finished full video in another language: the script is translated, a new
+ * voice-over + subtitles are made and the ORIGINAL visuals and thumbnail are
+ * reused, then it is rendered again. Only the new work is charged.
+ */
+export function translationScriptCredits(duration: string | undefined): number {
+  // One translation pass ≈ half the cost of writing (no plan, editor or fact check).
+  return Math.max(3, Math.ceil(scriptCredits(duration) / 2));
+}
+
+export function translationJob(opts: PipelineOptions): {
+  steps: Record<string, StepState>;
+  items: Array<{ id: string; label: string; credits: number }>;
+  total: number;
+} {
+  const full = { ...opts, fullVideo: true, research: false, voiceover: true, subtitles: true, trialVideo: false };
+  const steps = initialStepsState(full);
+  const n = normalize(full);
+  const plan = fullVideoPlan(n.duration, n.footage, n.clipMode);
+  if (!plan || !steps.video) throw new Error("This video can't be translated.");
+  const items = [
+    { id: "script", label: "Translation", credits: translationScriptCredits(n.duration) },
+    { id: "voiceover", label: `New voice-over (${durationSeconds(n.duration) < 60 ? `${durationSeconds(n.duration)} s` : `${Math.round(durationSeconds(n.duration) / 60)} min`})`, credits: voiceoverCredits(n.voiceEngine, n.duration) },
+    { id: "subtitles", label: "Subtitles", credits: subtitlesCredits(n.duration) },
+    { id: "render", label: `Final video render (${plan.seconds} s)`, credits: plan.credits.render },
+  ];
+  steps.script.credits = items[0].credits;
+  steps.voiceover.credits = items[1].credits;
+  steps.voiceover.subtitles_credits = items[2].credits;
+  steps.thumbnail.credits = 0;
+  steps.render.credits = items[3].credits;
+  // Reused visuals cost nothing, so nothing of them is ever refunded either.
+  steps.video.plan = {
+    ...(steps.video.plan as Record<string, unknown>),
+    clipCredits: 0,
+    stillCredits: 0,
+    stockCredits: 0,
+    credits: { ...plan.credits, kling: 0, stills: 0, stock: 0, total: plan.credits.render },
+    translation: true,
+  };
+  return { steps, items, total: items.reduce((sum, i) => sum + i.credits, 0) };
+}

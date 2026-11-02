@@ -25,6 +25,7 @@ import VideoEditor from "../../components/VideoEditor";
 import TikTokPublish from "../../components/TikTokPublish";
 import PageTabs, { useTabParam } from "../../components/PageTabs";
 import RetryRender from "../../components/RetryRender";
+import TranslateVideo from "../../components/TranslateVideo";
 
 function slugify(s: string): string {
   return (
@@ -692,6 +693,7 @@ export default function ProjectDetailPage() {
                     watermarked={(project.content as { watermarked?: boolean } | null)?.watermarked === true}
                   />
                 )}
+                {section === "publish" && normalizedProjectContent?.finalVideoUrl && <TranslateVideo projectId={projectId} />}
                 {section === "video" && normalizedProjectContent?.finalVideoUrl && (
                   <VideoEditor projectId={projectId} vertical={project.platform !== "YouTube Long-form"} />
                 )}

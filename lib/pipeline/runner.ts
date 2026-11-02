@@ -24,6 +24,7 @@ import {
   buildEdit,
   narrationSeconds,
   planSlots,
+  rescaleSlots,
   stockQueryFromPrompt,
   type TimelineSlot,
 } from "@/lib/pipeline/timeline";
@@ -123,6 +124,8 @@ export interface JobRow {
     cast?: unknown;
     /** Pause after the script until the creator approves it (storyboard review). */
     review?: boolean;
+    /** One-click translation: reuse this finished job's visuals, new language + voice. */
+    translate?: { sourceJobId: string; fromLanguage?: string | null } | null;
   } | null;
   status: "queued" | "running" | "completed" | "failed";
   current_step: string | null;
@@ -172,6 +175,8 @@ export interface RunnerDeps {
     downloadArchiveImage?: typeof import("@/lib/pipeline/commons").downloadArchiveImage;
     /** Vision check: which candidate frames fit the narration (null = unavailable → keep all). */
     checkFit?: typeof import("@/lib/pipeline/stock-check").pickFittingFrames;
+    /** Translate a finished script (one-click translation). Optional: tests may leave it out. */
+    translateScript?: typeof import("@/lib/pipeline/openai").translateScript;
     /** Stock footage search (Pixabay/Pexels). Optional: without it stock slots become AI stills. */
     searchStock?: typeof import("@/lib/pipeline/pexels").searchStockClips;
   };
@@ -688,6 +693,15 @@ export function createPipelineRunner(deps: RunnerDeps) {
   }
 
   /** The job waits for the creator to approve the script (options.review). */
+  /** The finished job a translation reuses (same owner only). */
+  async function translationSource(job: JobRow): Promise<JobRow | null> {
+    const id = job.options?.translate?.sourceJobId;
+    if (!id) return null;
+    const source = await loadJob(id);
+    if (!source || source.user_id !== job.user_id) throw new Error("The original video could not be found.");
+    return source;
+  }
+
   function awaitingReview(job: Pick<JobRow, "options" | "steps" | "status">): boolean {
     return (
       job.status === "running" &&
@@ -1358,6 +1372,58 @@ export function createPipelineRunner(deps: RunnerDeps) {
       return;
     }
 
+    if (stepId === "script" && job.options?.translate) {
+      const source = await translationSource(job);
+      const src = source!.steps?.script ?? {};
+      if (!providers.translateScript) throw new Error("Translation is not available.");
+      const model = SCRIPT_MODEL;
+      const startedAt = now();
+      const scenes = Array.isArray(src.scenes) ? (src.scenes as Array<Record<string, unknown>>) : [];
+      const result = await providers.translateScript({
+        source: {
+          hook: String(src.hook ?? ""),
+          script: String(src.script ?? ""),
+          titles: Array.isArray(src.titles) ? (src.titles as string[]) : [],
+          description: String(src.description ?? ""),
+          tags: Array.isArray(src.tags) ? (src.tags as string[]) : [],
+          scenes: scenes.map((sc, i) => ({ sceneNumber: Number(sc.sceneNumber ?? i + 1), description: String(sc.description ?? "") })),
+        },
+        fromLanguage: job.options.translate.fromLanguage ?? source!.output_language ?? "English",
+        outputLanguage: job.output_language ?? "English",
+        duration: job.duration,
+        model,
+      });
+      await logUsage(job, "script", {
+        usageKey: result.usageKey ?? llmUsageKey(model),
+        unit: "tokens",
+        quantity: (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0),
+        inputTokens: result.usage?.inputTokens,
+        outputTokens: result.usage?.outputTokens,
+        durationMs: now() - startedAt,
+        status: "ok",
+      });
+      const translatedScenes = scenes.map((sc, i) => ({
+        ...sc,
+        description: result.scenes[i]?.description ?? sc.description,
+      }));
+      await patchStep(job, "script", {
+        status: "completed",
+        completed_at: new Date(now()).toISOString(),
+        hook: result.hook,
+        script: result.script,
+        scenes: translatedScenes,
+        titles: result.titles,
+        description: result.description,
+        tags: result.tags,
+        thumbnailIdea: src.thumbnailIdea ?? null,
+        thumbnailPrompt: src.thumbnailPrompt ?? null,
+        model: llmUsageKey(model),
+        music_mood: src.music_mood ?? null,
+        translated_from: source!.id,
+      });
+      return;
+    }
+
     if (stepId === "script") {
       const model = SCRIPT_MODEL;
       const orientation = job.options?.orientation ?? defaultOrientation(job.platform ?? "");
@@ -1554,6 +1620,25 @@ export function createPipelineRunner(deps: RunnerDeps) {
       return;
     }
 
+    if (stepId === "video" && job.options?.translate) {
+      // Same pictures and clips, stretched to the new narration's length.
+      const source = await translationSource(job);
+      const slots = (source!.steps?.video?.slots as TimelineSlot[] | undefined) ?? [];
+      if (!slots.length) throw new Error("The original video has no visuals to reuse.");
+      const oldTotal = Number(source!.steps?.video?.total_seconds) || slots.reduce((m, x) => Math.max(m, x.start + x.length), 0);
+      const plan = job.steps!.video!.plan as FullVideoPlan;
+      const total = narrationSeconds(job.steps?.voiceover?.captions as CaptionCue[] | undefined, plan.seconds);
+      await patchStep(job, "video", {
+        status: "completed",
+        slots: rescaleSlots(slots, oldTotal, total),
+        total_seconds: total,
+        stills: {},
+        reused_from: source!.id,
+        submitted_at: new Date(now()).toISOString(),
+      });
+      return;
+    }
+
     if (stepId === "video") {
       // Async: submitting is the whole first invocation; polling happens later.
       if (isFullVideo(job)) await submitFullVideoVisuals(job);
@@ -1563,6 +1648,20 @@ export function createPipelineRunner(deps: RunnerDeps) {
 
     if (stepId === "render") {
       await submitRenderJob(job);
+      return;
+    }
+
+    if (stepId === "thumbnail" && job.options?.translate) {
+      // The picture has no words on it: the original thumbnail is reused.
+      const source = await translationSource(job);
+      const t = source!.steps?.thumbnail ?? {};
+      await patchStep(job, "thumbnail", {
+        status: "completed",
+        image_url: t.image_url ?? null,
+        storage_path: t.storage_path ?? null,
+        reused_from: source!.id,
+        ...(t.watermarked === true ? { watermarked: true, clean_url: t.clean_url, clean_path: t.clean_path } : {}),
+      });
       return;
     }
 
@@ -1833,8 +1932,10 @@ export function createPipelineRunner(deps: RunnerDeps) {
     }
 
     if (getPipelineStepDefinition(stepId).async) {
-      // Submitted; completion arrives through later polls (status endpoint / cron).
-      return "advanced";
+      // Submitted; completion arrives through later polls (status endpoint / cron)
+      // — unless it already finished (a translation reuses the original visuals).
+      const settled = await loadJob(jobId);
+      if (settled?.steps?.[stepId]?.status !== "completed") return "advanced";
     }
 
     const next = nextStep(stepId, optionsFromSteps(claimed.steps));
@@ -2014,6 +2115,8 @@ function getRunner() {
           (await import("@/lib/pipeline/watermark")).brandStoredThumbnail(...args),
         searchStock: async (...args) =>
           (await import("@/lib/pipeline/pexels")).searchStockClips(...args),
+        translateScript: async (...args) =>
+          (await import("@/lib/pipeline/openai")).translateScript(...args),
         loadCharacterRefs: async (paths) =>
           (await import("@/lib/characters/characters")).loadReferenceImages(productionDb(), paths),
         searchArchive: async (...args) =>

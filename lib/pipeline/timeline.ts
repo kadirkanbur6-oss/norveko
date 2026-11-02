@@ -112,6 +112,22 @@ export function narrationSeconds(cues: CaptionCue[] | undefined, fallback: numbe
 }
 
 /**
+ * Stretch a finished timeline to a new narration length (translations reuse
+ * the original visuals; another language is rarely exactly as long).
+ */
+export function rescaleSlots(slots: TimelineSlot[], fromSeconds: number, toSeconds: number): TimelineSlot[] {
+  if (!(fromSeconds > 0) || !(toSeconds > 0)) return slots;
+  const k = toSeconds / fromSeconds;
+  const round = (n: number) => Math.round(n * 100) / 100;
+  return slots.map((slot, i) => {
+    const start = round(slot.start * k);
+    // The last slot runs to the very end so rounding never leaves a gap.
+    const end = i === slots.length - 1 ? round(toSeconds) : round((slot.start + slot.length) * k);
+    return { ...slot, start, length: round(end - start) };
+  });
+}
+
+/**
  * Lay out `slotCount` slots over `totalSeconds`, map each to a scene in order,
  * and mark `klingSlots` of them (evenly spread, starting with the first) as
  * Kling clips. Scenes repeat across adjacent slots when there are fewer

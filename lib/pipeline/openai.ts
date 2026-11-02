@@ -540,6 +540,70 @@ export async function reviseNarrationLength(args: {
   if (keptHook && !revised.startsWith(keptHook)) revised = `${keptHook} ${revised}`;
   return { hook: keptHook || out.hook, script: revised, usage: out.usage };
 }
+/* ---------------- Translate a finished video's script ---------------- */
+
+export interface TranslatableScript {
+  hook: string;
+  script: string;
+  titles: string[];
+  description: string;
+  tags: string[];
+  scenes: Array<{ sceneNumber: number; description: string }>;
+}
+
+/**
+ * One-click translation (2 Nov 2026): the visuals are reused, so only the
+ * words change. The narration keeps every sentence and fact, sounds native,
+ * and stays close to the original's spoken length (the timeline is stretched
+ * to whatever the new voice-over measures).
+ */
+export async function translateScript(args: {
+  source: TranslatableScript;
+  fromLanguage: string;
+  outputLanguage: string;
+  duration: string | null;
+  model: string;
+}): Promise<TranslatableScript & { usage?: LlmUsage; usageKey?: string }> {
+  const { source, fromLanguage, outputLanguage, duration, model } = args;
+  const language = languagePromptName(outputLanguage);
+  const range = wordRange(duration, languageCode(outputLanguage));
+  const { data, usage, usageKey } = await chatJSON({
+    model,
+    effort: "low",
+    timeoutMs: 150_000,
+    system: `You translate a finished documentary video from ${languagePromptName(fromLanguage)} into ${language}. Respond ONLY with JSON {"hook": "...", "script": "...", "titles": ["..."], "description": "...", "tags": ["..."], "scenes": [{"sceneNumber": 1, "description": "..."}]}.
+Rules:
+- Translate, do not rewrite: keep every sentence, fact, name, number and date, in the same order. Add nothing, drop nothing.
+- Sound like a native professional ${language} narrator, not a translation: natural word order and idioms, correct spelling and diacritics, written for the ear (no abbreviations, no semicolons, no parentheses).
+- The script must START with the translated hook verbatim.
+- Spoken length: ${language} is read at about ${wordsPerSecond(languageCode(outputLanguage))} words per second, so hook + script should be about ${range.target} words (between ${range.min} and ${range.max}). Get there through natural phrasing, never by adding or removing facts.
+- Proper names keep their usual ${language} spelling (e.g. exonyms for places and historical figures).
+- Titles: same count as given, natural ${language} YouTube titles. Tags: ${language} search terms people actually type. Keep any credit or attribution lines in the description unchanged.
+- Scenes: same sceneNumbers, each description translated.`,
+    user: JSON.stringify(source),
+  });
+  const d = data as Partial<TranslatableScript>;
+  const hook = typeof d.hook === "string" ? d.hook.trim() : "";
+  let script = typeof d.script === "string" ? d.script.trim() : "";
+  if (!hook || !script) throw new Error("Translation came back empty.");
+  if (!script.startsWith(hook)) script = `${hook} ${script}`;
+  const byNumber = new Map(
+    (Array.isArray(d.scenes) ? d.scenes : [])
+      .filter((s) => s && typeof s.description === "string")
+      .map((s) => [Number(s.sceneNumber), String(s.description)])
+  );
+  return {
+    hook,
+    script,
+    titles: Array.isArray(d.titles) && d.titles.length ? d.titles.map(String).slice(0, 5) : source.titles,
+    description: typeof d.description === "string" && d.description.trim() ? d.description.trim() : source.description,
+    tags: Array.isArray(d.tags) && d.tags.length ? d.tags.map(String).slice(0, 30) : source.tags,
+    scenes: source.scenes.map((s) => ({ sceneNumber: s.sceneNumber, description: byNumber.get(s.sceneNumber) ?? s.description })),
+    usage,
+    usageKey,
+  };
+}
+
 /* ---------------- Research (web search before the script) ---------------- */
 
 export interface ResearchSource {

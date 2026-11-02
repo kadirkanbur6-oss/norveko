@@ -28,9 +28,10 @@ import {
   subtitlesCredits,
   fullVideoPlan,
   STOCK_SLOT_CREDITS,
+  translationJob,
 } from "./steps";
 import { splitForTts, mergeAlignments, mp3Seconds } from "./tts-chunks";
-import { buildEdit } from "./timeline";
+import { buildEdit, rescaleSlots } from "./timeline";
 
 type Row = Record<string, any>;
 
@@ -261,6 +262,16 @@ function makeRunner(
         return { id, status, url: status === "done" ? "https://shotstack/final.mp4" : undefined, duration: 60 };
       },
       downloadRender: async () => Buffer.from("mp4-final"),
+      translateScript: async ({ source, outputLanguage }) => {
+        calls.push(`translate:${outputLanguage}`);
+        return {
+          ...source,
+          hook: `[${outputLanguage}] ${source.hook}`,
+          script: `[${outputLanguage}] ${source.script}`,
+          titles: [`[${outputLanguage}] title`],
+          scenes: source.scenes.map((sc) => ({ ...sc, description: `[${outputLanguage}] ${sc.description}` })),
+        };
+      },
       searchStock: async (query) => {
         calls.push(`stock:${query}`);
         if (query.includes("3")) return []; // nothing for scene 3 → AI still fallback
@@ -870,4 +881,55 @@ test("storyboard review: nothing after the script runs until approved; no kicks;
   assert.equal(await runner.reconcileJob(rows.get(id2)! as any), "failed");
   assert.equal(rows.get(id2)!.status, "failed");
   assert.ok(rpc.some(([, a]) => a.p_amount > 0), "unused credits refunded");
+});
+
+test("translation: reuses the original visuals + thumbnail, translates, new voice, rescaled timeline; only new work is charged", async () => {
+  // Pricing: script translation + voice + subtitles + render, nothing for visuals or thumbnail.
+  const t = translationJob({ fullVideo: true, footage: "hybrid", duration: "60 seconds", voiceEngine: "gemini" });
+  assert.deepEqual(t.items.map((i) => i.id), ["script", "voiceover", "subtitles", "render"]);
+  assert.ok(t.total < totalPipelineCredits({ fullVideo: true, footage: "hybrid", duration: "60 seconds" }) / 2);
+  assert.equal(t.steps.thumbnail.credits, 0);
+  assert.equal((t.steps.video.plan as any).stillCredits, 0);
+
+  // Timeline stretch keeps order and ends exactly at the new length.
+  const r = rescaleSlots([{ index: 0, start: 0, length: 5 }, { index: 1, start: 5, length: 5 }] as any, 10, 12);
+  assert.deepEqual(r.map((x) => [x.start, x.length]), [[0, 6], [6, 6]]);
+
+  const { runner, rows, seedJob, calls, renderStatus, edit, projects, rpc } = makeRunner();
+  const slots = [0, 1, 2, 3].map((i) => ({ index: i, start: i * 5, length: 5, kind: "still", status: "succeed", url: `https://cdn/orig-${i}.png`, sceneNumber: i + 1, prompt: "p" }));
+  const sourceId = seedJob(false, {
+    status: "completed",
+    steps: {
+      script: { status: "completed", hook: "Hook.", script: "Hook. Story.", titles: ["T"], description: "D", tags: ["x"], scenes: [{ sceneNumber: 1, description: "d1", videoPrompt: "v1" }], music_mood: "eerie" },
+      thumbnail: { status: "completed", image_url: "https://cdn/orig-thumb.png", storage_path: "orig-thumb.png" },
+      video: { status: "completed", slots, total_seconds: 20 },
+      render: { status: "completed", video_url: "https://cdn/orig.mp4" },
+    },
+  });
+  const id = seedJob(false, {
+    steps: { ...t.steps, script: { ...t.steps.script, queued_at: new Date(0).toISOString() }, voiceover: { ...t.steps.voiceover, voice_id: "gemini:Charon" } },
+    output_language: "Türkçe",
+    credits_charged: t.total,
+    options: { orientation: "vertical", translate: { sourceJobId: sourceId, fromLanguage: "English" } },
+  });
+
+  assert.equal(await runner.runNextStep(id), "advanced"); // translate
+  assert.equal(rows.get(id)!.steps.script.hook, "[Türkçe] Hook.");
+  assert.equal(rows.get(id)!.steps.script.scenes[0].videoPrompt, "v1", "image prompts stay as they were");
+  assert.equal(await runner.runNextStep(id), "advanced"); // voiceover
+  assert.equal(await runner.runNextStep(id), "advanced"); // thumbnail (reused)
+  assert.equal(rows.get(id)!.steps.thumbnail.image_url, "https://cdn/orig-thumb.png");
+  assert.equal(await runner.runNextStep(id), "advanced"); // visuals (reused, settles at once)
+  const job = rows.get(id)!;
+  assert.equal(job.steps.video.status, "completed");
+  assert.equal(job.current_step, "render");
+  assert.equal(job.steps.video.slots.length, 4);
+  assert.equal(job.steps.video.slots.at(-1).start + job.steps.video.slots.at(-1).length, job.steps.video.total_seconds);
+  assert.ok(!calls.some((c) => c === "thumbnail" || c.startsWith("still:") || c === "script"), "no new pictures, no new script");
+  assert.equal(await runner.runNextStep(id), "advanced"); // render submit
+  assert.equal((edit()!.timeline as any).tracks[2].clips[0].asset.src, "https://cdn/orig-0.png");
+  renderStatus.value = "done";
+  assert.equal(await runner.runNextStep(id), "completed");
+  assert.deepEqual(projects.at(-1)?.content?.titles, ["[Türkçe] title"]);
+  assert.deepEqual(rpc, [], "nothing refunded");
 });
