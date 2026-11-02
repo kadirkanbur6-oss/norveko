@@ -504,8 +504,8 @@ export function optionsFromSteps(steps: Record<string, unknown> | null | undefin
 
 /* ---------------- One-click translation (2 Nov 2026) ----------------
  * A finished full video in another language: the script is translated, a new
- * voice-over + subtitles are made and the ORIGINAL visuals and thumbnail are
- * reused, then it is rendered again. Only the new work is charged.
+ * voice-over, subtitles and cover (it carries words) are made and the
+ * ORIGINAL scene visuals are reused, then it is rendered again. Only the new work is charged.
  */
 export function translationScriptCredits(duration: string | undefined): number {
   // One translation pass ≈ half the cost of writing (no plan, editor or fact check).
@@ -526,13 +526,15 @@ export function translationJob(opts: PipelineOptions): {
     { id: "script", label: "Translation", credits: translationScriptCredits(n.duration) },
     { id: "voiceover", label: `New voice-over (${durationSeconds(n.duration) < 60 ? `${durationSeconds(n.duration)} s` : `${Math.round(durationSeconds(n.duration) / 60)} min`})`, credits: voiceoverCredits(n.voiceEngine, n.duration) },
     { id: "subtitles", label: "Subtitles", credits: subtitlesCredits(n.duration) },
+    // The cover has words on it, so it is made again in the new language.
+    { id: "thumbnail", label: "New thumbnail", credits: THUMBNAIL_CREDITS },
     { id: "render", label: `Final video render (${plan.seconds} s)`, credits: plan.credits.render },
   ];
   steps.script.credits = items[0].credits;
   steps.voiceover.credits = items[1].credits;
   steps.voiceover.subtitles_credits = items[2].credits;
-  steps.thumbnail.credits = 0;
-  steps.render.credits = items[3].credits;
+  steps.thumbnail.credits = items[3].credits;
+  steps.render.credits = items[4].credits;
   // Reused visuals cost nothing, so nothing of them is ever refunded either.
   steps.video.plan = {
     ...(steps.video.plan as Record<string, unknown>),

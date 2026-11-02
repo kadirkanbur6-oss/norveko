@@ -884,12 +884,12 @@ test("storyboard review: nothing after the script runs until approved; no kicks;
   assert.ok(rpc.some(([, a]) => a.p_amount > 0), "unused credits refunded");
 });
 
-test("translation: reuses the original visuals + thumbnail, translates, new voice, rescaled timeline; only new work is charged", async () => {
+test("translation: reuses the scene visuals, translates, new cover, new voice, rescaled timeline; only new work is charged", async () => {
   // Pricing: script translation + voice + subtitles + render, nothing for visuals or thumbnail.
   const t = translationJob({ fullVideo: true, footage: "hybrid", duration: "60 seconds", voiceEngine: "gemini" });
-  assert.deepEqual(t.items.map((i) => i.id), ["script", "voiceover", "subtitles", "render"]);
+  assert.deepEqual(t.items.map((i) => i.id), ["script", "voiceover", "subtitles", "thumbnail", "render"]);
   assert.ok(t.total < totalPipelineCredits({ fullVideo: true, footage: "hybrid", duration: "60 seconds" }) / 2);
-  assert.equal(t.steps.thumbnail.credits, 0);
+  assert.equal(t.steps.thumbnail.credits, THUMBNAIL_CREDITS);
   assert.equal((t.steps.video.plan as any).stillCredits, 0);
 
   // Timeline stretch keeps order and ends exactly at the new length.
@@ -901,7 +901,7 @@ test("translation: reuses the original visuals + thumbnail, translates, new voic
   const sourceId = seedJob(false, {
     status: "completed",
     steps: {
-      script: { status: "completed", hook: "Hook.", script: "Hook. Story.", titles: ["T"], description: "D", tags: ["x"], scenes: [{ sceneNumber: 1, description: "d1", videoPrompt: "v1" }], music_mood: "eerie" },
+      script: { status: "completed", hook: "Hook.", script: "Hook. Story.", titles: ["T"], description: "D", tags: ["x"], scenes: [{ sceneNumber: 1, description: "d1", videoPrompt: "v1" }], music_mood: "eerie", thumbnailIdea: "cover with text \"CHAIN\"" },
       thumbnail: { status: "completed", image_url: "https://cdn/orig-thumb.png", storage_path: "orig-thumb.png" },
       video: { status: "completed", slots, total_seconds: 20 },
       render: { status: "completed", video_url: "https://cdn/orig.mp4" },
@@ -918,15 +918,15 @@ test("translation: reuses the original visuals + thumbnail, translates, new voic
   assert.equal(rows.get(id)!.steps.script.hook, "[Türkçe] Hook.");
   assert.equal(rows.get(id)!.steps.script.scenes[0].videoPrompt, "v1", "image prompts stay as they were");
   assert.equal(await runner.runNextStep(id), "advanced"); // voiceover
-  assert.equal(await runner.runNextStep(id), "advanced"); // thumbnail (reused)
-  assert.equal(rows.get(id)!.steps.thumbnail.image_url, "https://cdn/orig-thumb.png");
+  assert.equal(await runner.runNextStep(id), "advanced"); // thumbnail (new: it carries words)
+  assert.equal(rows.get(id)!.steps.thumbnail.image_url, "https://cdn/t.png");
   assert.equal(await runner.runNextStep(id), "advanced"); // visuals (reused, settles at once)
   const job = rows.get(id)!;
   assert.equal(job.steps.video.status, "completed");
   assert.equal(job.current_step, "render");
   assert.equal(job.steps.video.slots.length, 4);
   assert.equal(job.steps.video.slots.at(-1).start + job.steps.video.slots.at(-1).length, job.steps.video.total_seconds);
-  assert.ok(!calls.some((c) => c === "thumbnail" || c.startsWith("still:") || c === "script"), "no new pictures, no new script");
+  assert.ok(!calls.some((c) => c.startsWith("still:") || c === "script"), "no new scene pictures, no new script");
   assert.equal(await runner.runNextStep(id), "advanced"); // render submit
   assert.equal((edit()!.timeline as any).tracks[2].clips[0].asset.src, "https://cdn/orig-0.png");
   renderStatus.value = "done";

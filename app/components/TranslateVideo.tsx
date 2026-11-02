@@ -98,7 +98,7 @@ export default function TranslateVideo({ projectId }: { projectId: string }) {
         <h3 className="text-sm font-semibold text-white">Make it in another language</h3>
       </div>
       <p className="mt-1 text-xs text-gray-400">
-        Same pictures, clips and thumbnail — translated narration, a new voice and new subtitles. Saved as a new project.
+        Same scenes and clips — translated narration, a new voice, subtitles and cover. Saved as a new project.
       </p>
 
       {info.translations.length > 0 && (

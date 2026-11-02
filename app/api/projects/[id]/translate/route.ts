@@ -1,8 +1,8 @@
 // app/api/projects/[id]/translate/route.ts
 // One-click translation of a finished full video (2 Nov 2026):
 //   GET  → can it be translated, the price per voice engine, earlier translations
-//   POST {language, voiceId} → new job: translated script + new voice-over and
-//        subtitles over the ORIGINAL visuals and thumbnail, rendered as a new project.
+//   POST {language, voiceId} → new job: translated script, new voice-over,
+//        subtitles and cover over the ORIGINAL scene visuals, rendered as a new project.
 
 import { NextResponse, after, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
@@ -179,6 +179,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         visualStyle: srcOptions.visualStyle,
         captionStyle: srcOptions.captionStyle,
         brand: srcOptions.brand,
+        cast: srcOptions.cast,
         fullVideo: true,
         footage: p.footage,
         clipMode: p.clipMode,

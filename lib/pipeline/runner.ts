@@ -1428,6 +1428,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
           description: String(src.description ?? ""),
           tags: Array.isArray(src.tags) ? (src.tags as string[]) : [],
           scenes: scenes.map((sc, i) => ({ sceneNumber: Number(sc.sceneNumber ?? i + 1), description: String(sc.description ?? "") })),
+          thumbnailIdea: typeof src.thumbnailIdea === "string" ? src.thumbnailIdea : undefined,
         },
         fromLanguage: job.options.translate.fromLanguage ?? source!.output_language ?? "English",
         outputLanguage: job.output_language ?? "English",
@@ -1456,7 +1457,8 @@ export function createPipelineRunner(deps: RunnerDeps) {
         titles: result.titles,
         description: result.description,
         tags: result.tags,
-        thumbnailIdea: src.thumbnailIdea ?? null,
+        // The cover carries words, so the translation gets its own (with translated text).
+        thumbnailIdea: result.thumbnailIdea ?? src.thumbnailIdea ?? null,
         thumbnailPrompt: src.thumbnailPrompt ?? null,
         model: llmUsageKey(model),
         music_mood: src.music_mood ?? null,
@@ -1708,8 +1710,8 @@ export function createPipelineRunner(deps: RunnerDeps) {
       return;
     }
 
-    if (stepId === "thumbnail" && (job.options?.translate || job.options?.short)) {
-      // The picture has no words on it: the original thumbnail is reused.
+    if (stepId === "thumbnail" && job.options?.short) {
+      // A Short cut from a long video keeps the long video's cover.
       const source = await translationSource(job);
       const t = source!.steps?.thumbnail ?? {};
       await patchStep(job, "thumbnail", {

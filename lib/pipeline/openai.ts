@@ -549,6 +549,8 @@ export interface TranslatableScript {
   description: string;
   tags: string[];
   scenes: Array<{ sceneNumber: number; description: string }>;
+  /** English image prompt for the thumbnail; its overlay text is translated. */
+  thumbnailIdea?: string;
 }
 
 /**
@@ -571,7 +573,7 @@ export async function translateScript(args: {
     model,
     effort: "low",
     timeoutMs: 150_000,
-    system: `You translate a finished documentary video from ${languagePromptName(fromLanguage)} into ${language}. Respond ONLY with JSON {"hook": "...", "script": "...", "titles": ["..."], "description": "...", "tags": ["..."], "scenes": [{"sceneNumber": 1, "description": "..."}]}.
+    system: `You translate a finished documentary video from ${languagePromptName(fromLanguage)} into ${language}. Respond ONLY with JSON {"hook": "...", "script": "...", "titles": ["..."], "description": "...", "tags": ["..."], "scenes": [{"sceneNumber": 1, "description": "..."}], "thumbnailIdea": "..."}.
 Rules:
 - Translate, do not rewrite: keep every sentence, fact, name, number and date, in the same order. Add nothing, drop nothing.
 - Sound like a native professional ${language} narrator, not a translation: natural word order and idioms, correct spelling and diacritics, written for the ear (no abbreviations, no semicolons, no parentheses).
@@ -579,7 +581,8 @@ Rules:
 - Spoken length: ${language} is read at about ${wordsPerSecond(languageCode(outputLanguage))} words per second, so hook + script should be about ${range.target} words (between ${range.min} and ${range.max}). Get there through natural phrasing, never by adding or removing facts.
 - Proper names keep their usual ${language} spelling (e.g. exonyms for places and historical figures).
 - Titles: same count as given, natural ${language} YouTube titles. Tags: ${language} search terms people actually type. Keep any credit or attribution lines in the description unchanged.
-- Scenes: same sceneNumbers, each description translated.`,
+- Scenes: same sceneNumbers, each description translated.
+- "thumbnailIdea" (if given) is an ENGLISH image prompt: keep it in English, but any overlay text it asks for must be the ${language} version (short, natural, correct diacritics). Return it as "thumbnailIdea".`,
     user: JSON.stringify(source),
   });
   const d = data as Partial<TranslatableScript>;
@@ -599,6 +602,7 @@ Rules:
     description: typeof d.description === "string" && d.description.trim() ? d.description.trim() : source.description,
     tags: Array.isArray(d.tags) && d.tags.length ? d.tags.map(String).slice(0, 30) : source.tags,
     scenes: source.scenes.map((s) => ({ sceneNumber: s.sceneNumber, description: byNumber.get(s.sceneNumber) ?? s.description })),
+    thumbnailIdea: typeof d.thumbnailIdea === "string" && d.thumbnailIdea.trim() ? d.thumbnailIdea.trim() : source.thumbnailIdea,
     usage,
     usageKey,
   };
