@@ -31,18 +31,183 @@ const KIND_LABEL: Record<CharacterItem["kind"], string> = {
 
 const MAX_BYTES = 4 * 1024 * 1024;
 
+/**
+ * The "Add a character" form — used in Settings and in the AI Workspace.
+ * `onCreated` receives the new character.
+ */
+export function CharacterCreator({
+  onCreated,
+  initialKind = "self",
+  initialName = "",
+  className = "",
+}: {
+  onCreated: (c: CharacterItem) => void;
+  initialKind?: CharacterItem["kind"];
+  initialName?: string;
+  className?: string;
+}) {
+  const [kind, setKind] = useState<CharacterItem["kind"]>(initialKind);
+  const [name, setName] = useState(initialName);
+  const [description, setDescription] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [consent, setConsent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const needsPhotos = kind === "self" || kind === "person";
+  // Historical figures: photos are optional (a portrait you picked); otherwise we find one.
+  const usesPhotos = needsPhotos || (kind === "historical" && files.length > 0);
+  const totalBytes = files.reduce((n, f) => n + f.size, 0);
+  const canCreate =
+    !busy &&
+    name.trim().length >= 2 &&
+    (!needsPhotos || files.length > 0) &&
+    (!usesPhotos || (consent && totalBytes <= MAX_BYTES)) &&
+    (kind !== "fictional" || description.trim().length >= 10);
+
+  async function create() {
+    setBusy(true);
+    setMessage(null);
+    const form = new FormData();
+    form.set("kind", kind);
+    form.set("name", name.trim());
+    form.set("description", description.trim());
+    if (usesPhotos) {
+      form.set("consent", consent ? "yes" : "no");
+      files.forEach((f) => form.append("photos", f));
+    }
+    try {
+      const d = await fetch("/api/characters", { method: "POST", body: form }).then((r) => r.json());
+      if (!d.success) throw new Error(d.error || "Could not create the character.");
+      setName("");
+      setDescription("");
+      setFiles([]);
+      setConsent(false);
+      setMessage({ ok: true, text: `${d.character.name} is ready.` });
+      onCreated(d.character);
+    } catch (err) {
+      setMessage({ ok: false, text: err instanceof Error ? err.message : "Could not create the character." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className={`rounded-xl border border-white/10 bg-[#0d0d16] p-4 ${className}`}>
+      <p className="text-sm font-medium text-white">Add a character</p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Character type">
+        {KINDS.map((k) => {
+          const Icon = k.icon;
+          const on = kind === k.id;
+          return (
+            <button
+              key={k.id}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => {
+                setKind(k.id);
+                setMessage(null);
+              }}
+              className={`rounded-xl border p-3 text-left transition ${on ? "border-sky-400/60 bg-sky-500/10" : "border-white/10 hover:border-white/20"}`}
+            >
+              <Icon size={16} className={on ? "text-sky-300" : "text-gray-400"} aria-hidden />
+              <span className="mt-1.5 block text-sm font-semibold text-white">{k.label}</span>
+              <span className="mt-0.5 block text-[11px] leading-snug text-gray-500">{k.hint}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <label className="block">
+          <span className="mb-1 block text-xs text-gray-400">{kind === "historical" ? "Who? (e.g. Fatih Sultan Mehmet)" : "Name"}</span>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={40}
+            className="w-full rounded-xl border border-white/10 bg-[#12121c] px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs text-gray-400">
+            {kind === "fictional" ? "What do they look like?" : "Notes (optional): age, usual clothing"}
+          </span>
+          <input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            maxLength={300}
+            placeholder={kind === "fictional" ? "A weathered sea captain in his 50s, grey beard, navy coat" : ""}
+            className="w-full rounded-xl border border-white/10 bg-[#12121c] px-3 py-2 text-sm text-white outline-none placeholder:text-gray-600 focus:border-sky-400/50"
+          />
+        </label>
+      </div>
+
+      {(needsPhotos || kind === "historical") && (
+        <div className="mt-3">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            className="hidden"
+            onChange={(e) => setFiles(Array.from(e.target.files ?? []).slice(0, 4))}
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-sm text-gray-200 transition hover:border-white/20"
+          >
+            <ImagePlus size={15} aria-hidden />{" "}
+            {files.length ? `${files.length} picture${files.length > 1 ? "s" : ""} selected` : kind === "historical" ? "Use my own portrait (optional)" : "Choose photos"}
+          </button>
+          <span className={`ml-3 text-xs ${totalBytes > MAX_BYTES ? "text-red-300" : "text-gray-500"}`}>
+            {kind === "historical" ? "A painting or portrait of them · up to 4, 4 MB together" : "Clear, well-lit face photos of one adult · up to 4 photos, 4 MB together"}
+          </span>
+          {usesPhotos && (
+            <label className="mt-3 flex items-start gap-2 text-xs text-gray-300">
+              <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5" />
+              <span>
+                {kind === "self"
+                  ? "These photos are of me, and I'm 18 or older."
+                  : kind === "historical"
+                    ? "I have the right to use these pictures (for example a public-domain painting or my own photo of it)."
+                    : "This person is 18 or older and agreed to appear in my videos. They are not a public figure."}
+              </span>
+            </label>
+          )}
+        </div>
+      )}
+
+      {kind === "historical" && !files.length && (
+        <p className="mt-3 text-xs text-gray-500">
+          Without your own picture we use their best-known public-domain portrait and turn it into a lifelike reference. Only people who died at least 50 years ago.
+        </p>
+      )}
+
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={create}
+          disabled={!canCreate}
+          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-40"
+        >
+          {busy ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+          {busy ? (usesPhotos ? "Checking pictures…" : "Creating — about 30 s…") : "Add character"}
+        </button>
+        <span className="text-xs text-gray-500">Living public figures (politicians, athletes, celebrities) and children can&apos;t be used.</span>
+      </div>
+      {message && <p className={`mt-3 text-sm ${message.ok ? "text-emerald-300" : "text-red-300"}`}>{message.text}</p>}
+    </div>
+  );
+}
+
 export default function CharactersCard() {
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [items, setItems] = useState<CharacterItem[]>([]);
   const [max, setMax] = useState(12);
-  const [kind, setKind] = useState<CharacterItem["kind"]>("self");
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
-  const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState<string>("");
-  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch("/api/characters")
@@ -56,41 +221,6 @@ export default function CharactersCard() {
   }, []);
 
   if (allowed === null || (!allowed && !items.length)) return null;
-
-  const usesPhotos = kind === "self" || kind === "person";
-  const totalBytes = files.reduce((n, f) => n + f.size, 0);
-  const canCreate =
-    !busy &&
-    name.trim().length >= 2 &&
-    (!usesPhotos || (files.length > 0 && consent && totalBytes <= MAX_BYTES)) &&
-    (kind !== "fictional" || description.trim().length >= 10);
-
-  async function create() {
-    setBusy("create");
-    setMessage(null);
-    const form = new FormData();
-    form.set("kind", kind);
-    form.set("name", name.trim());
-    form.set("description", description.trim());
-    if (usesPhotos) {
-      form.set("consent", consent ? "yes" : "no");
-      files.forEach((f) => form.append("photos", f));
-    }
-    try {
-      const d = await fetch("/api/characters", { method: "POST", body: form }).then((r) => r.json());
-      if (!d.success) throw new Error(d.error || "Could not create the character.");
-      setItems((prev) => [...prev, d.character]);
-      setName("");
-      setDescription("");
-      setFiles([]);
-      setConsent(false);
-      setMessage({ ok: true, text: `${d.character.name} is ready. Pick them under "Characters" when you make a video.` });
-    } catch (err) {
-      setMessage({ ok: false, text: err instanceof Error ? err.message : "Could not create the character." });
-    } finally {
-      setBusy("");
-    }
-  }
 
   async function remove(id: string) {
     setBusy(id);
@@ -141,109 +271,8 @@ export default function CharactersCard() {
       )}
 
       {allowed && items.length < max && (
-        <div className="mt-5 rounded-xl border border-white/10 bg-[#0d0d16] p-4">
-          <p className="text-sm font-medium text-white">Add a character</p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Character type">
-            {KINDS.map((k) => {
-              const Icon = k.icon;
-              const on = kind === k.id;
-              return (
-                <button
-                  key={k.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  onClick={() => {
-                    setKind(k.id);
-                    setMessage(null);
-                  }}
-                  className={`rounded-xl border p-3 text-left transition ${on ? "border-sky-400/60 bg-sky-500/10" : "border-white/10 hover:border-white/20"}`}
-                >
-                  <Icon size={16} className={on ? "text-sky-300" : "text-gray-400"} aria-hidden />
-                  <span className="mt-1.5 block text-sm font-semibold text-white">{k.label}</span>
-                  <span className="mt-0.5 block text-[11px] leading-snug text-gray-500">{k.hint}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1 block text-xs text-gray-400">{kind === "historical" ? "Who? (e.g. Fatih Sultan Mehmet)" : "Name"}</span>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                maxLength={40}
-                className="w-full rounded-xl border border-white/10 bg-[#12121c] px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs text-gray-400">
-                {kind === "fictional" ? "What do they look like?" : "Notes (optional): age, usual clothing"}
-              </span>
-              <input
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                maxLength={300}
-                placeholder={kind === "fictional" ? "A weathered sea captain in his 50s, grey beard, navy coat" : ""}
-                className="w-full rounded-xl border border-white/10 bg-[#12121c] px-3 py-2 text-sm text-white outline-none placeholder:text-gray-600 focus:border-sky-400/50"
-              />
-            </label>
-          </div>
-
-          {usesPhotos && (
-            <div className="mt-3">
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                className="hidden"
-                onChange={(e) => setFiles(Array.from(e.target.files ?? []).slice(0, 4))}
-              />
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-sm text-gray-200 transition hover:border-white/20"
-              >
-                <ImagePlus size={15} aria-hidden /> {files.length ? `${files.length} photo${files.length > 1 ? "s" : ""} selected` : "Choose photos"}
-              </button>
-              <span className={`ml-3 text-xs ${totalBytes > MAX_BYTES ? "text-red-300" : "text-gray-500"}`}>
-                Clear, well-lit face photos of one adult · up to 4 photos, 4 MB together
-              </span>
-              <label className="mt-3 flex items-start gap-2 text-xs text-gray-300">
-                <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5" />
-                <span>
-                  {kind === "self"
-                    ? "These photos are of me, and I'm 18 or older."
-                    : "This person is 18 or older and agreed to appear in my videos. They are not a public figure."}
-                </span>
-              </label>
-            </div>
-          )}
-
-          {kind === "historical" && (
-            <p className="mt-3 text-xs text-gray-500">
-              We look up their best-known public-domain portrait and turn it into a lifelike reference. Only people who died at least 50 years ago.
-            </p>
-          )}
-
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={create}
-              disabled={!canCreate}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-40"
-            >
-              {busy === "create" ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
-              {busy === "create" ? (usesPhotos ? "Checking photos…" : "Creating…") : "Add character"}
-            </button>
-            <span className="text-xs text-gray-500">Living public figures (politicians, athletes, celebrities) and children can&apos;t be used.</span>
-          </div>
-        </div>
+        <CharacterCreator className="mt-5" onCreated={(c) => setItems((prev) => [...prev, c])} />
       )}
-
-      {message && <p className={`mt-3 text-sm ${message.ok ? "text-emerald-300" : "text-red-300"}`}>{message.text}</p>}
     </div>
   );
 }

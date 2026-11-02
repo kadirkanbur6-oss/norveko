@@ -165,3 +165,22 @@ export async function checkPhoto(bytes: Buffer, mimeType: string): Promise<{ ok:
   if (typeof r.faces === "number" && r.faces < 1) return { ok: false, reason: "We couldn't see a face in one of the photos. Use clear photos of one person." };
   return { ok: true };
 }
+
+/**
+ * Historical people at the heart of a video idea ("Timur and Bayezid at
+ * Ankara" → ["Timur", "Bayezid I"]), so the workspace can offer them as
+ * characters in one click. Only people who died at least 50 years ago.
+ */
+export async function suggestHistoricalCast(idea: string): Promise<string[]> {
+  const r = await geminiJson([
+    {
+      text: `Video idea: "${idea.slice(0, 600)}"
+List the real historical PEOPLE who are central characters of this idea and who died at least 50 years ago (at most 3; none for places, events, objects, groups or living/recent people). Use the name the way the idea writes it, or the usual name in the idea's language. Answer as JSON: {"people": ["..."]}`,
+    },
+  ]).catch(() => null);
+  const people = Array.isArray(r?.people) ? (r!.people as unknown[]) : [];
+  return people
+    .map((p) => String(p ?? "").trim().replace(/\s+/g, " ").slice(0, 40))
+    .filter((p) => p.length >= 2)
+    .slice(0, 3);
+}

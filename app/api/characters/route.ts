@@ -82,9 +82,18 @@ export async function POST(req: Request) {
   if (name.length < 2) return bad("Give the character a name.");
   const description = cleanDescription(form.get("description"));
   if (kind === "fictional" && description.length < 10) return bad("Describe how the character looks (age, face, hair, clothing).");
-  const usesPhotos = kind === "self" || kind === "person";
+  const uploads = form.getAll("photos").filter((f): f is File => f instanceof File && f.size > 0).slice(0, MAX_REFERENCES);
+  // Historical figures may come with the creator's own portrait (e.g. a painting they found).
+  const ownPortrait = kind === "historical" && uploads.length > 0;
+  const usesPhotos = kind === "self" || kind === "person" || ownPortrait;
   if (usesPhotos && form.get("consent") !== "yes") {
-    return bad(kind === "self" ? "Confirm that the photos are of you." : "Confirm that this person agreed to appear in your videos.");
+    return bad(
+      kind === "self"
+        ? "Confirm that the photos are of you."
+        : ownPortrait
+          ? "Confirm that you have the right to use these pictures."
+          : "Confirm that this person agreed to appear in your videos."
+    );
   }
 
   const existing = await listCharacters(db, user.id);
@@ -107,7 +116,7 @@ export async function POST(req: Request) {
 
   try {
     if (usesPhotos) {
-      const files = form.getAll("photos").filter((f): f is File => f instanceof File && f.size > 0).slice(0, MAX_REFERENCES);
+      const files = uploads;
       if (!files.length) return bad("Add 1–4 clear photos of the person's face.");
       if (files.reduce((n, f) => n + f.size, 0) > MAX_PHOTO_BYTES) return bad("The photos must be under 4 MB together.");
       for (const f of files) {
@@ -120,6 +129,17 @@ export async function POST(req: Request) {
         const check = await checkPhoto(jpg, "image/jpeg");
         if (!check.ok) return bad(check.reason);
         images.push({ bytes: jpg, type: "image/jpeg" });
+      }
+      if (ownPortrait) {
+        // Their portrait → a lifelike reference first (the painting itself stays as a second reference).
+        const { generateReferencePortrait } = await import("@/lib/pipeline/gemini-image");
+        const portrait = await generateReferencePortrait({
+          name,
+          description,
+          fromImage: { mimeType: "image/jpeg", data: images[0].bytes.toString("base64") },
+        });
+        images.unshift({ bytes: await toJpeg(portrait.bytes), type: "image/jpeg" });
+        images.splice(MAX_REFERENCES);
       }
     } else {
       const { generateReferencePortrait } = await import("@/lib/pipeline/gemini-image");

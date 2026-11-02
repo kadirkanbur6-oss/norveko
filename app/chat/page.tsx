@@ -8,6 +8,8 @@ import Disclosure from "../components/Disclosure";
 import { PageHeader } from "../components/PageTabs";
 import Sidebar from "../components/Sidebar";
 import PipelineProgress from "../components/PipelineProgress";
+import CastPicker from "../components/CastPicker";
+import type { CharacterItem } from "../components/CharactersCard";
 
 import { DURATIONS, LANGUAGE_OPTIONS, LANGUAGES, ORIENTATIONS, PLATFORMS, STYLES, defaultOrientation, languageOption, type OrientationId } from "@/lib/pipeline/options";
 import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
@@ -117,8 +119,8 @@ function ChatContent() {
       })
       .catch(() => undefined);
   }, []);
-  // Recurring characters (Settings → Characters): up to 3 per video.
-  const [characters, setCharacters] = useState<Array<{ id: string; name: string; kind: string; previews: string[] }>>([]);
+  // Recurring characters (picked and created right here, also in Settings): up to 3 per video.
+  const [characters, setCharacters] = useState<CharacterItem[]>([]);
   const [charactersAllowed, setCharactersAllowed] = useState(false);
   const [castIds, setCastIds] = useState<string[]>([]);
   // Storyboard review: pause after the script so the creator can approve it.
@@ -746,53 +748,15 @@ function ChatContent() {
 
             </Disclosure>
 
-            {(characters.length > 0 || charactersAllowed) && (
-              <Disclosure
+            {charactersAllowed && (
+              <CastPicker
                 className="mt-4"
-                title="Characters"
-                summary={
-                  castIds.length
-                    ? characters.filter((c) => castIds.includes(c.id)).map((c) => c.name).join(", ")
-                    : characters.length
-                      ? "Nobody yet — pick up to 3"
-                      : "Put yourself or a historical figure in your videos"
-                }
-              >
-                {characters.length ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {characters.map((c) => {
-                      const on = castIds.includes(c.id);
-                      return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          aria-pressed={on}
-                          onClick={() =>
-                            setCastIds((prev) => (on ? prev.filter((x) => x !== c.id) : prev.length >= 3 ? prev : [...prev, c.id]))
-                          }
-                          className={`flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-sm transition ${
-                            on ? "border-sky-400/60 bg-sky-500/15 text-white" : "border-white/10 text-gray-300 hover:border-white/25"
-                          }`}
-                        >
-                          {c.previews[0] ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={c.previews[0]} alt="" className="h-7 w-7 rounded-full object-cover" />
-                          ) : (
-                            <span className="h-7 w-7 rounded-full bg-white/10" />
-                          )}
-                          {c.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : null}
-                <p className="mt-3 text-xs text-gray-500">
-                  Chosen characters appear in the story with the same face in every scene (AI scenes and clips).{" "}
-                  <Link href="/settings?tab=characters" className="text-sky-300 hover:text-white">
-                    {characters.length ? "Manage characters" : "Create a character"}
-                  </Link>
-                </p>
-              </Disclosure>
+                idea={idea}
+                characters={characters}
+                setCharacters={setCharacters}
+                castIds={castIds}
+                setCastIds={setCastIds}
+              />
             )}
 
             {/* Web research before the script */}
