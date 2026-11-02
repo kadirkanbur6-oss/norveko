@@ -1001,3 +1001,27 @@ test("timeline editor: a scene replaced with your own/stock video plays that cli
   assert.equal(visuals[0].length, 4);
   assert.equal(visuals[1].asset.src, "https://cdn/b.png");
 });
+
+test("map scenes: a scene with places becomes an animated map (frames + labels) on its first slot", async () => {
+  const { planSlots } = await import("./timeline");
+  const slots = planSlots(
+    [
+      { sceneNumber: 1, videoPrompt: "a", map: { title: "March", route: true, places: [{ name: "Samarkand", lat: 39.6, lon: 66.9 }, { name: "Ankara", lat: 39.9, lon: 32.8 }] } },
+      { sceneNumber: 2, videoPrompt: "b" },
+    ],
+    20, 4, 0
+  );
+  assert.ok(slots[0].map, "first slot of the map scene");
+  assert.ok(!slots[1].map);
+  slots[0].map!.frames = ["https://cdn/m0.jpg", "https://cdn/m1.jpg", "https://cdn/m2.jpg"];
+  slots[0].map!.labels = [{ name: "Samarkand", x: 0.8, y: 0.5 }, { name: "Ankara", x: 0.2, y: 0.5 }];
+  slots.forEach((s) => { s.status = "succeed"; s.url ??= `https://cdn/s${s.index}.png`; });
+  slots[0].url = "https://cdn/m2.jpg";
+  const e = buildEdit({ slots, voiceoverUrl: "https://cdn/v.mp3", orientation: "vertical", totalSeconds: 20 }) as any;
+  const visuals = e.timeline.tracks.at(-1).clips;
+  assert.deepEqual(visuals.slice(0, 3).map((c: any) => c.asset.src), ["https://cdn/m0.jpg", "https://cdn/m1.jpg", "https://cdn/m2.jpg"]);
+  const total = visuals.slice(0, 3).reduce((n: number, c: any) => n + c.length, 0);
+  assert.ok(Math.abs(total - slots[0].length) < 0.05, "frames fill the slot");
+  const labels = e.timeline.tracks.at(-2).clips.map((c: any) => c.asset.text);
+  assert.deepEqual(labels, ["Samarkand", "Ankara"]);
+});

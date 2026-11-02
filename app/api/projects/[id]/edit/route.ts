@@ -64,7 +64,8 @@ function slotView(slot: TimelineSlot) {
       history: (slot.editHistory ?? []).map((h) => ({ url: h.url, at: h.at, poster: h.clip?.poster ?? null, clip: Boolean(h.clip) })),
     };
   }
-  const clip = (slot.kind === "kling" || slot.kind === "stock") && slot.status === "succeed" && !slot.editedStillUrl;
+  const isMap = Boolean(slot.map?.frames?.length) && !slot.editedStillUrl;
+  const clip = !isMap && (slot.kind === "kling" || slot.kind === "stock") && slot.status === "succeed" && !slot.editedStillUrl;
   return {
     index: slot.index,
     start: slot.start,
@@ -73,7 +74,7 @@ function slotView(slot: TimelineSlot) {
     kind: clip ? "clip" : "image",
     edited: Boolean(slot.editedStillUrl),
     // What the viewer sees for this slot (a clip shows its source still if it has one).
-    imageUrl: slot.editedStillUrl ?? (slot.kind === "still" || slot.kind === "archive" ? slot.url : slot.imageUrl ?? slot.posterUrl) ?? null,
+    imageUrl: slot.editedStillUrl ?? (isMap || slot.kind === "still" || slot.kind === "archive" ? slot.url : slot.imageUrl ?? slot.posterUrl) ?? null,
     clipUrl: clip ? slot.url ?? null : null,
     history: (slot.editHistory ?? []).map((h) => ({ url: h.url, at: h.at, poster: h.clip?.poster ?? null, clip: Boolean(h.clip) })),
   };
@@ -449,7 +450,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         const cues = [...((steps.voiceover?.captions as CaptionCue[] | undefined) ?? [])];
         for (const raw of body.cues as Array<{ index?: unknown; text?: unknown }>) {
           const i = Number(raw?.index);
-          const text = typeof raw?.text === "string" ? raw.text.replace(/\s+/g, " ").trim().slice(0, 160) : "";
+          // Keep the cue's line break (two-line subtitles), tidy everything else.
+          const text =
+            typeof raw?.text === "string"
+              ? raw.text.replace(/\r/g, "").replace(/[ \t]+/g, " ").replace(/ *\n+ */g, "\n").trim().split("\n").slice(0, 2).join("\n").slice(0, 160)
+              : "";
           if (!cues[i] || !text) continue;
           cues[i] = { ...cues[i], text };
         }

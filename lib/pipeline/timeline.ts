@@ -14,6 +14,7 @@
 import { captionStyle } from "./visual-styles";
 import { contrastText, OUTRO_SECONDS, type BrandSnapshot } from "@/lib/brand/kit";
 import { upper, type CaptionCue } from "./captions";
+import type { MapSpec } from "./maps-spec";
 import { SLOT_SECONDS } from "./steps";
 import { MUSIC_VOLUME } from "./music";
 
@@ -76,6 +77,8 @@ export interface TimelineSlot {
   archive?: { title: string; author: string; license: string; pageUrl: string };
   /** A stock slot that found nothing and was filled with an AI still instead. */
   stockFallback?: boolean;
+  /** Animated map: drawn frames + where each place label goes (fractions of the frame). */
+  map?: { spec: MapSpec; frames?: string[]; labels?: Array<{ name: string; x: number; y: number }> };
 }
 
 export interface SceneInput {
@@ -88,6 +91,8 @@ export interface SceneInput {
   archiveQuery?: string;
   /** Cast members on screen (their reference images keep faces consistent). */
   characters?: string[];
+  /** Animated map for this scene (lib/pipeline/maps.ts). */
+  map?: MapSpec;
 }
 
 /**
@@ -213,6 +218,12 @@ export function planSlots(
       status: "pending",
     });
   }
+  // Map scenes: their first slot that isn't an AI clip shows the animated map.
+  for (const scene of usable) {
+    if (!scene.map) continue;
+    const slot = slots.find((x) => x.sceneNumber === scene.sceneNumber && x.kind !== "kling");
+    if (slot) slot.map = { spec: scene.map };
+  }
   return slots;
 }
 
@@ -287,7 +298,13 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
   };
 
   const clips: Array<Record<string, unknown>> = [];
+  const mapOverlay: Array<Record<string, unknown>> = [];
   slots.forEach((slot, i) => {
+    if (!slot.editedClip && !slot.editedStillUrl && slot.map?.frames?.length) {
+      mapClips(slot, orientation).forEach((c) => clips.push(c));
+      mapLabels(slot, orientation, input.languageCode).forEach((c) => mapOverlay.push(c));
+      return;
+    }
     const v = visualFor(slot);
     const base: Record<string, unknown> = {
       start: slot.start,
@@ -409,6 +426,7 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
       ],
     });
   }
+  if (mapOverlay.length) tracks.push({ clips: mapOverlay });
   tracks.push({ clips });
 
   // Background music as its own audio track (the soundtrack slot is the
@@ -529,4 +547,92 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
       range: { start: 0, length: Math.round(totalSeconds * 100) / 100 },
     },
   };
+}
+
+/* ---------------- Animated map scenes ---------------- */
+
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+/** The map's frames back to back: the route draws in, the last frame holds. */
+function mapClips(slot: TimelineSlot, orientation: "vertical" | "horizontal"): Array<Record<string, unknown>> {
+  void orientation;
+  const frames = slot.map!.frames!;
+  const n = frames.length;
+  const build = n > 1 ? slot.length * 0.6 : 0;
+  const step = n > 1 ? build / (n - 1) : 0;
+  return frames.map((src, f) => {
+    const start = slot.start + f * step;
+    const length = f === n - 1 ? slot.length - build : step;
+    return {
+      asset: { type: "image", src },
+      start: r2(start),
+      length: r2(Math.max(0.2, length)),
+      fit: "cover",
+      ...(f === 0 ? { transition: { in: "fade" } } : {}),
+      ...(f === n - 1 ? { transition: { out: "fade" }, effect: "zoomInSlow" } : {}),
+    };
+  });
+}
+
+/** When place i is on the map (same pacing as renderMapFrames). */
+function placeAppears(slot: TimelineSlot, i: number): number {
+  const n = slot.map!.frames!.length;
+  const places = slot.map!.spec.places.length;
+  if (n <= 1) return slot.start;
+  const build = slot.length * 0.6;
+  const progress = slot.map!.spec.route ? i / Math.max(1, places - 1) : (i + 1) / places;
+  const frame = Math.min(n - 1, Math.max(0, Math.ceil(progress * (n - 1) - 1e-6)));
+  return slot.start + (frame * build) / (n - 1);
+}
+
+/** Place names (and the map title) laid over the frames as text. */
+function mapLabels(slot: TimelineSlot, orientation: "vertical" | "horizontal", languageCode?: string): Array<Record<string, unknown>> {
+  const labels = slot.map!.labels ?? [];
+  const end = slot.start + slot.length;
+  const out: Array<Record<string, unknown>> = [];
+  const placed: Array<{ x: number; y: number }> = [];
+  labels.forEach((l, i) => {
+    // Above the dot; below it when another name already sits there.
+    let dy = -0.035;
+    if (placed.some((p) => Math.abs(p.x - l.x) < 0.18 && Math.abs(p.y - (l.y + dy)) < 0.04)) dy = 0.04;
+    placed.push({ x: l.x, y: l.y + dy });
+    const start = placeAppears(slot, i);
+    out.push({
+      asset: {
+        type: "rich-text",
+        text: l.name,
+        font: { family: "Montserrat ExtraBold", size: orientation === "vertical" ? 44 : 36, color: "#FFFFFF", weight: 800 },
+        stroke: { color: "#000000", width: 4, opacity: 1 },
+        align: { horizontal: "center", vertical: "middle" },
+        animation: { preset: "fadeIn", duration: 0.3 },
+      },
+      start: r2(start),
+      length: r2(Math.max(0.3, end - start)),
+      width: orientation === "vertical" ? 520 : 480,
+      height: 90,
+      position: "center",
+      offset: { x: Math.round(Math.min(0.42, Math.max(-0.42, l.x - 0.5)) * 1000) / 1000, y: Math.round((0.5 - (l.y + dy)) * 1000) / 1000 },
+    });
+  });
+  const title = slot.map!.spec.title;
+  // The title would sit under the hook card in the first seconds.
+  if (title && slot.start >= HOOK_CARD_SECONDS) {
+    out.push({
+      asset: {
+        type: "rich-text",
+        text: upper(title, languageCode),
+        font: { family: "Montserrat ExtraBold", size: orientation === "vertical" ? 64 : 52, color: "#F2C14E", weight: 800 },
+        stroke: { color: "#000000", width: 5, opacity: 1 },
+        align: { horizontal: "center", vertical: "middle" },
+        animation: { preset: "fadeIn", duration: 0.4 },
+      },
+      start: r2(slot.start),
+      length: r2(slot.length),
+      width: orientation === "vertical" ? 960 : 1400,
+      height: 140,
+      position: "top",
+      offset: { x: 0, y: orientation === "vertical" ? -0.16 : -0.08 },
+    });
+  }
+  return out;
 }

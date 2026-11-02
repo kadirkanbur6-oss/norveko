@@ -70,6 +70,7 @@ import { offTopicTags } from "@/lib/pipeline/stock-check";
 import { readCast } from "@/lib/characters/characters";
 import type { CharacterRef } from "@/lib/pipeline/gemini-image";
 import { mapLimit } from "@/lib/pipeline/tts-chunks";
+import { readMapSpec } from "@/lib/pipeline/maps-spec";
 
 /** A step that has been running longer than this is considered dead. */
 export const STEP_TIMEOUT_MS = 8 * 60 * 1000;
@@ -181,6 +182,8 @@ export interface RunnerDeps {
     checkFit?: typeof import("@/lib/pipeline/stock-check").pickFittingFrames;
     /** Translate a finished script (one-click translation). Optional: tests may leave it out. */
     translateScript?: typeof import("@/lib/pipeline/openai").translateScript;
+    /** Draw an animated map scene (lib/pipeline/maps.ts). Optional: without it map slots stay pictures. */
+    renderMap?: typeof import("@/lib/pipeline/maps").renderMapFrames;
     /** Stock footage search (Pixabay/Pexels). Optional: without it stock slots become AI stills. */
     searchStock?: typeof import("@/lib/pipeline/pexels").searchStockClips;
   };
@@ -773,7 +776,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
   async function submitFullVideoVisuals(job: JobRow): Promise<void> {
     const plan = job.steps!.video!.plan as FullVideoPlan;
     const scenes = Array.isArray(job.steps?.script?.scenes)
-      ? (job.steps!.script!.scenes as Array<{ sceneNumber?: number; videoPrompt?: string; description?: string; stockQuery?: string; archiveQuery?: string; characters?: string[] }>)
+      ? (job.steps!.script!.scenes as Array<{ sceneNumber?: number; videoPrompt?: string; description?: string; stockQuery?: string; archiveQuery?: string; characters?: string[]; map?: unknown }>)
       : [];
     const cues = job.steps?.voiceover?.captions as CaptionCue[] | undefined;
     const total = narrationSeconds(cues, plan.seconds);
@@ -785,6 +788,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
         stockQuery: typeof sc.stockQuery === "string" ? sc.stockQuery : undefined,
         archiveQuery: typeof sc.archiveQuery === "string" ? sc.archiveQuery : undefined,
         characters: Array.isArray(sc.characters) ? sc.characters : undefined,
+        map: readMapSpec(sc.map) ?? undefined,
       })),
       total,
       plan.slots,
@@ -903,6 +907,30 @@ export function createPipelineRunner(deps: RunnerDeps) {
           slot.error = err instanceof Error ? err.message : "Store failed";
         }
         changed = true;
+      }
+    }
+
+    // 1b) Map scenes: drawn here (no AI, a second or two), frames into our bucket.
+    for (const slot of slots) {
+      if (!slot.map || slot.map.frames || slot.status !== "pending") continue;
+      changed = true;
+      try {
+        if (!providers.renderMap) throw new Error("Maps unavailable");
+        const drawn = await providers.renderMap(slot.map.spec, orientationOf(job), slot.map.spec.route ? 5 : Math.min(4, slot.map.spec.places.length + 1));
+        const urls: string[] = [];
+        for (const [f, frame] of drawn.frames.entries()) {
+          const path = `${job.user_id}/${job.id}/map-${slot.index}-${f}.jpg`;
+          const { error } = await db.storage.from("videos").upload(path, frame, { contentType: "image/jpeg", upsert: true });
+          if (error) throw new Error(error.message);
+          urls.push(db.storage.from("videos").getPublicUrl(path).data.publicUrl);
+        }
+        slot.map = { ...slot.map, frames: urls, labels: drawn.labels };
+        slot.url = urls[urls.length - 1];
+        slot.status = "succeed";
+      } catch (err) {
+        // A map that can't be drawn: the slot falls back to its normal picture/clip.
+        console.warn(`[pipeline] ${job.id} map for slot ${slot.index} failed:`, err instanceof Error ? err.message : err);
+        delete slot.map;
       }
     }
 
@@ -1733,7 +1761,13 @@ export function createPipelineRunner(deps: RunnerDeps) {
       const startedAt = now();
       let result: Awaited<ReturnType<typeof providers.generateThumbnail>>;
       try {
-        result = await providers.generateThumbnail(idea, job.id, orientation, visualStyleOf(job), await refsFor(job));
+        // A brand logo goes in the top-left corner afterwards: keep the title text clear of it.
+        const logoCorner = readSnapshot(job.options?.brand);
+        const thumbIdea =
+          logoCorner?.logoUrl && logoCorner.thumbLogo
+            ? `${idea} Leave the top-left corner (about a quarter of the width and the top 15%) free of any text or faces; a logo is placed there.`
+            : idea;
+        result = await providers.generateThumbnail(thumbIdea, job.id, orientation, visualStyleOf(job), await refsFor(job));
       } catch (err) {
         await logUsage(job, "thumbnail", {
           unit: "images",
@@ -2174,6 +2208,7 @@ function getRunner() {
           (await import("@/lib/pipeline/watermark")).brandStoredThumbnail(...args),
         searchStock: async (...args) =>
           (await import("@/lib/pipeline/pexels")).searchStockClips(...args),
+        renderMap: async (...args) => (await import("@/lib/pipeline/maps")).renderMapFrames(...args),
         translateScript: async (...args) =>
           (await import("@/lib/pipeline/openai")).translateScript(...args),
         loadCharacterRefs: async (paths) =>

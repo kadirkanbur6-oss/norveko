@@ -7,6 +7,7 @@ import { insertAdditions, narrationWordCount, wordRange, wordsPerSecond } from "
 import { chatJSON, llmUsageKey, type LlmUsage } from "./llm";
 import { exampleBlock } from "./script-examples";
 import { MUSIC_MOODS, isMusicMood } from "./music";
+import { readMapSpec } from "./maps-spec";
 
 if (!process.env.OPENAI_API_KEY) {
   throw new Error("OPENAI_API_KEY is not set.");
@@ -25,6 +26,8 @@ export interface ScriptResult {
     archiveQuery?: string;
     /** Cast members visible in this scene (names from params.cast). */
     characters?: string[];
+    /** An animated map for this scene (places, optionally a route). */
+    map?: import("./maps-spec").MapSpec;
   }>;
   titles: string[];
   description: string;
@@ -205,7 +208,8 @@ Respond ONLY with a valid JSON object, no markdown, no extra text. Schema:
       "videoPrompt": "cinematic ENGLISH text-to-video prompt for this scene (see the VISUAL PROMPT rules)",
       "stockQuery": "2–4 plain ENGLISH words a stock-video site would match for this scene's subject and setting (e.g. 'stormy sea lighthouse', 'medieval town street') — no names, dates or camera terms",
       "characters": ["names of CAST members visible in this scene, [] if none"],
-      "archiveQuery": "ONLY when this scene shows a REAL, photographed place, object, person or event: its English name as it would be titled on Wikimedia Commons (e.g. 'Mount Ararat', 'Durupınar site', 'Flannan Isles lighthouse'); otherwise an empty string. Never invent a name"
+      "archiveQuery": "ONLY when this scene shows a REAL, photographed place, object, person or event: its English name as it would be titled on Wikimedia Commons (e.g. 'Mount Ararat', 'Durupınar site', 'Flannan Isles lighthouse'); otherwise an empty string. Never invent a name",
+      "map": "OPTIONAL — only for 1–2 scenes where WHERE things happen is the point (a campaign, a voyage, a battle site, an empire's reach): {\"title\": \"short label in the output language\", \"places\": [{\"name\": \"place name in the output language\", \"lat\": 39.93, \"lon\": 32.86}], \"route\": true if the places are stops of a journey in order}. 1–6 real places with correct coordinates. Omit the key otherwise"
     }
   ],
   "titles": ["title option 1", "title option 2", "title option 3", "title option 4", "title option 5"],
@@ -270,7 +274,9 @@ Target duration: ${duration ?? "60 seconds"}`;
         stockQuery?: string;
         archiveQuery?: string;
         characters?: unknown;
+        map?: unknown;
       };
+      const map = readMapSpec(typedScene.map);
 
       return {
         sceneNumber:
@@ -294,6 +300,7 @@ Target duration: ${duration ?? "60 seconds"}`;
         ...(typeof typedScene.archiveQuery === "string" && typedScene.archiveQuery.trim()
           ? { archiveQuery: typedScene.archiveQuery.trim().slice(0, 80) }
           : {}),
+        ...(map ? { map } : {}),
       };
     })
     .filter(
