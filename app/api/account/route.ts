@@ -17,6 +17,7 @@ const USER_TABLES = [
   "youtube_connections",
   "tiktok_connections",
   "instagram_connections",
+  "api_keys",
   "series",
   "brand_kits",
   "voice_clones",

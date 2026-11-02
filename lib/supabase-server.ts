@@ -17,6 +17,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
  */
 export async function requireUser() {
   const supabase = createServerSupabaseClient();
+  // /api/v1 requests authenticated with an API key run as that key's user.
+  const { apiUser } = await import("@/lib/api-keys");
+  const keyUser = apiUser();
+  if (keyUser) return { supabase, user: keyUser };
   const {
     data: { user },
   } = await supabase.auth.getUser();

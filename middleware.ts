@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { createMiddlewareSupabaseClient } from "./lib/supabase-middleware";
 
 const PUBLIC_FILE = /(.*)\.(.*)$/;
-const PUBLIC_PAGES = ["/", "/login", "/signup", "/forgot-password", "/auth/callback", "/terms", "/privacy", "/refund"];
+const PUBLIC_PAGES = ["/", "/login", "/signup", "/forgot-password", "/auth/callback", "/terms", "/privacy", "/refund", "/developers"];
 
 // Invite links (?ref=<code>, lib/referrals/referrals.ts): remember the code
 // for 60 days so it can be claimed after sign-up. First link wins.
