@@ -126,6 +126,8 @@ function ChatContent() {
   const [characters, setCharacters] = useState<CharacterItem[]>([]);
   const [charactersAllowed, setCharactersAllowed] = useState(false);
   const [castIds, setCastIds] = useState<string[]>([]);
+  // Talking presenter: one chosen character speaks to camera (lip-synced) in a few scenes.
+  const [presenterId, setPresenterId] = useState<string | null>(null);
   // Storyboard review: pause after the script so the creator can approve it.
   const [reviewFirst, setReviewFirst] = useState(true);
   useEffect(() => {
@@ -176,6 +178,7 @@ function ChatContent() {
     duration,
     // An ElevenLabs voice costs more per minute than a built-in Gemini narrator.
     voiceEngine: (voiceId && !voiceId.startsWith("gemini:") ? "elevenlabs" : "gemini") as "elevenlabs" | "gemini",
+    presenter: fullVideoOn && Boolean(presenterId && castIds.includes(presenterId)),
   };
   // The free-trial video (one 30 s hybrid video per account) costs nothing.
   const isTrialVideo = trialVideoAvailable && fullVideoOn && isTrialVideoShape(costOptions);
@@ -455,6 +458,8 @@ function ChatContent() {
           captionStyle: captionStyleId,
           useBrandKit: Boolean(brandKit) && useBrandKit,
           characterIds: castIds.filter((id) => characters.some((c) => c.id === id)),
+          presenter: costOptions.presenter,
+          presenterId: costOptions.presenter ? presenterId : undefined,
           review: fullVideoOn && reviewFirst,
         }),
       });
@@ -800,6 +805,19 @@ function ChatContent() {
                 setCharacters={setCharacters}
                 castIds={castIds}
                 setCastIds={setCastIds}
+                presenter={
+                  fullVideoOn
+                    ? {
+                        id: presenterId && castIds.includes(presenterId) ? presenterId : null,
+                        set: setPresenterId,
+                        credits: (() => {
+                          const p = fullVideoPlan(duration, footage, clipMode, true);
+                          return p?.credits.avatar ?? 0;
+                        })(),
+                        scenes: fullVideoPlan(duration, footage, clipMode, true)?.avatarSlots ?? 0,
+                      }
+                    : null
+                }
               />
             )}
 

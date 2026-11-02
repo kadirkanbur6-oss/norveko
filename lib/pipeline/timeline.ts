@@ -22,7 +22,7 @@ import { MUSIC_VOLUME } from "./music";
  * kling = AI clip (text→video or image→video), still = AI image, stock = licensed
  * stock video, archive = real photo from Wikimedia Commons (a stock slot that found one).
  */
-export type SlotKind = "kling" | "still" | "stock" | "archive";
+export type SlotKind = "kling" | "still" | "stock" | "archive" | "avatar";
 export type SlotStatus = "pending" | "processing" | "succeed" | "failed";
 
 export interface TimelineSlot {
@@ -77,6 +77,10 @@ export interface TimelineSlot {
   archive?: { title: string; author: string; license: string; pageUrl: string };
   /** A stock slot that found nothing and was filled with an AI still instead. */
   stockFallback?: boolean;
+  /** A presenter slot whose lip-sync failed and became an AI still (refunded as presenter). */
+  avatarFallback?: boolean;
+  /** Presenter slots: the cast member who talks to camera. */
+  presenter?: string;
   /** Animated map: drawn frames + where each place label goes (fractions of the frame). */
   map?: { spec: MapSpec; frames?: string[]; labels?: Array<{ name: string; x: number; y: number }> };
 }
@@ -327,6 +331,9 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
       const trim = src - 1 >= slot.length ? 1 : 0;
       const speed = Math.max(0.5, Math.min(1, Math.round(((src - trim) / slot.length) * 100) / 100));
       clips.push({ ...base, asset: { type: "video", src: v.url, volume: 0, speed, trim, transcode: true } });
+    } else if (v.kind === "avatar") {
+      // The presenter's lips follow the narration already playing on the soundtrack.
+      clips.push({ ...base, asset: { type: "video", src: v.url, volume: 0, trim: 0, transcode: true } });
     } else if (v.kind === "kling") {
       // Slow a short clip down to fill its slot (never below 0.5×), trim a long one.
       const src = v.sourceSeconds && v.sourceSeconds > 0 ? v.sourceSeconds : SLOT_SECONDS;
@@ -637,4 +644,24 @@ function mapLabels(slot: TimelineSlot, orientation: "vertical" | "horizontal", l
     });
   }
   return out;
+}
+
+/**
+ * Presenter slots: the second slot (clear of the opening hook card) and the
+ * last one for Shorts; second, middle and last for long-form. Only AI-still
+ * slots are used; the nearest still is taken when the ideal one isn't.
+ */
+export function pickPresenterSlots(slots: TimelineSlot[], count: number): number[] {
+  if (count <= 0) return [];
+  const stills = slots.filter((s) => s.kind === "still" && !s.map).map((s) => s.index);
+  if (!stills.length) return [];
+  const n = slots.length;
+  const ideal = count >= 3 ? [1, Math.floor(n / 2), n - 1] : [Math.min(1, n - 1), n - 1];
+  const chosen: number[] = [];
+  for (const want of ideal.slice(0, count)) {
+    const free = stills.filter((i) => !chosen.includes(i));
+    if (!free.length) break;
+    chosen.push(free.reduce((best, i) => (Math.abs(i - want) < Math.abs(best - want) ? i : best), free[0]));
+  }
+  return chosen;
 }

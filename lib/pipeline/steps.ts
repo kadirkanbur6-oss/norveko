@@ -61,6 +61,8 @@ export interface PipelineOptions {
   voiceEngine?: VoiceEngine;
   /** The free-trial video (one per account): every item costs 0 credits. */
   trialVideo?: boolean;
+  /** A cast member presents on camera, lip-synced to the narration (talking avatar). */
+  presenter?: boolean;
 }
 
 /**
@@ -231,7 +233,19 @@ export interface FullVideoPlan {
   stillCredits: number;
   /** Credits per stock slot for this plan. */
   stockCredits: number;
-  credits: { kling: number; stills: number; stock: number; render: number; total: number };
+  /** Slots where the presenter talks to camera (lip-synced avatar), and their price each. */
+  avatarSlots?: number;
+  avatarCredits?: number;
+  credits: { kling: number; stills: number; stock: number; render: number; avatar?: number; total: number };
+}
+
+/**
+ * Talking presenter (2 Nov 2026): Kling AI Avatar v2 Pro on fal, $0.115 per
+ * second of video. Shorts get 2 presenter slots (5 s), long-form 3 (10 s).
+ */
+export const AVATAR_COST_PER_SECOND = 0.115;
+export function avatarSlotCredits(slotSeconds: number): number {
+  return creditsForCost(AVATAR_COST_PER_SECOND * slotSeconds);
 }
 
 /**
@@ -241,7 +255,8 @@ export interface FullVideoPlan {
 export function fullVideoPlan(
   duration: string | undefined,
   footage: FootageMode = "hybrid",
-  clipMode: ClipMode = "image"
+  clipMode: ClipMode = "image",
+  presenter = false
 ): FullVideoPlan | null {
   const seconds = FULL_VIDEO_DURATIONS[duration ?? ""];
   if (!seconds) return null;
@@ -254,12 +269,16 @@ export function fullVideoPlan(
   const klingSlots =
     footage === "cinematic" ? slots : footage === "hybrid" ? Math.ceil(slots / (long ? 6 : 4)) : 0;
   const stockSlots = footage === "stock" ? slots - Math.ceil(slots / 3) : 0;
-  const stillSlots = slots - klingSlots - stockSlots;
+  // Presenter slots replace AI stills (never clips or stock).
+  const avatarSlots = presenter ? Math.min(long ? 3 : 2, slots - klingSlots - stockSlots) : 0;
+  const stillSlots = slots - klingSlots - stockSlots - avatarSlots;
   const renderBlocks = Math.ceil(seconds / 30);
   const perClip = clipCredits(clipMode);
   const kling = klingSlots * perClip;
   const stills = stillSlots * STILL_SCENE_CREDITS;
   const stock = stockSlots * STOCK_SLOT_CREDITS;
+  const perAvatar = avatarSlotCredits(slotSeconds);
+  const avatar = avatarSlots * perAvatar;
   const render = renderBlocks * RENDER_CREDITS_PER_30S;
   return {
     seconds,
@@ -273,7 +292,8 @@ export function fullVideoPlan(
     clipCredits: perClip,
     stillCredits: STILL_SCENE_CREDITS,
     stockCredits: STOCK_SLOT_CREDITS,
-    credits: { kling, stills, stock, render, total: kling + stills + stock + render },
+    ...(avatarSlots ? { avatarSlots, avatarCredits: perAvatar } : {}),
+    credits: { kling, stills, stock, render, ...(avatarSlots ? { avatar } : {}), total: kling + stills + stock + avatar + render },
   };
 }
 
@@ -334,11 +354,12 @@ type Normalized = {
   duration: string | undefined;
   voiceEngine: VoiceEngine;
   trialVideo: boolean;
+  presenter: boolean;
 };
 
 function normalize(opts: boolean | PipelineOptions | undefined): Normalized {
   if (typeof opts === "boolean") {
-    return { research: false, voiceover: opts, subtitles: false, video: false, fullVideo: false, footage: "hybrid", clipMode: "image", duration: undefined, voiceEngine: "gemini", trialVideo: false };
+    return { research: false, voiceover: opts, subtitles: false, video: false, fullVideo: false, footage: "hybrid", clipMode: "image", duration: undefined, voiceEngine: "gemini", trialVideo: false, presenter: false };
   }
   const fullVideo = Boolean(opts?.fullVideo) && Boolean(fullVideoPlan(opts?.duration, opts?.footage));
   // A full video always narrates and burns in subtitles.
@@ -354,6 +375,7 @@ function normalize(opts: boolean | PipelineOptions | undefined): Normalized {
     duration: opts?.duration,
     voiceEngine: opts?.voiceEngine === "elevenlabs" ? "elevenlabs" : "gemini",
     trialVideo: fullVideo && Boolean(opts?.trialVideo),
+    presenter: fullVideo && !opts?.trialVideo && Boolean(opts?.presenter),
   };
 }
 
@@ -371,7 +393,7 @@ export function addonCredits(opts: boolean | PipelineOptions = false): number {
 /** Itemised credits for the billing UI and the charge reason. */
 export function creditBreakdown(opts: boolean | PipelineOptions = false): Array<{ id: string; label: string; credits: number }> {
   const n = normalize(opts);
-  const plan = n.fullVideo ? fullVideoPlan(n.duration, n.footage, n.clipMode) : null;
+  const plan = n.fullVideo ? fullVideoPlan(n.duration, n.footage, n.clipMode, n.presenter) : null;
   const items: Array<{ id: string; label: string; credits: number }> = [];
   for (const step of buildPipelineSteps(opts)) {
     if (step.id === "video" && plan) {
@@ -383,6 +405,7 @@ export function creditBreakdown(opts: boolean | PipelineOptions = false): Array<
         });
       if (plan.stillSlots) items.push({ id: "stills", label: `AI scenes × ${plan.stillSlots}`, credits: plan.credits.stills });
       if (plan.stockSlots) items.push({ id: "stock", label: `Stock footage × ${plan.stockSlots}`, credits: plan.credits.stock });
+      if (plan.avatarSlots) items.push({ id: "avatar", label: `Presenter on camera × ${plan.avatarSlots} (lip-synced)`, credits: plan.credits.avatar ?? 0 });
       continue;
     }
     if (step.id === "render" && plan) {
@@ -468,7 +491,7 @@ export function initialStepsState(
   if (state.script) state.script.duration = n.duration ?? null;
   if (state.voiceover) state.voiceover.engine = n.voiceEngine;
   if (n.fullVideo) {
-    const full = fullVideoPlan(n.duration, n.footage, n.clipMode)!;
+    const full = fullVideoPlan(n.duration, n.footage, n.clipMode, n.presenter)!;
     const plan = n.trialVideo
       ? { ...full, clipCredits: 0, stillCredits: 0, stockCredits: 0, credits: { kling: 0, stills: 0, stock: 0, render: 0, total: 0 } }
       : full;
@@ -494,6 +517,7 @@ export function optionsFromSteps(steps: Record<string, unknown> | null | undefin
     clipMode: plan ? (plan.clipMode ?? "text") : undefined,
     duration: plan?.duration ?? ((steps?.script as Record<string, unknown> | undefined)?.duration as string | undefined) ?? undefined,
     trialVideo: Boolean((plan as { trial?: boolean } | null)?.trial),
+    presenter: Number((plan as { avatarSlots?: number } | null)?.avatarSlots) > 0,
     voiceEngine:
       voiceover?.engine === "elevenlabs" ||
       (voiceover?.engine === undefined && typeof voiceover?.voice_id === "string" && !String(voiceover.voice_id).startsWith("gemini:"))

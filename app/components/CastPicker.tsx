@@ -13,6 +13,7 @@ export const MAX_CAST = 3;
 
 export default function CastPicker({
   idea,
+  presenter,
   characters,
   setCharacters,
   castIds,
@@ -25,6 +26,8 @@ export default function CastPicker({
   castIds: string[];
   setCastIds: (fn: (prev: string[]) => string[]) => void;
   className?: string;
+  /** Full videos only: who (if anyone) talks to camera, and what it adds. */
+  presenter?: { id: string | null; set: (id: string | null) => void; credits: number; scenes: number } | null;
 }) {
   const [creating, setCreating] = useState(false);
   const [suggested, setSuggested] = useState<string[]>([]);
@@ -148,6 +151,31 @@ export default function CastPicker({
             >
               <Plus size={14} /> New
             </button>
+          </div>
+        )}
+        {presenter && chosen.length > 0 && presenter.scenes > 0 && (
+          <div className="mt-4 rounded-xl border border-white/10 bg-[#0d0d16] p-3">
+            <p className="text-sm font-medium text-white">On-camera presenter</p>
+            <p className="mt-0.5 text-xs text-gray-500">
+              One character talks to the camera, lip-synced to the narration, in {presenter.scenes} scenes (+{presenter.credits} credits).
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="On-camera presenter">
+              {[{ id: null as string | null, name: "Nobody" }, ...chosen.map((c) => ({ id: c.id as string | null, name: c.name }))].map((o) => {
+                const on = presenter.id === o.id;
+                return (
+                  <button
+                    key={o.id ?? "none"}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => presenter.set(o.id)}
+                    className={`rounded-full border px-3 py-1 text-xs transition ${on ? "border-sky-400/60 bg-sky-500/15 text-white" : "border-white/10 text-gray-300 hover:border-white/25"}`}
+                  >
+                    {o.name}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
         <p className="mt-3 text-xs text-gray-500">

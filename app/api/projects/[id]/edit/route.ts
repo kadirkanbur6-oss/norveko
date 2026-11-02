@@ -65,7 +65,7 @@ function slotView(slot: TimelineSlot) {
     };
   }
   const isMap = Boolean(slot.map?.frames?.length) && !slot.editedStillUrl;
-  const clip = !isMap && (slot.kind === "kling" || slot.kind === "stock") && slot.status === "succeed" && !slot.editedStillUrl;
+  const clip = !isMap && (slot.kind === "kling" || slot.kind === "stock" || slot.kind === "avatar") && slot.status === "succeed" && !slot.editedStillUrl;
   return {
     index: slot.index,
     start: slot.start,
@@ -92,7 +92,7 @@ function currentPicture(slot: TimelineSlot): { url: string; original: boolean; c
       ? slot.url
       : slot.kind === "stock"
         ? slot.posterUrl
-        : slot.kind === "kling" && slot.status === "succeed"
+        : (slot.kind === "kling" || slot.kind === "avatar") && slot.status === "succeed"
           ? slot.imageUrl ?? slot.url
           : slot.imageUrl;
   return url ? { url, original: true } : null;

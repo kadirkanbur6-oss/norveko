@@ -24,6 +24,7 @@ import {
   buildEdit,
   narrationSeconds,
   planSlots,
+  pickPresenterSlots,
   rescaleSlots,
   cutSlots,
   cutCues,
@@ -135,6 +136,8 @@ export interface JobRow {
     sourceUrl?: string | null;
     /** Team seats: the owner whose credits paid for this job (refunds go back there). */
     billedTo?: string | null;
+    /** Talking presenter: the cast member who speaks to camera in a few slots. */
+    presenter?: string | null;
   } | null;
   status: "queued" | "running" | "completed" | "failed";
   current_step: string | null;
@@ -188,6 +191,8 @@ export interface RunnerDeps {
     checkFit?: typeof import("@/lib/pipeline/stock-check").pickFittingFrames;
     /** Translate a finished script (one-click translation). Optional: tests may leave it out. */
     translateScript?: typeof import("@/lib/pipeline/openai").translateScript;
+    /** Talking presenter (lip-sync) on fal. Optional: without it presenter slots become stills. */
+    submitAvatar?: typeof import("@/lib/pipeline/fal-video").submitAvatar;
     /** Draw an animated map scene (lib/pipeline/maps.ts). Optional: without it map slots stay pictures. */
     renderMap?: typeof import("@/lib/pipeline/maps").renderMapFrames;
     /** Stock footage search (Pixabay/Pexels). Optional: without it stock slots become AI stills. */
@@ -409,7 +414,13 @@ export function createPipelineRunner(deps: RunnerDeps) {
         case "stills": {
           const slots = (steps.video?.slots as TimelineSlot[] | undefined) ?? [];
           const perStill = (steps.video?.plan as Partial<FullVideoPlan> | undefined)?.stillCredits;
-          total += slots.filter((x) => x.kind === "still" && !x.stockFallback && x.status === "succeed").length * (typeof perStill === "number" ? perStill : STILL_SCENE_CREDITS);
+          total += slots.filter((x) => x.kind === "still" && !x.stockFallback && !x.avatarFallback && x.status === "succeed").length * (typeof perStill === "number" ? perStill : STILL_SCENE_CREDITS);
+          break;
+        }
+        case "avatar": {
+          const slots = (steps.video?.slots as TimelineSlot[] | undefined) ?? [];
+          const per = Number((steps.video?.plan as Partial<FullVideoPlan> | undefined)?.avatarCredits) || 0;
+          total += slots.filter((x) => x.kind === "avatar" && x.status === "succeed").length * per;
           break;
         }
         case "stock": {
@@ -780,6 +791,24 @@ export function createPipelineRunner(deps: RunnerDeps) {
     await patchStep(job, "video", { refunded: Number(job.steps?.video?.refunded ?? 0) + amount });
   }
 
+  /** Give back presenter slots that couldn't be made (once per slot; tracked in steps.video.refunded). */
+  async function refundAvatars(job: JobRow, count: number): Promise<void> {
+    const per = Number((job.steps?.video?.plan as Partial<FullVideoPlan> | undefined)?.avatarCredits) || 0;
+    const amount = Math.max(0, count) * per;
+    if (amount <= 0) return;
+    const { error } = await db.rpc("add_credits", {
+      p_user_id: payerOf(job),
+      p_amount: amount,
+      p_type: "refund",
+      p_reason: `Refund: presenter on camera (${count} scene${count === 1 ? "" : "s"})`,
+    });
+    if (error) {
+      console.error(`[pipeline] ${job.id} presenter refund failed:`, error);
+      return;
+    }
+    await patchStep(job, "video", { refunded: Number(job.steps?.video?.refunded ?? 0) + amount });
+  }
+
   /**
    * First run of the visuals step for a full video: plan the slots from the
    * script scenes and narration length, submit every Kling slot, and refund
@@ -808,6 +837,20 @@ export function createPipelineRunner(deps: RunnerDeps) {
       plan.stockSlots ?? 0
     );
     if (!slots.length) throw new Error("No scene prompts available for the video.");
+
+    // Talking presenter: a few still slots become lip-synced clips of the chosen cast member.
+    const wantPresenter = Number(plan.avatarSlots) || 0;
+    const presenter = job.options?.presenter;
+    if (wantPresenter > 0) {
+      const picked = presenter && readCast(job.options?.cast).some((c) => c.name === presenter) ? pickPresenterSlots(slots, wantPresenter) : [];
+      for (const i of picked) {
+        const slot = slots.find((x) => x.index === i)!;
+        slot.kind = "avatar";
+        slot.presenter = presenter!;
+        slot.characters = [presenter!];
+      }
+      if (picked.length < wantPresenter) await refundAvatars(job, wantPresenter - picked.length);
+    }
 
     const aspectRatio: "9:16" | "16:9" = orientationOf(job) === "vertical" ? "9:16" : "16:9";
     // Image→video clips are started later, once their still exists (poll).
@@ -944,6 +987,75 @@ export function createPipelineRunner(deps: RunnerDeps) {
         console.warn(`[pipeline] ${job.id} map for slot ${slot.index} failed:`, err instanceof Error ? err.message : err);
         delete slot.map;
       }
+    }
+
+    // 1c) Presenter slots: cut the narration for the slot, send portrait + audio to the
+    // lip-sync model, then collect the clip. Anything that fails becomes an AI still.
+    let avatarRefunds = 0;
+    const presenterSlots = slots.filter((s) => s.kind === "avatar" && (s.status === "pending" || s.status === "processing"));
+    let narration: { bytes: Buffer; ext: string } | null = null;
+    for (const slot of presenterSlots) {
+      const fallback = (why: string) => {
+        console.warn(`[pipeline] ${job.id} presenter slot ${slot.index}: ${why}`);
+        slot.kind = "still";
+        slot.avatarFallback = true;
+        slot.status = "pending";
+        slot.error = why;
+        delete slot.fal;
+        if (!slot.refunded) {
+          slot.refunded = true;
+          avatarRefunds++;
+        }
+        changed = true;
+      };
+      try {
+        if (slot.status === "pending") {
+          if (!providers.submitAvatar) throw new Error("Presenter model unavailable");
+          const member = readCast(job.options?.cast).find((c) => c.name === slot.presenter);
+          if (!member?.refs?.length) throw new Error("Presenter has no reference picture");
+          const { data: signed } = await db.storage.from("characters").createSignedUrl(member.refs[0], 3600);
+          if (!signed?.signedUrl) throw new Error("Presenter picture unavailable");
+          if (!narration) {
+            const path = String(job.steps?.voiceover?.storage_path ?? "");
+            const { data: file, error } = await db.storage.from("voiceovers").download(path);
+            if (error || !file) throw new Error("Narration unavailable");
+            narration = { bytes: Buffer.from(await file.arrayBuffer()), ext: path.split(".").pop() ?? "mp3" };
+          }
+          const { cutAudio } = await import("@/lib/pipeline/audio-cut");
+          const total = Number(job.steps?.voiceover?.duration_seconds) || Number(job.steps?.video?.total_seconds) || 60;
+          const part = cutAudio(narration.bytes, narration.ext, slot.start, slot.start + slot.length, total);
+          const audioPath = `${job.user_id}/${job.id}/presenter-${slot.index}.${narration.ext}`;
+          const up = await db.storage.from("videos").upload(audioPath, part, { contentType: narration.ext === "wav" ? "audio/wav" : "audio/mpeg", upsert: true });
+          if (up.error) throw new Error(up.error.message);
+          const audioUrl = db.storage.from("videos").getPublicUrl(audioPath).data.publicUrl;
+          slot.fal = await providers.submitAvatar({ imageUrl: signed.signedUrl, audioUrl, prompt: `${member.name} speaks to the camera like a documentary presenter. ${slot.prompt}`.slice(0, 900) });
+          slot.status = "processing";
+          slot.submittedAt = new Date(now()).toISOString();
+          changed = true;
+        } else if (slot.fal) {
+          const r = await providers.getImageToVideo(slot.fal);
+          const age = slot.submittedAt ? now() - Date.parse(slot.submittedAt) : 0;
+          if (r.status === "failed") fallback(r.statusMessage ?? "Lip-sync failed");
+          else if (r.status === "succeed" && r.videoUrl) {
+            const buffer = await providers.downloadVideo(r.videoUrl);
+            const storagePath = `${job.user_id}/${job.id}/slot-${slot.index}.mp4`;
+            const { error: uploadError } = await db.storage.from("videos").upload(storagePath, buffer, { contentType: "video/mp4", upsert: true });
+            if (uploadError) throw new Error(uploadError.message);
+            slot.url = db.storage.from("videos").getPublicUrl(storagePath).data.publicUrl;
+            slot.storage_path = storagePath;
+            slot.sourceSeconds = slot.length;
+            slot.status = "succeed";
+            changed = true;
+            await logUsage(job, "video", { usageKey: "fal:kling-ai-avatar", unit: "seconds", quantity: slot.length, durationMs: age, status: "ok" });
+          } else if (age > KLING_CLIP_TIMEOUT_MS) fallback("Lip-sync took too long");
+        }
+      } catch (err) {
+        fallback(err instanceof Error ? err.message : "Presenter failed");
+      }
+    }
+    if (avatarRefunds) {
+      await patchStep(job, "video", { slots });
+      await refundAvatars(job, avatarRefunds);
     }
 
     // 2) Image→video clips: draw the slot's still, then hand it to the video
@@ -2219,6 +2331,7 @@ function getRunner() {
           (await import("@/lib/pipeline/watermark")).brandStoredThumbnail(...args),
         searchStock: async (...args) =>
           (await import("@/lib/pipeline/pexels")).searchStockClips(...args),
+        submitAvatar: async (...args) => (await import("@/lib/pipeline/fal-video")).submitAvatar(...args),
         renderMap: async (...args) => (await import("@/lib/pipeline/maps")).renderMapFrames(...args),
         translateScript: async (...args) =>
           (await import("@/lib/pipeline/openai")).translateScript(...args),

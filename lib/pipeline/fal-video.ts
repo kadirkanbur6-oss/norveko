@@ -90,3 +90,31 @@ export async function getImageToVideo(handle: FalVideoHandle): Promise<FalVideoR
   if (!r.video?.url) return { status: "failed", statusMessage: `no video in result: ${raw.slice(0, 200)}` };
   return { status: "succeed", videoUrl: r.video.url, durationSeconds: 5 };
 }
+
+/** Talking presenter: a portrait + a stretch of narration → lip-synced video. */
+export const FAL_AVATAR_MODEL = process.env.FAL_AVATAR_MODEL || "fal-ai/kling-video/ai-avatar/v2/pro";
+
+export async function submitAvatar(params: { imageUrl: string; audioUrl: string; prompt?: string; model?: string }): Promise<FalVideoHandle> {
+  const model = params.model ?? FAL_AVATAR_MODEL;
+  const res = await fetch(`https://queue.fal.run/${model}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Key ${key()}` },
+    body: JSON.stringify({
+      image_url: params.imageUrl,
+      audio_url: params.audioUrl,
+      prompt: (params.prompt ?? "The person speaks to the camera like a documentary presenter, natural head movement and expressions.").slice(0, 1000),
+    }),
+    cache: "no-store",
+  });
+  const raw = await res.text();
+  let data: { request_id?: string; status_url?: string; response_url?: string } = {};
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    /* surfaced below */
+  }
+  if (!res.ok || !data.request_id || !data.status_url || !data.response_url) {
+    throw new Error(`fal avatar submit failed (HTTP ${res.status}): ${raw.replace(/\s+/g, " ").slice(0, 300)}`);
+  }
+  return { requestId: data.request_id, statusUrl: data.status_url, responseUrl: data.response_url };
+}

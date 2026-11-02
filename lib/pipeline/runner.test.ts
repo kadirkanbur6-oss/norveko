@@ -1046,3 +1046,37 @@ test("from a link: only public web pages, readable article text without menus or
   assert.match(page.text, /20 July 1402 & won by Timur/);
   assert.doesNotMatch(page.text, /Home \| About|var x|© 2026/);
 });
+
+test("talking presenter: priced per slot, placed on still slots clear of the hook, audio cut exactly, rendered silent over the narration", async () => {
+  const { pickPresenterSlots } = await import("./timeline");
+  const { cutWav } = await import("./audio-cut");
+  const { avatarSlotCredits } = await import("./steps");
+  const plain = fullVideoPlan("60 seconds", "hybrid", "image")!;
+  const withPresenter = fullVideoPlan("60 seconds", "hybrid", "image", true)!;
+  assert.equal(withPresenter.avatarSlots, 2);
+  assert.equal(withPresenter.stillSlots, plain.stillSlots - 2);
+  assert.equal(withPresenter.credits.total, plain.credits.total - 2 * plain.stillCredits + 2 * avatarSlotCredits(5));
+  assert.ok(totalPipelineCredits({ fullVideo: true, footage: "hybrid", duration: "60 seconds", presenter: true }) > totalPipelineCredits({ fullVideo: true, footage: "hybrid", duration: "60 seconds" }));
+  assert.equal(fullVideoPlan("10 minutes", "stock", "image", true)!.avatarSlots, 3);
+
+  const slots = Array.from({ length: 12 }, (_, i) => ({ index: i, kind: i % 4 === 0 ? "kling" : "still" })) as any;
+  assert.deepEqual(pickPresenterSlots(slots, 2), [1, 11]);
+  assert.deepEqual(pickPresenterSlots(slots, 3), [1, 6, 11]);
+
+  // 1 s of 16-bit mono at 8 kHz → cut 0.25–0.75 s = 0.5 s of samples.
+  const { pcmToWav } = await import("./gemini-tts");
+  const wav = pcmToWav(Buffer.alloc(16000), 8000);
+  const part = cutWav(wav, 0.25, 0.75);
+  assert.equal(part.length, 44 + 8000);
+  assert.equal(part.readUInt32LE(24), 8000);
+
+  const e = buildEdit({
+    slots: [{ index: 0, sceneNumber: 1, kind: "avatar", start: 0, length: 5, prompt: "p", status: "succeed", url: "https://cdn/talk.mp4", presenter: "Fatih" }] as any,
+    voiceoverUrl: "https://cdn/v.mp3",
+    orientation: "vertical",
+    totalSeconds: 5,
+  }) as any;
+  const clip = e.timeline.tracks.at(-1).clips[0];
+  assert.equal(clip.asset.type, "video");
+  assert.equal(clip.asset.volume, 0, "the narration track carries the voice");
+});

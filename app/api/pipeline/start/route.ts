@@ -188,6 +188,13 @@ export async function POST(req: NextRequest) {
       duration,
       // Narration is priced per engine: built-in Gemini narrators vs ElevenLabs voices.
       voiceEngine: voiceId && !voiceId.startsWith("gemini:") ? "elevenlabs" : "gemini",
+      // Talking presenter: one of the chosen characters speaks to camera in a few scenes.
+      presenter:
+        fullVideoRequested &&
+        body.presenter === true &&
+        typeof body.presenterId === "string" &&
+        Array.isArray(body.characterIds) &&
+        body.characterIds.includes(body.presenterId),
     };
     const resolved = resolvePipelineOptions(options);
 
@@ -390,7 +397,7 @@ export async function POST(req: NextRequest) {
         style,
         duration,
         output_language: outputLanguage,
-        options: { orientation, template, notes, sourceUrl: sourceUrl ?? undefined, billedTo: payer !== user.id ? payer : undefined, visualStyle, captionStyle, brand: brand ?? undefined, cast: cast.length ? cast : undefined, review: resolved.fullVideo && body.review === true ? true : undefined, ...freeMarkers, trialVideo: options.trialVideo === true || undefined, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined, clipMode: resolved.fullVideo ? clipMode : undefined },
+        options: { orientation, template, notes, sourceUrl: sourceUrl ?? undefined, billedTo: payer !== user.id ? payer : undefined, visualStyle, captionStyle, brand: brand ?? undefined, cast: cast.length ? cast : undefined, presenter: resolved.presenter ? cast.find((c) => c.id === body.presenterId)?.name ?? undefined : undefined, review: resolved.fullVideo && body.review === true ? true : undefined, ...freeMarkers, trialVideo: options.trialVideo === true || undefined, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined, clipMode: resolved.fullVideo ? clipMode : undefined },
         status: "running",
         current_step: firstStep.id,
         steps,
