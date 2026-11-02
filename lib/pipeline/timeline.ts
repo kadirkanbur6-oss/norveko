@@ -221,7 +221,9 @@ export function planSlots(
   // Map scenes: their first slot that isn't an AI clip shows the animated map.
   for (const scene of usable) {
     if (!scene.map) continue;
-    const slot = slots.find((x) => x.sceneNumber === scene.sceneNumber && x.kind !== "kling");
+    // Not under the opening hook card when the scene has a later slot.
+    const candidates = slots.filter((x) => x.sceneNumber === scene.sceneNumber && x.kind !== "kling");
+    const slot = candidates.find((x) => x.start >= HOOK_CARD_SECONDS) ?? candidates[0];
     if (slot) slot.map = { spec: scene.map };
   }
   return slots;
@@ -601,15 +603,15 @@ function mapLabels(slot: TimelineSlot, orientation: "vertical" | "horizontal", l
       asset: {
         type: "rich-text",
         text: l.name,
-        font: { family: "Montserrat ExtraBold", size: orientation === "vertical" ? 44 : 36, color: "#FFFFFF", weight: 800 },
-        stroke: { color: "#000000", width: 4, opacity: 1 },
+        font: { family: "Montserrat ExtraBold", size: orientation === "vertical" ? 58 : 46, color: "#FFFFFF", weight: 800 },
+        stroke: { color: "#000000", width: 5, opacity: 1 },
         align: { horizontal: "center", vertical: "middle" },
         animation: { preset: "fadeIn", duration: 0.3 },
       },
       start: r2(start),
       length: r2(Math.max(0.3, end - start)),
-      width: orientation === "vertical" ? 520 : 480,
-      height: 90,
+      width: orientation === "vertical" ? 600 : 560,
+      height: 110,
       position: "center",
       offset: { x: Math.round(Math.min(0.42, Math.max(-0.42, l.x - 0.5)) * 1000) / 1000, y: Math.round((0.5 - (l.y + dy)) * 1000) / 1000 },
     });

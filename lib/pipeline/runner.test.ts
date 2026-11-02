@@ -1003,7 +1003,7 @@ test("timeline editor: a scene replaced with your own/stock video plays that cli
   assert.equal(visuals[1].asset.src, "https://cdn/b.png");
 });
 
-test("map scenes: a scene with places becomes an animated map (frames + labels) on its first slot", async () => {
+test("map scenes: a scene with places becomes an animated map (frames + labels) on one of its slots", async () => {
   const { planSlots } = await import("./timeline");
   const slots = planSlots(
     [
@@ -1012,19 +1012,20 @@ test("map scenes: a scene with places becomes an animated map (frames + labels) 
     ],
     20, 4, 0
   );
-  assert.ok(slots[0].map, "first slot of the map scene");
-  assert.ok(!slots[1].map);
-  slots[0].map!.frames = ["https://cdn/m0.jpg", "https://cdn/m1.jpg", "https://cdn/m2.jpg"];
-  slots[0].map!.labels = [{ name: "Samarkand", x: 0.8, y: 0.5 }, { name: "Ankara", x: 0.2, y: 0.5 }];
+  assert.ok(!slots[0].map, "not under the opening hook card");
+  assert.ok(slots[1].map, "the map scene's next slot");
+  const m = slots[1];
+  m.map!.frames = ["https://cdn/m0.jpg", "https://cdn/m1.jpg", "https://cdn/m2.jpg"];
+  m.map!.labels = [{ name: "Samarkand", x: 0.8, y: 0.5 }, { name: "Ankara", x: 0.2, y: 0.5 }];
   slots.forEach((s) => { s.status = "succeed"; s.url ??= `https://cdn/s${s.index}.png`; });
-  slots[0].url = "https://cdn/m2.jpg";
+  m.url = "https://cdn/m2.jpg";
   const e = buildEdit({ slots, voiceoverUrl: "https://cdn/v.mp3", orientation: "vertical", totalSeconds: 20 }) as any;
   const visuals = e.timeline.tracks.at(-1).clips;
-  assert.deepEqual(visuals.slice(0, 3).map((c: any) => c.asset.src), ["https://cdn/m0.jpg", "https://cdn/m1.jpg", "https://cdn/m2.jpg"]);
-  const total = visuals.slice(0, 3).reduce((n: number, c: any) => n + c.length, 0);
-  assert.ok(Math.abs(total - slots[0].length) < 0.05, "frames fill the slot");
+  assert.deepEqual(visuals.slice(1, 4).map((c: any) => c.asset.src), ["https://cdn/m0.jpg", "https://cdn/m1.jpg", "https://cdn/m2.jpg"]);
+  const total = visuals.slice(1, 4).reduce((n: number, c: any) => n + c.length, 0);
+  assert.ok(Math.abs(total - m.length) < 0.05, "frames fill the slot");
   const labels = e.timeline.tracks.at(-2).clips.map((c: any) => c.asset.text);
-  assert.deepEqual(labels, ["Samarkand", "Ankara"]);
+  assert.deepEqual(labels, ["Samarkand", "Ankara", "MARCH"], "place names, then the title");
 });
 
 test("from a link: only public web pages, readable article text without menus or scripts", async () => {
