@@ -10,6 +10,7 @@ import { PIPELINE_STEP_ORDER, type PipelineStepId } from "@/lib/pipeline/steps";
 import AudioPlayer from "./AudioPlayer";
 import VideoPlayer from "./VideoPlayer";
 import VoiceoverDownloads from "./VoiceoverDownloads";
+import ReviewPanel from "./ReviewPanel";
 import GenerationStage, { type StageStep } from "./GenerationStage";
 import { downloadHref } from "@/lib/download";
 
@@ -68,7 +69,15 @@ interface JobData {
   created_at?: string;
   credits_charged?: number | null;
   credits_refunded?: number | null;
-  options?: { orientation?: "vertical" | "horizontal" } | null;
+  options?: { orientation?: "vertical" | "horizontal"; review?: boolean } | null;
+  duration?: string | null;
+  output_language?: string | null;
+}
+
+/** Paused after the script until the creator approves it. */
+function awaitingReview(job: JobData): boolean {
+  const script = job.steps?.script as (StepInfo & { approved_at?: string }) | undefined;
+  return job.status === "running" && job.options?.review === true && script?.status === "completed" && !script?.approved_at;
 }
 
 interface PipelineResultStep {
@@ -99,7 +108,7 @@ export default function PipelineProgress({
 
   useEffect(() => {
     let active = true;
-    const startedAt = Date.now();
+    let startedAt = Date.now();
     let timer: ReturnType<typeof setTimeout> | undefined;
 
     async function poll() {
@@ -110,6 +119,12 @@ export default function PipelineProgress({
           setJob(data.job);
           onStatusRef.current?.(data.job.status);
           if (data.job.status === "completed" || data.job.status === "failed") {
+            return;
+          }
+          if (awaitingReview(data.job)) {
+            // Waiting for the creator: poll slowly and don't time out.
+            startedAt = Date.now();
+            timer = setTimeout(poll, 15000);
             return;
           }
         }
@@ -165,9 +180,19 @@ export default function PipelineProgress({
 
   return (
     <div className="mt-6 space-y-4">
-      {isRunning && !timedOut && (
+      {awaitingReview(job) ? (
+        <ReviewPanel
+          jobId={job.id}
+          hook={String((scriptStep as { hook?: unknown } | undefined)?.hook ?? "")}
+          script={String((scriptStep as { script?: unknown } | undefined)?.script ?? "")}
+          scenes={((scriptStep as { scenes?: unknown } | undefined)?.scenes as never) ?? []}
+          duration={job.duration}
+          language={job.output_language}
+          onDone={() => setJob((j) => (j ? { ...j, steps: { ...j.steps, script: { ...j.steps.script, approved_at: new Date().toISOString() } as StepInfo } } : j))}
+        />
+      ) : isRunning && !timedOut ? (
         <GenerationStage steps={stageSteps} createdAt={job.created_at} />
-      )}
+      ) : null}
 
       {job.status === "completed" && projectId && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-green-400/20 bg-green-500/10 p-4 text-sm text-green-200">

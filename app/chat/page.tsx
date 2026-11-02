@@ -121,6 +121,8 @@ function ChatContent() {
   const [characters, setCharacters] = useState<Array<{ id: string; name: string; kind: string; previews: string[] }>>([]);
   const [charactersAllowed, setCharactersAllowed] = useState(false);
   const [castIds, setCastIds] = useState<string[]>([]);
+  // Storyboard review: pause after the script so the creator can approve it.
+  const [reviewFirst, setReviewFirst] = useState(true);
   useEffect(() => {
     fetch("/api/characters")
       .then((r) => r.json())
@@ -447,6 +449,7 @@ function ChatContent() {
           captionStyle: captionStyleId,
           useBrandKit: Boolean(brandKit) && useBrandKit,
           characterIds: castIds.filter((id) => characters.some((c) => c.id === id)),
+          review: fullVideoOn && reviewFirst,
         }),
       });
 
@@ -1220,6 +1223,18 @@ function ChatContent() {
                       );
                     })}
                   </div>
+                )}
+
+                {fullVideoOn && (
+                  <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-[#0d0d16] p-3">
+                    <input type="checkbox" checked={reviewFirst} onChange={(e) => setReviewFirst(e.target.checked)} className="mt-0.5 h-4 w-4 accent-sky-500" />
+                    <span className="text-sm">
+                      <span className="font-semibold text-white">Let me review the script first</span>
+                      <span className="block text-xs text-gray-400">
+                        The video pauses after the script so you can fix names, facts and scenes before the voice and visuals are made.
+                      </span>
+                    </span>
+                  </label>
                 )}
 
                 {fullVideoOn && (

@@ -368,7 +368,7 @@ export async function POST(req: NextRequest) {
         style,
         duration,
         output_language: outputLanguage,
-        options: { orientation, template, notes, visualStyle, captionStyle, brand: brand ?? undefined, cast: cast.length ? cast : undefined, ...freeMarkers, trialVideo: options.trialVideo === true || undefined, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined, clipMode: resolved.fullVideo ? clipMode : undefined },
+        options: { orientation, template, notes, visualStyle, captionStyle, brand: brand ?? undefined, cast: cast.length ? cast : undefined, review: resolved.fullVideo && body.review === true ? true : undefined, ...freeMarkers, trialVideo: options.trialVideo === true || undefined, fullVideo: resolved.fullVideo, footage: resolved.fullVideo ? footage : undefined, clipMode: resolved.fullVideo ? clipMode : undefined },
         status: "running",
         current_step: firstStep.id,
         steps,

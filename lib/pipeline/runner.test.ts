@@ -844,3 +844,30 @@ test("stock: clips about something else are dropped by their tags", async () => 
   assert.equal(offTopicTags("mountain, snow, rock, peak", "rock snow mountain"), false);
   assert.equal(offTopicTags("violin, concert", "violin concert hall"), false, "unless the scene asks for it");
 });
+
+test("storyboard review: nothing after the script runs until approved; no kicks; expires after a day", async () => {
+  let clock = Date.parse("2026-11-02T10:00:00Z");
+  const { runner, rows, seedJob, calls, kicked, rpc } = makeRunner({ now: () => clock });
+  const id = seedJob(true, { options: { review: true }, credits_charged: 40 });
+  assert.equal(await runner.runNextStep(id), "advanced"); // script
+  assert.equal(rows.get(id)!.steps.script.status, "completed");
+  assert.equal(await runner.runNextStep(id), "noop", "voiceover waits for approval");
+  assert.ok(!calls.includes("voiceover"));
+  clock += 10 * 60 * 1000;
+  const job = rows.get(id)!;
+  assert.equal(await runner.reconcileJob(job as any), "ok");
+  assert.equal(kicked.length, 0, "no kicks while waiting");
+
+  // Approved → continues.
+  job.steps.script.approved_at = new Date(clock).toISOString();
+  assert.equal(await runner.runNextStep(id), "advanced");
+  assert.ok(calls.includes("voiceover"));
+
+  // A second job that nobody approves is failed (and refunded) after 24 h.
+  const id2 = seedJob(true, { options: { review: true }, credits_charged: 40 });
+  await runner.runNextStep(id2);
+  clock += 25 * 60 * 60 * 1000;
+  assert.equal(await runner.reconcileJob(rows.get(id2)! as any), "failed");
+  assert.equal(rows.get(id2)!.status, "failed");
+  assert.ok(rpc.some(([, a]) => a.p_amount > 0), "unused credits refunded");
+});

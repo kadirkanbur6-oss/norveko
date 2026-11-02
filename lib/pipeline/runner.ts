@@ -80,6 +80,8 @@ export const KICK_RETRY_MS = 90 * 1000;
 export const KLING_CLIP_TIMEOUT_MS = 12 * 60 * 1000;
 /** How often an async step is polled while it is in flight. */
 export const ASYNC_POLL_INTERVAL_MS = 20 * 1000;
+/** How long a job waits for the creator to approve its script. */
+export const REVIEW_TIMEOUT_MS = 24 * 60 * 60 * 1000;
 
 export interface VideoClipState {
   sceneNumber: number;
@@ -119,6 +121,8 @@ export interface JobRow {
     brand?: unknown;
     /** Recurring characters chosen at start (lib/characters/characters.ts). */
     cast?: unknown;
+    /** Pause after the script until the creator approves it (storyboard review). */
+    review?: boolean;
   } | null;
   status: "queued" | "running" | "completed" | "failed";
   current_step: string | null;
@@ -681,6 +685,16 @@ export function createPipelineRunner(deps: RunnerDeps) {
       else refunded = paid;
     }
     await patchStep(job, "research", { status: "skipped", error: reason.slice(0, 300), refunded, brief: null, sources: [] });
+  }
+
+  /** The job waits for the creator to approve the script (options.review). */
+  function awaitingReview(job: Pick<JobRow, "options" | "steps" | "status">): boolean {
+    return (
+      job.status === "running" &&
+      job.options?.review === true &&
+      job.steps?.script?.status === "completed" &&
+      !job.steps?.script?.approved_at
+    );
   }
 
   /** Reference images per cast member, loaded once per runner instance. */
@@ -1386,6 +1400,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
       });
       await patchStep(job, "script", {
         status: "completed",
+        completed_at: new Date(now()).toISOString(),
         hook: result.hook,
         script: result.script,
         scenes: result.scenes,
@@ -1796,6 +1811,8 @@ export function createPipelineRunner(deps: RunnerDeps) {
     if (idx > 0 && !isDone(job.steps?.[order[idx - 1]]?.status)) {
       return "noop";
     }
+    // Storyboard review: nothing after the script runs until the creator approves it.
+    if (awaitingReview(job)) return "noop";
 
     const claimed = await claimStep(job, stepId);
     if (!claimed) return "noop";
@@ -1839,12 +1856,22 @@ export function createPipelineRunner(deps: RunnerDeps) {
    * long, or re-kick it when a pending step was never picked up.
    */
   async function reconcileJob(
-    job: Pick<JobRow, "id" | "status" | "steps" | "created_at">
+    job: Pick<JobRow, "id" | "status" | "steps" | "created_at"> & Partial<Pick<JobRow, "options">>
   ): Promise<ReconcileAction> {
     if (job.status !== "running") return "ok";
 
     const current = now();
     const steps = job.steps ?? {};
+    // Waiting for the creator's approval: no kicks; give up (refunding the
+    // unmade parts) if nobody approves within a day.
+    if (awaitingReview({ status: job.status, steps, options: job.options ?? null })) {
+      const since = Date.parse(String(steps.script?.completed_at ?? steps.script?.started_at ?? job.created_at));
+      if (current - since > REVIEW_TIMEOUT_MS) {
+        await failJob(job.id, "The script wasn't approved within 24 hours, so the video wasn't made. Unused credits were refunded.");
+        return "failed";
+      }
+      return "ok";
+    }
     const order = stepOrder(job);
 
     const runningId = order.find((id) => steps[id]?.status === "running");
@@ -1911,7 +1938,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
   async function reapStuckJobs(): Promise<{ checked: number; failed: number; kicked: number }> {
     const { data } = await db
       .from("pipeline_jobs")
-      .select("id, status, steps, created_at")
+      .select("id, status, steps, created_at, options")
       .eq("status", "running")
       .limit(200);
 
@@ -2016,7 +2043,7 @@ function getRunner() {
 }
 
 export const runNextStep = (jobId: string) => getRunner().runNextStep(jobId);
-export const reconcileJob = (job: Pick<JobRow, "id" | "status" | "steps" | "created_at">) =>
+export const reconcileJob = (job: Pick<JobRow, "id" | "status" | "steps" | "created_at"> & Partial<Pick<JobRow, "options">>) =>
   getRunner().reconcileJob(job);
 export const reapStuckJobs = () => getRunner().reapStuckJobs();
 export const failJob = (jobId: string, message: string) => getRunner().failJob(jobId, message);
