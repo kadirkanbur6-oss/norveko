@@ -16,6 +16,7 @@ const BUCKETS = ["thumbnails", "voiceovers", "videos"] as const;
 const USER_TABLES = [
   "youtube_connections",
   "tiktok_connections",
+  "instagram_connections",
   "series",
   "brand_kits",
   "voice_clones",

@@ -52,6 +52,14 @@ export interface ProjectContent {
   youtube?: ProjectYouTubeUpload;
   /** Server-owned: the last direct post to TikTok (POST /api/projects/[id]/tiktok). */
   tiktok?: ProjectTikTokPost;
+  instagram?: ProjectInstagramPost;
+}
+
+export interface ProjectInstagramPost {
+  mediaId: string;
+  permalink?: string;
+  username?: string;
+  postedAt: string;
 }
 
 export interface ProjectTikTokPost {
@@ -82,7 +90,7 @@ export interface ProjectFeedback {
 }
 
 /** Keys PATCH must carry over from the stored row instead of the request body. */
-export const SERVER_OWNED_CONTENT_KEYS = ["feedback", "scriptMeta", "watermarked", "cleanAssets", "youtube", "tiktok"] as const;
+export const SERVER_OWNED_CONTENT_KEYS = ["feedback", "scriptMeta", "watermarked", "cleanAssets", "youtube", "tiktok", "instagram"] as const;
 
 const LIMITS = {
   hook: 1_000,

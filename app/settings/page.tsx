@@ -13,6 +13,7 @@ import SignOutButton from "../components/SignOutButton";
 import AccountSecurity from "../components/AccountSecurity";
 import YouTubeConnectionCard from "../components/YouTubeConnectionCard";
 import TikTokConnectionCard from "../components/TikTokConnectionCard";
+import InstagramConnectionCard from "../components/InstagramConnectionCard";
 import BrandKitCard from "../components/BrandKitCard";
 import VoiceCloneCard from "../components/VoiceCloneCard";
 import CharactersCard from "../components/CharactersCard";
@@ -248,6 +249,7 @@ export default function SettingsPage() {
                 <>
                   <YouTubeConnectionCard />
                   <TikTokConnectionCard />
+                  <InstagramConnectionCard />
                 </>
               )}
 

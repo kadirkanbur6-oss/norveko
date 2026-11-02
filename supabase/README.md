@@ -179,6 +179,23 @@ create table if not exists public.tiktok_connections (
 alter table public.tiktok_connections enable row level security;
 ```
 
+## Instagram Reels (`instagram_connections`, 2 Nov 2026)
+
+Long-lived Instagram Login token (60 days, refreshed when < 10 days left), AES-256-GCM like YouTube/TikTok. Service role only.
+
+```sql
+create table if not exists public.instagram_connections (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  ig_user_id text not null,
+  username text,
+  avatar_url text,
+  token_enc text not null,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+alter table public.instagram_connections enable row level security;
+```
+
 ## Brand kit (`brand_kits`, 31 Oct 2026)
 
 Written only by `/api/brand` (service role). Logos: `videos/brand/<user>/logo-<uuid>.png`.

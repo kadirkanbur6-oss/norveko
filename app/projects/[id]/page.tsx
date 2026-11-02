@@ -23,6 +23,7 @@ import ScriptFeedback from "../../components/ScriptFeedback";
 import YouTubePublish from "../../components/YouTubePublish";
 import VideoEditor from "../../components/VideoEditor";
 import TikTokPublish from "../../components/TikTokPublish";
+import InstagramPublish from "../../components/InstagramPublish";
 import PageTabs, { useTabParam } from "../../components/PageTabs";
 import RetryRender from "../../components/RetryRender";
 import TranslateVideo from "../../components/TranslateVideo";
@@ -691,6 +692,18 @@ export default function ProjectDetailPage() {
                     ].filter(Boolean).join("\n\n")}
                     initial={(project.content as { tiktok?: Parameters<typeof TikTokPublish>[0]["initial"] } | null)?.tiktok ?? null}
                     videoUrl={normalizedProjectContent.finalVideoUrl}
+                    watermarked={(project.content as { watermarked?: boolean } | null)?.watermarked === true}
+                  />
+                )}
+                {section === "publish" && normalizedProjectContent?.finalVideoUrl && (
+                  <InstagramPublish
+                    projectId={projectId}
+                    defaultCaption={[
+                      normalizedProjectContent.titles[0] ?? project.title,
+                      normalizedProjectContent.tags.slice(0, 8).map((t) => `#${t.replace(/[^\p{L}\p{N}_]/gu, "")}`).filter((t) => t.length > 1).join(" "),
+                    ].filter(Boolean).join("\n\n")}
+                    initial={(project.content as { instagram?: Parameters<typeof InstagramPublish>[0]["initial"] } | null)?.instagram ?? null}
+                    vertical={project.platform !== "YouTube Long-form"}
                     watermarked={(project.content as { watermarked?: boolean } | null)?.watermarked === true}
                   />
                 )}
