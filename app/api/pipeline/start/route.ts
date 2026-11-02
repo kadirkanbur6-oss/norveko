@@ -255,6 +255,7 @@ export async function POST(req: NextRequest) {
       .eq("user_id", user.id)
       .eq("status", "running")
       .is("options->series", null)
+      .is("options->short", null)
       .limit(1)
       .maybeSingle();
 

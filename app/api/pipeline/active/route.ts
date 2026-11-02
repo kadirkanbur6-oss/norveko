@@ -21,6 +21,7 @@ export async function GET() {
     .eq("user_id", user.id)
     .eq("status", "running")
     .is("options->series", null)
+      .is("options->short", null)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();

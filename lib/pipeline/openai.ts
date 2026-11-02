@@ -604,6 +604,65 @@ Rules:
   };
 }
 
+/* ---------------- Shorts from a long video ---------------- */
+
+export interface ShortPick {
+  firstCue: number;
+  lastCue: number;
+  title: string;
+  hook: string;
+}
+
+/**
+ * Pick the moments of a long narration that work on their own as Shorts:
+ * each starts at the beginning of a sentence with something that grabs,
+ * ends on a sentence that lands, and needs no earlier context.
+ */
+export async function pickShortClips(args: {
+  cues: Array<{ start: number; end: number; text: string }>;
+  outputLanguage: string;
+  count: number;
+  minSeconds: number;
+  maxSeconds: number;
+  model: string;
+}): Promise<{ picks: ShortPick[]; usage?: LlmUsage; usageKey?: string }> {
+  const { cues, outputLanguage, count, minSeconds, maxSeconds, model } = args;
+  const language = languagePromptName(outputLanguage);
+  const lines = cues.map((c, i) => `[${i}] ${c.start.toFixed(1)}–${c.end.toFixed(1)} ${c.text.replace(/\s+/g, " ")}`).join("\n");
+  const { data, usage, usageKey } = await chatJSON({
+    model,
+    effort: "low",
+    timeoutMs: 90_000,
+    system: `You are a Shorts editor. From the numbered subtitle lines of a long documentary narration (index, start–end seconds, text), choose up to ${count} non-overlapping moments that work as standalone vertical Shorts. Respond ONLY with JSON {"clips": [{"firstCue": 12, "lastCue": 21, "title": "...", "hook": "..."}]}.
+Rules:
+- Each clip runs from the START of cue firstCue to the END of cue lastCue and must last between ${minSeconds} and ${maxSeconds} seconds (check the timestamps).
+- Start where a sentence starts, with a line that grabs attention on its own; end where a sentence ends, on a line that lands (a reveal, a twist, an open question). Never start mid-sentence or with "and"/"but"/"this"/"he" that needs earlier context.
+- Each clip must make sense to someone who has not seen the long video.
+- Prefer the most surprising, emotional or curious moments; spread them across the video.
+- "title": a YouTube Shorts title in ${language}, ≤ 70 characters, no clickbait lies.
+- "hook": an on-screen line in ${language}, at most 7 words, that makes people stay (true to the clip).`,
+    user: lines,
+  });
+  const raw = Array.isArray((data as { clips?: unknown }).clips) ? ((data as { clips: Array<Record<string, unknown>> }).clips) : [];
+  const picks: ShortPick[] = [];
+  for (const c of raw) {
+    const firstCue = Math.round(Number(c.firstCue));
+    const lastCue = Math.round(Number(c.lastCue));
+    if (!(firstCue >= 0 && lastCue >= firstCue && lastCue < cues.length)) continue;
+    const seconds = cues[lastCue].end - cues[firstCue].start;
+    if (seconds < minSeconds - 2 || seconds > maxSeconds + 1) continue;
+    if (picks.some((p) => firstCue <= p.lastCue && lastCue >= p.firstCue)) continue;
+    picks.push({
+      firstCue,
+      lastCue,
+      title: String(c.title ?? "").trim().slice(0, 100),
+      hook: String(c.hook ?? "").trim().split(/\s+/).slice(0, 7).join(" "),
+    });
+    if (picks.length >= count) break;
+  }
+  return { picks: picks.sort((a, b) => a.firstCue - b.firstCue), usage, usageKey };
+}
+
 /* ---------------- Research (web search before the script) ---------------- */
 
 export interface ResearchSource {

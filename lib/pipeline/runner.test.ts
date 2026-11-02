@@ -29,9 +29,10 @@ import {
   fullVideoPlan,
   STOCK_SLOT_CREDITS,
   translationJob,
+  shortJob,
 } from "./steps";
 import { splitForTts, mergeAlignments, mp3Seconds } from "./tts-chunks";
-import { buildEdit, rescaleSlots } from "./timeline";
+import { buildEdit, rescaleSlots, cutSlots, cutCues } from "./timeline";
 
 type Row = Record<string, any>;
 
@@ -932,4 +933,54 @@ test("translation: reuses the original visuals + thumbnail, translates, new voic
   assert.equal(await runner.runNextStep(id), "completed");
   assert.deepEqual(projects.at(-1)?.content?.titles, ["[Türkçe] title"]);
   assert.deepEqual(rpc, [], "nothing refunded");
+});
+
+test("Shorts: a window of a long video — its narration (trimmed), captions shifted, visuals cut, vertical render; only the render is charged", async () => {
+  const cut = cutSlots([{ index: 0, start: 0, length: 10 }, { index: 1, start: 10, length: 10 }, { index: 2, start: 20, length: 10 }] as any, 15, 28);
+  assert.deepEqual(cut.map((x) => [x.index, x.start, x.length]), [[0, 0, 5], [1, 5, 8]]);
+  assert.deepEqual(cutCues([{ start: 14, end: 16, text: "a" }, { start: 30, end: 31, text: "b" }], 15, 28), [{ start: 0, end: 1, text: "a" }]);
+  const s = shortJob({ seconds: 45 });
+  assert.equal(s.duration, "60 seconds");
+  assert.equal(s.total, s.steps.render.credits);
+  assert.equal(s.steps.script.credits, 0);
+
+  const { runner, rows, seedJob, calls, renderStatus, edit, projects, rpc } = makeRunner();
+  const slots = Array.from({ length: 18 }, (_, i) => ({ index: i, start: i * 10, length: 10, kind: "still", status: "succeed", url: `https://cdn/long-${i}.png`, sceneNumber: i + 1, prompt: "p" }));
+  const cues = Array.from({ length: 60 }, (_, i) => ({ start: i * 3, end: i * 3 + 2.8, text: `Line ${i}.` }));
+  const sourceId = seedJob(false, {
+    status: "completed",
+    steps: {
+      script: { status: "completed", hook: "H", script: "S", titles: ["Long"], description: "D", tags: ["x"], scenes: [], music_mood: "epic" },
+      voiceover: { status: "completed", audio_url: "https://cdn/long.mp3", captions: cues },
+      thumbnail: { status: "completed", image_url: "https://cdn/long-thumb.png" },
+      video: { status: "completed", slots, total_seconds: 180 },
+      render: { status: "completed", video_url: "https://cdn/long.mp4" },
+    },
+  });
+  const id = seedJob(false, {
+    steps: { ...s.steps, script: { ...s.steps.script, queued_at: new Date(0).toISOString() } },
+    credits_charged: s.total,
+    platform: "YouTube Shorts",
+    options: { orientation: "vertical", short: { sourceJobId: sourceId, from: 30, to: 75, title: "The moment", hook: "Nobody expected this" } },
+  });
+  for (let i = 0; i < 4; i++) assert.equal(await runner.runNextStep(id), "advanced");
+  const job = rows.get(id)!;
+  assert.equal(job.steps.script.script.startsWith("Line 10."), true);
+  assert.equal(job.steps.voiceover.trim_from, 30);
+  assert.equal(job.steps.voiceover.captions[0].start, 0);
+  assert.equal(job.steps.video.slots[0].url, "https://cdn/long-3.png");
+  assert.equal(job.steps.video.total_seconds, 45);
+  assert.ok(!calls.some((c) => c === "voiceover" || c === "script" || c.startsWith("still:")), "nothing regenerated");
+  assert.equal(await runner.runNextStep(id), "advanced"); // render submit
+  const e = edit() as any;
+  assert.equal(e.output.size.width, 1080, "vertical");
+  assert.equal(e.timeline.soundtrack, undefined);
+  const voice = e.timeline.tracks.flatMap((t: any) => t.clips).find((c: any) => c.asset.src === "https://cdn/long.mp3");
+  assert.equal(voice.asset.trim, 30);
+  assert.equal(voice.length, 45);
+  assert.equal(e.timeline.tracks[0].clips[0].asset.text, "NOBODY EXPECTED THIS");
+  renderStatus.value = "done";
+  assert.equal(await runner.runNextStep(id), "completed");
+  assert.deepEqual(projects.at(-1)?.content?.titles, ["The moment"]);
+  assert.deepEqual(rpc, []);
 });

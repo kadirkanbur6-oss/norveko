@@ -25,6 +25,8 @@ import {
   narrationSeconds,
   planSlots,
   rescaleSlots,
+  cutSlots,
+  cutCues,
   stockQueryFromPrompt,
   type TimelineSlot,
 } from "@/lib/pipeline/timeline";
@@ -126,6 +128,8 @@ export interface JobRow {
     review?: boolean;
     /** One-click translation: reuse this finished job's visuals, new language + voice. */
     translate?: { sourceJobId: string; fromLanguage?: string | null } | null;
+    /** A Short cut from a long video: this window of the source's narration and visuals. */
+    short?: { sourceJobId: string; from: number; to: number; title?: string; hook?: string } | null;
   } | null;
   status: "queued" | "running" | "completed" | "failed";
   current_step: string | null;
@@ -693,9 +697,9 @@ export function createPipelineRunner(deps: RunnerDeps) {
   }
 
   /** The job waits for the creator to approve the script (options.review). */
-  /** The finished job a translation reuses (same owner only). */
+  /** The finished job a translation or a Short reuses (same owner only). */
   async function translationSource(job: JobRow): Promise<JobRow | null> {
-    const id = job.options?.translate?.sourceJobId;
+    const id = job.options?.translate?.sourceJobId ?? job.options?.short?.sourceJobId;
     if (!id) return null;
     const source = await loadJob(id);
     if (!source || source.user_id !== job.user_id) throw new Error("The original video could not be found.");
@@ -1212,6 +1216,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
       languageCode: languageCode(job.output_language ?? "English"),
       captionStyle: job.options?.captionStyle ?? undefined,
       brand: readSnapshot(job.options?.brand),
+      voiceoverTrim: Number(job.steps?.voiceover?.trim_from) || undefined,
     });
 
     const renderId = await providers.submitRender(edit);
@@ -1368,6 +1373,42 @@ export function createPipelineRunner(deps: RunnerDeps) {
         status: "completed",
         brief: result.brief,
         sources: result.sources,
+      });
+      return;
+    }
+
+    if (job.options?.short && (stepId === "script" || stepId === "voiceover")) {
+      // A Short reuses the long video's narration: the words and audio of its window.
+      const source = await translationSource(job);
+      const { from, to, title, hook } = job.options.short;
+      const cues = cutCues((source!.steps?.voiceover?.captions as CaptionCue[] | undefined) ?? [], from, to);
+      if (stepId === "script") {
+        const src = source!.steps?.script ?? {};
+        const spoken = cues.map((c) => c.text).join(" ").replace(/\s+/g, " ").trim();
+        await patchStep(job, "script", {
+          status: "completed",
+          completed_at: new Date(now()).toISOString(),
+          hook: hook || spoken.split(/(?<=[.!?])\s/)[0] || "",
+          script: spoken,
+          scenes: [],
+          titles: title ? [title] : Array.isArray(src.titles) ? src.titles : [],
+          description: src.description ?? "",
+          tags: Array.isArray(src.tags) ? [...(src.tags as string[]), "shorts"] : ["shorts"],
+          thumbnailIdea: src.thumbnailIdea ?? null,
+          music_mood: src.music_mood ?? null,
+          cut_from: source!.id,
+        });
+        return;
+      }
+      const audio = source!.steps?.voiceover?.audio_url;
+      if (typeof audio !== "string" || !audio) throw new Error("The original narration is missing.");
+      await patchStep(job, "voiceover", {
+        status: "completed",
+        audio_url: audio,
+        trim_from: from,
+        duration_seconds: Math.round((to - from) * 100) / 100,
+        captions: cues,
+        cut_from: source!.id,
       });
       return;
     }
@@ -1620,6 +1661,22 @@ export function createPipelineRunner(deps: RunnerDeps) {
       return;
     }
 
+    if (stepId === "video" && job.options?.short) {
+      const source = await translationSource(job);
+      const { from, to } = job.options.short;
+      const slots = cutSlots((source!.steps?.video?.slots as TimelineSlot[] | undefined) ?? [], from, to);
+      if (!slots.length) throw new Error("The original video has no visuals for this part.");
+      await patchStep(job, "video", {
+        status: "completed",
+        slots,
+        total_seconds: Math.round((to - from) * 100) / 100,
+        stills: {},
+        reused_from: source!.id,
+        submitted_at: new Date(now()).toISOString(),
+      });
+      return;
+    }
+
     if (stepId === "video" && job.options?.translate) {
       // Same pictures and clips, stretched to the new narration's length.
       const source = await translationSource(job);
@@ -1651,7 +1708,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
       return;
     }
 
-    if (stepId === "thumbnail" && job.options?.translate) {
+    if (stepId === "thumbnail" && (job.options?.translate || job.options?.short)) {
       // The picture has no words on it: the original thumbnail is reused.
       const source = await translationSource(job);
       const t = source!.steps?.thumbnail ?? {};

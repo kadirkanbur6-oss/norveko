@@ -135,6 +135,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .eq("user_id", user.id)
     .eq("status", "running")
     .is("options->series", null)
+      .is("options->short", null)
     .limit(1)
     .maybeSingle();
   if (inFlight) {

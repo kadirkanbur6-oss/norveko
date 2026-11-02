@@ -112,6 +112,30 @@ export function narrationSeconds(cues: CaptionCue[] | undefined, fallback: numbe
 }
 
 /**
+ * The part of a finished timeline between `from` and `to` seconds, shifted to
+ * start at 0 (Shorts cut from a long video). Slots cut by the window are
+ * shortened; a stock clip that now starts later skips ahead to match.
+ */
+export function cutSlots(slots: TimelineSlot[], from: number, to: number): TimelineSlot[] {
+  const round = (n: number) => Math.round(n * 100) / 100;
+  return slots
+    .filter((s) => s.start + s.length > from + 0.05 && s.start < to - 0.05)
+    .map((s, i) => {
+      const start = Math.max(s.start, from);
+      const end = Math.min(s.start + s.length, to);
+      return { ...s, index: i, start: round(start - from), length: round(end - start) };
+    });
+}
+
+/** Caption cues between `from` and `to`, shifted to start at 0. */
+export function cutCues(cues: CaptionCue[], from: number, to: number): CaptionCue[] {
+  const round = (n: number) => Math.round(n * 1000) / 1000;
+  return cues
+    .filter((c) => c.end > from && c.start < to)
+    .map((c) => ({ ...c, start: round(Math.max(0, c.start - from)), end: round(Math.min(to, c.end) - from) }));
+}
+
+/**
  * Stretch a finished timeline to a new narration length (translations reuse
  * the original visuals; another language is rarely exactly as long).
  */
@@ -216,6 +240,8 @@ export interface EditInput {
   captionStyle?: string;
   /** Creator's brand kit (lib/brand/kit.ts): logo corner, brand colour, end card. */
   brand?: BrandSnapshot | null;
+  /** Short cut from a long video: play the narration from this second on. */
+  voiceoverTrim?: number;
 }
 
 /** Seconds the hook title stays on screen. */
@@ -462,10 +488,25 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
     });
   }
 
+  // A Short cut from a long video plays a window of the long narration:
+  // the soundtrack slot can't be trimmed, so the voice becomes an audio clip.
+  const trim = input.voiceoverTrim && input.voiceoverTrim > 0 ? Math.round(input.voiceoverTrim * 100) / 100 : 0;
+  if (trim) {
+    tracks.push({
+      clips: [
+        {
+          asset: { type: "audio", src: input.voiceoverUrl, trim, volume: 1, effect: "fadeOut" },
+          start: 0,
+          length: Math.round(totalSeconds * 100) / 100,
+        },
+      ],
+    });
+  }
+
   return {
     timeline: {
       background: "#000000",
-      soundtrack: { src: input.voiceoverUrl, effect: "fadeOut", volume: 1 },
+      ...(trim ? {} : { soundtrack: { src: input.voiceoverUrl, effect: "fadeOut", volume: 1 } }),
       tracks,
     },
     output: {
