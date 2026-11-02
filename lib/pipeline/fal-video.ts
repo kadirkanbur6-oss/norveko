@@ -91,8 +91,12 @@ export async function getImageToVideo(handle: FalVideoHandle): Promise<FalVideoR
   return { status: "succeed", videoUrl: r.video.url, durationSeconds: 5 };
 }
 
-/** Talking presenter: a portrait + a stretch of narration → lip-synced video. */
-export const FAL_AVATAR_MODEL = process.env.FAL_AVATAR_MODEL || "fal-ai/kling-video/ai-avatar/v2/pro";
+/**
+ * Talking presenter: a portrait + a stretch of narration → lip-synced video.
+ * VEED Fabric 1.0 (720p, $0.15/s, ~2 min for 5 s). Kling AI Avatar v2 kept
+ * failing upstream on fal in the 2 Nov test ("downstream service error").
+ */
+export const FAL_AVATAR_MODEL = process.env.FAL_AVATAR_MODEL || "veed/fabric-1.0";
 
 export async function submitAvatar(params: { imageUrl: string; audioUrl: string; prompt?: string; model?: string }): Promise<FalVideoHandle> {
   const model = params.model ?? FAL_AVATAR_MODEL;
@@ -102,6 +106,7 @@ export async function submitAvatar(params: { imageUrl: string; audioUrl: string;
     body: JSON.stringify({
       image_url: params.imageUrl,
       audio_url: params.audioUrl,
+      resolution: "720p",
       prompt: (params.prompt ?? "The person speaks to the camera like a documentary presenter, natural head movement and expressions.").slice(0, 1000),
     }),
     cache: "no-store",

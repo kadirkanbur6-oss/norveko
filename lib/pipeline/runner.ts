@@ -1046,7 +1046,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
             slot.sourceSeconds = slot.length;
             slot.status = "succeed";
             changed = true;
-            await logUsage(job, "video", { usageKey: "fal:kling-ai-avatar", unit: "seconds", quantity: slot.length, durationMs: age, status: "ok" });
+            await logUsage(job, "video", { usageKey: `fal:${process.env.FAL_AVATAR_MODEL || "veed/fabric-1.0"}`, unit: "seconds", quantity: slot.length, durationMs: age, status: "ok" });
           } else if (age > KLING_CLIP_TIMEOUT_MS) fallback("Lip-sync took too long");
         }
       } catch (err) {

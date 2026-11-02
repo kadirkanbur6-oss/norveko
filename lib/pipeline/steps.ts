@@ -240,10 +240,10 @@ export interface FullVideoPlan {
 }
 
 /**
- * Talking presenter (2 Nov 2026): Kling AI Avatar v2 Pro on fal, $0.115 per
+ * Talking presenter (2 Nov 2026): VEED Fabric 1.0 on fal (720p), $0.15 per
  * second of video. Shorts get 2 presenter slots (5 s), long-form 3 (10 s).
  */
-export const AVATAR_COST_PER_SECOND = 0.115;
+export const AVATAR_COST_PER_SECOND = 0.15;
 export function avatarSlotCredits(slotSeconds: number): number {
   return creditsForCost(AVATAR_COST_PER_SECOND * slotSeconds);
 }
