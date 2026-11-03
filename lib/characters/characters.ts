@@ -8,9 +8,9 @@
 // Rules (shown in the UI and enforced here):
 //   • photos: only the creator or a person who gave permission (checkbox,
 //     stored as consent_at); no children (vision check on every photo);
-//   • no living public figures (politicians, athletes, celebrities…): a
-//     model check on the name/description refuses them;
-//   • historical figures must have died long ago (≥ 50 years).
+//   • any real or invented person may be used (3 Nov 2026, Kadir: the creator
+//     decides and takes responsibility) — no children, nothing explicit;
+//   • "historical" = any real, well-known person (portrait from Commons).
 // Reference images live in the PRIVATE "characters" bucket; the pipeline
 // reads them with the service role. Server-only.
 
@@ -126,9 +126,9 @@ async function geminiJson(parts: Array<Record<string, unknown>>): Promise<Record
 }
 
 /**
- * Is this name/description a real, living public figure (or a minor)? Then we
- * refuse: putting real people into invented scenes without their consent is
- * a deepfake. Fails CLOSED for historical figures (a check error refuses).
+ * Only children are refused (3 Nov 2026: living public figures are allowed —
+ * the creator's responsibility). For real/historical people the check also
+ * finds the portrait to start from; a check error there refuses.
  */
 export async function checkIdentity(name: string, description: string, kind: CharacterKind): Promise<{ ok: true; portraitQuery?: string; diedYear?: number } | { ok: false; reason: string }> {
   const r = await geminiJson([
@@ -143,12 +143,8 @@ Answer as JSON: {"realPerson": boolean (does the name/description clearly refer 
   if (!r) return kind === "historical" ? { ok: false, reason: "We couldn't verify this historical figure right now. Please try again." } : { ok: true };
   if (r.minor === true) return { ok: false, reason: "Characters can't be children." };
   if (kind === "historical") {
-    if (r.realPerson !== true) return { ok: false, reason: "We couldn't find this historical figure. Check the spelling, or create an invented character instead." };
-    if (r.living === true) return { ok: false, reason: "Historical figures must have died at least 50 years ago. Living or recently deceased public figures can't be used." };
+    if (r.realPerson !== true) return { ok: false, reason: "We couldn't find this person. Check the spelling, or create an invented character instead." };
     return { ok: true, portraitQuery: typeof r.portraitQuery === "string" ? r.portraitQuery : name, diedYear: typeof r.diedYear === "number" ? r.diedYear : undefined };
-  }
-  if (r.realPerson === true && r.publicFigure === true && r.living === true) {
-    return { ok: false, reason: "Real public figures (politicians, athletes, celebrities) can't be added as characters. Use yourself, someone who agreed, a historical figure or an invented character." };
   }
   return { ok: true };
 }
@@ -169,13 +165,13 @@ export async function checkPhoto(bytes: Buffer, mimeType: string): Promise<{ ok:
 /**
  * Historical people at the heart of a video idea ("Timur and Bayezid at
  * Ankara" → ["Timur", "Bayezid I"]), so the workspace can offer them as
- * characters in one click. Only people who died at least 50 years ago.
+ * characters in one click.
  */
 export async function suggestHistoricalCast(idea: string): Promise<string[]> {
   const r = await geminiJson([
     {
       text: `Video idea: "${idea.slice(0, 600)}"
-List the real historical PEOPLE who are central characters of this idea and who died at least 50 years ago (at most 3; none for places, events, objects, groups or living/recent people). Use the name the way the idea writes it, or the usual name in the idea's language. Answer as JSON: {"people": ["..."]}`,
+List the real, well-known PEOPLE who are central characters of this idea (living or dead; at most 3; none for places, events, objects or groups). Use the name the way the idea writes it, or the usual name in the idea's language. Answer as JSON: {"people": ["..."]}`,
     },
   ]).catch(() => null);
   const people = Array.isArray(r?.people) ? (r!.people as unknown[]) : [];

@@ -100,7 +100,7 @@ export async function POST(req: Request) {
   if (existing.length >= MAX_CHARACTERS) return bad(`You can keep up to ${MAX_CHARACTERS} characters. Delete one first.`);
   if (existing.some((c) => c.name.toLowerCase() === name.toLowerCase())) return bad("You already have a character with this name.");
 
-  // Real public figures, minors and recently deceased people are refused.
+  // Children are refused; any real person is allowed (creator's responsibility).
   let identity: Awaited<ReturnType<typeof checkIdentity>>;
   try {
     identity = await checkIdentity(name, description, kind);

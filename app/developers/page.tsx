@@ -95,7 +95,7 @@ export default function DevelopersPage() {
         <ul>
           <li>A 60-second video usually takes 4–8 minutes; 10-minute videos take longer.</li>
           <li>API videos never pause for script review. Edit, translate or cut Shorts from them in the workspace.</li>
-          <li>The same content rules apply as in the app (no living public figures as characters, no unlawful content).</li>
+          <li>The same content rules apply as in the app (no children as characters, no explicit or unlawful content).</li>
         </ul>
       </section>
     </LegalLayout>

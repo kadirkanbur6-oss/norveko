@@ -18,7 +18,7 @@ export interface CharacterItem {
 const KINDS = [
   { id: "self", label: "Me", hint: "Upload 1–4 clear photos of your face.", icon: User },
   { id: "person", label: "Someone who agreed", hint: "A friend or family member who said yes.", icon: Users },
-  { id: "historical", label: "Historical figure", hint: "Sultans, kings, explorers — we find their portrait.", icon: Crown },
+  { id: "historical", label: "Real or historical person", hint: "Sultans, kings, famous people — we find their portrait.", icon: Crown },
   { id: "fictional", label: "Invented", hint: "Describe a character and we draw them.", icon: Sparkles },
 ] as const;
 
@@ -173,7 +173,7 @@ export function CharacterCreator({
                   ? "These photos are of me, and I'm 18 or older."
                   : kind === "historical"
                     ? "I have the right to use these pictures (for example a public-domain painting or my own photo of it)."
-                    : "This person is 18 or older and agreed to appear in my videos. They are not a public figure."}
+                    : "This person is 18 or older and agreed to appear in my videos. I have the right to use their likeness."}
               </span>
             </label>
           )}
@@ -182,7 +182,7 @@ export function CharacterCreator({
 
       {kind === "historical" && !files.length && (
         <p className="mt-3 text-xs text-gray-500">
-          Without your own picture we use their best-known public-domain portrait and turn it into a lifelike reference. Only people who died at least 50 years ago.
+          Without your own picture we use their best-known public-domain portrait and turn it into a lifelike reference.
         </p>
       )}
 
@@ -196,7 +196,7 @@ export function CharacterCreator({
           {busy ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
           {busy ? (usesPhotos ? "Checking pictures…" : "Creating — about 30 s…") : "Add character"}
         </button>
-        <span className="text-xs text-gray-500">Living public figures (politicians, athletes, celebrities) and children can&apos;t be used.</span>
+        <span className="text-xs text-gray-500">You&apos;re responsible for who you use. Children and explicit content aren&apos;t allowed.</span>
       </div>
       {message && <p className={`mt-3 text-sm ${message.ok ? "text-emerald-300" : "text-red-300"}`}>{message.text}</p>}
     </div>
@@ -239,7 +239,7 @@ export default function CharactersCard() {
         <h2 className="font-semibold">Characters</h2>
       </div>
       <p className="mt-2 text-sm text-gray-400">
-        People who appear in your videos with the same face in every scene — you, someone who agreed, a historical figure or an invented character.
+        People who appear in your videos with the same face in every scene — you, someone who agreed, a real or historical person or an invented character.
       </p>
 
       {items.length > 0 && (

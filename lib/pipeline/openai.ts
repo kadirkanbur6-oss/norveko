@@ -146,7 +146,7 @@ Hook options (pick or sharpen one; it must stay literally true): ${plan.hooks.jo
 /** The creator's recurring characters: who they are and how to use them in scenes. */
 function castBlock(cast: ScriptParams["cast"]): string {
   if (!cast?.length) return "";
-  const lines = cast.map((c) => `  • "${c.name}" — ${c.kind === "historical" ? "historical figure" : c.kind === "fictional" ? "invented character" : c.kind === "self" ? "the creator, appearing in their own video" : "a real person who agreed to appear"}${c.description ? `: ${c.description}` : ""}`);
+  const lines = cast.map((c) => `  • "${c.name}" — ${c.kind === "historical" ? "real or historical person" : c.kind === "fictional" ? "invented character" : c.kind === "self" ? "the creator, appearing in their own video" : "a real person who agreed to appear"}${c.description ? `: ${c.description}` : ""}`);
   return `- CAST: these recurring characters appear in this video; their faces come from reference photos, so the image model needs only their NAME in a videoPrompt plus what they are doing, wearing and where:
 ${lines.join("\n")}
   Put the cast at the heart of the story and in most scenes (always the hook scene). For every scene list the cast members visible on screen in "characters" (exact names, [] if none). Write their action, pose, expression, clothing and setting in the videoPrompt and refer to them by name; do not describe their facial features (the references define them). Never put words in a real person's mouth that they did not say in the research.
