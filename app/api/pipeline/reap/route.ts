@@ -8,7 +8,7 @@ import { isCronRequest } from "@/lib/cron-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function GET(request: Request) {
   if (!isCronRequest(request)) {
@@ -25,5 +25,14 @@ export async function GET(request: Request) {
   } catch (err) {
     console.error("[reap] swaps failed:", err);
   }
-  return NextResponse.json({ success: true, ...summary, swaps });
+  // Skits: one step each.
+  let skits = 0;
+  try {
+    const { advanceSkitJobs } = await import("@/lib/skit/skit");
+    const { adminDb } = await import("@/lib/api-keys");
+    skits = await advanceSkitJobs(adminDb());
+  } catch (err) {
+    console.error("[reap] skits failed:", err);
+  }
+  return NextResponse.json({ success: true, ...summary, swaps, skits });
 }

@@ -337,3 +337,22 @@ export async function forceAlign(audio: Buffer, text: string, mimeType = "audio/
     character_end_times_seconds: chars.map((c) => c.end),
   };
 }
+
+/**
+ * A short sound effect from a text description (skits: applause, cheering,
+ * a gasp…). ElevenLabs Sound Effects, MP3. 0.5–22 s.
+ */
+export async function generateSoundEffect(text: string, seconds?: number): Promise<Buffer> {
+  const res = await fetch(`${ELEVENLABS_BASE_URL}/v1/sound-generation?output_format=mp3_44100_128`, {
+    method: "POST",
+    headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({
+      text: text.slice(0, 400),
+      ...(seconds ? { duration_seconds: Math.min(22, Math.max(0.5, Math.round(seconds * 10) / 10)) } : {}),
+      prompt_influence: 0.4,
+    }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!res.ok) throw new Error(`ElevenLabs sound effect error (${res.status}): ${(await res.text()).slice(0, 200)}`);
+  return Buffer.from(await res.arrayBuffer());
+}

@@ -2,13 +2,16 @@
 
 import { Fragment, Suspense, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Captions, CheckCircle2, Film, Globe, ChevronDown, ChevronUp, Clapperboard, Coins, LayoutTemplate, Palette, Loader2, Mic, Play, Search, Sparkles, Square } from "lucide-react";
+import { Captions, CheckCircle2, Film, Globe, ChevronDown, ChevronUp, Clapperboard, Coins, LayoutTemplate, Palette, Loader2, Mic, Play, Search, Sparkles, Square, MessageCircle, Shuffle, Drama } from "lucide-react";
 import Link from "next/link";
 import Disclosure from "../components/Disclosure";
 import { PageHeader } from "../components/PageTabs";
 import Sidebar from "../components/Sidebar";
 import PipelineProgress from "../components/PipelineProgress";
 import CastPicker from "../components/CastPicker";
+import SkitStudio from "../components/studio/SkitStudio";
+import TalkStudio from "../components/studio/TalkStudio";
+import SwapStudio from "../components/studio/SwapStudio";
 import type { CharacterItem } from "../components/CharactersCard";
 
 import { DURATIONS, LANGUAGE_OPTIONS, LANGUAGES, ORIENTATIONS, PLATFORMS, STYLES, defaultOrientation, languageOption, type OrientationId } from "@/lib/pipeline/options";
@@ -84,11 +87,38 @@ function readDraft(): Partial<Draft> {
   }
 }
 
+type WorkspaceMode = "video" | "skit" | "talk" | "swap";
+
+const MODES: Array<{ id: WorkspaceMode; label: string; hint: string; placeholder: string }> = [
+  { id: "video", label: "Narrated video", hint: "Story, documentary or explainer with a narrator", placeholder: "e.g. The mystery of planes lost in the Bermuda Triangle…" },
+  { id: "skit", label: "Skit with dialogue", hint: "A joke or scene — characters talk to each other", placeholder: "Paste the joke with its lines, e.g.\n- Boss: In 10 years we'll land a man on the sun!\n- Reporter: But the sun is too hot?\n- Boss: We'll land at night!\nMake it like the viral cockroach videos." },
+  { id: "talk", label: "Talking character", hint: "One character says your line to the camera", placeholder: "Write what the character says, e.g. \"Ladies and gentlemen, I am the best coach in this barn!\"" },
+  { id: "swap", label: "Character swap", hint: "Put a character into a clip you upload", placeholder: "Describe the clip or how the character should look (optional)" },
+];
+
+/** Best guess of what the creator wants to make, from what they wrote. */
+function suggestMode(text: string): WorkspaceMode | null {
+  const t = text.trim();
+  if (t.length < 8) return null;
+  if (/\b(swap|face ?swap|deepfake)\b|yüz(ümü|ünü)? (değiştir|koy)|yerine (beni|kendimi)|videoya (beni|kendimi)|klib(e|in)/i.test(t)) return "swap";
+  const dialogue = t.split(/\n/).filter((l) => /^\s*[-–—•]\s*\S/.test(l) || /^\s*[\p{L} .]{2,25}:\s*\S/u.test(l)).length;
+  if (dialogue >= 2 || /skeç|skit|diyalog|dialogue|sketch|videolarına uyarla|videolarına benzet|şaka|fıkra|joke/i.test(t)) return "skit";
+  if (/(söylesin|desin|konuşsun|konuşan|talking (character|head)|says?:|lip ?sync)/i.test(t)) return "talk";
+  return "video";
+}
+
 function ChatContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [idea, setIdea] = useState("");
+  const [mode, setModeState] = useState<WorkspaceMode>("video");
+  const [modeLocked, setModeLocked] = useState(false);
+  const setMode = (m: WorkspaceMode) => {
+    setModeState(m);
+    setModeLocked(true);
+  };
+  const suggested = suggestMode(idea);
   const [notes, setNotes] = useState("");
   const [notesOpen, setNotesOpen] = useState(false);
   // "Make it from a link": an article/blog page becomes the research brief.
@@ -491,6 +521,22 @@ function ChatContent() {
     }
   }
 
+  // ?mode=skit|talk|swap opens that tool; otherwise follow what the creator writes
+  // until they pick a mode themselves (a running video keeps the video mode).
+  const modeParam = searchParams.get("mode");
+  useEffect(() => {
+    if (modeParam === "skit" || modeParam === "talk" || modeParam === "swap" || modeParam === "video") {
+      const t = setTimeout(() => setMode(modeParam), 0);
+      return () => clearTimeout(t);
+    }
+  }, [modeParam]);
+  useEffect(() => {
+    if (modeLocked || jobId || !suggested) return;
+    const t = setTimeout(() => setModeState(suggested), 600);
+    return () => clearTimeout(t);
+  }, [suggested, modeLocked, jobId]);
+  const modeInfo = MODES.find((m) => m.id === mode)!;
+
   const selectClass =
     "mt-2 w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-white outline-none focus:border-blue-400/50";
 
@@ -500,7 +546,62 @@ function ChatContent() {
 
       <main id="main-content" className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
         <div className="mx-auto max-w-4xl">
-          <PageHeader title="AI Workspace" subtitle="Generate a full content package with thumbnail and optional voiceover" />
+          <PageHeader title="AI Workspace" subtitle="Write what you want to make — narrated videos, skits, talking characters or swaps" />
+
+          <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+            <label htmlFor="workspace-idea" className="text-sm text-gray-400">
+              What do you want to make?
+            </label>
+            <textarea
+              id="workspace-idea"
+              value={idea}
+              onChange={(e) => setIdea(e.target.value)}
+              placeholder={modeInfo.placeholder}
+              rows={mode === "skit" ? 6 : 3}
+              className="mt-2 w-full resize-y rounded-xl border border-white/10 bg-white/[0.03] p-4 text-white placeholder-gray-500 outline-none focus:border-blue-400/50"
+            />
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="What to make">
+              {MODES.map((m) => {
+                const on = mode === m.id;
+                const Icon = m.id === "video" ? Film : m.id === "skit" ? Drama : m.id === "talk" ? MessageCircle : Shuffle;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => setMode(m.id)}
+                    className={`relative rounded-xl border p-3 text-left transition ${on ? "border-blue-400/60 bg-blue-500/10" : "border-white/10 hover:border-white/25"}`}
+                  >
+                    <Icon size={16} className={on ? "text-blue-300" : "text-gray-400"} aria-hidden />
+                    <span className="mt-1.5 block text-sm font-semibold text-white">{m.label}</span>
+                    <span className="mt-0.5 block text-[11px] leading-snug text-gray-500">{m.hint}</span>
+                    {suggested === m.id && !on && (
+                      <span className="absolute right-2 top-2 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300">Suggested</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {mode === "skit" && (
+            <div className="mt-5">
+              <SkitStudio text={idea} />
+            </div>
+          )}
+          {mode === "talk" && (
+            <div className="mt-5">
+              <TalkStudio text={idea} />
+            </div>
+          )}
+          {mode === "swap" && (
+            <div className="mt-5">
+              <SwapStudio />
+            </div>
+          )}
+
+          {mode === "video" && (<>
 
           {jobId && !formOpen && (
             <button
@@ -537,14 +638,6 @@ function ChatContent() {
                 </button>
               </div>
             )}
-            <label className="text-sm text-gray-400">Video Idea</label>
-            <textarea
-              value={idea}
-              onChange={(e) => setIdea(e.target.value)}
-              placeholder="e.g. The mystery of planes lost in the Bermuda Triangle..."
-              rows={3}
-              className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] p-4 text-white placeholder-gray-500 outline-none focus:border-blue-400/50"
-            />
 
             {sourceOpen ? (
               <div className="mt-3">
@@ -1474,6 +1567,7 @@ function ChatContent() {
               </button>
             </div>
           )}
+          </>)}
         </div>
       </main>
     </div>

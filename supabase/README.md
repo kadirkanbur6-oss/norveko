@@ -290,6 +290,35 @@ alter table public.swap_jobs
   add column if not exists image_url text;
 ```
 
+## Skits (`skit_jobs`, 3 Nov 2026)
+
+`lib/skit/skit.ts`, `/api/skit`. Files: `videos/<user>/skit/<id>/…`. Service role only.
+
+```sql
+create table if not exists public.skit_jobs (
+  id uuid primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  billed_to uuid,
+  status text not null default 'draft',
+  phase text not null default 'cast',
+  script text not null,
+  plan jsonb not null,
+  vertical boolean not null default true,
+  credits int not null default 0,
+  refunded boolean not null default false,
+  render_id text,
+  output_url text,
+  project_id uuid,
+  error text,
+  lease_until timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists skit_jobs_user_idx on public.skit_jobs(user_id, created_at desc);
+create index if not exists skit_jobs_running_idx on public.skit_jobs(status) where status = 'running';
+alter table public.skit_jobs enable row level security;
+```
+
 ## Brand kit (`brand_kits`, 31 Oct 2026)
 
 Written only by `/api/brand` (service role). Logos: `videos/brand/<user>/logo-<uuid>.png`.
