@@ -121,6 +121,28 @@ export async function POST(req: Request) {
         });
         return NextResponse.json({ success: res.ok, status: res.status, body: (await res.text()).slice(0, 1500), audioUrl });
       }
+      // Any fal queue model with a raw input (model experiments).
+      case "fal-submit": {
+        const model = String(body.model ?? "");
+        if (!/^[a-z0-9-]+\/[a-z0-9./-]+$/i.test(model)) return NextResponse.json({ success: false, error: "bad model id" }, { status: 400 });
+        let input = (body.input ?? {}) as Record<string, unknown>;
+        // Character pictures live in a private bucket: sign them on the way out.
+        if (typeof body.characterId === "string") {
+          const db = admin();
+          const { data: c } = await db.from("characters").select("reference_paths").eq("id", body.characterId).eq("user_id", user.id).maybeSingle();
+          const path = (c?.reference_paths as string[] | undefined)?.[0];
+          if (path) {
+            const { data: signed } = await db.storage.from("characters").createSignedUrl(path, 3600);
+            input = { ...input, image_url: signed?.signedUrl };
+          }
+        }
+        const res = await fetch(`https://queue.fal.run/${model}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Key ${process.env.FAL_KEY}` },
+          body: JSON.stringify(input),
+        });
+        return NextResponse.json({ success: res.ok, status: res.status, body: (await res.text()).slice(0, 2000) });
+      }
       case "fal-raw": {
         const url = String(body.url ?? "");
         if (!/^https:\/\/queue\.fal\.run\//.test(url)) return NextResponse.json({ success: false, error: "fal queue urls only" }, { status: 400 });
