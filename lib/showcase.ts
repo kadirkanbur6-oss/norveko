@@ -81,9 +81,9 @@ function storageBase(): string | null {
   return url ? `${url}/storage/v1/object/public` : null;
 }
 
+/** Finished videos moved to Cloudflare R2 on 3 Nov 2026 (served through our signed-URL route). */
 export function showcaseVideoUrl(v: ShowcaseVideo): string | null {
-  const base = storageBase();
-  return base ? `${base}/videos/${v.videoPath}` : null;
+  return `/media/videos/r2/${v.videoPath}`;
 }
 
 export function showcaseThumbnailUrl(v: ShowcaseVideo): string | null {
