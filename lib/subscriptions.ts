@@ -1,7 +1,8 @@
 // lib/subscriptions.ts
 // Subscription plans (1 Nov 2026, Kadir): two tiers × weekly / monthly / yearly.
-// A plan adds credits to the balance every period (credits never expire, like
-// packs). Yearly plans are billed once a year but grant their credits MONTHLY
+// A plan adds credits to the balance every period; they are valid for that
+// period only and don't roll over (3 Nov 2026, Kadir — see
+// expireSubscriptionCredits). Pack credits never expire. Yearly plans are billed once a year but grant their credits MONTHLY
 // (runSubscriptionGrants, hourly cron). One-time credit packs stay as top-ups.
 //
 // Paddle price IDs come from env (production) with sandbox fallbacks:

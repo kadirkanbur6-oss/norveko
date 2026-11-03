@@ -30,7 +30,7 @@ function buys(p: SubscriptionPlan): string[] {
       ? `≈ ${v60} finished 60 s video${v60 === 1 ? "" : "s"} a ${per} (or ${v30} × 30 s)`
       : `≈ ${v30} finished 30 s video${v30 === 1 ? "" : "s"} a ${per}`,
     `≈ ${Math.floor(p.credits / JOB_COSTS.package60)} narrated content packages a ${per}`,
-    "Unused credits roll over — they never expire",
+    "Fresh credits every period — unused plan credits don't roll over",
     "Cancel anytime",
   ];
 }

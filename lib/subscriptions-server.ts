@@ -10,12 +10,84 @@
 //   subscription.* → syncSubscription(): status, period end, scheduled cancel.
 //   refund → stopYearlyGrants().
 //
+// Plan credits don't roll over (3 Nov 2026, Kadir): every grant is valid for one
+// period (a week, or a month — yearly plans grant monthly). Plan credits are
+// spent before pack credits, so when a grant expires, whatever is left of it
+// (grant − net spending since it arrived, never more than the balance) is
+// removed with an "expire" transaction. One-time packs never expire.
+//
 // Tables (SQL in supabase/README.md, service role only):
 //   subscriptions       (paddle_subscription_id pk, user_id, plan_id, status, …)
 //   subscription_grants (grant_key pk, user_id, paddle_subscription_id, credits)
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addOneMonth, getSubscriptionPlan, getSubscriptionPlanByPriceId, type SubscriptionPlan } from "./subscriptions";
+
+/** When a grant of this plan, made at `from`, stops being usable. */
+export function grantExpiry(plan: SubscriptionPlan, from: Date): Date {
+  return plan.period === "week" ? new Date(from.getTime() + 7 * 86400_000) : addOneMonth(from);
+}
+
+/**
+ * Remove the unused part of every plan grant whose period has ended.
+ * Idempotent: each grant is expired once (expired_at). Returns credits removed.
+ */
+export async function expireSubscriptionCredits(db: SupabaseClient, now = new Date(), userId?: string): Promise<number> {
+  let q = db
+    .from("subscription_grants")
+    .select("grant_key, user_id, credits, created_at, expires_at")
+    .is("expired_at", null)
+    .not("expires_at", "is", null)
+    .lte("expires_at", now.toISOString())
+    .order("expires_at")
+    .limit(500);
+  if (userId) q = q.eq("user_id", userId);
+  const { data, error } = await q;
+  if (error) {
+    console.warn("[subscriptions] expiry lookup failed:", error.message);
+    return 0;
+  }
+  let removed = 0;
+  for (const g of (data ?? []) as Array<{ grant_key: string; user_id: string; credits: number; created_at: string; expires_at: string }>) {
+    // Claim first so two runs never expire the same grant twice.
+    const { data: claimed } = await db
+      .from("subscription_grants")
+      .update({ expired_at: now.toISOString(), expired_credits: 0 })
+      .eq("grant_key", g.grant_key)
+      .is("expired_at", null)
+      .select("grant_key")
+      .maybeSingle();
+    if (!claimed) continue;
+    const { data: tx } = await db
+      .from("credit_transactions")
+      .select("amount, type")
+      .eq("user_id", g.user_id)
+      .in("type", ["spend", "refund"])
+      .gte("created_at", g.created_at)
+      .lt("created_at", g.expires_at);
+    const spent = -((tx ?? []) as Array<{ amount: number }>).reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const { data: bal } = await db.from("user_credits").select("credits").eq("user_id", g.user_id).maybeSingle();
+    const balance = Number(bal?.credits ?? 0);
+    const amount = Math.max(0, Math.min(g.credits - Math.max(0, spent), balance));
+    if (amount > 0) {
+      const { error: expErr } = await db.rpc("add_credits", {
+        p_user_id: g.user_id,
+        p_amount: -amount,
+        p_type: "expire",
+        p_reason: "Unused plan credits expired (plan credits don't roll over)",
+      });
+      if (expErr) {
+        // Try again next run.
+        await db.from("subscription_grants").update({ expired_at: null }).eq("grant_key", g.grant_key);
+        console.error(`[subscriptions] expiring ${g.grant_key} failed:`, expErr.message);
+        continue;
+      }
+      removed += amount;
+    }
+    await db.from("subscription_grants").update({ expired_credits: amount }).eq("grant_key", g.grant_key);
+  }
+  return removed;
+}
 
 export interface SubscriptionRow {
   paddle_subscription_id: string;
@@ -118,6 +190,9 @@ export async function grantForTransaction(
     if (insertError.code === "23505") return { status: "duplicate" };
     throw new Error(insertError.message);
   }
+  const billedAt = txn.billedAt ? new Date(txn.billedAt) : new Date();
+  // The last period's leftover plan credits go before this period's arrive.
+  await expireSubscriptionCredits(db, new Date(Math.max(Date.now(), billedAt.getTime())), userId);
   try {
     await addCredits(db, userId, plan.credits, `${plan.name} ${plan.period}ly plan (${txn.id})`);
   } catch (err) {
@@ -130,6 +205,7 @@ export async function grantForTransaction(
     user_id: userId,
     paddle_subscription_id: txn.subscriptionId,
     credits: plan.credits,
+    expires_at: grantExpiry(plan, billedAt).toISOString(),
   });
 
   const billed = txn.billedAt ? new Date(txn.billedAt) : new Date();
@@ -167,11 +243,13 @@ export async function runSubscriptionGrants(db: SupabaseClient, now = new Date()
     let left = row.year_grants_left;
     while (left > 0 && due.getTime() <= now.getTime()) {
       const key = `${row.paddle_subscription_id}:${due.toISOString().slice(0, 10)}`;
+      await expireSubscriptionCredits(db, due, row.user_id);
       const { error } = await db.from("subscription_grants").insert({
         grant_key: key,
         user_id: row.user_id,
         paddle_subscription_id: row.paddle_subscription_id,
         credits: plan.credits,
+        expires_at: addOneMonth(due).toISOString(),
       });
       if (!error) {
         try {

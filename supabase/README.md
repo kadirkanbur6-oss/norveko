@@ -343,6 +343,12 @@ create table if not exists public.subscription_grants (
 );
 alter table public.subscriptions enable row level security;
 alter table public.subscription_grants enable row level security;
+
+-- 3 Nov 2026: plan credits don't roll over (expireSubscriptionCredits).
+alter table public.subscription_grants add column if not exists expires_at timestamptz;
+alter table public.subscription_grants add column if not exists expired_at timestamptz;
+alter table public.subscription_grants add column if not exists expired_credits int;
+create index if not exists subscription_grants_expiry_idx on public.subscription_grants (expires_at) where expired_at is null;
 ```
 
 ## Series autopilot (`series`, `series_episodes`, 31 Oct 2026)

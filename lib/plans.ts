@@ -73,7 +73,7 @@ export const PAID_INCLUDES = [
   "Web research with sources + automatic fact check",
   "29 languages, Norveko narrators and native voice artists",
   "Word-timed subtitles (.srt / .vtt) and story-matched music",
-  "Credits never expire — failed steps are refunded automatically",
+  "Pack credits never expire — failed steps are refunded automatically",
 ];
 
 /**
@@ -101,6 +101,6 @@ export const COMPARISON: Array<{ feature: string; detail: string }> = [
   { feature: "Clips animated from each scene's image", detail: "Visuals match what the narrator says" },
   { feature: "Music chosen by the story's tone", detail: "Licensed tracks, credit added for you" },
   { feature: "Word-timed, language-aware subtitles", detail: "Correct Turkish İ/ı, exportable .srt/.vtt" },
-  { feature: "Plans or pay as you go, credits never expire", detail: "Weekly, monthly or yearly — cancel anytime" },
+  { feature: "Plans or pay as you go, pack credits never expire", detail: "Weekly, monthly or yearly — cancel anytime" },
   { feature: "Automatic refunds on failed steps", detail: "You only pay for what was delivered" },
 ];

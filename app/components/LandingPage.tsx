@@ -170,7 +170,7 @@ const FAQS = [
   },
   {
     q: "How does the credit system work?",
-    a: `You get 50 free credits on signup. A 60-second content package with thumbnail costs ${scriptCredits("60 seconds") + THUMBNAIL_CREDITS} credits; web research adds ${RESEARCH_CREDITS}, a Norveko narrator ${VOICE_CREDITS_PER_MIN.gemini} per minute (ElevenLabs voices ${VOICE_CREDITS_PER_MIN.elevenlabs} per minute) and subtitles ${SUBTITLES_CREDITS_PER_MIN} per minute. The exact total is shown before you click Generate. Credits never expire, and if a step fails, the unfinished steps are refunded automatically while everything already produced is kept in your project.`,
+    a: `You get 50 free credits on signup. A 60-second content package with thumbnail costs ${scriptCredits("60 seconds") + THUMBNAIL_CREDITS} credits; web research adds ${RESEARCH_CREDITS}, a Norveko narrator ${VOICE_CREDITS_PER_MIN.gemini} per minute (ElevenLabs voices ${VOICE_CREDITS_PER_MIN.elevenlabs} per minute) and subtitles ${SUBTITLES_CREDITS_PER_MIN} per minute. The exact total is shown before you click Generate. Pack credits never expire (plan credits refresh each period), and if a step fails, the unfinished steps are refunded automatically while everything already produced is kept in your project.`,
   },
 ];
 
@@ -340,7 +340,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
         <Reveal>
           <div className="mx-auto grid max-w-6xl gap-3 px-4 sm:grid-cols-3 sm:px-6">
             {[
-              ["Credits never expire", "Buy once, use whenever. No monthly reset."],
+              ["Pack credits never expire", "Buy once, use whenever. No monthly reset."],
               ["Failed = refunded", "If a step fails, its credits come back automatically and the finished parts are kept."],
               ["See the cost first", "The exact credit price is shown before you click Generate."],
             ].map(([title, desc]) => (
@@ -395,7 +395,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           <SectionTitle
             eyebrow="Pricing"
             title="Start free. Scale when you're ready."
-            subtitle={`Every account starts with ${FREE_TRIAL_CREDITS} free credits${TRIAL_VIDEO_PUBLIC ? " and one free 30-second video" : ""}. Pick a weekly, monthly or yearly plan — or pay as you go. Credits never expire.`}
+            subtitle={`Every account starts with ${FREE_TRIAL_CREDITS} free credits${TRIAL_VIDEO_PUBLIC ? " and one free 30-second video" : ""}. Pick a weekly, monthly or yearly plan — or pay as you go with packs that never expire.`}
           />
         </Reveal>
 

@@ -25,6 +25,9 @@ export async function GET(request: Request) {
     const { runSubscriptionGrants } = await import("@/lib/subscriptions-server");
     const { adminDb } = await import("@/lib/series/run");
     grants = (await runSubscriptionGrants(adminDb())).granted;
+    // Plan credits that weren't used in their period don't roll over.
+    const { expireSubscriptionCredits } = await import("@/lib/subscriptions-server");
+    await expireSubscriptionCredits(adminDb());
   } catch (err) {
     console.error("[tick] subscription grants failed:", err);
   }

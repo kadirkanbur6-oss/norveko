@@ -61,8 +61,11 @@ export default function TermsPage() {
           balance; yearly plans are billed once a year and add their credits
           every month. You can cancel at any time from the Billing page
           (&quot;Manage plan&quot;); the cancellation takes effect at the end of
-          the current billing period and you keep the credits already added.
-          Unused credits do not expire.
+          the current billing period. Plan credits are valid for the period
+          they were added for (one week, or one month — also on yearly plans)
+          and are used before any pack credits; plan credits left unused at
+          the end of that period expire and do not roll over. Credits from
+          one-time packages do not expire.
         </p>
         <p>
           Payments are processed by our merchant of record, Paddle.com Market
@@ -73,8 +76,9 @@ export default function TermsPage() {
         <ul>
           <li>Credits have no cash value and cannot be transferred or resold.</li>
           <li>
-            Credits do not expire while your account remains active, unless
-            otherwise stated at the time of purchase.
+            Credits from one-time packages do not expire while your account
+            remains active. Subscription plan credits expire at the end of the
+            period they were added for, as described above.
           </li>
           <li>
             If an AI generation fails due to a technical error on our side, the
