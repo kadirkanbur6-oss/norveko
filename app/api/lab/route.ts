@@ -209,6 +209,13 @@ export async function POST(req: Request) {
         }
         return NextResponse.json({ success: true, moved, failed, remaining: found.length - moved.length, totalMbBefore: totalMb });
       }
+      // Prices of fal endpoints (unit + unit price) from fal's pricing API.
+      case "fal-price": {
+        const ids = (Array.isArray(body.ids) ? body.ids : []).filter((x): x is string => typeof x === "string" && /^[a-z0-9-]+\/[a-z0-9./-]+$/i.test(x)).slice(0, 20);
+        const qs = ids.map((id) => `endpoint_id=${encodeURIComponent(id)}`).join("&");
+        const res = await fetch(`https://api.fal.ai/v1/models/pricing?${qs}`, { headers: { Authorization: `Key ${process.env.FAL_KEY}` } });
+        return NextResponse.json({ success: res.ok, status: res.status, body: (await res.text()).slice(0, 4000) });
+      }
       case "fal-raw": {
         const url = String(body.url ?? "");
         if (!/^https:\/\/queue\.fal\.run\//.test(url)) return NextResponse.json({ success: false, error: "fal queue urls only" }, { status: 400 });
