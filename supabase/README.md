@@ -246,6 +246,39 @@ alter table public.team_members enable row level security;
 alter table public.team_invites enable row level security;
 ```
 
+## Character swap (`swap_jobs`, 3 Nov 2026)
+
+`lib/swap/swap.ts`. Source clips: `videos/<user>/swap/src-<uuid>.mp4|mov`. Service role only.
+
+```sql
+create table if not exists public.swap_jobs (
+  id uuid primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  billed_to uuid,
+  status text not null default 'running',
+  phase text not null default 'swap',
+  source_path text not null,
+  source_seconds numeric not null,
+  vertical boolean not null default true,
+  character_id uuid,
+  character_name text not null,
+  prompt text,
+  fal jsonb,
+  swapped_url text,
+  render_id text,
+  output_url text,
+  project_id uuid,
+  credits int not null default 0,
+  refunded boolean not null default false,
+  error text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists swap_jobs_user_idx on public.swap_jobs(user_id, created_at desc);
+create index if not exists swap_jobs_running_idx on public.swap_jobs(status) where status = 'running';
+alter table public.swap_jobs enable row level security;
+```
+
 ## Brand kit (`brand_kits`, 31 Oct 2026)
 
 Written only by `/api/brand` (service role). Logos: `videos/brand/<user>/logo-<uuid>.png`.

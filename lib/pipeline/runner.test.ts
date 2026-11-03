@@ -1080,3 +1080,37 @@ test("talking presenter: priced per slot, placed on still slots clear of the hoo
   assert.equal(clip.asset.type, "video");
   assert.equal(clip.asset.volume, 0, "the narration track carries the voice");
 });
+
+test("character swap: MP4 length, frames and rotation without ffmpeg; priced per 16 frames", async () => {
+  const { readMp4 } = await import("../swap/mp4");
+  // Minimal moov: mvhd (timescale 1000, 4000 = 4 s) + one video trak (720×1280, 120 samples).
+  const box = (type: string, ...parts: Buffer[]) => {
+    const body = Buffer.concat(parts);
+    const head = Buffer.alloc(8);
+    head.writeUInt32BE(8 + body.length, 0);
+    head.write(type, 4, "latin1");
+    return Buffer.concat([head, body]);
+  };
+  const mvhd = Buffer.alloc(100);
+  mvhd.writeUInt32BE(1000, 12);
+  mvhd.writeUInt32BE(4000, 16);
+  const tkhd = Buffer.alloc(84);
+  tkhd.writeInt32BE(0x10000, 40); // identity matrix a
+  tkhd.writeInt32BE(0x10000, 56); // d
+  tkhd.writeUInt32BE(720 * 65536, 76);
+  tkhd.writeUInt32BE(1280 * 65536, 80);
+  const hdlr = Buffer.alloc(24);
+  hdlr.write("vide", 8, "latin1");
+  const stsz = Buffer.alloc(12);
+  stsz.writeUInt32BE(120, 8);
+  const mp4 = Buffer.concat([
+    box("ftyp", Buffer.from("isom0000")),
+    box("moov", box("mvhd", mvhd), box("trak", box("tkhd", tkhd), box("mdia", box("hdlr", hdlr), box("minf", box("stbl", box("stsz", stsz)))))),
+  ]);
+  const info = readMp4(mp4);
+  assert.equal(info.seconds, 4);
+  assert.equal(info.frames, 120);
+  assert.equal(info.fps, 30);
+  assert.equal(info.vertical, true);
+  assert.throws(() => readMp4(Buffer.from("not a video at all")));
+});

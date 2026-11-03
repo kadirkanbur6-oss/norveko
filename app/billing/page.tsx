@@ -273,7 +273,7 @@ export default function BillingPage() {
               {tab === "plans" && (
               <>
               <p className="mt-6 text-sm text-gray-400">
-                Fresh credits every week or month, used before your pack credits. Unused plan credits don't roll over. Cancel anytime.
+                Fresh credits every week or month, used before your pack credits. Unused plan credits don&apos;t roll over. Cancel anytime.
               </p>
               {subscription && (
                 <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-green-400/25 bg-green-500/[0.06] p-5 sm:flex-row sm:items-center sm:justify-between">

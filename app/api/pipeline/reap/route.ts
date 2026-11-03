@@ -16,5 +16,14 @@ export async function GET(request: Request) {
   }
 
   const summary = await reapStuckJobs();
-  return NextResponse.json({ success: true, ...summary });
+  // Character swaps move along on the same heartbeat.
+  let swaps = 0;
+  try {
+    const { advanceSwapJobs } = await import("@/lib/swap/swap");
+    const { adminDb } = await import("@/lib/api-keys");
+    swaps = await advanceSwapJobs(adminDb());
+  } catch (err) {
+    console.error("[reap] swaps failed:", err);
+  }
+  return NextResponse.json({ success: true, ...summary, swaps });
 }

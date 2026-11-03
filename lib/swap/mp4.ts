@@ -1,0 +1,88 @@
+// lib/swap/mp4.ts
+// Just enough ISO-BMFF (MP4 / MOV) reading to price and frame a character
+// swap without ffmpeg: duration, video frame count, size and rotation.
+
+export interface Mp4Info {
+  seconds: number;
+  frames: number;
+  fps: number;
+  width: number;
+  height: number;
+  /** Width/height as shown (rotation applied). */
+  vertical: boolean;
+}
+
+type Box = { type: string; start: number; end: number; body: number };
+
+function* boxes(buf: Buffer, start: number, end: number): Generator<Box> {
+  let pos = start;
+  while (pos + 8 <= end) {
+    let size = buf.readUInt32BE(pos);
+    const type = buf.toString("latin1", pos + 4, pos + 8);
+    let header = 8;
+    if (size === 1) {
+      if (pos + 16 > end) return;
+      size = Number(buf.readBigUInt64BE(pos + 8));
+      header = 16;
+    } else if (size === 0) {
+      size = end - pos;
+    }
+    if (size < header || pos + size > end) return;
+    yield { type, start: pos, end: pos + size, body: pos + header };
+    pos += size;
+  }
+}
+
+function find(buf: Buffer, parent: Box | { body: number; end: number }, type: string): Box | null {
+  for (const b of boxes(buf, parent.body, parent.end)) if (b.type === type) return b;
+  return null;
+}
+
+export function readMp4(buf: Buffer): Mp4Info {
+  const root = { body: 0, end: buf.length };
+  const moov = find(buf, root, "moov");
+  if (!moov) throw new Error("This doesn't look like an MP4/MOV video (or its index is missing).");
+  const mvhd = find(buf, moov, "mvhd");
+  if (!mvhd) throw new Error("The video has no duration.");
+  const v = buf.readUInt8(mvhd.body);
+  const timescale = v === 1 ? buf.readUInt32BE(mvhd.body + 20) : buf.readUInt32BE(mvhd.body + 12);
+  const duration = v === 1 ? Number(buf.readBigUInt64BE(mvhd.body + 24)) : buf.readUInt32BE(mvhd.body + 16);
+  const seconds = timescale ? duration / timescale : 0;
+
+  for (const trak of boxes(buf, moov.body, moov.end)) {
+    if (trak.type !== "trak") continue;
+    const mdia = find(buf, trak, "mdia");
+    const hdlr = mdia && find(buf, mdia, "hdlr");
+    if (!hdlr || buf.toString("latin1", hdlr.body + 8, hdlr.body + 12) !== "vide") continue;
+    const tkhd = find(buf, trak, "tkhd");
+    let width = 0;
+    let height = 0;
+    let rotated = false;
+    if (tkhd) {
+      const tv = buf.readUInt8(tkhd.body);
+      const matrix = tkhd.body + (tv === 1 ? 52 : 40);
+      const a = buf.readInt32BE(matrix);
+      const b = buf.readInt32BE(matrix + 4);
+      rotated = a === 0 && b !== 0;
+      width = buf.readUInt32BE(matrix + 36) / 65536;
+      height = buf.readUInt32BE(matrix + 40) / 65536;
+    }
+    const stbl = mdia && find(buf, mdia, "minf") && find(buf, find(buf, mdia, "minf")!, "stbl");
+    let frames = 0;
+    if (stbl) {
+      const stsz = find(buf, stbl, "stsz") ?? find(buf, stbl, "stz2");
+      if (stsz) frames = buf.readUInt32BE(stsz.body + 8);
+    }
+    const shownW = rotated ? height : width;
+    const shownH = rotated ? width : height;
+    return {
+      seconds,
+      frames: frames || Math.round(seconds * 30),
+      fps: seconds ? (frames || seconds * 30) / seconds : 30,
+      width: Math.round(shownW),
+      height: Math.round(shownH),
+      vertical: shownH > shownW,
+    };
+  }
+  throw new Error("The file has no video track.");
+}

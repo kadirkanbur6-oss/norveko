@@ -18,6 +18,7 @@ const USER_TABLES = [
   "tiktok_connections",
   "instagram_connections",
   "api_keys",
+  "swap_jobs",
   "team_members", // (an owned team goes with the auth user: teams.owner_id cascades)
   "series",
   "brand_kits",
