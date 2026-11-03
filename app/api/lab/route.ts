@@ -143,6 +143,72 @@ export async function POST(req: Request) {
         });
         return NextResponse.json({ success: res.ok, status: res.status, body: (await res.text()).slice(0, 2000) });
       }
+      // One-off (3 Nov 2026, Kadir chose this over Supabase Pro): move final MP4s that still live
+      // in the Supabase "videos" bucket to R2, point jobs/projects at the R2 copy, then delete the
+      // Supabase copy. Idempotent and batched; { dryRun: true } only lists.
+      case "migrate-finals": {
+        const db = admin();
+        const r2 = await import("@/lib/storage/r2");
+        if (!r2.r2Configured()) return NextResponse.json({ success: false, error: "R2 not configured" }, { status: 400 });
+        const limit = Math.min(10, Math.max(1, Number(body.limit) || 4));
+        const found: Array<{ path: string; size: number }> = [];
+        const { data: users } = await db.storage.from("videos").list("", { limit: 1000 });
+        for (const u of users ?? []) {
+          if (u.id || !/^[0-9a-f-]{36}$/.test(u.name)) continue; // folders only (user ids)
+          const { data: jobs } = await db.storage.from("videos").list(u.name, { limit: 1000 });
+          for (const j of jobs ?? []) {
+            if (j.id || !/^[0-9a-f-]{36}$/.test(j.name)) continue;
+            const { data: files } = await db.storage.from("videos").list(`${u.name}/${j.name}`, { limit: 1000 });
+            for (const f of files ?? []) {
+              if (/^final(-v\d+)?\.mp4$/.test(f.name)) {
+                found.push({ path: `${u.name}/${j.name}/${f.name}`, size: Number((f.metadata as { size?: number } | null)?.size ?? 0) });
+              }
+            }
+          }
+        }
+        const totalMb = Math.round(found.reduce((n, f) => n + f.size, 0) / 1048576);
+        if (body.dryRun) return NextResponse.json({ success: true, files: found.length, totalMb, sample: found.slice(0, 5) });
+
+        const supabaseBase = process.env.NEXT_PUBLIC_SUPABASE_URL!.replace(/\/+$/, "");
+        const site = (process.env.NEXT_PUBLIC_SITE_URL || "https://norveko.app").replace(/\/+$/, "");
+        const moved: string[] = [];
+        const failed: Array<{ path: string; error: string }> = [];
+        for (const f of found.slice(0, limit)) {
+          try {
+            const oldUrls = [`${supabaseBase}/storage/v1/object/public/videos/${f.path}`, `${site}/media/videos/${f.path}`];
+            await r2.copyUrlToR2(oldUrls[0], f.path, "video/mp4");
+            const newUrl = r2.r2PublicUrl(f.path);
+            const swapUrls = (text: string) => oldUrls.reduce((t, u) => t.split(u).join(newUrl), text);
+            const jobId = f.path.split("/")[1];
+            const { data: job } = await db.from("pipeline_jobs").select("id, steps").eq("id", jobId).maybeSingle();
+            if (job) {
+              const before = JSON.stringify(job.steps ?? {});
+              const after = swapUrls(before);
+              if (after !== before) {
+                const steps = JSON.parse(after);
+                if (steps.render && !steps.render.hosted_by) steps.render.hosted_by = "r2";
+                await db.from("pipeline_jobs").update({ steps }).eq("id", jobId);
+              }
+              const projectId = (job.steps as { result?: { project_id?: string } } | null)?.result?.project_id;
+              if (projectId) {
+                const { data: project } = await db.from("projects").select("content").eq("id", projectId).maybeSingle();
+                if (project) {
+                  const pb = JSON.stringify(project.content ?? {});
+                  const pa = swapUrls(pb);
+                  if (pa !== pb) await db.from("projects").update({ content: JSON.parse(pa) }).eq("id", projectId);
+                }
+              }
+            }
+            // Only after the R2 copy and the new links are in place.
+            const { error: rmErr } = await db.storage.from("videos").remove([f.path]);
+            if (rmErr) throw new Error(`copied, but the old file could not be removed: ${rmErr.message}`);
+            moved.push(f.path);
+          } catch (err) {
+            failed.push({ path: f.path, error: err instanceof Error ? err.message : String(err) });
+          }
+        }
+        return NextResponse.json({ success: true, moved, failed, remaining: found.length - moved.length, totalMbBefore: totalMb });
+      }
       case "fal-raw": {
         const url = String(body.url ?? "");
         if (!/^https:\/\/queue\.fal\.run\//.test(url)) return NextResponse.json({ success: false, error: "fal queue urls only" }, { status: 400 });
