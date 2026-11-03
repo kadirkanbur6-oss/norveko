@@ -92,23 +92,40 @@ export async function getImageToVideo(handle: FalVideoHandle): Promise<FalVideoR
 }
 
 /**
- * Talking presenter: a portrait + a stretch of narration → lip-synced video.
- * VEED Fabric 1.0 (720p, $0.15/s, ~2 min for 5 s). Kling AI Avatar v2 kept
- * failing upstream on fal in the 2 Nov test ("downstream service error").
+ * Talking characters (presenter slots, Talk, skits): a portrait + audio →
+ * lip-synced video. 3 Nov 2026 lab test: Kling AI Avatar v2 Standard
+ * ($0.0562/s) moves a cartoon beak/mouth as well as VEED Fabric 1.0
+ * ($0.15/s at 720p) for a third of the price, so it is the default; Fabric is
+ * the fallback when Kling fails (it kept failing upstream on 2 Nov).
  */
-export const FAL_AVATAR_MODEL = process.env.FAL_AVATAR_MODEL || "veed/fabric-1.0";
+export const FAL_AVATAR_MODEL = process.env.FAL_AVATAR_MODEL || "fal-ai/kling-video/ai-avatar/v2/standard";
+export const FAL_AVATAR_FALLBACK_MODEL = process.env.FAL_AVATAR_FALLBACK_MODEL || "veed/fabric-1.0";
+
+/** Was this lip-sync request already sent to the fallback model? */
+export function isFallbackAvatar(handle: FalVideoHandle | null | undefined): boolean {
+  return Boolean(handle?.statusUrl.includes(`/${FAL_AVATAR_FALLBACK_MODEL.split("/")[0]}/`));
+}
 
 export async function submitAvatar(params: { imageUrl: string; audioUrl: string; prompt?: string; model?: string }): Promise<FalVideoHandle> {
   const model = params.model ?? FAL_AVATAR_MODEL;
+  try {
+    return await submitAvatarTo(model, params);
+  } catch (err) {
+    if (model === FAL_AVATAR_FALLBACK_MODEL) throw err;
+    console.warn(`[fal] ${model} submit failed, trying ${FAL_AVATAR_FALLBACK_MODEL}:`, err instanceof Error ? err.message : err);
+    return submitAvatarTo(FAL_AVATAR_FALLBACK_MODEL, params);
+  }
+}
+
+async function submitAvatarTo(model: string, params: { imageUrl: string; audioUrl: string; prompt?: string }): Promise<FalVideoHandle> {
+  const prompt = (params.prompt ?? "The person speaks to the camera like a documentary presenter, natural head movement and expressions.").slice(0, 1000);
+  const input = model.startsWith("veed/")
+    ? { image_url: params.imageUrl, audio_url: params.audioUrl, resolution: "720p", prompt }
+    : { image_url: params.imageUrl, audio_url: params.audioUrl, prompt };
   const res = await fetch(`https://queue.fal.run/${model}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Key ${key()}` },
-    body: JSON.stringify({
-      image_url: params.imageUrl,
-      audio_url: params.audioUrl,
-      resolution: "720p",
-      prompt: (params.prompt ?? "The person speaks to the camera like a documentary presenter, natural head movement and expressions.").slice(0, 1000),
-    }),
+    body: JSON.stringify(input),
     cache: "no-store",
   });
   const raw = await res.text();

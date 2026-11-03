@@ -79,6 +79,8 @@ export interface TimelineSlot {
   stockFallback?: boolean;
   /** A presenter slot whose lip-sync failed and became an AI still (refunded as presenter). */
   avatarFallback?: boolean;
+  /** Presenter: what was sent to the lip-sync model (to retry on the fallback model once). */
+  avatarInput?: { imageUrl: string; audioUrl: string; prompt: string };
   /** Presenter slots: the cast member who talks to camera. */
   presenter?: string;
   /** Animated map: drawn frames + where each place label goes (fractions of the frame). */

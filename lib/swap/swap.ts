@@ -184,6 +184,25 @@ async function fail(db: SupabaseClient, row: SwapRow, message: string) {
   }
 }
 
+/** Talk: a failed lip-sync gets one more try on the fallback model. */
+async function retryTalk(db: SupabaseClient, row: SwapRow): Promise<boolean> {
+  const fv = await import("@/lib/pipeline/fal-video");
+  if (!row.image_url || fv.isFallbackAvatar(row.fal)) return false;
+  try {
+    const { TALK_AVATAR_PROMPT } = await import("@/lib/talk/talk");
+    const fal = await fv.submitAvatar({
+      imageUrl: row.image_url,
+      audioUrl: db.storage.from("videos").getPublicUrl(row.source_path).data.publicUrl,
+      prompt: TALK_AVATAR_PROMPT,
+      model: fv.FAL_AVATAR_FALLBACK_MODEL,
+    });
+    await patch(db, row, { fal });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Keep the MP4 (R2 when configured, else our Supabase bucket) and save it as a project. */
 async function finish(db: SupabaseClient, row: SwapRow, sourceUrl: string): Promise<SwapRow> {
   const talk = row.kind === "talk";
@@ -228,14 +247,20 @@ export async function advanceSwapJob(db: SupabaseClient, row: SwapRow): Promise<
     if (row.phase === "swap" && row.fal) {
       const st = await fetch(row.fal.statusUrl, { headers: { Authorization: `Key ${falKey()}` }, cache: "no-store" });
       const s = (await st.json().catch(() => ({}))) as { status?: string; error?: string };
-      if (s.status === "FAILED" || s.status === "ERROR") return (await fail(db, row, row.kind === "talk" ? "The lip-sync model couldn't animate this picture." : "The swap model couldn't process this clip."), row);
+      if (s.status === "FAILED" || s.status === "ERROR") {
+        if (row.kind === "talk" && (await retryTalk(db, row))) return row;
+        return (await fail(db, row, row.kind === "talk" ? "The lip-sync model couldn't animate this picture." : "The swap model couldn't process this clip."), row);
+      }
       if (s.status !== "COMPLETED") {
         if (age > FAL_TIMEOUT_MS) await fail(db, row, "This took too long. Your credits were refunded.");
         return row;
       }
       const rr = await fetch(row.fal.responseUrl, { headers: { Authorization: `Key ${falKey()}` }, cache: "no-store" });
       const out = (await rr.json().catch(() => ({}))) as { video?: { url?: string } };
-      if (!rr.ok || !out.video?.url) return (await fail(db, row, row.kind === "talk" ? "The lip-sync model couldn't animate this picture." : "The swap model couldn't process this clip."), row);
+      if (!rr.ok || !out.video?.url) {
+        if (row.kind === "talk" && (await retryTalk(db, row))) return row;
+        return (await fail(db, row, row.kind === "talk" ? "The lip-sync model couldn't animate this picture." : "The swap model couldn't process this clip."), row);
+      }
       // A talking character already has its voice: keep the lip-synced video as it is.
       if (row.kind === "talk") return await finish(db, row, out.video.url);
 

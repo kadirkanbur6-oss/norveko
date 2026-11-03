@@ -312,6 +312,10 @@ async function stepShots(db: SupabaseClient, row: SkitRow) {
   await save(db, row, { plan, phase: "animate" });
 }
 
+function avatarPrompt(s: SkitShot): string {
+  return `The speaking character talks with lively cartoon expressions, ${s.tone || "expressive"}, natural head and body movement. ${s.action}`.slice(0, 900);
+}
+
 async function stepAnimate(db: SupabaseClient, row: SkitRow): Promise<boolean> {
   const fv = await import("@/lib/pipeline/fal-video");
   const plan = row.plan;
@@ -324,7 +328,7 @@ async function stepAnimate(db: SupabaseClient, row: SkitRow): Promise<boolean> {
           ? await fv.submitAvatar({
               imageUrl: s.imageUrl!,
               audioUrl: s.audioUrl!,
-              prompt: `The speaking character talks with lively cartoon expressions, ${s.tone || "expressive"}, natural head and body movement. ${s.action}`.slice(0, 900),
+              prompt: avatarPrompt(s),
             })
           : await fv.submitImageToVideo({ prompt: s.action || "subtle natural movement", imageUrl: s.imageUrl!, aspectRatio: row.vertical ? "9:16" : "16:9" });
       } catch (err) {
@@ -340,7 +344,12 @@ async function stepAnimate(db: SupabaseClient, row: SkitRow): Promise<boolean> {
       try {
         const r = await fv.getImageToVideo(s.fal!);
         if (r.status === "succeed" && r.videoUrl) s.clipUrl = r.videoUrl;
-        else if (r.status === "failed") s.clipFailed = true;
+        else if (r.status === "failed") {
+          // Speaking shots get one more try on the fallback lip-sync model.
+          if (s.line && !fv.isFallbackAvatar(s.fal)) {
+            s.fal = await fv.submitAvatar({ imageUrl: s.imageUrl!, audioUrl: s.audioUrl!, prompt: avatarPrompt(s), model: fv.FAL_AVATAR_FALLBACK_MODEL });
+          } else s.clipFailed = true;
+        }
       } catch {
         /* try again next time */
       }

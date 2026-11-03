@@ -1028,14 +1028,23 @@ export function createPipelineRunner(deps: RunnerDeps) {
           const up = await db.storage.from("videos").upload(audioPath, part, { contentType: narration.ext === "wav" ? "audio/wav" : "audio/mpeg", upsert: true });
           if (up.error) throw new Error(up.error.message);
           const audioUrl = db.storage.from("videos").getPublicUrl(audioPath).data.publicUrl;
-          slot.fal = await providers.submitAvatar({ imageUrl: signed.signedUrl, audioUrl, prompt: `${member.name} speaks to the camera like a documentary presenter. ${slot.prompt}`.slice(0, 900) });
+          slot.avatarInput = { imageUrl: signed.signedUrl, audioUrl, prompt: `${member.name} speaks to the camera like a documentary presenter. ${slot.prompt}`.slice(0, 900) };
+          slot.fal = await providers.submitAvatar(slot.avatarInput);
           slot.status = "processing";
           slot.submittedAt = new Date(now()).toISOString();
           changed = true;
         } else if (slot.fal) {
           const r = await providers.getImageToVideo(slot.fal);
           const age = slot.submittedAt ? now() - Date.parse(slot.submittedAt) : 0;
-          if (r.status === "failed") fallback(r.statusMessage ?? "Lip-sync failed");
+          if (r.status === "failed") {
+            // One more try on the fallback lip-sync model before giving up on the presenter.
+            const fv = await import("@/lib/pipeline/fal-video").catch(() => null);
+            if (fv && slot.avatarInput && providers.submitAvatar && !fv.isFallbackAvatar(slot.fal)) {
+              slot.fal = await providers.submitAvatar({ ...slot.avatarInput, model: fv.FAL_AVATAR_FALLBACK_MODEL });
+              slot.submittedAt = new Date(now()).toISOString();
+              changed = true;
+            } else fallback(r.statusMessage ?? "Lip-sync failed");
+          }
           else if (r.status === "succeed" && r.videoUrl) {
             const buffer = await providers.downloadVideo(r.videoUrl);
             const storagePath = `${job.user_id}/${job.id}/slot-${slot.index}.mp4`;
@@ -1046,7 +1055,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
             slot.sourceSeconds = slot.length;
             slot.status = "succeed";
             changed = true;
-            await logUsage(job, "video", { usageKey: `fal:${process.env.FAL_AVATAR_MODEL || "veed/fabric-1.0"}`, unit: "seconds", quantity: slot.length, durationMs: age, status: "ok" });
+            await logUsage(job, "video", { usageKey: `fal:${slot.fal.statusUrl.includes("/veed/") ? "veed/fabric-1.0" : process.env.FAL_AVATAR_MODEL || "fal-ai/kling-video/ai-avatar/v2/standard"}`, unit: "seconds", quantity: slot.length, durationMs: age, status: "ok" });
           } else if (age > KLING_CLIP_TIMEOUT_MS) fallback("Lip-sync took too long");
         }
       } catch (err) {
