@@ -27,6 +27,9 @@ const IMAGE_COST = 0.04;
 const CLIP_COST = 0.13;
 const SFX_COST = 0.03;
 const PLAN_COST = 0.03;
+/** A crowd shout: the words in a few voices at once (TTS is a fraction of a cent each). */
+const CROWD_COST = 0.02;
+const CROWD_VOICES = 4;
 const ANIMATE_TIMEOUT_MS = 25 * 60 * 1000;
 const RENDER_TIMEOUT_MS = 20 * 60 * 1000;
 const LEASE_MS = 100_000;
@@ -49,12 +52,16 @@ export interface SkitShot {
   tone: string;
   action: string;
   sfx: string;
+  /** Words a crowd shouts in this shot ("Yaşa! Var ol!"), in the dialogue language; "" if none. */
+  crowd: string;
   seconds: number;
   // Filled while it is made:
   imageUrl?: string;
   audioUrl?: string;
   audioSeconds?: number;
   sfxUrl?: string;
+  crowdUrls?: string[];
+  crowdSeconds?: number;
   fal?: { requestId: string; statusUrl: string; responseUrl: string } | null;
   clipUrl?: string | null;
   clipFailed?: boolean;
@@ -102,7 +109,7 @@ export async function planSkit(script: string, voices: Array<{ name: string; sty
 
 Rules:
 - Keep every spoken line the creator wrote, word for word, in its original language (you may fix punctuation). Do not add new jokes or new dialogue, except at most one very short reaction line if the script clearly implies one.
-- Narration in the script ("after a long silence…", "applause, cheers…") is NOT spoken: turn it into a silent shot (a pause, a reaction) and/or a sound effect.
+- Narration in the script ("after a long silence…", "applause, cheers…") is NOT spoken by a character: turn it into a silent shot (a pause, a reaction) and/or a sound effect. When the script says a crowd shouts or chants words ("yaşa, varol sesleri", "the crowd chants his name"), put those words in "crowd" (in the dialogue language, short, with exclamation marks, e.g. "Yaşa! Var ol! Yaşa!") on a wide crowd shot, together with an applause/cheering "sfx".
 - If the creator asks for a style ("like the viral cockroach videos", "as cats", "anime"), EVERY character becomes that: e.g. Pixar-style 3D cartoon cockroaches with human clothes in human settings. Without a style ask, use friendly Pixar-style 3D cartoon characters.
 - Real, named people become clearly cartoon caricatures of that species, recognisable only through clothes, hairstyle and props. Never put a real person's name in "look" or "setting" — describe what they wear instead. Character "name" may be a short role label in the script's language (e.g. "Başkan", "Gazeteci").
 - At most ${SKIT_MAX_CHARACTERS} characters and ${SKIT_MAX_SHOTS} shots, total under ${SKIT_MAX_SECONDS} seconds. Vary the camera (wide establishing shot first, close-ups for punchlines, a wide crowd shot for reactions).
@@ -115,7 +122,7 @@ JSON shape:
  "language": ISO 639-1 code of the dialogue,
  "look": one of ${SKIT_LOOKS.join("|")},
  "characters": [{"id":"c1","name":string,"look":string,"voice":string}],
- "shots": [{"setting":string,"camera":"wide|medium|close-up","visible":["c1"],"speaker":"c1" or null,"line":string (exact spoken text, "" if silent),"tone":string (English, how the line is said: "proud, booming", "confused, hesitant"…),"action":string (English: what happens on screen),"sfx":string (English sound effect for this shot, e.g. "large crowd applauding and cheering", or ""),"seconds":number (2-4, only used for silent shots)}]}`,
+ "shots": [{"setting":string,"camera":"wide|medium|close-up","visible":["c1"],"speaker":"c1" or null,"line":string (exact spoken text, "" if silent),"tone":string (English, how the line is said: "proud, booming", "confused, hesitant"…),"action":string (English: what happens on screen),"sfx":string (English sound effect for this shot, e.g. "large crowd applauding and cheering", or ""),"crowd":string (words a crowd shouts in this shot, or ""),"seconds":number (2-4, only used for silent shots)}]}`,
     user: script.slice(0, SKIT_MAX_SCRIPT),
     timeoutMs: 90_000,
   });
@@ -152,6 +159,7 @@ JSON shape:
       tone: clean(r.tone, 120),
       action: clean(r.action, 300),
       sfx: clean(r.sfx, 200),
+      crowd: clean(r.crowd, 120),
       seconds: Math.min(4, Math.max(2, Number(r.seconds) || 2.5)),
     };
   });
@@ -170,7 +178,7 @@ export function estimateSeconds(plan: SkitPlan): { speaking: number; total: numb
       const sec = s.line.split(/\s+/).length / wps + 0.4;
       speaking += sec;
       total += sec;
-    } else total += s.seconds;
+    } else total += Math.max(s.seconds, s.crowd ? s.crowd.split(/\s+/).length / wps + 1 : 0);
   }
   return { speaking, total };
 }
@@ -179,12 +187,14 @@ export function skitCredits(plan: SkitPlan): number {
   const { speaking, total } = estimateSeconds(plan);
   const silent = plan.shots.filter((s) => !s.line).length;
   const sfx = plan.shots.filter((s) => s.sfx).length;
+  const crowd = plan.shots.filter((s) => s.crowd).length;
   const usd =
     PLAN_COST +
     IMAGE_COST * (plan.characters.length + plan.shots.length) +
     Math.ceil(speaking * 1.15) * AVATAR_COST_PER_SECOND + // 15 % headroom: voices run a bit long
     silent * CLIP_COST +
-    sfx * SFX_COST;
+    sfx * SFX_COST +
+    crowd * CROWD_COST;
   return creditsForCost(usd) + RENDER_CREDITS_PER_30S * Math.max(1, Math.ceil(total / 30));
 }
 
@@ -295,10 +305,38 @@ async function stepShots(db: SupabaseClient, row: SkitRow) {
         s.audioSeconds = Math.round(audioSeconds(speech.audio, speech.ext) * 100) / 100;
         s.audioUrl = publicUrl(db, path);
       });
+    if (s.crowd && !s.crowdUrls)
+      jobs.push(async () => {
+        try {
+          // The same shout from several different voices, layered at render time.
+          const { GEMINI_VOICES } = await import("@/lib/pipeline/gemini-tts");
+          const cast = new Set(plan.characters.map((c) => c.voice));
+          const pool = GEMINI_VOICES.filter((v) => !cast.has(v.name));
+          const men = pool.filter((v) => v.gender === "male");
+          const women = pool.filter((v) => v.gender === "female");
+          const picks = [men[0], women[0], men[1], women[1]].filter(Boolean).slice(0, CROWD_VOICES);
+          const parts = await Promise.all(
+            picks.map(async (v, k) => {
+              const speech = await synthesizeNarration(s.crowd, `gemini:${v.name}`, {
+                direction: "Shout this loudly and excitedly as one person in a big cheering crowd at a rally, slightly overlapping the others",
+              });
+              const path = `${row.user_id}/skit/${row.id}/crowd-${s.id}-${k}.${speech.ext}`;
+              const { error } = await db.storage.from("videos").upload(path, speech.audio, { contentType: speech.contentType, upsert: true });
+              if (error) throw new Error(error.message);
+              return { url: publicUrl(db, path), seconds: audioSeconds(speech.audio, speech.ext) };
+            })
+          );
+          s.crowdUrls = parts.map((p) => p.url);
+          s.crowdSeconds = Math.round(Math.max(...parts.map((p) => p.seconds)) * 100) / 100;
+        } catch (err) {
+          console.warn(`[skit] ${row.id} crowd skipped:`, err instanceof Error ? err.message : err);
+          s.crowd = ""; // a missing shout never stops the skit
+        }
+      });
     if (s.sfx && !s.sfxUrl)
       jobs.push(async () => {
         try {
-          const audio = await generateSoundEffect(s.sfx, s.line ? undefined : Math.max(2, s.seconds + 1));
+          const audio = await generateSoundEffect(s.sfx, s.line ? undefined : Math.max(2, s.seconds + 1, s.crowd ? s.crowd.split(/\s+/).length / 2 + 2 : 0));
           const path = `${row.user_id}/skit/${row.id}/sfx-${s.id}.mp3`;
           await db.storage.from("videos").upload(path, audio, { contentType: "audio/mpeg", upsert: true });
           s.sfxUrl = publicUrl(db, path);
@@ -367,9 +405,11 @@ export function buildSkitEdit(plan: SkitPlan, vertical: boolean) {
   const video: Array<Record<string, unknown>> = [];
   const voices: Array<Record<string, unknown>> = [];
   const sfx: Array<Record<string, unknown>> = [];
+  const crowd: Array<Array<Record<string, unknown>>> = Array.from({ length: CROWD_VOICES }, () => []);
   let t = 0;
   for (const s of plan.shots) {
-    const length = Math.round((s.line ? (s.audioSeconds ?? 2) + 0.3 : s.seconds) * 100) / 100;
+    const silentLength = Math.max(s.seconds, s.crowdUrls?.length && s.crowdSeconds ? s.crowdSeconds + 0.6 : 0);
+    const length = Math.round((s.line ? (s.audioSeconds ?? 2) + 0.3 : silentLength) * 100) / 100;
     const start = Math.round(t * 100) / 100;
     if (s.clipUrl) {
       video.push({ asset: { type: "video", src: s.clipUrl, volume: 0 }, start, length, fit: "cover" });
@@ -377,6 +417,11 @@ export function buildSkitEdit(plan: SkitPlan, vertical: boolean) {
       video.push({ asset: { type: "image", src: s.imageUrl }, start, length, fit: "cover", effect: s.camera === "wide" ? "zoomInSlow" : "zoomIn" });
     }
     if (s.audioUrl) voices.push({ asset: { type: "audio", src: s.audioUrl, volume: 1 }, start: start + 0.1, length: s.audioSeconds ?? length });
+    // Crowd shout: each voice on its own track, a beat apart, so it sounds like many people.
+    (s.crowdUrls ?? []).forEach((src, k) => {
+      const at = Math.round((start + 0.2 + k * 0.17) * 100) / 100;
+      crowd[k].push({ asset: { type: "audio", src, volume: 0.7 }, start: at, length: Math.max(0.5, Math.min(s.crowdSeconds ?? length, start + length - at + 0.4)) });
+    });
     if (s.sfxUrl) sfx.push({ asset: { type: "audio", src: s.sfxUrl, volume: s.line ? 0.35 : 0.8 }, start, length: Math.max(length, 1.5) });
     t += length;
   }
@@ -384,7 +429,10 @@ export function buildSkitEdit(plan: SkitPlan, vertical: boolean) {
   return {
     total,
     edit: {
-      timeline: { background: "#000000", tracks: [{ clips: voices }, ...(sfx.length ? [{ clips: sfx }] : []), { clips: video }] },
+      timeline: {
+        background: "#000000",
+        tracks: [{ clips: voices }, ...crowd.filter((c) => c.length).map((clips) => ({ clips })), ...(sfx.length ? [{ clips: sfx }] : []), { clips: video }],
+      },
       output: { format: "mp4", fps: 30, size: vertical ? { width: 1080, height: 1920 } : { width: 1920, height: 1080 }, quality: "medium", range: { start: 0, length: total } },
     },
   };

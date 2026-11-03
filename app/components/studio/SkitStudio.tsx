@@ -17,7 +17,7 @@ type Skit = {
   credits: number;
   seconds: number;
   characters: Array<{ id: string; name: string; look: string; voice: string }>;
-  shots: Array<{ id: string; camera: string; speaker: string | null; line: string; action: string; sfx: string; imageUrl: string | null; ready: boolean }>;
+  shots: Array<{ id: string; camera: string; speaker: string | null; line: string; action: string; sfx: string; crowd: string; imageUrl: string | null; ready: boolean }>;
   outputUrl: string | null;
   projectId: string | null;
   error: string | null;
@@ -179,6 +179,11 @@ export default function SkitStudio({ text }: { text: string }) {
                       </>
                     ) : (
                       <span className="italic text-gray-400">{s.action}</span>
+                    )}
+                    {s.crowd && (
+                      <span className="mt-0.5 block text-gray-200">
+                        <span className="font-medium text-white">Crowd:</span> {s.crowd}
+                      </span>
                     )}
                     <span className="mt-0.5 block text-[11px] text-gray-500">
                       {s.camera} shot{s.sfx ? ` · sound: ${s.sfx}` : ""}

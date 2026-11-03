@@ -39,6 +39,7 @@ function view(r: SkitRow) {
       line: s.line,
       action: s.action,
       sfx: s.sfx,
+      crowd: s.crowd ?? "",
       imageUrl: s.imageUrl ?? null,
       ready: Boolean(s.clipUrl || s.clipFailed),
     })),
