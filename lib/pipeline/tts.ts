@@ -21,22 +21,23 @@ export interface NarrationResult {
 export async function synthesizeNarration(
   text: string,
   voiceId: string,
-  options: { speed?: number } = {}
+  options: { speed?: number; direction?: string | null } = {}
 ): Promise<NarrationResult> {
   const { isGeminiVoiceId, geminiVoiceName, generateGeminiSpeech, pcmToWav, GEMINI_TTS_MODEL } = await import("./gemini-tts");
   if (isGeminiVoiceId(voiceId)) {
     const name = geminiVoiceName(voiceId);
     if (!name) throw new Error(`Unknown Gemini voice: ${voiceId}`);
     const speed = options.speed ?? 1;
+    const direction = options.direction ?? null;
     const pace = speed > 1.03 ? "faster" : speed < 0.97 ? "slower" : null;
     const chunks = splitForTts(text);
     let speech: { audio: Buffer; contentType: "audio/wav"; seconds: number };
     if (chunks.length <= 1) {
-      speech = await generateGeminiSpeech(text, name, { pace });
+      speech = await generateGeminiSpeech(text, name, { pace, direction });
     } else {
       // Long narration: speak the chunks (a few at a time), join the PCM with
       // a short breath between them, then align the whole thing once.
-      const parts = await mapLimit(chunks, 4, (chunk) => generateGeminiSpeech(chunk, name, { pace }));
+      const parts = await mapLimit(chunks, 4, (chunk) => generateGeminiSpeech(chunk, name, { pace, direction }));
       const rate = parts[0].sampleRate;
       const gap = Buffer.alloc(Math.round(rate * 0.35) * 2);
       const pcm = Buffer.concat(parts.flatMap((p, i) => (i ? [gap, p.pcm] : [p.pcm])));

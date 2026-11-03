@@ -73,7 +73,7 @@ export async function generateReferencePortrait(args: {
   }
   parts.push({
     text: `Character reference sheet photo of ${args.name}${args.description ? `: ${args.description}` : ""}. ${
-      args.fromImage ? "Photorealistic, the same face and features as the portrait, period-accurate clothing and headwear." : "Photorealistic adult."
+      args.fromImage ? "Photorealistic, the same face and features as the portrait, period-accurate clothing and headwear." : "Keep the look the description asks for (for example a cartoon, 3D animated or anime character, or an animal); if it names no look, photorealistic."
     } Head and shoulders, facing the camera, neutral expression, plain mid-grey background, soft even studio light, sharp focus, no text, no logos.`,
   });
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_SCENE_IMAGE_MODEL}:generateContent`, {

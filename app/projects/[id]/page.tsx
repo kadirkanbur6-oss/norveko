@@ -656,7 +656,7 @@ export default function ProjectDetailPage() {
                       <div>
                         <h3 className="text-sm font-semibold text-white">Final video</h3>
                         <p className="text-xs text-gray-400">
-                          {(project.content as { swap?: unknown } | null)?.swap ? "1080p MP4 · character swap with the clip's own sound" : "1080p MP4 with narration and burned-in subtitles"}
+                          {(project.content as { talk?: unknown } | null)?.talk ? "MP4 · talking character, lip-synced" : (project.content as { swap?: unknown } | null)?.swap ? "1080p MP4 · character swap with the clip's own sound" : "1080p MP4 with narration and burned-in subtitles"}
                         </p>
                       </div>
                       <a

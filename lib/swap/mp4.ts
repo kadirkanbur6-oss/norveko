@@ -38,16 +38,22 @@ function find(buf: Buffer, parent: Box | { body: number; end: number }, type: st
   return null;
 }
 
-export function readMp4(buf: Buffer): Mp4Info {
-  const root = { body: 0, end: buf.length };
-  const moov = find(buf, root, "moov");
-  if (!moov) throw new Error("This doesn't look like an MP4/MOV video (or its index is missing).");
+/** Length in seconds of any MP4/MOV/M4A file (movie header). */
+export function mp4Seconds(buf: Buffer): number {
+  const moov = find(buf, { body: 0, end: buf.length }, "moov");
+  if (!moov) throw new Error("This doesn't look like an MP4/MOV/M4A file (or its index is missing).");
   const mvhd = find(buf, moov, "mvhd");
-  if (!mvhd) throw new Error("The video has no duration.");
+  if (!mvhd) throw new Error("The file has no duration.");
   const v = buf.readUInt8(mvhd.body);
   const timescale = v === 1 ? buf.readUInt32BE(mvhd.body + 20) : buf.readUInt32BE(mvhd.body + 12);
   const duration = v === 1 ? Number(buf.readBigUInt64BE(mvhd.body + 24)) : buf.readUInt32BE(mvhd.body + 16);
-  const seconds = timescale ? duration / timescale : 0;
+  return timescale ? duration / timescale : 0;
+}
+
+export function readMp4(buf: Buffer): Mp4Info {
+  const moov = find(buf, { body: 0, end: buf.length }, "moov");
+  if (!moov) throw new Error("This doesn't look like an MP4/MOV video (or its index is missing).");
+  const seconds = mp4Seconds(buf);
 
   for (const trak of boxes(buf, moov.body, moov.end)) {
     if (trak.type !== "trak") continue;

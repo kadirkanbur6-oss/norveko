@@ -81,7 +81,7 @@ export interface GeminiSpeech {
 export async function generateGeminiSpeech(
   text: string,
   voiceName: string,
-  options: { pace?: "slower" | "faster" | null } = {}
+  options: { pace?: "slower" | "faster" | null; direction?: string | null } = {}
 ): Promise<GeminiSpeech> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY is not set.");
@@ -97,7 +97,7 @@ export async function generateGeminiSpeech(
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": key },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: `Read this as a calm, gripping documentary narrator${pace}: ${text}` }] }],
+        contents: [{ parts: [{ text: `${options.direction ? `${options.direction}${pace}` : `Read this as a calm, gripping documentary narrator${pace}`}: ${text}` }] }],
         generationConfig: {
           responseModalities: ["AUDIO"],
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } },

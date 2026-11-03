@@ -33,6 +33,12 @@ export function swapCredits(info: Pick<Mp4Info, "frames" | "seconds">): number {
 
 export interface SwapRow {
   id: string;
+  /** "swap" = character swap, "talk" = talking character (lib/talk/talk.ts). */
+  kind?: "swap" | "talk" | null;
+  /** Talk: the spoken line (when typed). */
+  script?: string | null;
+  /** Talk: the scene picture that was animated. */
+  image_url?: string | null;
   user_id: string;
   billed_to: string | null;
   status: "running" | "completed" | "failed";
@@ -173,9 +179,45 @@ async function fail(db: SupabaseClient, row: SwapRow, message: string) {
       p_user_id: row.billed_to ?? row.user_id,
       p_amount: row.credits,
       p_type: "refund",
-      p_reason: "Refund: character swap failed",
+      p_reason: row.kind === "talk" ? "Refund: talking character failed" : "Refund: character swap failed",
     });
   }
+}
+
+/** Keep the MP4 (R2 when configured, else our Supabase bucket) and save it as a project. */
+async function finish(db: SupabaseClient, row: SwapRow, sourceUrl: string): Promise<SwapRow> {
+  const talk = row.kind === "talk";
+  const key = `${row.user_id}/${talk ? "talk" : "swap"}/${row.id}/final.mp4`;
+  let url: string;
+  const r2 = await import("@/lib/storage/r2");
+  if (r2.r2Configured()) {
+    await r2.copyUrlToR2(sourceUrl, key, "video/mp4");
+    url = r2.r2PublicUrl(key);
+  } else {
+    const bytes = Buffer.from(await (await fetch(sourceUrl)).arrayBuffer());
+    const { error } = await db.storage.from("videos").upload(key, bytes, { contentType: "video/mp4", upsert: true });
+    if (error) throw new Error(error.message);
+    url = db.storage.from("videos").getPublicUrl(key).data.publicUrl;
+  }
+  const title = talk ? `${row.character_name} talks` : `${row.character_name} — character swap`;
+  const { data: project } = await db
+    .from("projects")
+    .insert({
+      user_id: row.user_id,
+      title,
+      platform: row.vertical ? "YouTube Shorts" : "YouTube Long-form",
+      style: "Cinematic",
+      duration: `${Math.round(row.source_seconds)} seconds`,
+      idea: (talk ? row.script : row.prompt) || title,
+      status: "draft",
+      content: talk
+        ? { titles: [title], description: row.script ?? "", tags: [], finalVideoUrl: url, thumbnailUrl: row.image_url ?? undefined, talk: { characterName: row.character_name } }
+        : { titles: [title], description: "", tags: [], finalVideoUrl: url, swap: { characterName: row.character_name } },
+    })
+    .select("id")
+    .single();
+  await patch(db, row, { phase: "done", status: "completed", output_url: url, project_id: project?.id ?? null });
+  return row;
 }
 
 /** Move one swap along: fal → Shotstack (keep the clip's sound) → stored MP4 → project. */
@@ -186,14 +228,16 @@ export async function advanceSwapJob(db: SupabaseClient, row: SwapRow): Promise<
     if (row.phase === "swap" && row.fal) {
       const st = await fetch(row.fal.statusUrl, { headers: { Authorization: `Key ${falKey()}` }, cache: "no-store" });
       const s = (await st.json().catch(() => ({}))) as { status?: string; error?: string };
-      if (s.status === "FAILED" || s.status === "ERROR") return (await fail(db, row, "The swap model couldn't process this clip."), row);
+      if (s.status === "FAILED" || s.status === "ERROR") return (await fail(db, row, row.kind === "talk" ? "The lip-sync model couldn't animate this picture." : "The swap model couldn't process this clip."), row);
       if (s.status !== "COMPLETED") {
-        if (age > FAL_TIMEOUT_MS) await fail(db, row, "The swap took too long. Your credits were refunded.");
+        if (age > FAL_TIMEOUT_MS) await fail(db, row, "This took too long. Your credits were refunded.");
         return row;
       }
       const rr = await fetch(row.fal.responseUrl, { headers: { Authorization: `Key ${falKey()}` }, cache: "no-store" });
       const out = (await rr.json().catch(() => ({}))) as { video?: { url?: string } };
-      if (!rr.ok || !out.video?.url) return (await fail(db, row, "The swap model couldn't process this clip."), row);
+      if (!rr.ok || !out.video?.url) return (await fail(db, row, row.kind === "talk" ? "The lip-sync model couldn't animate this picture." : "The swap model couldn't process this clip."), row);
+      // A talking character already has its voice: keep the lip-synced video as it is.
+      if (row.kind === "talk") return await finish(db, row, out.video.url);
 
       // Lay the original clip's sound under the swapped picture.
       const sourceUrl = db.storage.from("videos").getPublicUrl(row.source_path).data.publicUrl;
@@ -222,36 +266,7 @@ export async function advanceSwapJob(db: SupabaseClient, row: SwapRow): Promise<
         if (age > RENDER_TIMEOUT_MS) await fail(db, row, "The final video took too long. Your credits were refunded.");
         return row;
       }
-      // Keep it: R2 when configured, else our Supabase bucket.
-      const key = `${row.user_id}/swap/${row.id}/final.mp4`;
-      let url: string;
-      const r2 = await import("@/lib/storage/r2");
-      if (r2.r2Configured()) {
-        await r2.copyUrlToR2(r.url, key, "video/mp4");
-        url = r2.r2PublicUrl(key);
-      } else {
-        const bytes = Buffer.from(await (await fetch(r.url)).arrayBuffer());
-        const { error } = await db.storage.from("videos").upload(key, bytes, { contentType: "video/mp4", upsert: true });
-        if (error) throw new Error(error.message);
-        url = db.storage.from("videos").getPublicUrl(key).data.publicUrl;
-      }
-      const title = `${row.character_name} — character swap`;
-      const { data: project } = await db
-        .from("projects")
-        .insert({
-          user_id: row.user_id,
-          title,
-          platform: row.vertical ? "YouTube Shorts" : "YouTube Long-form",
-          style: "Cinematic",
-          duration: `${Math.round(row.source_seconds)} seconds`,
-          idea: row.prompt || title,
-          status: "draft",
-          content: { titles: [title], description: "", tags: [], finalVideoUrl: url, swap: { characterName: row.character_name } },
-        })
-        .select("id")
-        .single();
-      await patch(db, row, { phase: "done", status: "completed", output_url: url, project_id: project?.id ?? null });
-      return row;
+      return await finish(db, row, r.url);
     }
   } catch (err) {
     console.error(`[swap] ${row.id} advance failed:`, err);

@@ -17,6 +17,7 @@ import {
   X,
   Repeat,
   Shuffle,
+  MessageCircle,
 } from "lucide-react";
 
 const navItems = [
@@ -24,6 +25,7 @@ const navItems = [
   { label: "AI Workspace", icon: Wand2, href: "/chat" },
   { label: "Projects", icon: FolderOpen, href: "/projects" },
   { label: "Series", icon: Repeat, href: "/series" },
+  { label: "Talk", icon: MessageCircle, href: "/talk" },
   { label: "Swap", icon: Shuffle, href: "/swap" },
   { label: "Billing", icon: CreditCard, href: "/billing" },
   { label: "Settings", icon: Settings, href: "/settings" },

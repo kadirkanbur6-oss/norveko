@@ -62,7 +62,7 @@ export async function GET(req: Request) {
   }
   const allowed =
     isGenerationEnabled(user.id) && isFullVideoEnabled(user.id) && (isWatermarkExempt(user.id) || (await hasPurchased(db, user.id)));
-  const { data } = await db.from("swap_jobs").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(20);
+  const { data } = await db.from("swap_jobs").select("*").eq("user_id", user.id).or("kind.is.null,kind.eq.swap").order("created_at", { ascending: false }).limit(20);
   return NextResponse.json({ success: true, allowed, maxSeconds: SWAP_MAX_SECONDS, swaps: ((data ?? []) as SwapRow[]).map(view) });
 }
 

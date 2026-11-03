@@ -279,6 +279,17 @@ create index if not exists swap_jobs_running_idx on public.swap_jobs(status) whe
 alter table public.swap_jobs enable row level security;
 ```
 
+### Talking character (3 Nov 2026)
+
+Same table, `kind = 'talk'` (`lib/talk/talk.ts`, `/api/talk`). Audio: `videos/<user>/talk/aud|rec-<uuid>.mp3|wav|m4a`.
+
+```sql
+alter table public.swap_jobs
+  add column if not exists kind text not null default 'swap',
+  add column if not exists script text,
+  add column if not exists image_url text;
+```
+
 ## Brand kit (`brand_kits`, 31 Oct 2026)
 
 Written only by `/api/brand` (service role). Logos: `videos/brand/<user>/logo-<uuid>.png`.
