@@ -1325,7 +1325,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
 
     // Subtitles: upload the SRT so Shotstack can fetch it.
     let subtitlesUrl: string | undefined;
-    const cues = job.steps?.voiceover?.captions as CaptionCue[] | undefined;
+    const cues = job.steps?.voiceover?.subtitles === true ? (job.steps?.voiceover?.captions as CaptionCue[] | undefined) : undefined;
     if (cues?.length) {
       const path = `${job.user_id}/${job.id}/captions.srt`;
       const { error } = await db.storage
@@ -1821,7 +1821,9 @@ export function createPipelineRunner(deps: RunnerDeps) {
 
       // Word-timed subtitles (paid add-on, see SUBTITLES_CREDITS) from the
       // same TTS call. Kept compact: cues only, not the character alignment.
-      const wantsSubtitles = job.steps?.voiceover?.subtitles === true;
+      // A full video always keeps the cues: the timeline is laid out on them,
+      // even when the subtitles aren't burned in (render checks the add-on).
+      const wantsSubtitles = job.steps?.voiceover?.subtitles === true || isFullVideo(job);
       const captions = wantsSubtitles && speech.alignment ? alignmentToCues(speech.alignment) : undefined;
       await patchStep(job, "voiceover", {
         status: "completed",

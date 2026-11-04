@@ -533,7 +533,7 @@ function seedFullVideoJob(
   footage: "hybrid" | "cinematic" | "stills" = "hybrid",
   clipMode: "text" | "image" = "text"
 ) {
-  const opts = { fullVideo: true, footage, clipMode, duration: "60 seconds" as const };
+  const opts = { fullVideo: true, subtitles: true, footage, clipMode, duration: "60 seconds" as const };
   const steps = initialStepsState(opts) as Record<string, any>;
   steps.script.queued_at = new Date(0).toISOString();
   steps.voiceover.voice_id = "v1";
@@ -543,12 +543,14 @@ function seedFullVideoJob(
 test("full video (hybrid, 60 s): 12 slots, 3 Kling + stills, render to final MP4, 40%-margin pricing", async () => {
   const base60 = scriptCredits("60 seconds") + voiceoverCredits("gemini", "60 seconds") + subtitlesCredits("60 seconds") + THUMBNAIL_CREDITS;
   const base30 = scriptCredits("30 seconds") + voiceoverCredits("gemini", "30 seconds") + subtitlesCredits("30 seconds") + THUMBNAIL_CREDITS;
-  assert.equal(totalPipelineCredits({ fullVideo: true, footage: "hybrid", clipMode: "text", duration: "60 seconds" }), base60 + 3 * VIDEO_CLIP_CREDITS + 9 * STILL_SCENE_CREDITS + 2 * RENDER_CREDITS_PER_30S);
-  assert.equal(totalPipelineCredits({ fullVideo: true, footage: "cinematic", clipMode: "text", duration: "60 seconds" }), base60 + 12 * VIDEO_CLIP_CREDITS + 2 * RENDER_CREDITS_PER_30S);
+  assert.equal(totalPipelineCredits({ fullVideo: true, subtitles: true, footage: "hybrid", clipMode: "text", duration: "60 seconds" }), base60 + 3 * VIDEO_CLIP_CREDITS + 9 * STILL_SCENE_CREDITS + 2 * RENDER_CREDITS_PER_30S);
+  assert.equal(totalPipelineCredits({ fullVideo: true, subtitles: true, footage: "cinematic", clipMode: "text", duration: "60 seconds" }), base60 + 12 * VIDEO_CLIP_CREDITS + 2 * RENDER_CREDITS_PER_30S);
   // Image→video (Seedance) is the default clip mode and much cheaper per clip.
-  assert.equal(totalPipelineCredits({ fullVideo: true, footage: "hybrid", duration: "60 seconds" }), base60 + 3 * IMAGE_CLIP_CREDITS + 9 * STILL_SCENE_CREDITS + 2 * RENDER_CREDITS_PER_30S);
-  assert.equal(totalPipelineCredits({ fullVideo: true, footage: "stills", duration: "30 seconds" }), base30 + 6 * STILL_SCENE_CREDITS + RENDER_CREDITS_PER_30S);
+  assert.equal(totalPipelineCredits({ fullVideo: true, subtitles: true, footage: "hybrid", duration: "60 seconds" }), base60 + 3 * IMAGE_CLIP_CREDITS + 9 * STILL_SCENE_CREDITS + 2 * RENDER_CREDITS_PER_30S);
+  assert.equal(totalPipelineCredits({ fullVideo: true, subtitles: true, footage: "stills", duration: "30 seconds" }), base30 + 6 * STILL_SCENE_CREDITS + RENDER_CREDITS_PER_30S);
   assert.equal(totalPipelineCredits({ fullVideo: true, duration: "5 minutes" }), scriptCredits("5 minutes") + THUMBNAIL_CREDITS, "unsupported duration → plain package");
+  // 4 Nov 2026: subtitles are optional on a full video too.
+  assert.equal(totalPipelineCredits({ fullVideo: true, footage: "stills", duration: "30 seconds" }), base30 - subtitlesCredits("30 seconds") + 6 * STILL_SCENE_CREDITS + RENDER_CREDITS_PER_30S);
 
   const { runner, rows, rpc, seedJob, calls, klingStatuses, renderStatus, edit, projects } = makeRunner();
   const id = seedFullVideoJob(seedJob);

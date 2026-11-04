@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
       : "hybrid";
     const clipMode: ClipMode = CLIP_MODES.includes(body.clipMode as ClipMode) ? (body.clipMode as ClipMode) : "image";
     const videoRequested = !fullVideoRequested && body.includeVideo === true;
-    const subtitlesRequested = voiceoverEnabled && body.includeSubtitles === true;
+    const subtitlesRequested = (voiceoverEnabled || fullVideoRequested) && body.includeSubtitles === true;
 
     // Video generation is gated. Rejecting here means a disabled feature can
     // never reach the credit deduction below.
@@ -180,7 +180,7 @@ export async function POST(req: NextRequest) {
       // A linked page is read in the research step, so research is always on with a link.
       research: Boolean(sourceUrl) || body.includeResearch !== false,
       voiceover: voiceoverEnabled || fullVideoRequested,
-      subtitles: subtitlesRequested || fullVideoRequested,
+      subtitles: subtitlesRequested,
       video: videoRequested,
       fullVideo: fullVideoRequested,
       footage,

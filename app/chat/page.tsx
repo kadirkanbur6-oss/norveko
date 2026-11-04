@@ -201,7 +201,7 @@ function ChatContent() {
   const costOptions = {
     research: includeResearch || Boolean(sourceUrl.trim()),
     voiceover: includeVoiceover || fullVideoOn,
-    subtitles: (includeVoiceover && includeSubtitles) || fullVideoOn,
+    subtitles: (includeVoiceover || fullVideoOn) && includeSubtitles,
     video: !fullVideoOn && includeVideo && videoAvailable,
     fullVideo: fullVideoOn,
     footage,
@@ -475,7 +475,7 @@ function ChatContent() {
           outputLanguage: language,
           includeVoiceover: includeVoiceover || fullVideoOn,
           includeResearch,
-          includeSubtitles: (includeVoiceover && includeSubtitles) || fullVideoOn,
+          includeSubtitles: (includeVoiceover || fullVideoOn) && includeSubtitles,
           voiceId: includeVoiceover || fullVideoOn ? effectiveVoiceId : null,
           voicePublicOwnerId: includeVoiceover || fullVideoOn ? selectedVoice?.public_owner_id ?? null : null,
           voiceName: includeVoiceover || fullVideoOn ? selectedVoice?.name ?? null : null,
@@ -1210,8 +1210,8 @@ function ChatContent() {
               )}
             </div>
 
-            {/* Subtitles — add-on to the voiceover */}
-            {includeVoiceover && (
+            {/* Subtitles — optional add-on to the voiceover (also for full videos) */}
+            {(includeVoiceover || fullVideoOn) && (
               <div
                 className={`mt-4 rounded-2xl border p-4 transition ${
                   includeSubtitles ? "border-blue-400/30 bg-[#0d0d16]" : "border-white/10 bg-[#0d0d16]"
@@ -1221,8 +1221,7 @@ function ChatContent() {
                   <span className="relative inline-flex h-6 w-11 shrink-0 items-center">
                     <input
                       type="checkbox"
-                      checked={includeSubtitles || fullVideoOn}
-                      disabled={fullVideoOn}
+                      checked={includeSubtitles}
                       onChange={(e) => setIncludeSubtitles(e.target.checked)}
                       className="peer sr-only"
                     />
@@ -1238,7 +1237,9 @@ function ChatContent() {
                       </span>
                     </span>
                     <span className="mt-0.5 block text-xs text-gray-500">
-                      Word-timed captions synced to the narration · download as .srt or .vtt for YouTube, CapCut, Premiere
+                      {fullVideoOn
+                        ? "Word-timed captions burned into the video · also downloadable as .srt or .vtt"
+                        : "Word-timed captions synced to the narration · download as .srt or .vtt for YouTube, CapCut, Premiere"}
                     </span>
                   </span>
                 </label>
@@ -1278,7 +1279,7 @@ function ChatContent() {
                       </span>
                       <span className="mt-0.5 block text-xs text-gray-500">
                         {fullVideoSupported
-                          ? "Finished MP4 with narration, burned-in subtitles and AI visuals — ready to upload."
+                          ? "Finished MP4 with narration, AI visuals and optional subtitles — ready to upload."
                           : "Full videos are 30 or 60 seconds for now. Longer durations give you the script, voiceover and thumbnail."}
                       </span>
                     </span>
@@ -1368,7 +1369,7 @@ function ChatContent() {
                 <Disclosure
                   className="mt-3"
                   title="Clips & subtitles"
-                  summary={`${footage === "stills" ? "No AI clips" : footage === "stock" ? "Stock clips" : clipMode === "text" ? "Text → video clips" : "Image → video clips"} · ${CAPTION_STYLES.find((c) => c.id === captionStyleId)?.label ?? "Bold pop"} subtitles`}
+                  summary={`${footage === "stills" ? "No AI clips" : footage === "stock" ? "Stock clips" : clipMode === "text" ? "Text → video clips" : "Image → video clips"} · ${includeSubtitles ? `${CAPTION_STYLES.find((c) => c.id === captionStyleId)?.label ?? "Bold pop"} subtitles` : "No subtitles"}`}
                 >
                 {footage !== "stills" && footage !== "stock" && (
                   <div className="mt-3">
@@ -1417,7 +1418,7 @@ function ChatContent() {
                   </div>
                 )}
 
-                <CaptionStylePicker value={captionStyleId} onChange={setCaptionStyleId} />
+                {includeSubtitles && <CaptionStylePicker value={captionStyleId} onChange={setCaptionStyleId} />}
                 </Disclosure>
                 )}
               </div>

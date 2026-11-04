@@ -364,12 +364,12 @@ function normalize(opts: boolean | PipelineOptions | undefined): Normalized {
     return { research: false, voiceover: opts, subtitles: false, video: false, fullVideo: false, footage: "hybrid", clipMode: "image", duration: undefined, voiceEngine: "gemini", trialVideo: false, presenter: false };
   }
   const fullVideo = Boolean(opts?.fullVideo) && Boolean(fullVideoPlan(opts?.duration, opts?.footage));
-  // A full video always narrates and burns in subtitles.
+  // A full video always narrates; burned-in subtitles are an option (4 Nov 2026, Kadir).
   const voiceover = fullVideo || Boolean(opts?.voiceover);
   return {
     research: Boolean(opts?.research),
     voiceover,
-    subtitles: voiceover && (fullVideo || Boolean(opts?.subtitles)),
+    subtitles: voiceover && Boolean(opts?.subtitles),
     video: fullVideo || Boolean(opts?.video),
     fullVideo,
     footage: FOOTAGE_MODES.includes(opts?.footage as FootageMode) ? (opts!.footage as FootageMode) : "hybrid",
@@ -543,7 +543,8 @@ export function translationJob(opts: PipelineOptions): {
   items: Array<{ id: string; label: string; credits: number }>;
   total: number;
 } {
-  const full = { ...opts, fullVideo: true, research: false, voiceover: true, subtitles: true, trialVideo: false };
+  // Subtitles follow the original video (on unless it had none).
+  const full = { ...opts, fullVideo: true, research: false, voiceover: true, subtitles: opts.subtitles !== false, trialVideo: false };
   const steps = initialStepsState(full);
   const n = normalize(full);
   const plan = fullVideoPlan(n.duration, n.footage, n.clipMode);
@@ -551,14 +552,14 @@ export function translationJob(opts: PipelineOptions): {
   const items = [
     { id: "script", label: "Translation", credits: translationScriptCredits(n.duration) },
     { id: "voiceover", label: `New voice-over (${durationSeconds(n.duration) < 60 ? `${durationSeconds(n.duration)} s` : `${Math.round(durationSeconds(n.duration) / 60)} min`})`, credits: voiceoverCredits(n.voiceEngine, n.duration) },
-    { id: "subtitles", label: "Subtitles", credits: subtitlesCredits(n.duration) },
+    { id: "subtitles", label: "Subtitles", credits: n.subtitles ? subtitlesCredits(n.duration) : 0 },
     // The cover has words on it, so it is made again in the new language.
     { id: "thumbnail", label: "New thumbnail", credits: THUMBNAIL_CREDITS },
     { id: "render", label: `Final video render (${plan.seconds} s)`, credits: plan.credits.render },
   ];
   steps.script.credits = items[0].credits;
   steps.voiceover.credits = items[1].credits;
-  steps.voiceover.subtitles_credits = items[2].credits;
+  if (n.subtitles) steps.voiceover.subtitles_credits = items[2].credits;
   steps.thumbnail.credits = items[3].credits;
   steps.render.credits = items[4].credits;
   // Reused visuals cost nothing, so nothing of them is ever refunded either.
@@ -570,7 +571,7 @@ export function translationJob(opts: PipelineOptions): {
     credits: { ...plan.credits, kling: 0, stills: 0, stock: 0, total: plan.credits.render },
     translation: true,
   };
-  return { steps, items, total: items.reduce((sum, i) => sum + i.credits, 0) };
+  return { steps, items: items.filter((i) => i.credits > 0 || i.id !== "subtitles"), total: items.reduce((sum, i) => sum + i.credits, 0) };
 }
 
 /* ---------------- Shorts from a long video (2 Nov 2026) ----------------

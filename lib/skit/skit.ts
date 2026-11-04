@@ -538,26 +538,11 @@ export function buildSkitEdit(plan: SkitPlan, vertical: boolean, extras: { capti
   };
 }
 
-/** Subtitles file + background music for a render (both optional, never fatal). */
+/** Background music for a render (optional, never fatal). Skits carry no subtitles. */
 async function renderExtras(db: SupabaseClient, row: SkitRow): Promise<{ captionsUrl: string | null; musicUrl: string | null }> {
   const plan = row.plan;
-  const version = plan.renderVersion ?? 0;
-  let captionsUrl: string | null = null;
-  if (plan.captions !== false) {
-    try {
-      const { cuesToSrt } = await import("@/lib/pipeline/captions");
-      const cues = skitCues(plan);
-      if (cues.length) {
-        const style = visualStyles.captionStyle(plan.captionStyle);
-        const srt = cuesToSrt(cues, { uppercase: style.uppercase ? plan.language || "en" : false });
-        const path = `${row.user_id}/skit/${row.id}/captions-${version}.srt`;
-        const { error } = await db.storage.from("videos").upload(path, Buffer.from(srt, "utf8"), { contentType: "application/x-subrip", upsert: true });
-        if (!error) captionsUrl = publicUrl(db, path);
-      }
-    } catch (err) {
-      console.warn(`[skit] ${row.id} captions skipped:`, err instanceof Error ? err.message : err);
-    }
-  }
+  // 4 Nov 2026 (Kadir): skits have no burned-in subtitles; only narrated videos offer them.
+  const captionsUrl: string | null = null;
   let musicUrl: string | null = null;
   if (plan.music !== false) {
     if (plan.music && plan.music.url) musicUrl = plan.music.url;
@@ -732,10 +717,9 @@ export function prepareShotRedo(row: SkitRow, index: number, note: string): Skit
   return plan;
 }
 
-/** Re-cut with subtitles / music switched on or off (free). */
-export function prepareRecut(row: SkitRow, opts: { captions?: boolean; music?: boolean }): SkitRow["plan"] {
+/** Re-cut with music switched on or off (free). */
+export function prepareRecut(row: SkitRow, opts: { music?: boolean }): SkitRow["plan"] {
   const plan = row.plan;
-  if (typeof opts.captions === "boolean") plan.captions = opts.captions;
   if (typeof opts.music === "boolean") plan.music = opts.music ? null : false;
   plan.renderVersion = (plan.renderVersion ?? 0) + 1;
   (plan as SkitPlan & { edits?: number }).edits = ((plan as SkitPlan & { edits?: number }).edits ?? 0) + 1;

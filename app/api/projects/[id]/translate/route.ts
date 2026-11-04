@@ -58,7 +58,9 @@ async function sourceFor(userId: string, projectId: string): Promise<{ job: Sour
 
 function planOf(job: SourceJob) {
   const plan = (job.steps.video?.plan ?? {}) as { footage?: FootageMode; clipMode?: ClipMode; duration?: string };
-  return { footage: plan.footage ?? "stills", clipMode: plan.clipMode ?? "image", duration: plan.duration ?? job.duration ?? "60 seconds" };
+  // Subtitles only if the original had them burned in.
+  const subtitles = (job.steps as Record<string, { subtitles?: unknown } | undefined>).voiceover?.subtitles === true;
+  return { footage: plan.footage ?? "stills", clipMode: plan.clipMode ?? "image", duration: plan.duration ?? job.duration ?? "60 seconds", subtitles };
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

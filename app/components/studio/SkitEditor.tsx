@@ -1,11 +1,11 @@
 "use client";
 
 // Project page → Video: edit a finished skit. Make any single shot again (with
-// an optional note), or re-cut it with subtitles / music on or off. The new
+// an optional note), or re-cut it with the music on or off. The new
 // cut replaces the video in the same project.
 
 import { useCallback, useEffect, useState } from "react";
-import { Captions, Loader2, Music, RefreshCw, Scissors } from "lucide-react";
+import { Loader2, Music, RefreshCw, Scissors } from "lucide-react";
 import GenerationStage from "../GenerationStage";
 
 type Shot = { id: string; camera: string; speaker: string | null; line: string; action: string; imageUrl: string | null; redoCredits: number };
@@ -15,7 +15,6 @@ type Skit = {
   phase: string;
   title: string;
   vertical: boolean;
-  captions: boolean;
   music: boolean;
   editsLeft: number;
   shots: Shot[];
@@ -82,7 +81,7 @@ export default function SkitEditor({ projectId }: { projectId: string }) {
           steps={[
             { id: "shots", label: "Drawing the new shot", expected: 30, messages: ["Redrawing the shot…"] },
             { id: "animate", label: "Bringing it to life", expected: 150, messages: ["Syncing the lips…", "Animating the shot…"] },
-            { id: "render", label: "Cutting it together again", expected: 60, messages: ["Mixing voices, music and subtitles…", "Rendering the new MP4…"] },
+            { id: "render", label: "Cutting it together again", expected: 60, messages: ["Mixing voices and music…", "Rendering the new MP4…"] },
           ].map((x, i) => ({ ...x, status: i < at ? "completed" : i === at ? "running" : "pending", startedAt: skit.phaseAt?.[x.id] }))}
         />
       </div>
@@ -96,17 +95,9 @@ export default function SkitEditor({ projectId }: { projectId: string }) {
           <p className="flex items-center gap-2 text-sm font-semibold text-white">
             <Scissors size={15} /> Edit this skit
           </p>
-          <p className="mt-0.5 text-xs text-gray-500">Make any shot again, or switch subtitles and music. {skit.editsLeft} edits left.</p>
+          <p className="mt-0.5 text-xs text-gray-500">Make any shot again, or switch the music on or off. {skit.editsLeft} edits left.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={busy || skit.editsLeft < 1}
-            onClick={() => post({ action: "recut", id: skit.id, captions: !skit.captions })}
-            className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs text-gray-200 hover:border-white/25 disabled:opacity-40"
-          >
-            <Captions size={13} /> {skit.captions ? "Remove subtitles" : "Add subtitles"} · free
-          </button>
           <button
             type="button"
             disabled={busy || skit.editsLeft < 1}

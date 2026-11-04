@@ -57,7 +57,6 @@ function view(r: SkitRow) {
       redoCredits: shotRedoCredits(plan, shots.indexOf(s)),
     })),
     phaseAt: plan?.phaseAt ?? {},
-    captions: plan?.captions !== false,
     music: plan?.music !== false,
     editsLeft: Math.max(0, MAX_SKIT_EDITS - editsUsed(plan)),
     updatedAt: r.updated_at,
@@ -131,7 +130,7 @@ export async function POST(req: Request) {
     }
   }
 
-  // Edits of a finished skit: make one shot again (paid) or re-cut with subtitles/music on or off (free).
+  // Edits of a finished skit: make one shot again (paid) or re-cut with music on or off (free).
   if (body.action === "redoShot" || body.action === "recut") {
     const { data } = await db.from("skit_jobs").select("*").eq("id", String(body.id ?? "")).eq("user_id", user.id).maybeSingle();
     const row = data as SkitRow | null;
@@ -150,7 +149,7 @@ export async function POST(req: Request) {
       plan = prepareShotRedo(row, index, note);
       phase = "shots";
     } else {
-      plan = prepareRecut(row, { captions: body.captions as boolean | undefined, music: body.music as boolean | undefined });
+      plan = prepareRecut(row, { music: body.music as boolean | undefined });
     }
     const { payerFor } = await import("@/lib/teams");
     const payer = await payerFor(db, user.id);
