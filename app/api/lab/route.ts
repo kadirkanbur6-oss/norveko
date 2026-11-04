@@ -219,6 +219,15 @@ export async function POST(req: Request) {
         const { error } = await db.storage.from("videos").remove(paths);
         return NextResponse.json({ success: !error, removed: error ? 0 : paths.length, error: error?.message });
       }
+      // Owner top-up for showcase / ad renders (4 Nov 2026, Kadir approved): only to the caller's own beta account.
+      case "self-credits": {
+        const amount = Math.round(Number(body.amount));
+        if (!Number.isFinite(amount) || amount < 1 || amount > 2000) return NextResponse.json({ success: false, error: "1–2000 credits." }, { status: 400 });
+        const { isWatermarkExempt } = await import("@/lib/pipeline/watermark-policy");
+        if (!isWatermarkExempt(user.id)) return NextResponse.json({ success: false, error: "Beta accounts only." }, { status: 403 });
+        const { error } = await admin().rpc("add_credits", { p_user_id: user.id, p_amount: amount, p_type: "bonus", p_reason: String(body.reason ?? "Owner top-up for showcase videos").slice(0, 120) });
+        return NextResponse.json({ success: !error, error: error?.message });
+      }
       // Stock clips for a showcase character swap (4 Nov 2026): search, then copy one into the swap uploads.
       case "stock-search": {
         const { searchStockClips } = await import("@/lib/pipeline/pexels");
