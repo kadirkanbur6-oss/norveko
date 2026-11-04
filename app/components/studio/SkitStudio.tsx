@@ -185,6 +185,8 @@ export default function SkitStudio({ text }: { text: string }) {
           ))}
         </div>
       )}
+      {/* While a skit is being made, only the progress screen shows. */}
+      {making.length === 0 && (
       <div className={card}>
         <p className="text-sm text-gray-300">
           Write the joke or scene above with the lines each character says. Add a style if you like — e.g. <span className="text-white">“make it like the viral cockroach videos”</span>. We cast it, voice every character, sync their lips and add the crowd sounds.
@@ -270,8 +272,9 @@ export default function SkitStudio({ text }: { text: string }) {
         )}
         {error && <p className="mt-3 text-sm text-red-300">{error}</p>}
       </div>
+      )}
 
-      {skits.length > 0 && (
+      {making.length === 0 && skits.length > 0 && (
         <div className={card}>
           <p className="text-sm font-semibold">Your skits</p>
           <ul className="mt-3 space-y-3">

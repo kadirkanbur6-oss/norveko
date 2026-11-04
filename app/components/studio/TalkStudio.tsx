@@ -226,7 +226,8 @@ export default function TalkStudio({ text: outerText }: { text?: string } = {}) 
             </div>
           )}
 
-          {allowed && (
+          {/* While one is being made, only the progress screen shows. */}
+          {allowed && !talks.some((x) => x.status === "running") && (
             <div className={`${card} space-y-6`}>
               {/* Who */}
               <section>
@@ -406,7 +407,7 @@ export default function TalkStudio({ text: outerText }: { text?: string } = {}) 
             </div>
           )}
 
-          {talks.length > 0 && (
+          {!talks.some((x) => x.status === "running") && talks.length > 0 && (
             <div className={card}>
               <p className="text-sm font-semibold">Your talking videos</p>
               <ul className="mt-3 space-y-2">

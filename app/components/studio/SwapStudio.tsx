@@ -172,7 +172,8 @@ export default function SwapStudio() {
             </div>
           )}
 
-          {allowed && (
+          {/* While one is being made, only the progress screen shows. */}
+          {allowed && !swaps.some((x) => x.status === "running") && (
             <div className={card}>
               <div className="grid gap-6 md:grid-cols-2">
                 {/* 1. Clip */}
@@ -292,7 +293,7 @@ export default function SwapStudio() {
             </div>
           )}
 
-          {swaps.length > 0 && (
+          {!swaps.some((x) => x.status === "running") && swaps.length > 0 && (
             <div className={card}>
               <p className="text-sm font-semibold">Your swaps</p>
               <ul className="mt-3 space-y-2">
