@@ -260,14 +260,22 @@ function ChatContent() {
         setJobId(job);
         setFormOpen(false);
       } else {
-        // Came back from another page while a video is still being made: show it again.
+        // Came back from another page while something is still being made: open
+        // that studio and show its progress again (narrated video, skit, talking
+        // character or swap). An explicit ?mode= wins.
+        const wantedMode = searchParams.get("mode");
         fetch("/api/pipeline/active", { cache: "no-store" })
           .then((r) => r.json())
           .then((d) => {
-            if (typeof d?.jobId === "string") {
-              setJobId(d.jobId);
+            const active = d?.active as { mode: string; id: string } | null | undefined;
+            if (active?.mode === "video" && typeof active.id === "string") {
+              setJobId(active.id);
               setFormOpen(false);
-              router.replace(`${pathname}?job=${d.jobId}`, { scroll: false });
+              setModeState("video");
+              router.replace(`${pathname}?job=${active.id}`, { scroll: false });
+            } else if ((active?.mode === "skit" || active?.mode === "talk" || active?.mode === "swap") && !wantedMode) {
+              setModeState(active.mode);
+              setModeLocked(true);
             }
           })
           .catch(() => undefined);
