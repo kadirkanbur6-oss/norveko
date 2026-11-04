@@ -67,6 +67,7 @@ function emptyForm() {
     language: "English",
     visualStyle: "cinematic",
     captionStyle: "bold",
+    subtitles: true,
     voiceId: "gemini:Charon",
     footage: "hybrid",
     format: "narrated" as "narrated" | "skit",
@@ -151,6 +152,7 @@ export default function SeriesPage() {
             orientation: form.platform === "YouTube Long-form" ? "horizontal" : "vertical",
             visualStyle: form.visualStyle,
             captionStyle: form.captionStyle,
+            subtitles: form.subtitles,
             voiceId: form.voiceId,
             footage: form.footage,
             research: form.research,
@@ -358,7 +360,13 @@ export default function SeriesPage() {
                     </label>
                   </div>
                   )}
-                  <CaptionStylePicker value={form.captionStyle} onChange={(v) => set("captionStyle", v)} />
+                  {form.format !== "skit" && (
+                    <label className="flex items-center gap-2 text-sm text-gray-300">
+                      <input type="checkbox" checked={form.subtitles} onChange={(e) => set("subtitles", e.target.checked)} className="h-4 w-4 accent-blue-500" />
+                      Burn subtitles into every episode
+                    </label>
+                  )}
+                  {form.format !== "skit" && form.subtitles && <CaptionStylePicker value={form.captionStyle} onChange={(v) => set("captionStyle", v)} />}
 
                   {/* Schedule */}
                   <div className="rounded-xl border border-white/10 bg-[#0d0d16] p-4">

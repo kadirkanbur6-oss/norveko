@@ -159,7 +159,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const seconds = pick.to - pick.from;
-    const { steps, total, duration } = shortJob({ seconds });
+    const { steps, total, duration } = shortJob({ seconds, subtitles: body.subtitles !== false });
     steps.script = { ...steps.script, queued_at: new Date().toISOString() };
     const music = source.steps.render?.music as { id?: string } | null | undefined;
     if (music?.id) steps.render = { ...steps.render, music_id: music.id };

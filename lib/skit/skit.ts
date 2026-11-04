@@ -288,19 +288,33 @@ async function charRefs(db: SupabaseClient, plan: SkitPlan, ids: string[]) {
 }
 
 function shotPrompt(plan: SkitPlan, s: SkitShot): string {
-  const speaker = s.speaker ? plan.characters.find((c) => c.id === s.speaker) : null;
+  // 4 Nov 2026: in the doctor skit the (cockroach) doctor showed up as a human seen from behind.
+  // Anyone else in the frame keeps their cast look, and extras match the cast's kind.
+  const sameKind =
+    "Everyone in the picture, including background extras and anyone seen from behind, has the same kind of body as the cast described here (if the cast are animals, insects or creatures, nobody is a human).";
+  const lookOf = (id: string) => plan.characters.find((c) => c.id === id);
+  const speaker = s.speaker ? lookOf(s.speaker) : null;
   if (speaker) {
     // The lip-sync model moves every visible mouth, so a speaking shot shows ONE face: the speaker's.
     const framing = s.camera === "close-up" ? "Close-up" : "Medium close-up";
-    return `${framing} single shot of ${speaker.name} (${speaker.look}). ${s.setting}. ${s.action} ${speaker.name} is the only face in the picture: centred, facing the camera, face large and clearly visible, mouth slightly open as if speaking. Any other characters appear only from behind, cut off at the frame edge or blurred in the background with their faces turned away — no other visible face or mouth. Expressive, funny, viral short-video look.`;
+    const others = s.visible
+      .filter((id) => id !== speaker.id)
+      .map(lookOf)
+      .filter(Boolean)
+      .map((c) => `${c!.name} (${c!.look})`)
+      .join("; ");
+    const behind = others
+      ? ` ${others} may appear only from behind or cut off at the frame edge — still clearly their own look described here, faces turned away.`
+      : " Any other characters appear only from behind, cut off at the frame edge or blurred in the background with their faces turned away.";
+    return `${framing} single shot of ${speaker.name} (${speaker.look}). ${s.setting}. ${s.action} ${speaker.name} is the only face in the picture: centred, facing the camera, face large and clearly visible, mouth slightly open as if speaking.${behind} No other visible face or mouth. ${sameKind} Expressive, funny, viral short-video look.`;
   }
   const who = s.visible
-    .map((id) => plan.characters.find((c) => c.id === id))
+    .map(lookOf)
     .filter(Boolean)
     .map((c) => `${c!.name} (${c!.look})`)
     .join("; ");
   const framing = s.camera === "wide" ? "Wide shot" : s.camera === "close-up" ? "Close-up" : "Medium shot";
-  return `${framing}. ${s.setting}. ${who ? `On screen: ${who}.` : ""} ${s.action} Nobody is talking; mouths closed. Expressive, funny, viral short-video look.`;
+  return `${framing}. ${s.setting}. ${who ? `On screen: ${who}.` : ""} ${s.action} Nobody is talking; mouths closed. ${sameKind} Expressive, funny, viral short-video look.`;
 }
 
 async function stepCast(db: SupabaseClient, row: SkitRow) {
@@ -327,7 +341,7 @@ async function stepShots(db: SupabaseClient, row: SkitRow) {
   plan.shots.forEach((s, i) => {
     if (!s.imageUrl)
       jobs.push(async () => {
-        const refs = await charRefs(db, plan, s.speaker ? [s.speaker] : s.visible);
+        const refs = await charRefs(db, plan, s.speaker ? [s.speaker, ...s.visible.filter((id) => id !== s.speaker)] : s.visible);
         const img = await generateSceneImage(shotPrompt(plan, s), `skit-${row.id}`, row.user_id, i + 1, row.vertical ? "vertical" : "horizontal", plan.look, refs);
         s.imageUrl = img.imageUrl;
       });

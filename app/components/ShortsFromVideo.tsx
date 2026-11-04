@@ -17,6 +17,7 @@ export default function ShortsFromVideo({ projectId }: { projectId: string }) {
   const [info, setInfo] = useState<{ available: boolean; suggestionsLeft: number; picks: Pick[]; shorts: Short[] } | null>(null);
   const [busy, setBusy] = useState<string>("");
   const [error, setError] = useState("");
+  const [subtitles, setSubtitles] = useState(true);
 
   const load = useCallback(async () => {
     const d = await fetch(`/api/projects/${projectId}/shorts`).then((r) => r.json()).catch(() => null);
@@ -82,6 +83,12 @@ export default function ShortsFromVideo({ projectId }: { projectId: string }) {
         )}
       </div>
 
+      {info.picks.length > 0 && info.available && (
+        <label className="mt-4 flex items-center gap-2 text-xs text-gray-300">
+          <input type="checkbox" checked={subtitles} onChange={(e) => setSubtitles(e.target.checked)} className="h-4 w-4 accent-pink-500" />
+          Burn subtitles into the Short
+        </label>
+      )}
       {info.picks.length > 0 && (
         <ul className="mt-4 space-y-2">
           {info.picks.map((p, i) => {
@@ -108,7 +115,7 @@ export default function ShortsFromVideo({ projectId }: { projectId: string }) {
                   info.available && (
                     <button
                       type="button"
-                      onClick={() => post({ action: "make", index: i }, `make-${i}`)}
+                      onClick={() => post({ action: "make", index: i, subtitles }, `make-${i}`)}
                       disabled={busy !== ""}
                       className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
                     >

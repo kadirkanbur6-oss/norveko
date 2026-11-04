@@ -584,12 +584,13 @@ export function shortJob(opts: PipelineOptions & { seconds: number }): {
   duration: string;
 } {
   const duration = opts.seconds <= 30 ? "30 seconds" : "60 seconds";
-  const full = { ...opts, duration, fullVideo: true, research: false, voiceover: true, subtitles: true, trialVideo: false, footage: "stills" as FootageMode };
+  // Subtitles are free on a Short (cut from the original's cues) and on unless switched off.
+  const full = { ...opts, duration, fullVideo: true, research: false, voiceover: true, subtitles: opts.subtitles !== false, trialVideo: false, footage: "stills" as FootageMode };
   const steps = initialStepsState(full);
   const plan = fullVideoPlan(duration, "stills");
   if (!plan || !steps.video) throw new Error("This video can't be cut into Shorts.");
   for (const id of ["script", "voiceover"]) steps[id].credits = 0;
-  steps.voiceover.subtitles_credits = 0;
+  if (steps.voiceover.subtitles) steps.voiceover.subtitles_credits = 0;
   // Its own vertical cover with the Short's hook.
   steps.thumbnail.credits = THUMBNAIL_CREDITS;
   steps.render.credits = plan.credits.render;

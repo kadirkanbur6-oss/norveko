@@ -219,6 +219,22 @@ export async function POST(req: Request) {
         const { error } = await db.storage.from("videos").remove(paths);
         return NextResponse.json({ success: !error, removed: error ? 0 : paths.length, error: error?.message });
       }
+      // Older skit / talk / swap projects were saved with style "Cinematic": relabel them (4 Nov 2026).
+      case "relabel-creative-projects": {
+        const db = admin();
+        const out: Record<string, number> = {};
+        for (const [key, label] of [["skit", "Skit"], ["talk", "Talking character"], ["swap", "Character swap"]] as const) {
+          const { data, error } = await db
+            .from("projects")
+            .update({ style: label })
+            .not(`content->${key}`, "is", null)
+            .neq("style", label)
+            .select("id");
+          if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+          out[label] = data?.length ?? 0;
+        }
+        return NextResponse.json({ success: true, relabeled: out });
+      }
       // Prices of fal endpoints (unit + unit price) from fal's pricing API.
       case "fal-price": {
         const ids = (Array.isArray(body.ids) ? body.ids : []).filter((x): x is string => typeof x === "string" && /^[a-z0-9-]+\/[a-z0-9./-]+$/i.test(x)).slice(0, 20);

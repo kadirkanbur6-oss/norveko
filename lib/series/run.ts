@@ -38,6 +38,8 @@ export interface SeriesSettings {
   orientation: "vertical" | "horizontal";
   visualStyle: string;
   captionStyle: string;
+  /** Burned-in subtitles (4 Nov 2026: optional; older series have none set = on). */
+  subtitles?: boolean;
   voiceId: string;
   footage: FootageMode;
   research: boolean;
@@ -74,7 +76,7 @@ export function episodeOptions(s: SeriesSettings): PipelineOptions {
   return {
     research: s.research,
     voiceover: true,
-    subtitles: true,
+    subtitles: s.subtitles !== false,
     video: false,
     fullVideo: true,
     footage: s.footage,
