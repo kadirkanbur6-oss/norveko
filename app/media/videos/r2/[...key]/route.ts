@@ -14,7 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ key:
     return new NextResponse("Not found", { status: 404 });
   }
   const key = parts.map((p) => decodeURIComponent(p)).join("/");
-  if (!/\.(mp4|mov|webm)$/i.test(key)) return new NextResponse("Not found", { status: 404 });
+  if (!/\.(mp4|mov|webm|jpe?g|png|webp|wav|mp3|m4a|srt)$/i.test(key)) return new NextResponse("Not found", { status: 404 });
   const download = req.nextUrl.searchParams.get("download");
   const url = await signedR2Url(key, download);
   return NextResponse.redirect(url, {

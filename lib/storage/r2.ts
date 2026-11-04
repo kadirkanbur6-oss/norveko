@@ -12,7 +12,7 @@
 // R2_BUCKET. Without them everything falls back to Supabase Storage.
 
 import "server-only";
-import { S3Client, GetObjectCommand, DeleteObjectsCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand, DeleteObjectsCommand, ListObjectsV2Command, PutObjectCommand } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { R2_URL_PATH, r2KeyFromUrl } from "./r2-url";
@@ -104,4 +104,9 @@ export async function deleteR2Prefix(prefix: string): Promise<number> {
     token = list.IsTruncated ? list.NextContinuationToken : undefined;
   } while (token);
   return deleted;
+}
+
+/** Store a small file (picture, voice line, subtitles) in R2. */
+export async function putR2(key: string, body: Buffer, contentType: string): Promise<void> {
+  await r2().send(new PutObjectCommand({ Bucket: env("R2_BUCKET"), Key: key, Body: body, ContentType: contentType }));
 }

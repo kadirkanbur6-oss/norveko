@@ -216,6 +216,23 @@ export async function POST(req: Request) {
         const res = await fetch(`https://api.fal.ai/v1/models/pricing?${qs}`, { headers: { Authorization: `Key ${process.env.FAL_KEY}` } });
         return NextResponse.json({ success: res.ok, status: res.status, body: (await res.text()).slice(0, 4000) });
       }
+      // Can Shotstack / fal read files through our R2 redirect URL? (4 Nov 2026)
+      case "r2-media-test": {
+        const src = String(body.imageUrl ?? "");
+        const img = Buffer.from(await (await fetch(src)).arrayBuffer());
+        const { storeMedia } = await import("@/lib/storage/media");
+        const url = await storeMedia(admin(), `lab/r2test-${Date.now()}.jpg`, img, "image/jpeg");
+        const { submitRender } = await import("@/lib/pipeline/shotstack");
+        const renderId = await submitRender({
+          timeline: { tracks: [{ clips: [{ asset: { type: "image", src: url }, start: 0, length: 2, fit: "cover" }] }] },
+          output: { format: "mp4", size: { width: 540, height: 960 }, fps: 25 },
+        });
+        return NextResponse.json({ success: true, url, renderId });
+      }
+      case "shotstack-status": {
+        const { getRender } = await import("@/lib/pipeline/shotstack");
+        return NextResponse.json({ success: true, render: await getRender(String(body.id ?? "")) });
+      }
       case "fal-raw": {
         const url = String(body.url ?? "");
         if (!/^https:\/\/queue\.fal\.run\//.test(url)) return NextResponse.json({ success: false, error: "fal queue urls only" }, { status: 400 });
