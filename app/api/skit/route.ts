@@ -1,6 +1,7 @@
 // app/api/skit/route.ts — skits with dialogue (lib/skit/skit.ts).
 //   GET [?id=] → your recent skits (a running one is moved one step along)
 //   POST {action:"plan", script, orientation} → cast + shot list + price (saved as a draft, free)
+//   POST {action:"voice", id, characterId, voiceStyle?, gender?} → change a draft character's voice
 //   POST {action:"start", id, rights:true} → charge and make it
 
 import { NextResponse } from "next/server";
@@ -18,6 +19,7 @@ import {
   planSkit,
   prepareRecut,
   prepareShotRedo,
+  setCharacterVoice,
   shotRedoCredits,
   skitCredits,
   type SkitRow,
@@ -43,7 +45,7 @@ function view(r: SkitRow) {
     vertical: r.vertical,
     credits: r.credits || skitCredits(plan),
     seconds: Math.round(estimateSeconds(plan).total),
-    characters: (plan?.characters ?? []).map((c) => ({ id: c.id, name: c.name, look: c.look, voice: c.voice })),
+    characters: (plan?.characters ?? []).map((c) => ({ id: c.id, name: c.name, look: c.look, voice: c.voice, gender: c.gender ?? "male", voiceStyle: c.voiceStyle ?? "comic" })),
     shots: shots.map((s) => ({
       id: s.id,
       camera: s.camera,
@@ -128,6 +130,16 @@ export async function POST(req: Request) {
       console.error("[skit] plan failed:", err);
       return bad(err instanceof Error && /script|lines|speaking/.test(err.message) ? err.message : "The scene couldn't be planned. Try again.", 502);
     }
+  }
+
+  // A draft's character voice: one of the 3 styles, male or female (free).
+  if (body.action === "voice") {
+    const { data } = await db.from("skit_jobs").select("*").eq("id", String(body.id ?? "")).eq("user_id", user.id).eq("status", "draft").maybeSingle();
+    const row = data as SkitRow | null;
+    if (!row) return bad("Plan the skit first.");
+    if (!setCharacterVoice(row.plan, String(body.characterId ?? ""), { voiceStyle: body.voiceStyle, gender: body.gender })) return bad("Pick a character.");
+    await db.from("skit_jobs").update({ plan: row.plan, updated_at: new Date().toISOString() }).eq("id", row.id).eq("status", "draft");
+    return NextResponse.json({ success: true, skit: view(row) });
   }
 
   // Edits of a finished skit: make one shot again (paid) or re-cut with music on or off (free).

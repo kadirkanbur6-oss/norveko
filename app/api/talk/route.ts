@@ -80,7 +80,7 @@ export async function GET(req: Request) {
     if (!data) return bad("Not found", 404);
     return NextResponse.json({ success: true, talk: view(await advanceSwapJob(db, data as SwapRow)) });
   }
-  const { GEMINI_VOICES, GEMINI_VOICE_PREFIX } = await import("@/lib/pipeline/gemini-tts");
+  const { VOICE_STYLES } = await import("@/lib/skit/voice-styles");
   const { userClone } = await import("@/lib/voice/clones");
   const clone = await userClone(db, user.id).catch(() => null);
   const { data } = await db.from("swap_jobs").select("*").eq("user_id", user.id).eq("kind", "talk").order("created_at", { ascending: false }).limit(20);
@@ -91,8 +91,9 @@ export async function GET(req: Request) {
     maxChars: TALK_MAX_CHARS,
     looks: TALK_LOOKS,
     voices: [
+      // Only the 3 character voices (cartoon / comic / gruff), male or female.
+      ...VOICE_STYLES.flatMap((v) => (["male", "female"] as const).map((g) => ({ id: `style:${v.id}:${g}`, name: `${v.label} · ${g}`, style: v.hint }))),
       ...(clone ? [{ id: clone.voice_id, name: "Your voice", style: clone.name }] : []),
-      ...GEMINI_VOICES.map((v) => ({ id: `${GEMINI_VOICE_PREFIX}${v.name}`, name: v.name, style: `${v.style} · ${v.gender}` })),
     ],
     talks: ((data ?? []) as SwapRow[]).map(view),
   });
@@ -111,19 +112,26 @@ export async function POST(req: Request) {
     if (text.length < 2) return bad("Write what they should say.");
     if (text.length > TALK_MAX_CHARS) return bad(`Keep it under ${TALK_MAX_CHARS} characters (about ${TALK_MAX_SECONDS} seconds).`);
     const voiceId = typeof body.voiceId === "string" ? body.voiceId : "";
-    const { isGeminiVoiceId, geminiVoiceName } = await import("@/lib/pipeline/gemini-tts");
+    const { isVoiceStyle, voiceFor, styleDirection, applyVoiceStyle } = await import("@/lib/skit/voice-styles");
     const { userClone } = await import("@/lib/voice/clones");
     const ownClone = (await userClone(db, user.id).catch(() => null))?.voice_id;
-    if (!(isGeminiVoiceId(voiceId) && geminiVoiceName(voiceId)) && voiceId !== ownClone) return bad("Pick a voice.");
+    const [, styleId, gender] = voiceId.split(":");
+    const style = voiceId.startsWith("style:") && isVoiceStyle(styleId) && (gender === "male" || gender === "female") ? styleId : null;
+    if (!style && voiceId !== ownClone) return bad("Pick a voice.");
     const now = Date.now();
     const recent = (voiceCalls.get(user.id) ?? []).filter((t) => now - t < 3600_000);
     if (recent.length >= VOICE_PREVIEWS_PER_HOUR) return bad("That's a lot of tries — wait a little and try again.", 429);
     voiceCalls.set(user.id, [...recent, now]);
     try {
       const { synthesizeNarration } = await import("@/lib/pipeline/tts");
-      const speech = await synthesizeNarration(text, voiceId, {
-        direction: "Say this in character, expressively and naturally, like a person talking to a camera — not like a narrator",
-      });
+      const speech = style
+        ? await synthesizeNarration(text, `gemini:${voiceFor(style, gender as "male" | "female")}`, {
+            direction: styleDirection(style, "the character", "talking straight to the camera"),
+          })
+        : await synthesizeNarration(text, voiceId, {
+            direction: "Say this in character, expressively and naturally, like a person talking to a camera — not like a narrator",
+          });
+      if (style && speech.ext === "wav") speech.audio = applyVoiceStyle(speech.audio, style);
       const path = `${user.id}/talk/aud-${randomUUID()}.${speech.ext}`;
       const { error } = await db.storage.from("videos").upload(path, speech.audio, { contentType: speech.contentType, upsert: false });
       if (error) throw new Error(error.message);

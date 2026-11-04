@@ -20,6 +20,7 @@ import { AVATAR_COST_PER_SECOND, RENDER_CREDITS_PER_30S, creditsForCost } from "
 import { wordsPerSecond } from "@/lib/pipeline/narration";
 import { SKIT_CLIP_COST, SKIT_IMAGE_COST, skitCreditsFor } from "./pricing";
 import type { CaptionCue } from "@/lib/pipeline/captions";
+import { applyVoiceStyle, isVoiceStyle, styleDirection, voiceFor, type VoiceGender, type VoiceStyle } from "@/lib/skit/voice-styles";
 import { musicCredit } from "@/lib/pipeline/music";
 import { storeMedia } from "@/lib/storage/media";
 
@@ -40,6 +41,9 @@ export interface SkitCharacter {
   name: string;
   look: string;
   voice: string; // Gemini voice name
+  gender?: VoiceGender;
+  /** One of the 3 skit voices (cartoon / comic / gruff); older plans have none = comic. */
+  voiceStyle?: VoiceStyle;
   refPath?: string;
   /** Where the reference portrait lives (R2 redirect URL or public Supabase URL). */
   refUrl?: string;
@@ -131,13 +135,13 @@ Rules:
 - At most ${SKIT_MAX_CHARACTERS} characters and ${SKIT_MAX_SHOTS} shots, aim for under ${SKIT_MAX_SECONDS} seconds (the creator's lines always stay whole). Vary the camera (wide establishing shot first, close-ups for punchlines, a wide crowd shot for reactions). A speaking shot shows ONLY the speaker's face (single medium close-up or close-up; others at most from behind) — group shots are for silent moments and reactions.
 - "setting" must fully describe the place in every shot (each picture is drawn on its own), in English. Keep the same place consistent across shots that happen there.
 - "look" is a consistent English visual description: species/type, colours, clothing, props, size. Crowds and extras are described in "setting", not as characters.
-- Pick a voice for each speaking character from this list (match gender and personality): ${voices.map((v) => `${v.name} (${v.gender}, ${v.style})`).join("; ")}.
+- Give each character a "gender" (male|female, the voice they should have) and one of 3 "voiceStyle"s: "cartoon" (high and quick — small, cute, silly or animal characters, the viral cockroach/chick-video sound; the default for cartoon animals), "comic" (natural voice, over-the-top acting — loud bosses, show-offs, excited people), "gruff" (deep, husky, older — old men/women, tough guys, villains).
 
 JSON shape:
 {"title": string (short, in the script's language),
  "language": ISO 639-1 code of the dialogue,
  "look": one of ${SKIT_LOOKS.join("|")},
- "characters": [{"id":"c1","name":string,"look":string,"voice":string}],
+ "characters": [{"id":"c1","name":string,"look":string,"gender":"male|female","voiceStyle":"cartoon|comic|gruff"}],
  "shots": [{"setting":string,"camera":"wide|medium|close-up","visible":["c1"],"speaker":"c1" or null,"line":string (exact spoken text, "" if silent),"tone":string (English, how the line is said: "proud, booming", "confused, hesitant"…),"action":string (English: what happens on screen),"sfx":string (English sound effect for this shot, e.g. "large crowd applauding and cheering", or ""),"crowd":string (words a crowd shouts in this shot, or ""),"seconds":number (2-4, only used for silent shots)}]}`,
     user: script.slice(0, SKIT_MAX_SCRIPT),
     timeoutMs: 90_000,
@@ -152,20 +156,23 @@ JSON shape:
     data = (await ask(process.env.SKIT_BACKUP_MODEL || "gemini-3.8-flash")).data;
   }
 
-  const voiceNames = new Set(voices.map((v) => v.name));
   const characters: SkitCharacter[] = (Array.isArray(data.characters) ? data.characters : [])
     .slice(0, SKIT_MAX_CHARACTERS)
     .map((c, i) => {
       const r = c as Record<string, unknown>;
-      const voice = clean(r.voice, 30);
+      const gender: VoiceGender = r.gender === "female" ? "female" : "male";
+      const voiceStyle: VoiceStyle = isVoiceStyle(r.voiceStyle) ? r.voiceStyle : "cartoon";
       return {
         id: clean(r.id, 10) || `c${i + 1}`,
         name: clean(r.name, 40) || `Character ${i + 1}`,
         look: clean(r.look, 400),
-        voice: voiceNames.has(voice) ? voice : voices[i % voices.length].name,
+        voice: "",
+        gender,
+        voiceStyle,
       };
     })
     .filter((c) => c.look);
+  assignVoices(characters, voices);
   if (!characters.length) throw new Error("The script couldn't be turned into a scene. Add who is speaking.");
   const ids = new Set(characters.map((c) => c.id));
   const shots: SkitShot[] = (Array.isArray(data.shots) ? data.shots : []).slice(0, SKIT_MAX_SHOTS).map((s, i) => {
@@ -334,13 +341,16 @@ async function stepShots(db: SupabaseClient, row: SkitRow) {
     if (s.line && !s.audioUrl)
       jobs.push(async () => {
         const c = plan.characters.find((x) => x.id === s.speaker)!;
+        const style: VoiceStyle = c.voiceStyle ?? "comic";
         const speech = await synthesizeNarration(s.line, `gemini:${c.voice}`, {
-          direction: `Perform this line as ${c.name}, a cartoon character in a comedy sketch, ${s.tone || "expressively"} — acted, not narrated. Say only the line`,
+          direction: c.voiceStyle ? styleDirection(style, c.name, s.tone) : `Perform this line as ${c.name}, a cartoon character in a comedy sketch, ${s.tone || "expressively"} — acted, not narrated. Say only the line`,
         });
+        // Cartoon / gruff: the take is pitched up or down (its timing changes with it).
+        const audio = speech.ext === "wav" ? applyVoiceStyle(speech.audio, style) : speech.audio;
         const path = `${row.user_id}/skit/${row.id}/line-${s.id}-${randomUUID().slice(0, 8)}.${speech.ext}`;
-        const lineUrl = await storeMedia(db, path, speech.audio, speech.contentType);
-        s.audioSeconds = Math.round(audioSeconds(speech.audio, speech.ext) * 100) / 100;
-        if (speech.alignment) {
+        const lineUrl = await storeMedia(db, path, audio, speech.contentType);
+        s.audioSeconds = Math.round(audioSeconds(audio, speech.ext) * 100) / 100;
+        if (speech.alignment && audio === speech.audio) {
           const { alignmentToCues } = await import("@/lib/pipeline/captions");
           s.cues = alignmentToCues(speech.alignment);
         }
@@ -728,4 +738,32 @@ export function prepareRecut(row: SkitRow, opts: { music?: boolean }): SkitRow["
 
 export function editsUsed(plan: SkitPlan): number {
   return (plan as SkitPlan & { edits?: number }).edits ?? 0;
+}
+
+/** Give every character a Gemini voice that fits their gender and style, different from the others where possible. */
+export function assignVoices(characters: SkitCharacter[], voices: Array<{ name: string }> = []): void {
+  const known = new Set(voices.map((v) => v.name));
+  const seen = new Map<string, number>();
+  const used = new Set<string>();
+  for (const c of characters) {
+    const style = c.voiceStyle ?? "comic";
+    const gender = c.gender ?? "male";
+    const key = `${style}:${gender}`;
+    let n = seen.get(key) ?? 0;
+    let voice = voiceFor(style, gender, n);
+    for (let k = 0; k < 3 && used.has(voice); k++) voice = voiceFor(style, gender, ++n);
+    seen.set(key, n + 1);
+    used.add(voice);
+    c.voice = !known.size || known.has(voice) ? voice : c.voice || voice;
+  }
+}
+
+/** Change one character's voice on a draft (style and/or gender), then re-pick voices. */
+export function setCharacterVoice(plan: SkitPlan, characterId: string, opts: { voiceStyle?: unknown; gender?: unknown }): boolean {
+  const c = plan.characters.find((x) => x.id === characterId);
+  if (!c) return false;
+  if (isVoiceStyle(opts.voiceStyle)) c.voiceStyle = opts.voiceStyle;
+  if (opts.gender === "male" || opts.gender === "female") c.gender = opts.gender;
+  assignVoices(plan.characters);
+  return true;
 }

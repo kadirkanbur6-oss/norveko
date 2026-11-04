@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Clapperboard, Loader2, Sparkles, Volume2 } from "lucide-react";
 import FinishedVideo from "./FinishedVideo";
 import GenerationStage, { type StageStep } from "../GenerationStage";
+import { VOICE_STYLES, type VoiceGender, type VoiceStyle } from "@/lib/skit/voice-styles";
 
 type Skit = {
   id: string;
@@ -18,7 +19,7 @@ type Skit = {
   vertical: boolean;
   credits: number;
   seconds: number;
-  characters: Array<{ id: string; name: string; look: string; voice: string }>;
+  characters: Array<{ id: string; name: string; look: string; voice: string; gender: VoiceGender; voiceStyle: VoiceStyle }>;
   shots: Array<{ id: string; camera: string; speaker: string | null; line: string; action: string; sfx: string; crowd: string; imageUrl: string | null; ready: boolean }>;
   phaseAt?: Record<string, string>;
   outputUrl: string | null;
@@ -126,6 +127,19 @@ export default function SkitStudio({ text, onStarted }: { text: string; onStarte
     }
   }
 
+  async function setVoice(characterId: string, change: { voiceStyle?: VoiceStyle; gender?: VoiceGender }) {
+    if (!draft) return;
+    setError("");
+    // Show the pick right away; the server confirms it.
+    setDraft({ ...draft, characters: draft.characters.map((c) => (c.id === characterId ? { ...c, ...change } : c)) });
+    try {
+      const d = await post({ action: "voice", id: draft.id, characterId, ...change });
+      setDraft(d.skit);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The voice couldn't be changed.");
+    }
+  }
+
   async function start() {
     if (!draft) return;
     setBusy("start");
@@ -224,9 +238,31 @@ export default function SkitStudio({ text, onStarted }: { text: string; onStarte
                 <div key={c.id} className="max-w-xs rounded-xl border border-white/10 bg-[#0d0d16] px-3 py-2">
                   <p className="text-sm font-medium">{c.name}</p>
                   <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">{c.look}</p>
-                  <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-gray-400">
-                    <Volume2 size={11} /> {c.voice}
-                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-1" role="group" aria-label={`${c.name}'s voice`}>
+                    <Volume2 size={11} className="text-gray-500" />
+                    {VOICE_STYLES.map((v) => (
+                      <button
+                        key={v.id}
+                        type="button"
+                        title={v.hint}
+                        aria-pressed={c.voiceStyle === v.id}
+                        disabled={busy !== "" || Boolean(stale)}
+                        onClick={() => setVoice(c.id, { voiceStyle: v.id })}
+                        className={`rounded-full border px-2 py-0.5 text-[11px] transition disabled:opacity-50 ${c.voiceStyle === v.id ? "border-sky-400/60 bg-sky-500/15 text-sky-100" : "border-white/10 text-gray-400 hover:border-white/25"}`}
+                      >
+                        {v.label}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      title="Switch between a male and a female voice"
+                      disabled={busy !== "" || Boolean(stale)}
+                      onClick={() => setVoice(c.id, { gender: c.gender === "female" ? "male" : "female" })}
+                      className="rounded-full border border-white/10 px-2 py-0.5 text-[11px] text-gray-300 hover:border-white/25 disabled:opacity-50"
+                    >
+                      {c.gender === "female" ? "Female" : "Male"}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
