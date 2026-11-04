@@ -20,7 +20,7 @@ import { wordsPerSecond } from "@/lib/pipeline/narration";
 
 export const SKIT_MAX_SHOTS = 8;
 export const SKIT_MAX_CHARACTERS = 4;
-export const SKIT_MAX_SECONDS = 45;
+export const SKIT_MAX_SECONDS = 60;
 export const SKIT_MAX_SCRIPT = 1500;
 export const SKIT_LOOKS = ["3d", "anime", "cinematic", "painting", "comic"] as const;
 const IMAGE_COST = 0.04;
@@ -103,8 +103,8 @@ function clean(v: unknown, max: number): string {
 
 export async function planSkit(script: string, voices: Array<{ name: string; style: string; gender: string }>): Promise<SkitPlan> {
   const { chatJSON, SCRIPT_MODEL } = await import("@/lib/pipeline/llm");
-  const { data } = await chatJSON<Record<string, unknown>>({
-    model: SCRIPT_MODEL,
+  const ask = (model: string) => chatJSON<Record<string, unknown>>({
+    model,
     system: `You turn a creator's joke or script into a short animated skit for TikTok/Reels/Shorts: a cast and a shot list. Answer with JSON only.
 
 Rules:
@@ -112,7 +112,7 @@ Rules:
 - Narration in the script ("after a long silence…", "applause, cheers…") is NOT spoken by a character: turn it into a silent shot (a pause, a reaction) and/or a sound effect. When the script says a crowd shouts or chants words ("yaşa, varol sesleri", "the crowd chants his name"), put those words in "crowd" (in the dialogue language, short, with exclamation marks, e.g. "Yaşa! Var ol! Yaşa!") on a wide crowd shot, together with an applause/cheering "sfx".
 - If the creator asks for a style ("like the viral cockroach videos", "as cats", "anime"), EVERY character becomes that: e.g. Pixar-style 3D cartoon cockroaches with human clothes in human settings. Without a style ask, use friendly Pixar-style 3D cartoon characters.
 - Real, named people become clearly cartoon caricatures of that species, recognisable only through clothes, hairstyle and props. Never put a real person's name in "look" or "setting" — describe what they wear instead. Character "name" may be a short role label in the script's language (e.g. "Başkan", "Gazeteci").
-- At most ${SKIT_MAX_CHARACTERS} characters and ${SKIT_MAX_SHOTS} shots, total under ${SKIT_MAX_SECONDS} seconds. Vary the camera (wide establishing shot first, close-ups for punchlines, a wide crowd shot for reactions).
+- At most ${SKIT_MAX_CHARACTERS} characters and ${SKIT_MAX_SHOTS} shots, aim for under ${SKIT_MAX_SECONDS} seconds (the creator's lines always stay whole). Vary the camera (wide establishing shot first, close-ups for punchlines, a wide crowd shot for reactions).
 - "setting" must fully describe the place in every shot (each picture is drawn on its own), in English. Keep the same place consistent across shots that happen there.
 - "look" is a consistent English visual description: species/type, colours, clothing, props, size. Crowds and extras are described in "setting", not as characters.
 - Pick a voice for each speaking character from this list (match gender and personality): ${voices.map((v) => `${v.name} (${v.gender}, ${v.style})`).join("; ")}.
@@ -126,6 +126,15 @@ JSON shape:
     user: script.slice(0, SKIT_MAX_SCRIPT),
     timeoutMs: 90_000,
   });
+  // One retry on a backup model: a timeout, refusal or broken JSON shouldn't reach the creator.
+  let data: Record<string, unknown>;
+  try {
+    data = (await ask(SCRIPT_MODEL)).data;
+    if (!Array.isArray(data.characters) || !Array.isArray(data.shots)) throw new Error("plan without cast/shots");
+  } catch (err) {
+    console.warn("[skit] plan failed, retrying on the backup model:", err instanceof Error ? err.message : err);
+    data = (await ask(process.env.SKIT_BACKUP_MODEL || "gemini-3.8-flash")).data;
+  }
 
   const voiceNames = new Set(voices.map((v) => v.name));
   const characters: SkitCharacter[] = (Array.isArray(data.characters) ? data.characters : [])
