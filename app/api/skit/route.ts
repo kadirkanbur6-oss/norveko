@@ -17,6 +17,7 @@ import {
   editsUsed,
   estimateSeconds,
   planSkit,
+  prepareReanimate,
   prepareRecut,
   prepareShotRedo,
   setCharacterVoice,
@@ -54,6 +55,7 @@ function view(r: SkitRow) {
       sfx: s.sfx,
       crowd: s.crowd ?? "",
       imageUrl: s.imageUrl ?? null,
+      animated: Boolean(s.clipUrl || s.editedClipUrl),
       ready: Boolean(s.clipUrl || s.clipFailed),
       redoCredits: shotRedoCredits(plan, shots.indexOf(s)),
     })),
@@ -145,7 +147,7 @@ export async function POST(req: Request) {
   }
 
   // Edits of a finished skit: make one shot again (paid) or re-cut with music on or off (free).
-  if (body.action === "redoShot" || body.action === "recut") {
+  if (body.action === "redoShot" || body.action === "recut" || body.action === "reanimate") {
     const { data } = await db.from("skit_jobs").select("*").eq("id", String(body.id ?? "")).eq("user_id", user.id).maybeSingle();
     const row = data as SkitRow | null;
     if (!row || row.status === "draft") return bad("Skit not found.", 404);
@@ -162,6 +164,11 @@ export async function POST(req: Request) {
       credits = shotRedoCredits(row.plan, index);
       plan = prepareShotRedo(row, index, note);
       phase = "shots";
+    } else if (body.action === "reanimate") {
+      const r = prepareReanimate(row);
+      if (!r.shots) return bad("Every shot is already animated.");
+      plan = r.plan;
+      phase = "animate";
     } else {
       plan = prepareRecut(row, { music: body.music as boolean | undefined });
     }

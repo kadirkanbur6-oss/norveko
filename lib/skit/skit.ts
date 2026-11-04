@@ -685,6 +685,24 @@ export function prepareShotRedo(row: SkitRow, index: number, note: string): Skit
   return plan;
 }
 
+/**
+ * Animate again the shots whose lip-sync / motion failed (e.g. the video provider was down),
+ * keeping their pictures and voices; then re-cut. Free. Returns how many shots it retries.
+ */
+export function prepareReanimate(row: SkitRow): { plan: SkitRow["plan"]; shots: number } {
+  const plan = row.plan;
+  let n = 0;
+  for (const s of plan.shots) {
+    if (s.clipUrl || s.editedClipUrl) continue;
+    delete s.fal;
+    delete s.clipFailed;
+    n++;
+  }
+  plan.renderVersion = (plan.renderVersion ?? 0) + 1;
+  (plan as SkitPlan & { edits?: number }).edits = ((plan as SkitPlan & { edits?: number }).edits ?? 0) + 1;
+  return { plan, shots: n };
+}
+
 /** Re-cut with music switched on or off (free). */
 export function prepareRecut(row: SkitRow, opts: { music?: boolean }): SkitRow["plan"] {
   const plan = row.plan;

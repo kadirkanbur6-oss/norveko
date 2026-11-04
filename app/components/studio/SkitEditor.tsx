@@ -5,10 +5,10 @@
 // cut replaces the video in the same project.
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, Music, RefreshCw, Scissors } from "lucide-react";
+import { Loader2, Music, RefreshCw, Scissors, Sparkles } from "lucide-react";
 import GenerationStage from "../GenerationStage";
 
-type Shot = { id: string; camera: string; speaker: string | null; line: string; action: string; imageUrl: string | null; redoCredits: number };
+type Shot = { id: string; camera: string; speaker: string | null; line: string; action: string; imageUrl: string | null; animated?: boolean; redoCredits: number };
 type Skit = {
   id: string;
   status: string;
@@ -98,6 +98,17 @@ export default function SkitEditor({ projectId }: { projectId: string }) {
           <p className="mt-0.5 text-xs text-gray-500">Make any shot again, or switch the music on or off. {skit.editsLeft} edits left.</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {skit.shots.some((s) => s.animated === false) && (
+            <button
+              type="button"
+              disabled={busy || skit.editsLeft < 1}
+              onClick={() => post({ action: "reanimate", id: skit.id })}
+              title="Some shots are still pictures (the animation didn't finish). Try their motion and lip-sync again — free."
+              className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-100 hover:border-amber-300 disabled:opacity-40"
+            >
+              <Sparkles size={13} /> Animate still shots · free
+            </button>
+          )}
           <button
             type="button"
             disabled={busy || skit.editsLeft < 1}
