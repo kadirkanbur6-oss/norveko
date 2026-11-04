@@ -102,7 +102,8 @@ function suggestMode(text: string): WorkspaceMode | null {
   if (t.length < 8) return null;
   if (/\b(swap|face ?swap|deepfake)\b|yüz(ümü|ünü)? (değiştir|koy)|yerine (beni|kendimi)|videoya (beni|kendimi)|klib(e|in)/i.test(t)) return "swap";
   const dialogue = t.split(/\n/).filter((l) => /^\s*[-–—•]\s*\S/.test(l) || /^\s*[\p{L} .]{2,25}:\s*\S/u.test(l)).length;
-  if (dialogue >= 2 || /skeç|skit|diyalog|dialogue|sketch|videolarına uyarla|videolarına benzet|şaka|fıkra|joke/i.test(t)) return "skit";
+  const quoted = (t.match(/["“”«»„][^"“”«»„\n]{3,}["“”«»„]/g) ?? []).length;
+  if (dialogue >= 2 || quoted >= 2 || /skeç|skit|diyalog|dialogue|sketch|videolarına uyarla|videolarına benzet|videosu gibi|videoları gibi|şaka|fıkra|joke/i.test(t)) return "skit";
   if (/(söylesin|desin|konuşsun|konuşan|talking (character|head)|says?:|lip ?sync)/i.test(t)) return "talk";
   return "video";
 }
