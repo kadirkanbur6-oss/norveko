@@ -21,6 +21,7 @@ import { wordsPerSecond } from "@/lib/pipeline/narration";
 import { SKIT_CLIP_COST, SKIT_IMAGE_COST, skitCreditsFor } from "./pricing";
 import type { CaptionCue } from "@/lib/pipeline/captions";
 import { musicCredit } from "@/lib/pipeline/music";
+import { storeMedia } from "@/lib/storage/media";
 
 export const SKIT_MAX_SHOTS = 8;
 export const SKIT_MAX_CHARACTERS = 4;
@@ -40,6 +41,8 @@ export interface SkitCharacter {
   look: string;
   voice: string; // Gemini voice name
   refPath?: string;
+  /** Where the reference portrait lives (R2 redirect URL or public Supabase URL). */
+  refUrl?: string;
 }
 
 export interface SkitShot {
@@ -270,9 +273,16 @@ async function settled<T>(items: T[], fn: (item: T) => Promise<void>) {
 async function charRefs(db: SupabaseClient, plan: SkitPlan, ids: string[]) {
   const refs = [];
   for (const c of plan.characters.filter((x) => ids.includes(x.id) && x.refPath)) {
-    const { data } = await db.storage.from("videos").download(c.refPath!);
-    if (!data) continue;
-    refs.push({ name: c.name, description: c.look, images: [{ mimeType: data.type || "image/png", data: Buffer.from(await data.arrayBuffer()).toString("base64") }] });
+    let blob: Blob | null = null;
+    if (c.refUrl) {
+      const res = await fetch(c.refUrl, { cache: "no-store" }).catch(() => null);
+      blob = res && res.ok ? await res.blob() : null;
+    } else {
+      blob = (await db.storage.from("videos").download(c.refPath!)).data;
+    }
+    if (!blob) continue;
+    const mimeType = blob.type && blob.type.startsWith("image/") ? blob.type : c.refPath?.endsWith(".jpg") ? "image/jpeg" : "image/png";
+    refs.push({ name: c.name, description: c.look, images: [{ mimeType, data: Buffer.from(await blob.arrayBuffer()).toString("base64") }] });
   }
   return refs;
 }
@@ -300,8 +310,7 @@ async function stepCast(db: SupabaseClient, row: SkitRow) {
     async (c) => {
       const img = await generateReferencePortrait({ name: c.name, description: `${c.look}. ${row.plan.look === "cinematic" ? "" : "Cartoon character, not a real human."}` });
       const path = `${row.user_id}/skit/${row.id}/char-${c.id}.${img.mimeType.includes("jpeg") ? "jpg" : "png"}`;
-      const { error } = await db.storage.from("videos").upload(path, img.bytes, { contentType: img.mimeType, upsert: true });
-      if (error) throw new Error(error.message);
+      c.refUrl = await storeMedia(db, path, img.bytes, img.mimeType);
       c.refPath = path;
     }
   );
@@ -329,14 +338,13 @@ async function stepShots(db: SupabaseClient, row: SkitRow) {
           direction: `Perform this line as ${c.name}, a cartoon character in a comedy sketch, ${s.tone || "expressively"} — acted, not narrated. Say only the line`,
         });
         const path = `${row.user_id}/skit/${row.id}/line-${s.id}-${randomUUID().slice(0, 8)}.${speech.ext}`;
-        const { error } = await db.storage.from("videos").upload(path, speech.audio, { contentType: speech.contentType, upsert: true });
-        if (error) throw new Error(error.message);
+        const lineUrl = await storeMedia(db, path, speech.audio, speech.contentType);
         s.audioSeconds = Math.round(audioSeconds(speech.audio, speech.ext) * 100) / 100;
         if (speech.alignment) {
           const { alignmentToCues } = await import("@/lib/pipeline/captions");
           s.cues = alignmentToCues(speech.alignment);
         }
-        s.audioUrl = publicUrl(db, path);
+        s.audioUrl = lineUrl;
       });
     if (s.crowd && !s.crowdUrls)
       jobs.push(async () => {
@@ -354,9 +362,8 @@ async function stepShots(db: SupabaseClient, row: SkitRow) {
                 direction: "Shout this loudly and excitedly as one person in a big cheering crowd at a rally, slightly overlapping the others",
               });
               const path = `${row.user_id}/skit/${row.id}/crowd-${s.id}-${k}.${speech.ext}`;
-              const { error } = await db.storage.from("videos").upload(path, speech.audio, { contentType: speech.contentType, upsert: true });
-              if (error) throw new Error(error.message);
-              return { url: publicUrl(db, path), seconds: audioSeconds(speech.audio, speech.ext) };
+              const url = await storeMedia(db, path, speech.audio, speech.contentType);
+              return { url, seconds: audioSeconds(speech.audio, speech.ext) };
             })
           );
           s.crowdUrls = parts.map((p) => p.url);
@@ -371,8 +378,7 @@ async function stepShots(db: SupabaseClient, row: SkitRow) {
         try {
           const audio = await generateSoundEffect(s.sfx, s.line ? undefined : Math.max(2, s.seconds + 1, s.crowd ? s.crowd.split(/\s+/).length / 2 + 2 : 0));
           const path = `${row.user_id}/skit/${row.id}/sfx-${s.id}.mp3`;
-          await db.storage.from("videos").upload(path, audio, { contentType: "audio/mpeg", upsert: true });
-          s.sfxUrl = publicUrl(db, path);
+          s.sfxUrl = await storeMedia(db, path, audio, "audio/mpeg");
         } catch (err) {
           console.warn(`[skit] ${row.id} sfx skipped:`, err instanceof Error ? err.message : err);
           s.sfx = ""; // a missing sound effect never stops the skit

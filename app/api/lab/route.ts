@@ -160,7 +160,8 @@ export async function POST(req: Request) {
             if (j.id || !/^[0-9a-f-]{36}$/.test(j.name)) continue;
             const { data: files } = await db.storage.from("videos").list(`${u.name}/${j.name}`, { limit: 1000 });
             for (const f of files ?? []) {
-              if (/^final(-v\d+)?\.mp4$/.test(f.name)) {
+              // kind "clips" (4 Nov 2026): every scene clip (slot/presenter MP4s) too, not only finals.
+              if (body.kind === "clips" ? /\.mp4$/i.test(f.name) : /^final(-v\d+)?\.mp4$/.test(f.name)) {
                 found.push({ path: `${u.name}/${j.name}/${f.name}`, size: Number((f.metadata as { size?: number } | null)?.size ?? 0) });
               }
             }
@@ -208,6 +209,15 @@ export async function POST(req: Request) {
           }
         }
         return NextResponse.json({ success: true, moved, failed, remaining: found.length - moved.length, totalMbBefore: totalMb });
+      }
+      // Source clips of finished/failed swaps are never read again: free their space (4 Nov 2026).
+      case "cleanup-swap-sources": {
+        const db = admin();
+        const { data: rows } = await db.from("swap_jobs").select("id, source_path, kind, status").neq("status", "running").eq("kind", "swap").limit(200);
+        const paths = (rows ?? []).map((r) => r.source_path as string).filter((p) => /\/swap\/src-/.test(p));
+        if (body.dryRun || !paths.length) return NextResponse.json({ success: true, files: paths.length });
+        const { error } = await db.storage.from("videos").remove(paths);
+        return NextResponse.json({ success: !error, removed: error ? 0 : paths.length, error: error?.message });
       }
       // Prices of fal endpoints (unit + unit price) from fal's pricing API.
       case "fal-price": {
