@@ -180,6 +180,11 @@ async function fail(db: SupabaseClient, row: SwapRow, message: string) {
       p_reason: row.kind === "talk" ? "Refund: talking character failed" : "Refund: character swap failed",
     });
   }
+  // What this run cost us, even though it failed (lib/creative-usage.ts).
+  if (data) {
+    const { logSwapUsage } = await import("@/lib/creative-usage");
+    await logSwapUsage(db, row, "failed");
+  }
 }
 
 /** Talk: a failed lip-sync gets one more try on the fallback model. */
@@ -234,6 +239,8 @@ async function finish(db: SupabaseClient, row: SwapRow, sourceUrl: string): Prom
     .select("id")
     .single();
   await patch(db, row, { phase: "done", status: "completed", output_url: url, project_id: project?.id ?? null });
+  const { logSwapUsage } = await import("@/lib/creative-usage");
+  await logSwapUsage(db, row, "ok");
   // A swap's source clip is never read again: free the space (best effort).
   if (!talk && /\/swap\/src-/.test(row.source_path)) await db.storage.from("videos").remove([row.source_path]).catch(() => undefined);
   return row;

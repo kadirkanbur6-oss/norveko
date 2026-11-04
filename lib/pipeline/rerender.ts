@@ -1,19 +1,33 @@
 // lib/pipeline/rerender.ts
 // Queue a re-render of a finished full video (only the render step runs
 // again; script, voice and visuals are reused). Used by "Edit video" on the
-// project page and by the lab. No charge: the render was paid with the video,
-// and re-renders are capped per job (MAX_RERENDERS) to bound our cost.
+// project page and by the lab. The first FREE_RERENDERS are included with the
+// video; after that each one costs the render price (5 Nov 2026: free re-renders
+// were our biggest unpaid provider cost). Capped per job at MAX_RERENDERS.
 
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isCaptionStyle } from "./visual-styles";
+import { RENDER_CREDITS_PER_30S } from "./steps";
 
 export const MAX_RERENDERS = 10;
+/** Re-renders included with every video; later ones are charged (rerenderCredits). */
+export const FREE_RERENDERS = 3;
+
+/** Credits the NEXT re-render of this job costs (0 while free ones are left). */
+export function rerenderCredits(steps: Record<string, Record<string, unknown>> | null | undefined): number {
+  const version = Number(steps?.render?.version) || 0;
+  if (version < FREE_RERENDERS) return 0;
+  const seconds = Number(steps?.video?.total_seconds) || Number(steps?.voiceover?.duration_seconds) || 30;
+  return RENDER_CREDITS_PER_30S * Math.max(1, Math.ceil(seconds / 30));
+}
 
 export interface RerenderChanges {
   musicId?: string | null;
   captionStyle?: string | null;
   reason?: string;
+  /** Credits already charged for this re-render (refunded by failJob if it fails). */
+  credits?: number;
 }
 
 export interface RenderVersion {
@@ -67,6 +81,7 @@ export async function queueRerender(
     ...(changes.musicId ? { music_id: changes.musicId } : {}),
     version,
     reason: changes.reason ?? "edited",
+    rerender_credits: changes.credits ?? 0,
     // Edited scene images are picked up by this render.
     edits_pending: false,
     queued_at: new Date().toISOString(),

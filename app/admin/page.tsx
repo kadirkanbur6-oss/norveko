@@ -523,7 +523,7 @@ export default function AdminPage() {
                   </table>
                 </div>
                 <p className="text-xs text-gray-400">
-                  Estimates from the pipeline&apos;s usage log for the {windowLabel}. Skits, talking characters and swaps are not logged there yet, so the provider invoices will be higher.
+                  Estimates from the usage log for the {windowLabel}: units used × list prices. Skits, talking characters and swaps are logged from 5 Nov 2026 on; earlier ones are missing, and the providers&apos; own invoices are the final word.
                 </p>
               </div>
             )

@@ -17,6 +17,7 @@ type Skit = {
   vertical: boolean;
   music: boolean;
   editsLeft: number;
+  recutCredits?: number;
   shots: Shot[];
   phaseAt?: Record<string, string>;
   createdAt: string;
@@ -115,7 +116,7 @@ export default function SkitEditor({ projectId }: { projectId: string }) {
             onClick={() => post({ action: "recut", id: skit.id, music: !skit.music })}
             className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs text-gray-200 hover:border-white/25 disabled:opacity-40"
           >
-            <Music size={13} /> {skit.music ? "Remove music" : "Add music"} · free
+            <Music size={13} /> {skit.music ? "Remove music" : "Add music"} · {skit.recutCredits ? `${skit.recutCredits} credits` : "free"}
           </button>
         </div>
       </div>

@@ -2,7 +2,7 @@
 // "Edit video" for finished full videos:
 //   GET  → the timeline (one entry per ~5 s slot), current music + subtitle style
 //   POST {action:"regenerate", index, prompt?} → new AI image for one slot (charged like a still)
-//   POST {action:"rerender", musicId?, captionStyle?} → render again with the edits (free, capped)
+//   POST {action:"rerender", musicId?, captionStyle?} → render again with the edits (first 3 free, then the render price; capped)
 //   POST {action:"restoreScene", index, url} → put back an earlier picture of a slot (free)
 //   POST {action:"useVersion", url} → make an earlier render the project's video again (free)
 
@@ -10,7 +10,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireUser } from "@/lib/supabase-server";
 import { STILL_SCENE_CREDITS } from "@/lib/pipeline/steps";
-import { MAX_RENDER_RETRIES, MAX_RERENDERS, queueRerender, retryFailedRender, type RenderVersion } from "@/lib/pipeline/rerender";
+import { FREE_RERENDERS, MAX_RENDER_RETRIES, MAX_RERENDERS, queueRerender, rerenderCredits, retryFailedRender, type RenderVersion } from "@/lib/pipeline/rerender";
 import { DEFAULT_CAPTION_STYLE } from "@/lib/pipeline/visual-styles";
 import type { TimelineSlot } from "@/lib/pipeline/timeline";
 import type { CaptionCue } from "@/lib/pipeline/captions";
@@ -156,6 +156,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     captionStyle: (job.options?.captionStyle as string | undefined) ?? DEFAULT_CAPTION_STYLE,
     stillCredits: STILL_SCENE_CREDITS,
     rerendersLeft: Math.max(0, MAX_RERENDERS - version),
+    freeRerendersLeft: Math.max(0, FREE_RERENDERS - version),
+    rerenderCredits: rerenderCredits(job.steps),
     pendingEdits: Boolean(job.steps.render.edits_pending),
     totalSeconds: Number(job.steps.video?.total_seconds) || slots.reduce((m, x) => Math.max(m, x.start + x.length), 0),
     hook: typeof job.steps.script?.hook === "string" ? job.steps.script.hook : "",
@@ -193,14 +195,30 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   if (body.action === "rerender") {
+    // The first few re-renders come with the video; later ones cost the render price.
+    const cost = rerenderCredits(job.steps);
+    const { payerFor } = await import("@/lib/teams");
+    const payer = cost > 0 ? await payerFor(db, user.id) : user.id;
+    if (cost > 0) {
+      const { data: ok, error: deductError } = await db.rpc("deduct_credits", { p_user_id: payer, p_amount: cost, p_reason: "Edit video: re-render" });
+      if (deductError) return NextResponse.json({ success: false, error: "Could not charge credits." }, { status: 500 });
+      if (!ok) {
+        return NextResponse.json(
+          { success: false, error: `Not enough credits. This re-render costs ${cost} credits.`, code: "insufficient_credits" },
+          { status: 402 }
+        );
+      }
+    }
     try {
       const { version } = await queueRerender(db, job.id, user.id, {
         musicId: typeof body.musicId === "string" ? body.musicId : null,
         captionStyle: typeof body.captionStyle === "string" ? body.captionStyle : null,
         reason: "edited by user",
+        credits: cost,
       });
-      return NextResponse.json({ success: true, jobId: job.id, version });
+      return NextResponse.json({ success: true, jobId: job.id, version, credits: cost });
     } catch (err) {
+      if (cost > 0) await db.rpc("add_credits", { p_user_id: payer, p_amount: cost, p_type: "refund", p_reason: "Refund: re-render could not start" });
       return NextResponse.json({ success: false, error: err instanceof Error ? err.message : "Could not re-render." }, { status: 400 });
     }
   }

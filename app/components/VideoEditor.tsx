@@ -62,6 +62,8 @@ interface EditState {
   captionStyle?: string;
   stillCredits?: number;
   rerendersLeft?: number;
+  freeRerendersLeft?: number;
+  rerenderCredits?: number;
   pendingEdits?: boolean;
   videoUrl?: string;
   versions?: Array<{ version: number; url: string; at: string }>;
@@ -753,7 +755,9 @@ export default function VideoEditor({ projectId, vertical }: { projectId: string
               Re-render video
             </button>
             <span className="text-xs text-gray-500">
-              Free · {state.rerendersLeft} re-render{state.rerendersLeft === 1 ? "" : "s"} left
+              {(state.rerenderCredits ?? 0) > 0
+                ? `${state.rerenderCredits} credits · ${state.rerendersLeft} re-render${state.rerendersLeft === 1 ? "" : "s"} left`
+                : `Free · ${state.freeRerendersLeft ?? state.rerendersLeft} free re-render${(state.freeRerendersLeft ?? state.rerendersLeft) === 1 ? "" : "s"} left`}
               {!changed ? " · make a change first" : " · your changes show up after the re-render"}
             </span>
             {busy && busy !== "render" && <Loader2 size={14} className="animate-spin text-gray-400" aria-label="Saving" />}

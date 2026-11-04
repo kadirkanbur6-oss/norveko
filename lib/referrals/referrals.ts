@@ -2,8 +2,9 @@
 // Invite & earn (31 Oct 2026). Every account gets a link norveko.app/?ref=<code>.
 // The middleware keeps the code in a cookie (nv_ref, 60 days); right after the
 // invited person's first sign-in the dashboard claims it (/api/referrals/claim).
-// The inviter then earns REFERRAL_SHARE of the credits of every pack the invited
-// account buys during its first REFERRAL_MONTHS months — paid in credits, taken
+// The inviter then earns up to REFERRAL_SHARE of the credits of every pack or plan the
+// invited account buys during its first REFERRAL_MONTHS months (capped so the sale
+// still keeps the 40% target margin — rewardFor) — paid in credits, taken
 // back if Paddle refunds the purchase. Only purchases pay out, so fake sign-ups
 // earn nothing.
 //
@@ -14,6 +15,7 @@
 
 import { randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { REVENUE_PER_CREDIT_USD } from "@/lib/pipeline/steps";
 
 export const REFERRAL_COOKIE = "nv_ref";
 export const REFERRAL_COOKIE_DAYS = 60;
@@ -33,8 +35,16 @@ export function newCode(): string {
   return Array.from(bytes, (b) => ALPHABET[b % ALPHABET.length]).join("");
 }
 
-export function rewardFor(credits: number): number {
-  return Math.floor(credits * REFERRAL_SHARE);
+/**
+ * Reward credits for a purchase of `credits`. When the sale's net revenue (after
+ * Paddle) is given, the reward is capped so purchase + reward together still keep
+ * the target margin (5 Nov 2026): the thinnest plans pay little or nothing.
+ */
+export function rewardFor(credits: number, netUsd?: number): number {
+  const share = Math.floor(credits * REFERRAL_SHARE);
+  if (netUsd === undefined) return share;
+  const headroom = Math.floor(netUsd / REVENUE_PER_CREDIT_USD + 1e-6) - credits;
+  return Math.max(0, Math.min(share, headroom));
 }
 
 /** The user's code, created on first use. */
@@ -85,7 +95,7 @@ export async function claimReferral(
 /** Paddle purchase completed: pay the inviter (idempotent per transaction). */
 export async function rewardReferrer(
   db: SupabaseClient,
-  args: { referredUserId: string; transactionId: string; credits: number; packName: string },
+  args: { referredUserId: string; transactionId: string; credits: number; packName: string; netUsd?: number },
   now = new Date()
 ): Promise<{ referrer: string; credits: number } | null> {
   const { data: ref } = await db
@@ -96,7 +106,7 @@ export async function rewardReferrer(
   if (!ref) return null;
   const ageMonths = (now.getTime() - new Date(ref.created_at as string).getTime()) / (30.44 * 86_400_000);
   if (ageMonths > REFERRAL_MONTHS) return null;
-  const credits = rewardFor(args.credits);
+  const credits = rewardFor(args.credits, args.netUsd);
   if (credits <= 0) return null;
   const { error } = await db.from("referral_rewards").insert({
     paddle_transaction_id: args.transactionId,

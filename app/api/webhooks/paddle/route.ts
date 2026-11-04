@@ -187,7 +187,7 @@ async function handleTransactionCompleted(event: TransactionCompletedEvent) {
   // Invite & earn: the inviter gets a share of the credits (idempotent per transaction).
   try {
     const { rewardReferrer } = await import("@/lib/referrals/referrals");
-    const reward = await rewardReferrer(supabaseAdmin, { referredUserId: userId, transactionId: txnId, credits: pkg.credits, packName: pkg.name });
+    const reward = await rewardReferrer(supabaseAdmin, { referredUserId: userId, transactionId: txnId, credits: pkg.credits, packName: pkg.name, netUsd: pkg.priceUsd * 0.95 - 0.5 });
     if (reward) console.log(`[paddle-webhook] ${txnId}: referral +${reward.credits} credits -> user ${reward.referrer}`);
   } catch (err) {
     console.error(`[paddle-webhook] ${txnId}: referral reward failed:`, err);

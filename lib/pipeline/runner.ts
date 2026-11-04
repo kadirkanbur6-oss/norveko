@@ -478,6 +478,19 @@ export function createPipelineRunner(deps: RunnerDeps) {
       await db.from("pipeline_jobs").update({ credits_refunded: refund }).eq("id", jobId);
     }
 
+    // A paid re-render that failed: give its price back (once).
+    const rerenderPaid = Number((steps.render as Record<string, unknown> | undefined)?.rerender_credits ?? 0);
+    if (rerenderPaid > 0) {
+      const { error } = await db.rpc("add_credits", {
+        p_user_id: payerOf(claimed as Pick<JobRow, "user_id" | "options">),
+        p_amount: rerenderPaid,
+        p_type: "refund",
+        p_reason: "Refund: re-render failed",
+      });
+      if (error) console.error(`[pipeline] re-render refund failed for ${jobId}:`, error);
+      else await db.from("pipeline_jobs").update({ steps: { ...steps, render: { ...steps.render, rerender_credits: 0 } } }).eq("id", jobId);
+    }
+
     // Keep what was produced: a finished script becomes a project so the
     // user can still use the package, voiceover or thumbnail they paid for.
     // A failed re-render of a finished video keeps its project (and the previous MP4).

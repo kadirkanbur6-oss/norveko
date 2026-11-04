@@ -21,7 +21,7 @@
 //   subscription_grants (grant_key pk, user_id, paddle_subscription_id, credits)
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { addOneMonth, getSubscriptionPlan, getSubscriptionPlanByPriceId, type SubscriptionPlan } from "./subscriptions";
+import { netPerGrantUsd, addOneMonth, getSubscriptionPlan, getSubscriptionPlanByPriceId, type SubscriptionPlan } from "./subscriptions";
 
 /** When a grant of this plan, made at `from`, stops being usable. */
 export function grantExpiry(plan: SubscriptionPlan, from: Date): Date {
@@ -159,7 +159,7 @@ async function addCredits(db: SupabaseClient, userId: string, credits: number, r
 async function payReferral(db: SupabaseClient, userId: string, grantKey: string, credits: number, plan: SubscriptionPlan) {
   try {
     const { rewardReferrer } = await import("./referrals/referrals");
-    await rewardReferrer(db, { referredUserId: userId, transactionId: grantKey, credits, packName: `${plan.name} subscription` });
+    await rewardReferrer(db, { referredUserId: userId, transactionId: grantKey, credits, packName: `${plan.name} subscription`, netUsd: netPerGrantUsd(plan) });
   } catch (err) {
     console.error(`[subscriptions] referral reward for ${grantKey} failed:`, err);
   }

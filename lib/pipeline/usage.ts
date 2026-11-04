@@ -22,7 +22,7 @@ export interface UsageRecord {
   /** Provider model id, e.g. "gpt-5-mini", "eleven_multilingual_v2". */
   model: string;
   /** Unit the `quantity` is measured in. */
-  unit: "tokens" | "characters" | "images" | "seconds";
+  unit: "tokens" | "characters" | "images" | "seconds" | "calls";
   /** Total units consumed (for tokens: input + output). */
   quantity: number;
   inputTokens?: number;
@@ -78,6 +78,7 @@ export const PRICE_LIST: Record<string, Price> = {
   // fal lip-sync (on-camera presenter) — per second of output, 720p (3 Nov 2026).
   "fal:fal-ai/kling-video/ai-avatar/v2/standard": { perUnit: 0.0562 },
   "fal:veed/fabric-1.0": { perUnit: 0.15 },
+  // Skits: ElevenLabs sound effects are logged with their own cost (lib/creative-usage.ts).
   // Shotstack — per second of rendered output (pay-as-you-go $0.20/min).
   "shotstack:render": { perUnit: 0.0034 },
 };

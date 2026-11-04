@@ -51,7 +51,7 @@ export default function ReferralCard() {
         <h2 className="font-semibold">Invite &amp; earn</h2>
       </div>
       <p className="mt-2 text-sm text-gray-400">
-        Share your link. When someone signs up with it, you get {data.sharePercent}% of the credits of every pack they buy in their first {data.months} months.
+        Share your link. When someone signs up with it, you get up to {data.sharePercent}% of the credits of every pack or plan they buy in their first {data.months} months.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <input

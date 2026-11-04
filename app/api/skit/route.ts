@@ -18,7 +18,7 @@ import {
   estimateSeconds,
   planSkit,
   prepareReanimate,
-  prepareRecut,
+  prepareRecut, recutCredits,
   prepareShotRedo,
   setCharacterVoice,
   shotRedoCredits,
@@ -62,6 +62,7 @@ function view(r: SkitRow) {
     phaseAt: plan?.phaseAt ?? {},
     music: plan?.music !== false,
     editsLeft: Math.max(0, MAX_SKIT_EDITS - editsUsed(plan)),
+    recutCredits: plan ? recutCredits(plan) : 0,
     updatedAt: r.updated_at,
     outputUrl: r.output_url,
     projectId: r.project_id,
@@ -170,6 +171,7 @@ export async function POST(req: Request) {
       plan = r.plan;
       phase = "animate";
     } else {
+      credits = recutCredits(row.plan); // before prepareRecut counts this one
       plan = prepareRecut(row, { music: body.music as boolean | undefined });
     }
     const { payerFor } = await import("@/lib/teams");

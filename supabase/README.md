@@ -88,6 +88,17 @@ create index if not exists provider_usage_created_idx on public.provider_usage (
 alter table public.provider_usage enable row level security;
 ```
 
+### Provider cost log for skits, talking characters and swaps (5 Nov 2026)
+
+`lib/creative-usage.ts` writes one set of rows per finished/failed skit, talk or swap
+(`step` = `skit` | `talk` | `swap`, `job_id` = the `skit_jobs` / `swap_jobs` id). The
+table's `job_id` originally referenced `pipeline_jobs` only, so **run this once** — until
+then those inserts fail quietly and the admin panel's costs leave these jobs out:
+
+```sql
+alter table public.provider_usage drop constraint if exists provider_usage_job_id_fkey;
+```
+
 Useful queries (SQL editor):
 
 ```sql

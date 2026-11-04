@@ -249,6 +249,11 @@ async function fail(db: SupabaseClient, row: SkitRow, message: string) {
   if (data && row.credits > 0) {
     await db.rpc("add_credits", { p_user_id: row.billed_to ?? row.user_id, p_amount: row.credits, p_type: "refund", p_reason: "Refund: skit failed" });
   }
+  // What this run cost us, even though it failed (lib/creative-usage.ts).
+  if (data) {
+    const { logSkitUsage } = await import("@/lib/creative-usage");
+    await logSkitUsage(db, row, 0, "failed");
+  }
 }
 
 async function claim(db: SupabaseClient, row: SkitRow): Promise<boolean> {
@@ -561,6 +566,9 @@ async function finish(db: SupabaseClient, row: SkitRow, renderUrl: string, secon
     if (error) throw new Error(error.message);
     url = publicUrl(db, key);
   }
+  // Provider cost of this run (lib/creative-usage.ts); also clears the edit mark before saving.
+  const { logSkitUsage } = await import("@/lib/creative-usage");
+  await logSkitUsage(db, row, seconds, "ok");
   const plan = row.plan;
   const dialogue = plan.shots
     .filter((s) => s.line)
@@ -582,7 +590,7 @@ async function finish(db: SupabaseClient, row: SkitRow, renderUrl: string, secon
         duration: `${Math.round(seconds)} seconds`,
       })
       .eq("id", row.project_id);
-    await save(db, row, { phase: "done", status: "completed", output_url: url, lease_until: null });
+    await save(db, row, { plan, phase: "done", status: "completed", output_url: url, lease_until: null });
     return;
   }
   const { data: project } = await db
@@ -680,6 +688,7 @@ export function prepareShotRedo(row: SkitRow, index: number, note: string): Skit
   delete s.clipUrl;
   delete s.clipFailed;
   delete s.editedClipUrl;
+  (plan as SkitPlan & { pendingEdit?: unknown }).pendingEdit = { kind: "redo", shot: index };
   plan.renderVersion = (plan.renderVersion ?? 0) + 1;
   (plan as SkitPlan & { edits?: number }).edits = ((plan as SkitPlan & { edits?: number }).edits ?? 0) + 1;
   return plan;
@@ -692,20 +701,34 @@ export function prepareShotRedo(row: SkitRow, index: number, note: string): Skit
 export function prepareReanimate(row: SkitRow): { plan: SkitRow["plan"]; shots: number } {
   const plan = row.plan;
   let n = 0;
+  const retried: string[] = [];
   for (const s of plan.shots) {
     if (s.clipUrl || s.editedClipUrl) continue;
     delete s.fal;
     delete s.clipFailed;
+    retried.push(s.id);
     n++;
   }
+  (plan as SkitPlan & { pendingEdit?: unknown }).pendingEdit = { kind: "reanimate", shots: retried };
   plan.renderVersion = (plan.renderVersion ?? 0) + 1;
   (plan as SkitPlan & { edits?: number }).edits = ((plan as SkitPlan & { edits?: number }).edits ?? 0) + 1;
   return { plan, shots: n };
 }
 
 /** Re-cut with music switched on or off (free). */
+/** Music-only re-cuts included with a skit; later ones cost the render price (5 Nov 2026). */
+export const FREE_SKIT_RECUTS = 3;
+
+/** Credits the NEXT re-cut costs (0 while free ones are left). */
+export function recutCredits(plan: SkitPlan): number {
+  if (((plan as SkitPlan & { recuts?: number }).recuts ?? 0) < FREE_SKIT_RECUTS) return 0;
+  return RENDER_CREDITS_PER_30S * Math.max(1, Math.ceil(estimateSeconds(plan).total / 30));
+}
+
 export function prepareRecut(row: SkitRow, opts: { music?: boolean }): SkitRow["plan"] {
   const plan = row.plan;
+  (plan as SkitPlan & { recuts?: number }).recuts = ((plan as SkitPlan & { recuts?: number }).recuts ?? 0) + 1;
+  (plan as SkitPlan & { pendingEdit?: unknown }).pendingEdit = { kind: "recut" };
   if (typeof opts.music === "boolean") plan.music = opts.music ? null : false;
   plan.renderVersion = (plan.renderVersion ?? 0) + 1;
   (plan as SkitPlan & { edits?: number }).edits = ((plan as SkitPlan & { edits?: number }).edits ?? 0) + 1;

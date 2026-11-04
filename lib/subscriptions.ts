@@ -10,8 +10,9 @@
 //   NEXT_PUBLIC_PADDLE_PRICE_PRO_WEEK / _MONTH / _YEAR
 // (written out literally so Next.js inlines them in the browser bundle).
 //
-// Margin (Business-pack baseline $0.0111/credit at 40%): weekly/monthly plans
-// stay ≥ 40%; yearly ("2 months free") ≈ 31–33%, a deliberate discount.
+// Margin (Business-pack baseline $0.0111/credit at 40%): EVERY plan keeps ≥ 40%
+// even when all its credits are spent (5 Nov 2026 — yearly was $190 / $490,
+// "2 months free", ≈ 31–33%). A test in captions.test.ts enforces it.
 
 export type SubTier = "creator" | "pro";
 export type SubPeriod = "week" | "month" | "year";
@@ -72,10 +73,10 @@ const plan = (
 export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   plan("creator", "week", 6, 380),
   plan("creator", "month", 19, 1500),
-  plan("creator", "year", 190, 1500),
+  plan("creator", "year", 215, 1500),
   plan("pro", "week", 15, 1000),
   plan("pro", "month", 49, 4000),
-  plan("pro", "year", 490, 4000),
+  plan("pro", "year", 565, 4000),
 ];
 
 export const TIER_COPY: Record<SubTier, { tagline: string; idealFor: string; featured: boolean }> = {
@@ -94,7 +95,7 @@ export const TIER_COPY: Record<SubTier, { tagline: string; idealFor: string; fea
 export const PERIOD_LABEL: Record<SubPeriod, { toggle: string; per: string; note?: string }> = {
   week: { toggle: "Weekly", per: "week" },
   month: { toggle: "Monthly", per: "month" },
-  year: { toggle: "Yearly", per: "year", note: "2 months free" },
+  year: { toggle: "Yearly", per: "year", note: "Save up to 6%" },
 };
 
 /** Plans that can be bought (a price ID is configured). */
@@ -109,6 +110,16 @@ export function getSubscriptionPlanByPriceId(id: string | null | undefined): Sub
 
 export function getSubscriptionPlan(id: string | null | undefined): SubscriptionPlan | undefined {
   return SUBSCRIPTION_PLANS.find((p) => p.id === id);
+}
+
+/** What a payment leaves after Paddle (5% + $0.50 per transaction). */
+export function netRevenueUsd(priceUsd: number): number {
+  return priceUsd * 0.95 - 0.5;
+}
+
+/** Net revenue behind ONE credit grant (a yearly payment covers 12 monthly grants). */
+export function netPerGrantUsd(p: SubscriptionPlan): number {
+  return netRevenueUsd(p.priceUsd) / (p.period === "year" ? 12 : 1);
 }
 
 /** Credits a plan adds per month on average (for "≈ N videos a month" copy). */
