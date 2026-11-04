@@ -151,7 +151,9 @@ export async function POST(req: Request) {
     } catch (err) {
       console.error("[swap] start failed:", err);
       await db.rpc("add_credits", { p_user_id: payer, p_amount: credits, p_type: "refund", p_reason: "Refund: character swap could not start" });
-      return bad("The swap couldn't be started. Your credits were refunded.", 502);
+      const msg = err instanceof Error ? err.message : String(err);
+      const why = /balance|locked|quota|402|403/i.test(msg) ? "the video provider is temporarily unavailable" : "something went wrong on our side";
+      return bad(`The swap couldn't be started — ${why}. Your credits were refunded.`, 502, { detail: msg.slice(0, 300) });
     }
     return NextResponse.json({ success: true, id, credits });
   }

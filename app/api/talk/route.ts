@@ -245,7 +245,14 @@ export async function POST(req: Request) {
     } catch (err) {
       console.error("[talk] start failed:", err);
       await db.rpc("add_credits", { p_user_id: payer, p_amount: credits, p_type: "refund", p_reason: "Refund: talking character could not start" });
-      return bad("It couldn't be started — the picture model may have refused this character. Your credits were refunded.", 502);
+      const msg = err instanceof Error ? err.message : String(err);
+      // Tell the creator what actually happened (provider balance / refusal / network), not a guess.
+      const why = /balance|locked|quota|402|403/i.test(msg)
+        ? "the video provider is temporarily unavailable"
+        : /safety|refus|blocked|policy|prohibited/i.test(msg)
+          ? "the picture model refused this character or scene"
+          : "something went wrong on our side";
+      return bad(`It couldn't be started — ${why}. Your credits were refunded.`, 502, { detail: msg.slice(0, 300) });
     }
     return NextResponse.json({ success: true, id, credits });
   }
