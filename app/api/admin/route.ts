@@ -66,7 +66,7 @@ function jobKind(options: unknown): string {
 
 export async function GET(req: NextRequest) {
   const { user } = await requireUser();
-  if (!user || !isAdmin(user.id)) {
+  if (!user || !isAdmin(user)) {
     return NextResponse.json({ success: false, error: "Not found." }, { status: 404 });
   }
 

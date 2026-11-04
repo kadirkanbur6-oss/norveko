@@ -44,7 +44,7 @@ export async function GET() {
       teamPool: payer !== user.id,
       transactions: transactions ?? [],
       // Owner only: shows the Admin link in the sidebar (lib/admin.ts).
-      admin: isAdmin(user.id) || undefined,
+      admin: isAdmin(user) || undefined,
       freeTrial: isForcedTrialUser(user.id) || (!isWatermarkExempt(user.id) && (purchases ?? 0) === 0),
     });
   } catch (error) {

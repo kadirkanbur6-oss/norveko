@@ -13,6 +13,6 @@ export const dynamic = "force-dynamic";
 // Owner only: everyone else sees the normal 404 page.
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user } = await requireUser();
-  if (!user || !isAdmin(user.id)) notFound();
+  if (!user || !isAdmin(user)) notFound();
   return children;
 }
