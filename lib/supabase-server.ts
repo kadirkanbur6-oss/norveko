@@ -61,8 +61,3 @@ export async function getUserChannelContext() {
 
   return { userId: user.id, channelId: data?.channel_id ?? null };
 }
-
-export async function getUserChannelId() {
-  const { channelId } = await getUserChannelContext();
-  return channelId;
-}

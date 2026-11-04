@@ -32,7 +32,6 @@ export const maxDuration = 300;
 const bad = (error: string, status = 400, extra: Record<string, unknown> = {}) => NextResponse.json({ success: false, error, ...extra }, { status });
 const MAX_RUNNING = 2;
 const PLANS_PER_HOUR = 20;
-const planCalls = new Map<string, number[]>();
 
 function view(r: SkitRow) {
   const plan = r.plan;
@@ -105,10 +104,13 @@ export async function POST(req: Request) {
     const script = typeof body.script === "string" ? body.script.trim() : "";
     if (script.length < 10) return bad("Write the joke or scene, with the lines people say.");
     if (script.length > SKIT_MAX_SCRIPT) return bad(`Keep it under ${SKIT_MAX_SCRIPT} characters.`);
-    const now = Date.now();
-    const recent = (planCalls.get(user.id) ?? []).filter((t) => now - t < 3600_000);
-    if (recent.length >= PLANS_PER_HOUR) return bad("That's a lot of tries — wait a little and try again.", 429);
-    planCalls.set(user.id, [...recent, now]);
+    // Every plan saves a row, so the database counts tries across all server instances.
+    const { count: recent } = await db
+      .from("skit_jobs")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .gte("created_at", new Date(Date.now() - 3600_000).toISOString());
+    if ((recent ?? 0) >= PLANS_PER_HOUR) return bad("That's a lot of tries — wait a little and try again.", 429);
     try {
       const { GEMINI_VOICES } = await import("@/lib/pipeline/gemini-tts");
       const plan = await planSkit(script, GEMINI_VOICES);

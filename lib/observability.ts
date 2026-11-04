@@ -26,17 +26,3 @@ export async function captureError(error: unknown, context: Context = {}): Promi
 }
 
 /** Report a plain message (something odd but not an exception). */
-export async function captureMessage(message: string, context: Context = {}): Promise<void> {
-  if (!enabled()) return;
-  try {
-    const Sentry = await import("@sentry/nextjs");
-    Sentry.withScope((scope) => {
-      for (const [key, value] of Object.entries(context)) {
-        if (value !== undefined && value !== null) scope.setTag(key, String(value));
-      }
-      Sentry.captureMessage(message, "warning");
-    });
-  } catch {
-    // best effort
-  }
-}

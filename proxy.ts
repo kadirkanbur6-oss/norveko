@@ -15,7 +15,7 @@ function rememberReferral(request: NextRequest, res: NextResponse): NextResponse
   return res;
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const res = await handle(request);
   return rememberReferral(request, res);
 }

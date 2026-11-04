@@ -64,7 +64,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
   }
   script.approved_at = new Date().toISOString();
-  script.edited_at_review = Boolean(narration || hook || Array.isArray(body.scenes)) || undefined;
+  // Only flag a real change (the panel always sends the full text back).
+  const before = steps.script ?? {};
+  const changed =
+    String(script.hook ?? "") !== String(before.hook ?? "") ||
+    String(script.script ?? "") !== String(before.script ?? "") ||
+    JSON.stringify(script.scenes ?? null) !== JSON.stringify(before.scenes ?? null);
+  script.edited_at_review = changed || undefined;
 
   const next = ["voiceover", "thumbnail", "video", "render"].find((k) => steps[k]?.status === "pending");
   const patched = { ...steps, script, ...(next ? { [next]: { ...steps[next], queued_at: new Date().toISOString() } } : {}) };

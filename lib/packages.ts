@@ -55,9 +55,3 @@ export function getPackageByPriceId(
 ): CreditPackage | undefined {
   return CREDIT_PACKAGES.find((p) => p.paddlePriceId === priceId);
 }
-
-export function getPackageById(
-  id: string
-): CreditPackage | undefined {
-  return CREDIT_PACKAGES.find((p) => p.id === id);
-}

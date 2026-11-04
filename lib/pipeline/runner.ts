@@ -1819,7 +1819,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
         .from("voiceovers")
         .getPublicUrl(storagePath);
 
-      // Word-timed subtitles (paid add-on, see SUBTITLES_CREDITS) from the
+      // Word-timed subtitles (paid add-on, see subtitlesCredits) from the
       // same TTS call. Kept compact: cues only, not the character alignment.
       // A full video always keeps the cues: the timeline is laid out on them,
       // even when the subtitles aren't burned in (render checks the add-on).

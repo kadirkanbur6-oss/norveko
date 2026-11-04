@@ -148,11 +148,6 @@ export function subtitlesCredits(duration: string | undefined): number {
   return SUBTITLES_CREDITS_PER_30S * startedHalfMinutes(duration);
 }
 
-/* ---------------- Subtitles (voiceover add-on) pricing ---------------- */
-
-/** Subtitles for a ≤ 60 s video (per-minute pricing: subtitlesCredits()). */
-export const SUBTITLES_CREDITS = SUBTITLES_CREDITS_PER_30S;
-
 /* ---------------- Video pricing (≥70% margin target) ----------------
  * Revenue per credit after Paddle fees is ≈ $0.011 (Business pack, worst
  * case). Margin ≥ 70% ⇒ price ≥ provider cost × 3.33. Provider costs

@@ -13,13 +13,11 @@
 // lease (lease_until) keeps two callers from doing the same step.
 
 import "server-only";
-import * as visualStyles from "@/lib/pipeline/visual-styles";
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AVATAR_COST_PER_SECOND, RENDER_CREDITS_PER_30S, creditsForCost } from "@/lib/pipeline/steps";
 import { wordsPerSecond } from "@/lib/pipeline/narration";
 import { SKIT_CLIP_COST, SKIT_IMAGE_COST, skitCreditsFor } from "./pricing";
-import type { CaptionCue } from "@/lib/pipeline/captions";
 import { applyVoiceStyle, isVoiceStyle, styleDirection, voiceFor, type VoiceGender, type VoiceStyle } from "@/lib/skit/voice-styles";
 import { musicCredit } from "@/lib/pipeline/music";
 import { storeMedia } from "@/lib/storage/media";
@@ -69,8 +67,6 @@ export interface SkitShot {
   sfxUrl?: string;
   crowdUrls?: string[];
   crowdSeconds?: number;
-  /** Subtitle cues of this shot's line, relative to its audio. */
-  cues?: CaptionCue[];
   fal?: { requestId: string; statusUrl: string; responseUrl: string } | null;
   clipUrl?: string | null;
   /** Set by "Make this shot again" after the skit is done. */
@@ -81,9 +77,6 @@ export interface SkitShot {
 export interface SkitPlan {
   /** When each making phase began (ISO). */
   phaseAt?: Record<string, string>;
-  /** Burned-in subtitles of the lines (on by default). */
-  captions?: boolean;
-  captionStyle?: string;
   /** Background music (comedy pieces); `false` to leave it out. */
   music?: { id: string; title: string; url: string } | false | null;
   /** Re-renders after edits (file names stay unique for CDNs). */
@@ -458,25 +451,8 @@ export function skitLayout(plan: SkitPlan): Array<{ start: number; length: numbe
   });
 }
 
-/** Subtitles for the whole skit: every line (and crowd shout) at its place on the timeline. */
-export function skitCues(plan: SkitPlan): CaptionCue[] {
-  const layout = skitLayout(plan);
-  const cues: CaptionCue[] = [];
-  plan.shots.forEach((s, i) => {
-    const { start, length } = layout[i];
-    if (s.line && s.cues?.length) {
-      for (const c of s.cues) cues.push({ start: start + 0.1 + c.start, end: Math.min(start + length, start + 0.1 + c.end), text: c.text });
-    } else if (s.line) {
-      cues.push({ start: start + 0.1, end: start + length - 0.05, text: s.line });
-    } else if (s.crowd && s.crowdUrls?.length) {
-      cues.push({ start: start + 0.2, end: start + length - 0.1, text: s.crowd });
-    }
-  });
-  return cues.filter((c) => c.end - c.start > 0.2);
-}
-
-/** Shotstack edit: shots one after another; voices, crowd, effects, subtitles and music on their own tracks. */
-export function buildSkitEdit(plan: SkitPlan, vertical: boolean, extras: { captionsUrl?: string | null; musicUrl?: string | null } = {}) {
+/** Shotstack edit: shots one after another; voices, crowd, effects and music on their own tracks (no subtitles). */
+export function buildSkitEdit(plan: SkitPlan, vertical: boolean, extras: { musicUrl?: string | null } = {}) {
   const video: Array<Record<string, unknown>> = [];
   const voices: Array<Record<string, unknown>> = [];
   const sfx: Array<Record<string, unknown>> = [];
@@ -502,33 +478,6 @@ export function buildSkitEdit(plan: SkitPlan, vertical: boolean, extras: { capti
   const total = last ? Math.round((last.start + last.length) * 100) / 100 : 1;
   const size = vertical ? { width: 1080, height: 1920 } : { width: 1920, height: 1080 };
   const tracks: Array<{ clips: Array<Record<string, unknown>> }> = [];
-  if (extras.captionsUrl) {
-    const { captionStyle } = visualStyles;
-    const cap = captionStyle(plan.captionStyle);
-    tracks.push({
-      clips: [
-        {
-          asset: {
-            type: "rich-caption",
-            src: extras.captionsUrl,
-            font: { family: cap.font, size: vertical ? cap.size : Math.round(cap.size * 0.76), color: cap.color, weight: cap.font.includes("ExtraBold") ? 800 : 600 },
-            ...(cap.stroke ? { stroke: { width: cap.stroke.width, color: cap.stroke.color, opacity: 1 } } : {}),
-            animation: { style: cap.animation },
-            ...(cap.active || cap.activeBackground
-              ? { active: { font: { ...(cap.active ? { color: cap.active } : {}), ...(cap.activeBackground ? { background: cap.activeBackground } : {}) } } }
-              : {}),
-            align: { vertical: "middle" },
-          },
-          start: 0,
-          length: "end",
-          width: Math.round(size.width * 0.86),
-          height: Math.round(size.height * (vertical ? 0.16 : 0.2)),
-          position: "bottom",
-          offset: { x: 0, y: vertical ? 0.14 : 0.07 },
-        },
-      ],
-    });
-  }
   tracks.push({ clips: voices }, ...crowd.filter((c) => c.length).map((clips) => ({ clips })));
   if (sfx.length) tracks.push({ clips: sfx });
   if (extras.musicUrl) {
@@ -545,10 +494,9 @@ export function buildSkitEdit(plan: SkitPlan, vertical: boolean, extras: { capti
 }
 
 /** Background music for a render (optional, never fatal). Skits carry no subtitles. */
-async function renderExtras(db: SupabaseClient, row: SkitRow): Promise<{ captionsUrl: string | null; musicUrl: string | null }> {
+async function renderExtras(db: SupabaseClient, row: SkitRow): Promise<{ musicUrl: string | null }> {
   const plan = row.plan;
-  // 4 Nov 2026 (Kadir): skits have no burned-in subtitles; only narrated videos offer them.
-  const captionsUrl: string | null = null;
+  // 4 Nov 2026 (Kadir): skits have no subtitles; only narrated videos offer them.
   let musicUrl: string | null = null;
   if (plan.music !== false) {
     if (plan.music && plan.music.url) musicUrl = plan.music.url;
@@ -573,7 +521,7 @@ async function renderExtras(db: SupabaseClient, row: SkitRow): Promise<{ caption
       }
     }
   }
-  return { captionsUrl, musicUrl };
+  return { musicUrl };
 }
 
 /** Start the final cut (first render or after edits). */
