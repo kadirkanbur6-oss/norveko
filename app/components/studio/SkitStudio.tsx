@@ -53,7 +53,8 @@ function skitStage(s: Skit): StageStep[] {
 const chip = (on: boolean) =>
   `rounded-full border px-3 py-1 text-xs transition ${on ? "border-sky-400/60 bg-sky-500/15 text-white" : "border-white/10 text-gray-300 hover:border-white/25"}`;
 
-export default function SkitStudio({ text }: { text: string }) {
+/** `onStarted` clears the AI Workspace box once its text has become a video. */
+export default function SkitStudio({ text, onStarted }: { text: string; onStarted?: () => void }) {
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [skits, setSkits] = useState<Skit[]>([]);
   const [draft, setDraft] = useState<Skit | null>(null);
@@ -131,6 +132,7 @@ export default function SkitStudio({ text }: { text: string }) {
     setError("");
     try {
       await post({ action: "start", id: draft.id, rights });
+      onStarted?.();
       setDraft(null);
       setRights(false);
       await load();

@@ -34,7 +34,7 @@ const chip = (on: boolean) =>
   `rounded-full border px-3 py-1 text-xs transition ${on ? "border-sky-400/60 bg-sky-500/15 text-white" : "border-white/10 text-gray-300 hover:border-white/25"}`;
 
 /** `text` (from the AI Workspace box) replaces the studio's own line box. */
-export default function TalkStudio({ text: outerText }: { text?: string } = {}) {
+export default function TalkStudio({ text: outerText, onStarted }: { text?: string; onStarted?: () => void } = {}) {
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [cfg, setCfg] = useState({ maxSeconds: 30, maxChars: 450 });
   const [looks, setLooks] = useState<Array<{ id: string; label: string }>>([]);
@@ -161,6 +161,7 @@ export default function TalkStudio({ text: outerText }: { text?: string } = {}) 
         script: mode === "type" ? text.trim() : "",
         rights,
       });
+      onStarted?.();
       if (!embedded) setText("");
       setAudio(null);
       setRights(false);

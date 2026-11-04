@@ -550,9 +550,16 @@ function ChatContent() {
           <PageHeader title="AI Workspace" subtitle="Write what you want to make — narrated videos, skits, talking characters or swaps" />
 
           <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-            <label htmlFor="workspace-idea" className="text-sm text-gray-400">
-              What do you want to make?
-            </label>
+            <div className="flex items-center justify-between">
+              <label htmlFor="workspace-idea" className="text-sm text-gray-400">
+                What do you want to make?
+              </label>
+              {idea && !jobRunning && (
+                <button type="button" onClick={() => setIdea("")} className="text-xs text-gray-500 transition hover:text-white">
+                  Clear
+                </button>
+              )}
+            </div>
             <textarea
               id="workspace-idea"
               value={idea}
@@ -588,12 +595,12 @@ function ChatContent() {
 
           {mode === "skit" && (
             <div className="mt-5">
-              <SkitStudio text={idea} />
+              <SkitStudio text={idea} onStarted={() => setIdea("")} />
             </div>
           )}
           {mode === "talk" && (
             <div className="mt-5">
-              <TalkStudio text={idea} />
+              <TalkStudio text={idea} onStarted={() => setIdea("")} />
             </div>
           )}
           {mode === "swap" && (
