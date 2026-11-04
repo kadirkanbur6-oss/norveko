@@ -16,6 +16,7 @@ import {
   Wand2,
   X,
   Repeat,
+  ShieldCheck,
 } from "lucide-react";
 
 const navItems = [
@@ -31,6 +32,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [credits, setCredits] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
+  const [admin, setAdmin] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -50,6 +52,7 @@ export default function Sidebar() {
         const data = await res.json();
         if (data.success) {
           setCredits(data.credits);
+          setAdmin(data.admin === true);
         }
       } catch {
         // Silently ignore — balance just won't show
@@ -151,7 +154,7 @@ export default function Sidebar() {
         </div>
 
         <nav aria-label="Main" className="nv-no-scrollbar mt-8 flex-1 space-y-0.5 overflow-y-auto">
-          {navItems.map((item) => {
+          {(admin ? [...navItems, { label: "Admin", icon: ShieldCheck, href: "/admin" }] : navItems).map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
 

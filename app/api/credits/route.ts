@@ -36,12 +36,15 @@ export async function GET() {
       .eq("user_id", user.id)
       .eq("type", "purchase");
     const { isForcedTrialUser, isWatermarkExempt } = await import("@/lib/pipeline/watermark-policy");
+    const { isAdmin } = await import("@/lib/admin");
 
     return NextResponse.json({
       success: true,
       credits: creditData?.credits ?? 0,
       teamPool: payer !== user.id,
       transactions: transactions ?? [],
+      // Owner only: shows the Admin link in the sidebar (lib/admin.ts).
+      admin: isAdmin(user.id) || undefined,
       freeTrial: isForcedTrialUser(user.id) || (!isWatermarkExempt(user.id) && (purchases ?? 0) === 0),
     });
   } catch (error) {

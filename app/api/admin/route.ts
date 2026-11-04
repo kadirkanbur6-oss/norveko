@@ -1,0 +1,267 @@
+// app/api/admin/route.ts
+// Read-only data for the owner's admin panel (/admin): accounts, balances,
+// generations, payments and provider costs. Everything comes straight from
+// Supabase with the service role; nothing here changes data.
+//
+// Access: lib/admin.ts (ADMIN_USER_IDS). Everyone else gets a 404.
+
+import { NextResponse, type NextRequest } from "next/server";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { requireUser } from "@/lib/supabase-server";
+import { isAdmin } from "@/lib/admin";
+import { adminDb } from "@/lib/api-keys";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
+type Row = Record<string, unknown>;
+
+const PAGE = 1000; // Supabase returns at most 1000 rows per request.
+const MAX_PAGES = 20;
+const JOB_LIST = 300;
+
+/** Read every row of a query, page by page. A failing table yields []. */
+async function all(label: string, page: (from: number, to: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>, errors: string[]): Promise<Row[]> {
+  const rows: Row[] = [];
+  for (let i = 0; i < MAX_PAGES; i++) {
+    const { data, error } = await page(i * PAGE, (i + 1) * PAGE - 1);
+    if (error) {
+      errors.push(`${label}: ${error.message}`);
+      break;
+    }
+    const batch = (data as Row[] | null) ?? [];
+    rows.push(...batch);
+    if (batch.length < PAGE) break;
+  }
+  return rows;
+}
+
+async function allUsers(db: SupabaseClient, errors: string[]): Promise<User[]> {
+  const users: User[] = [];
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const { data, error } = await db.auth.admin.listUsers({ page, perPage: PAGE });
+    if (error) {
+      errors.push(`users: ${error.message}`);
+      break;
+    }
+    users.push(...data.users);
+    if (data.users.length < PAGE) break;
+  }
+  return users;
+}
+
+const num = (v: unknown) => (typeof v === "number" ? v : Number(v) || 0);
+const str = (v: unknown) => (typeof v === "string" ? v : "");
+const day = (iso: string) => iso.slice(0, 10);
+
+function jobKind(options: unknown): string {
+  const o = (options ?? {}) as Row;
+  if (o.short) return "Short";
+  if (o.translate) return "Translation";
+  if (o.trialVideo) return "Free trial video";
+  if (o.series) return "Series episode";
+  if (o.fullVideo) return "Full video";
+  return "Content package";
+}
+
+export async function GET(req: NextRequest) {
+  const { user } = await requireUser();
+  if (!user || !isAdmin(user.id)) {
+    return NextResponse.json({ success: false, error: "Not found." }, { status: 404 });
+  }
+
+  const requested = Number(req.nextUrl.searchParams.get("days"));
+  const days = [7, 30, 90].includes(requested) ? requested : 30;
+  const now = Date.now();
+  const since = new Date(now - days * 86400_000).toISOString();
+  const errors: string[] = [];
+  const db = adminDb();
+
+  const [users, balances, purchases, subscriptions, jobs, skits, swaps, usage, transactions, jobCounts] = await Promise.all([
+    allUsers(db, errors),
+    all("user_credits", (a, b) => db.from("user_credits").select("user_id, credits").range(a, b), errors),
+    all("credit_purchases", (a, b) => db.from("credit_purchases").select("*").range(a, b), errors),
+    all("subscriptions", (a, b) => db.from("subscriptions").select("paddle_subscription_id, user_id, plan_id, status, current_period_end, cancel_at, created_at").range(a, b), errors),
+    all(
+      "pipeline_jobs",
+      (a, b) =>
+        db
+          .from("pipeline_jobs")
+          .select("id, user_id, idea, status, current_step, error, duration, output_language, created_at, credits_charged, credits_refunded, options")
+          .order("created_at", { ascending: false })
+          .range(a, Math.min(b, JOB_LIST - 1)),
+      errors
+    ),
+    all("skit_jobs", (a, b) => db.from("skit_jobs").select("id, user_id, status, phase, script, credits, refunded, error, created_at").neq("status", "draft").order("created_at", { ascending: false }).range(a, Math.min(b, JOB_LIST - 1)), errors),
+    all("swap_jobs", (a, b) => db.from("swap_jobs").select("id, user_id, kind, status, phase, character_name, credits, refunded, error, created_at").order("created_at", { ascending: false }).range(a, Math.min(b, JOB_LIST - 1)), errors),
+    all("provider_usage", (a, b) => db.from("provider_usage").select("created_at, user_id, step, provider, model, estimated_cost_usd, status").gte("created_at", since).order("created_at", { ascending: false }).range(a, b), errors),
+    all("credit_transactions", (a, b) => db.from("credit_transactions").select("user_id, type, amount, created_at").gte("created_at", since).order("created_at", { ascending: false }).range(a, b), errors),
+    Promise.all(
+      (["running", "completed", "failed"] as const).map(async (status) => {
+        const { count } = await db.from("pipeline_jobs").select("id", { count: "exact", head: true }).eq("status", status);
+        return [status, count ?? 0] as const;
+      })
+    ),
+  ]);
+
+  // ---- per-user roll-ups -------------------------------------------------
+  const email = new Map(users.map((u) => [u.id, u.email ?? ""]));
+  const credits = new Map(balances.map((r) => [str(r.user_id), num(r.credits)]));
+  const paid = new Map<string, number>();
+  for (const p of purchases) {
+    if (p.status !== "completed") continue;
+    paid.set(str(p.user_id), (paid.get(str(p.user_id)) ?? 0) + num(p.amount_usd));
+  }
+  const plan = new Map<string, string>();
+  for (const s of subscriptions) {
+    if (s.status === "active" || s.status === "trialing") plan.set(str(s.user_id), str(s.plan_id));
+  }
+  const jobsInWindow = new Map<string, number>();
+  const spent = new Map<string, number>();
+  for (const t of transactions) {
+    if (t.type !== "spend") continue;
+    const id = str(t.user_id);
+    jobsInWindow.set(id, (jobsInWindow.get(id) ?? 0) + 1);
+    spent.set(id, (spent.get(id) ?? 0) + Math.abs(num(t.amount)));
+  }
+  const costByUser = new Map<string, number>();
+  for (const u of usage) costByUser.set(str(u.user_id), (costByUser.get(str(u.user_id)) ?? 0) + num(u.estimated_cost_usd));
+
+  const userRows = users
+    .map((u) => ({
+      id: u.id,
+      email: u.email ?? "",
+      provider: str(u.app_metadata?.provider) || "email",
+      verified: Boolean(u.email_confirmed_at),
+      createdAt: u.created_at,
+      lastSignInAt: u.last_sign_in_at ?? null,
+      credits: credits.get(u.id) ?? 0,
+      paidUsd: paid.get(u.id) ?? 0,
+      plan: plan.get(u.id) ?? null,
+      spends: jobsInWindow.get(u.id) ?? 0,
+      creditsSpent: spent.get(u.id) ?? 0,
+      costUsd: costByUser.get(u.id) ?? 0,
+    }))
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+
+  // ---- generations (all three job tables, newest first) -------------------
+  const generations = [
+    ...jobs.map((j) => ({
+      id: str(j.id),
+      kind: jobKind(j.options),
+      userId: str(j.user_id),
+      title: str(j.idea).slice(0, 140),
+      status: str(j.status),
+      step: str(j.current_step),
+      detail: [str(j.duration), str(j.output_language)].filter(Boolean).join(" · "),
+      credits: num(j.credits_charged),
+      refunded: num(j.credits_refunded),
+      error: str(j.error).slice(0, 300) || null,
+      createdAt: str(j.created_at),
+    })),
+    ...skits.map((j) => ({
+      id: str(j.id),
+      kind: "Skit",
+      userId: str(j.user_id),
+      title: str(j.script).slice(0, 140),
+      status: str(j.status),
+      step: str(j.phase),
+      detail: "",
+      credits: num(j.credits),
+      refunded: j.refunded ? num(j.credits) : 0,
+      error: str(j.error).slice(0, 300) || null,
+      createdAt: str(j.created_at),
+    })),
+    ...swaps.map((j) => ({
+      id: str(j.id),
+      kind: j.kind === "talk" ? "Talking character" : "Character swap",
+      userId: str(j.user_id),
+      title: str(j.character_name).slice(0, 140),
+      status: str(j.status),
+      step: str(j.phase),
+      detail: "",
+      credits: num(j.credits),
+      refunded: j.refunded ? num(j.credits) : 0,
+      error: str(j.error).slice(0, 300) || null,
+      createdAt: str(j.created_at),
+    })),
+  ]
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    .slice(0, JOB_LIST)
+    .map((g) => ({ ...g, email: email.get(g.userId) ?? "" }));
+
+  // ---- payments -----------------------------------------------------------
+  const payments = purchases
+    .map((p) => ({
+      id: str(p.paddle_transaction_id) || str(p.id),
+      userId: str(p.user_id),
+      email: email.get(str(p.user_id)) ?? "",
+      packageId: str(p.package_id),
+      credits: num(p.credits),
+      amountUsd: num(p.amount_usd),
+      status: str(p.status),
+      createdAt: str(p.created_at),
+    }))
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+
+  // ---- provider costs -----------------------------------------------------
+  const byProvider = new Map<string, { provider: string; model: string; calls: number; failed: number; costUsd: number }>();
+  const costByDay = new Map<string, number>();
+  for (const u of usage) {
+    const key = `${str(u.provider)}|${str(u.model)}`;
+    const row = byProvider.get(key) ?? { provider: str(u.provider), model: str(u.model), calls: 0, failed: 0, costUsd: 0 };
+    row.calls += 1;
+    if (u.status === "failed") row.failed += 1;
+    row.costUsd += num(u.estimated_cost_usd);
+    byProvider.set(key, row);
+    const d = day(str(u.created_at));
+    costByDay.set(d, (costByDay.get(d) ?? 0) + num(u.estimated_cost_usd));
+  }
+
+  // ---- daily series for the window ---------------------------------------
+  const signupsByDay = new Map<string, number>();
+  for (const u of users) if (u.created_at >= since) signupsByDay.set(day(u.created_at), (signupsByDay.get(day(u.created_at)) ?? 0) + 1);
+  const revenueByDay = new Map<string, number>();
+  for (const p of payments) {
+    if (p.status === "completed" && p.createdAt >= since) revenueByDay.set(day(p.createdAt), (revenueByDay.get(day(p.createdAt)) ?? 0) + p.amountUsd);
+  }
+  const daily = Array.from({ length: days }, (_, i) => {
+    const d = day(new Date(now - (days - 1 - i) * 86400_000).toISOString());
+    return { day: d, signups: signupsByDay.get(d) ?? 0, revenueUsd: revenueByDay.get(d) ?? 0, costUsd: costByDay.get(d) ?? 0 };
+  });
+
+  const completed = payments.filter((p) => p.status === "completed");
+  const inWindow = completed.filter((p) => p.createdAt >= since);
+  const sum = (list: Array<{ amountUsd: number }>) => list.reduce((t, p) => t + p.amountUsd, 0);
+  const counts = Object.fromEntries(jobCounts);
+  const weekAgo = new Date(now - 7 * 86400_000).toISOString();
+
+  return NextResponse.json({
+    success: true,
+    days,
+    generatedAt: new Date(now).toISOString(),
+    errors,
+    overview: {
+      users: users.length,
+      newUsers: users.filter((u) => u.created_at >= since).length,
+      activeUsers: users.filter((u) => (u.last_sign_in_at ?? "") >= weekAgo).length,
+      payingUsers: paid.size,
+      activeSubscriptions: plan.size,
+      revenueUsd: sum(completed),
+      revenueWindowUsd: sum(inWindow),
+      refundedUsd: sum(payments.filter((p) => p.status === "refunded")),
+      costWindowUsd: usage.reduce((t, u) => t + num(u.estimated_cost_usd), 0),
+      creditsOutstanding: balances.reduce((t, r) => t + num(r.credits), 0),
+      creditsSpentWindow: Array.from(spent.values()).reduce((t, v) => t + v, 0),
+      jobs: { running: counts.running ?? 0, completed: counts.completed ?? 0, failed: counts.failed ?? 0 },
+      failedWindow: generations.filter((g) => g.status === "failed" && g.createdAt >= since).length,
+      generationOpen: process.env.GENERATION_ENABLED !== "false",
+      fullVideoOpen: process.env.FULL_VIDEO_ENABLED === "true",
+    },
+    daily,
+    users: userRows,
+    generations,
+    payments,
+    costs: Array.from(byProvider.values()).sort((a, b) => b.costUsd - a.costUsd),
+  });
+}
