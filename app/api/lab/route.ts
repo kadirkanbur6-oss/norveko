@@ -219,6 +219,24 @@ export async function POST(req: Request) {
         const { error } = await db.storage.from("videos").remove(paths);
         return NextResponse.json({ success: !error, removed: error ? 0 : paths.length, error: error?.message });
       }
+      // Stock clips for a showcase character swap (4 Nov 2026): search, then copy one into the swap uploads.
+      case "stock-search": {
+        const { searchStockClips } = await import("@/lib/pipeline/pexels");
+        const clips = await searchStockClips(String(body.query ?? ""), body.orientation === "horizontal" ? "horizontal" : "vertical", 12);
+        return NextResponse.json({ success: true, clips });
+      }
+      case "stock-swap-source": {
+        const url = String(body.url ?? "");
+        if (!/^https:\/\/([a-z0-9-]+\.)*(pixabay\.com|pexels\.com)\//i.test(url)) return NextResponse.json({ success: false, error: "Only Pixabay / Pexels clips." }, { status: 400 });
+        const res = await fetch(url);
+        if (!res.ok) return NextResponse.json({ success: false, error: `Download failed (${res.status}).` }, { status: 502 });
+        const bytes = Buffer.from(await res.arrayBuffer());
+        if (bytes.length > 50 * 1024 * 1024) return NextResponse.json({ success: false, error: "Clip is over 50 MB." }, { status: 400 });
+        const path = `${user.id}/swap/src-${crypto.randomUUID()}.mp4`;
+        const { error } = await admin().storage.from("videos").upload(path, bytes, { contentType: "video/mp4" });
+        if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        return NextResponse.json({ success: true, path, mb: Math.round(bytes.length / 1e5) / 10 });
+      }
       // Older skit / talk / swap projects were saved with style "Cinematic": relabel them (4 Nov 2026).
       case "relabel-creative-projects": {
         const db = admin();
