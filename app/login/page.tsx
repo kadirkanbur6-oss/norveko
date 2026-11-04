@@ -1,10 +1,20 @@
 'use client';
 
 import { FormEvent, useState, useEffect, Suspense } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { callbackUrl, safeNext } from "@/lib/safe-next";
 import { supabase } from "../lib/supabase";
 import { INTRO_FLAG } from "../components/WelcomeIntro";
+import AuthShell from "../components/auth/AuthShell";
+import AuthAlert from "../components/auth/AuthAlert";
+import GoogleButton from "../components/auth/GoogleButton";
+import PasswordField, { AUTH_INPUT_CLASS } from "../components/auth/PasswordField";
+
+const ERROR_TEXT: Record<string, string> = {
+  no_code: "The sign-in link was incomplete. Please try again.",
+  callback_failed: "We couldn't complete the sign-in. Please try again.",
+};
 
 function LoginContent() {
   const router = useRouter();
@@ -17,11 +27,6 @@ function LoginContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [needsVerification, setNeedsVerification] = useState(false);
 
-  const ERROR_TEXT: Record<string, string> = {
-    no_code: "The sign-in link was incomplete. Please try again.",
-    callback_failed: "We couldn't complete the sign-in. Please try again.",
-  };
-
   useEffect(() => {
     const error = searchParams.get("error");
     if (!error) return;
@@ -29,7 +34,6 @@ function LoginContent() {
     // Deferred so the effect does not set state synchronously.
     const id = setTimeout(() => setErrorMessage(ERROR_TEXT[decoded] ?? decoded), 0);
     return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -94,111 +98,87 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#090b16] px-4 py-12 text-white">
-      <div className="mx-auto w-full max-w-md rounded-[32px] border border-white/10 bg-white/5 p-6 sm:p-10 shadow-[0_25px_100px_rgba(0,0,0,0.25)] backdrop-blur-xl">
-        <div className="mb-8 space-y-3">
-          <p className="text-sm uppercase tracking-[0.24em] text-violet-300/80">
-            Welcome
-          </p>
-          <h1 className="text-4xl font-semibold">Sign in to your account</h1>
-          <p className="text-sm text-gray-400">
-            Enter your email and password to sign in. Once verified, you will be redirected to the dashboard.
-          </p>
-        </div>
-
-        {/* Google Sign In Button */}
-        <button
-          onClick={handleGoogleSignIn}
-          disabled={isLoading}
-          className="mb-6 flex w-full items-center justify-center gap-3 rounded-3xl border border-white/20 bg-white/[0.08] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <svg className="h-5 w-5" viewBox="0 0 48 48">
-            <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12S17.4 12 24 12c3 0 5.7 1.1 7.8 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" />
-            <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.3 19 12 24 12c3 0 5.7 1.1 7.8 3l5.7-5.7C34 6.1 29.3 4 24 4c-7.7 0-14.4 4.3-17.7 10.7z" />
-            <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.5-5.2l-6.2-5.2c-2.1 1.6-4.6 2.4-7.3 2.4-5.3 0-9.8-3.3-11.5-8l-6.6 5.1C9.2 39.6 16 44 24 44z" />
-            <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1.1 3-3.2 5.3-6 6.8l6.2 5.2C39.1 36.7 44 31 44 24c0-1.3-.1-2.4-.4-3.5z" />
-          </svg>
-          Continue with Google
-        </button>
-
-        <div className="relative mb-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-white/10"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="bg-[#090b16]/50 px-2 text-gray-500">Or continue with email</span>
-          </div>
-        </div>
-
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          <label className="block text-sm font-medium text-gray-300">
-            Email
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-              className="mt-2 w-full rounded-3xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20"
-              placeholder="example@example.com"
-            />
-          </label>
-
-          <label className="block text-sm font-medium text-gray-300">
-            Password
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-              className="mt-2 w-full rounded-3xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20"
-              placeholder="Enter your password"
-            />
-          </label>
-
-          <div className="-mt-2 text-right">
-            <a href="/forgot-password" className="text-xs text-violet-300 hover:text-violet-100">
-              Forgot password?
-            </a>
-          </div>
-
-          {errorMessage ? (
-            <div className="rounded-3xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
-              {errorMessage}
-              {needsVerification && email ? (
-                <button
-                  type="button"
-                  onClick={handleResendVerification}
-                  className="mt-2 block font-semibold text-red-100 underline"
-                >
-                  Resend verification email
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-
-          {infoMessage ? (
-            <div className="rounded-3xl border border-green-500/30 bg-green-500/10 p-4 text-sm text-green-200">
-              {infoMessage}
-            </div>
-          ) : null}
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full rounded-3xl bg-gradient-to-r from-violet-500 to-fuchsia-500 py-3 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+    <AuthShell
+      eyebrow="Welcome back"
+      title="Sign in to Norveko"
+      description="Use Google or your email and password. You'll land right where you were headed."
+      footer={
+        <>
+          Don&apos;t have an account?{" "}
+          <Link
+            href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"}
+            className="font-semibold text-violet-300 hover:text-violet-100"
           >
-            {isLoading ? "Signing in..." : "Sign In"}
-          </button>
-        </form>
-
-        <p className="mt-6 text-center text-sm text-gray-400">
-          Don&apos;t have an account?{' '}
-          <a href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"} className="font-semibold text-violet-300 hover:text-violet-100">
             Sign up
-          </a>
-        </p>
-      </div>
-    </div>
+          </Link>
+        </>
+      }
+    >
+      <GoogleButton onClick={handleGoogleSignIn} disabled={isLoading} />
+
+      {/* method="post": JS yüklenmeden gönderilirse e-posta/şifre URL'e düşmesin. */}
+      <form className="space-y-6" method="post" onSubmit={handleSubmit}>
+        <div>
+          <label htmlFor="email" className="block text-sm font-medium text-gray-300">
+            Email
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+            autoComplete="email"
+            inputMode="email"
+            autoCapitalize="none"
+            spellCheck={false}
+            className={AUTH_INPUT_CLASS}
+            placeholder="you@example.com"
+          />
+        </div>
+
+        <PasswordField
+          id="password"
+          label="Password"
+          value={password}
+          onChange={setPassword}
+          autoComplete="current-password"
+          placeholder="Enter your password"
+        />
+
+        <div className="-mt-2 text-right">
+          <Link href="/forgot-password" className="text-xs text-violet-300 hover:text-violet-100">
+            Forgot password?
+          </Link>
+        </div>
+
+        {errorMessage ? (
+          <AuthAlert tone="error">
+            {errorMessage}
+            {needsVerification && email ? (
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                className="mt-2 block font-semibold text-red-100 underline"
+              >
+                Resend verification email
+              </button>
+            ) : null}
+          </AuthAlert>
+        ) : null}
+
+        {infoMessage ? <AuthAlert tone="success">{infoMessage}</AuthAlert> : null}
+
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="w-full rounded-3xl bg-gradient-to-r from-violet-500 to-fuchsia-500 py-3 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isLoading ? "Signing in..." : "Sign in"}
+        </button>
+      </form>
+    </AuthShell>
   );
 }
 
