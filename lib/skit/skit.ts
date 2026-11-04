@@ -18,6 +18,7 @@ import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AVATAR_COST_PER_SECOND, RENDER_CREDITS_PER_30S, creditsForCost } from "@/lib/pipeline/steps";
 import { wordsPerSecond } from "@/lib/pipeline/narration";
+import { SKIT_CLIP_COST, SKIT_IMAGE_COST, skitCreditsFor } from "./pricing";
 import type { CaptionCue } from "@/lib/pipeline/captions";
 import { musicCredit } from "@/lib/pipeline/music";
 
@@ -26,12 +27,8 @@ export const SKIT_MAX_CHARACTERS = 4;
 export const SKIT_MAX_SECONDS = 60;
 export const SKIT_MAX_SCRIPT = 1500;
 export const SKIT_LOOKS = ["3d", "anime", "cinematic", "painting", "comic"] as const;
-const IMAGE_COST = 0.04;
-const CLIP_COST = 0.13;
-const SFX_COST = 0.03;
-const PLAN_COST = 0.03;
-/** A crowd shout: the words in a few voices at once (TTS is a fraction of a cent each). */
-const CROWD_COST = 0.02;
+const IMAGE_COST = SKIT_IMAGE_COST;
+const CLIP_COST = SKIT_CLIP_COST;
 const CROWD_VOICES = 4;
 const ANIMATE_TIMEOUT_MS = 25 * 60 * 1000;
 const RENDER_TIMEOUT_MS = 20 * 60 * 1000;
@@ -210,17 +207,15 @@ export function estimateSeconds(plan: SkitPlan): { speaking: number; total: numb
 
 export function skitCredits(plan: SkitPlan): number {
   const { speaking, total } = estimateSeconds(plan);
-  const silent = plan.shots.filter((s) => !s.line).length;
-  const sfx = plan.shots.filter((s) => s.sfx).length;
-  const crowd = plan.shots.filter((s) => s.crowd).length;
-  const usd =
-    PLAN_COST +
-    IMAGE_COST * (plan.characters.length + plan.shots.length) +
-    Math.ceil(speaking * 1.15) * AVATAR_COST_PER_SECOND + // 15 % headroom: voices run a bit long
-    silent * CLIP_COST +
-    sfx * SFX_COST +
-    crowd * CROWD_COST;
-  return creditsForCost(usd) + RENDER_CREDITS_PER_30S * Math.max(1, Math.ceil(total / 30));
+  return skitCreditsFor({
+    characters: plan.characters.length,
+    shots: plan.shots.length,
+    speakingSeconds: speaking,
+    silentShots: plan.shots.filter((s) => !s.line).length,
+    sfx: plan.shots.filter((s) => s.sfx).length,
+    crowd: plan.shots.filter((s) => s.crowd).length,
+    totalSeconds: total,
+  });
 }
 
 /* ---------------- Making it ---------------- */

@@ -9,14 +9,11 @@
 // the same heartbeat and polling as swaps (lib/swap/swap.ts).
 
 import "server-only";
-import { AVATAR_COST_PER_SECOND, creditsForCost } from "@/lib/pipeline/steps";
 import { mp4Seconds } from "@/lib/swap/mp4";
 
 export const TALK_MAX_SECONDS = 30;
 export const TALK_MAX_BYTES = 8 * 1024 * 1024;
 export const TALK_MAX_CHARS = 450;
-/** The scene picture (Nano Banana) on top of the lip-sync seconds. */
-const IMAGE_COST = 0.04;
 
 export const TALK_LOOKS = [
   { id: "cinematic", label: "Realistic" },
@@ -25,9 +22,7 @@ export const TALK_LOOKS = [
   { id: "painting", label: "Painting" },
 ] as const;
 
-export function talkCredits(seconds: number): number {
-  return creditsForCost(Math.ceil(seconds) * AVATAR_COST_PER_SECOND + IMAGE_COST);
-}
+export { talkCreditsFor as talkCredits } from "@/lib/skit/pricing";
 
 export const AUDIO_TYPES: Record<string, "mp3" | "wav" | "m4a"> = {
   "audio/mpeg": "mp3",

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import { FREE_TRIAL_RULES, JOB_COSTS, PAID_INCLUDES, planDetails } from "@/lib/plans";
+import { CREATIVE_COSTS } from "@/lib/skit/pricing";
 import ReferralCard from "../components/ReferralCard";
 import SubscriptionPlans from "../components/SubscriptionPlans";
 import PageTabs, { PageHeader, useTabParam, type PageTab } from "../components/PageTabs";
@@ -55,6 +56,9 @@ const COST_ROWS: Array<[string, string]> = [
   ["Word-timed subtitles", `+${SUBTITLES_CREDITS_PER_MIN} / min`],
   ["Finished 30 s video (beta)", `${JOB_COSTS.video30} credits`],
   ["Finished 60 s video (beta)", `${JOB_COSTS.video60} credits`],
+  ["20 s skit with dialogue (3 characters, 6 shots)", `≈ ${CREATIVE_COSTS.skit20} credits`],
+  ["Talking character, 10 s", `≈ ${CREATIVE_COSTS.talk10} credits`],
+  ["Character swap, 10 s clip", `≈ ${CREATIVE_COSTS.swap10} credits`],
 ];
 
 function fmtDate(d: string): string {

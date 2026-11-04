@@ -12,6 +12,7 @@ import SignOutButton from "./SignOutButton";
 import BrandMark from "./BrandMark";
 import { COMPARISON, FREE_TRIAL_CREDITS, PAID_INCLUDES, TRIAL_VIDEO_PUBLIC, planDetails } from "@/lib/plans";
 import SubscriptionPlans from "./SubscriptionPlans";
+import { CREATIVE_COSTS } from "@/lib/skit/pricing";
 import {
   RESEARCH_CREDITS,
   SUBTITLES_CREDITS_PER_MIN,
@@ -21,6 +22,9 @@ import {
 } from "@/lib/pipeline/steps";
 import {
   ArrowRight,
+  Drama,
+  MessageCircle,
+  Shuffle,
   Check,
   CheckCircle2,
   Crown,
@@ -387,6 +391,51 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             Full video rendering is rolling out in beta. Every account already gets the script, scene plan, thumbnail, voiceover and subtitles.
           </p>
         </Reveal>
+      </section>
+
+      {/* 2b. MORE THAN NARRATION — skits, talking characters, swaps (3–4 Nov 2026) */}
+      <section id="studios" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6">
+        <Reveal>
+          <SectionTitle
+            eyebrow="Beyond narration"
+            title="Skits, talking characters and swaps"
+            subtitle="The formats behind today's viral Shorts — write it once, Norveko casts, voices and animates it."
+          />
+        </Reveal>
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          {[
+            {
+              icon: Drama,
+              title: "Skits with dialogue",
+              body: "Paste a joke or a scene with its lines and say how it should look — talking cockroaches, cats, anime. Every character gets a voice, lip-synced shots, crowd shouts, subtitles and music.",
+              cost: `≈ ${CREATIVE_COSTS.skit20} credits for a 20 s skit`,
+              href: "/chat?mode=skit",
+            },
+            {
+              icon: MessageCircle,
+              title: "Talking characters",
+              body: "Any character — you, a historical figure or a cartoon chick — says your line to the camera, in a Norveko voice, your cloned voice or a recording you upload.",
+              cost: `≈ ${CREATIVE_COSTS.talk10} credits for 10 s`,
+              href: "/chat?mode=talk",
+            },
+            {
+              icon: Shuffle,
+              title: "Character swap",
+              body: "Upload a short clip and put one of your characters in place of the person in it — same moves, expressions and original sound.",
+              cost: `≈ ${CREATIVE_COSTS.swap10} credits for 10 s`,
+              href: "/chat?mode=swap",
+            },
+          ].map((c, i) => (
+            <Reveal key={c.title} delay={100 + i * 80}>
+              <Link href={c.href} className="flex h-full flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-blue-400/40">
+                <c.icon size={22} className="text-blue-300" aria-hidden />
+                <h3 className="mt-4 text-lg font-semibold text-white">{c.title}</h3>
+                <p className="mt-2 flex-1 text-sm leading-relaxed text-gray-400">{c.body}</p>
+                <p className="mt-4 text-xs text-gray-500">{c.cost}</p>
+              </Link>
+            </Reveal>
+          ))}
+        </div>
       </section>
 
       {/* 2c. PRICING — kept high: visitors look for the price right after the examples */}

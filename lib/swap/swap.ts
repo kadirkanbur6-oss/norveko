@@ -16,19 +16,17 @@
 
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { RENDER_CREDITS_PER_30S, creditsForCost } from "@/lib/pipeline/steps";
+import { swapCreditsFor } from "@/lib/skit/pricing";
 import type { Mp4Info } from "./mp4";
 
 export const SWAP_MAX_SECONDS = 15;
 export const SWAP_MAX_BYTES = 50 * 1024 * 1024;
 export const SWAP_MODEL = process.env.FAL_SWAP_MODEL || "fal-ai/wan/v2.2-14b/animate/replace";
-/** fal bills Wan Animate per 16 frames: $0.08 per "second" at 720p. */
-export const SWAP_COST_PER_16_FRAMES = 0.08;
 const FAL_TIMEOUT_MS = 40 * 60 * 1000; // ~9 min per 5 s in the 3 Nov test
 const RENDER_TIMEOUT_MS = 20 * 60 * 1000;
 
 export function swapCredits(info: Pick<Mp4Info, "frames" | "seconds">): number {
-  return creditsForCost((info.frames / 16) * SWAP_COST_PER_16_FRAMES) + RENDER_CREDITS_PER_30S * Math.max(1, Math.ceil(info.seconds / 30));
+  return swapCreditsFor(info.frames, info.seconds);
 }
 
 export interface SwapRow {
