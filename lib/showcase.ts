@@ -43,44 +43,36 @@ export const SHOWCASE_VIDEOS: ShowcaseVideo[] = [
     made: "Researched script · AI narrator · visuals · music · subtitles",
   },
   {
-    id: "4b9d2833-3504-47a7-bbfe-61607b374fe8",
+    // Realistic street interview (the viral man-on-the-street format), 5 Nov 2026.
+    id: "b24376f6-0388-4138-86bd-42853f4bcb0b",
     mode: "Skit",
-    title: "The Cockroach Press Conference",
-    idea: "Reporter: Mr. President, people say you only come out at night. Is that true? President: Lies! I also come out when someone turns on the kitchen light.",
+    title: "The Secret to a Happy Marriage",
+    idea: "Reporter: Sir, what's the secret to a happy marriage? Old man: Two words. \"You're right.\" Reporter: And what if she's wrong? Old man: Then I'm suddenly deaf.",
     language: "English",
-    seconds: 22,
+    seconds: 21,
     orientation: "vertical",
-    videoPath: `${OWNER}/skit/4b9d2833-3504-47a7-bbfe-61607b374fe8/final.mp4`,
-    poster: { bucket: "videos", path: `${OWNER}/skit-4b9d2833-3504-47a7-bbfe-61607b374fe8/still-3.jpg` },
-    made: "Cast · character voices · lip-sync · crowd & sound effects",
+    videoPath: `${OWNER}/skit/b24376f6-0388-4138-86bd-42853f4bcb0b/final-v1.mp4`,
+    poster: { bucket: "videos", path: `${OWNER}/skit-b24376f6-0388-4138-86bd-42853f4bcb0b/still-3.jpg` },
+    made: "Realistic cast · character voices · lip-sync · cinematic shots",
   },
   {
-    id: "ccd97b03-9aea-4264-8b0e-db1e8a93f590",
+    // Bigfoot vlog (viral AI format), 5 Nov 2026.
+    id: "bb366887-daff-4a6b-be18-55847bdf8c74",
     mode: "Talking character",
-    title: "Coach Chick's Pep Talk",
-    idea: "Listen up, team! Nobody believed in us. But today we play like champions. Peck hard, run fast, and never, ever chicken out!",
+    title: "Bigfoot's Vlog, Day 400",
+    idea: "Bigfoot here. Day four hundred of hiding from humans. A guy just walked past me and took a photo of a tree. Amateurs.",
     language: "English",
-    seconds: 8,
+    seconds: 13,
     orientation: "vertical",
-    videoPath: `${OWNER}/talk/ccd97b03-9aea-4264-8b0e-db1e8a93f590/final.mp4`,
-    poster: { bucket: "videos", path: `${OWNER}/talk-ccd97b03-9aea-4264-8b0e-db1e8a93f590/still-1.jpg` },
-    made: "One character · your line · cartoon voice · lip-sync",
+    videoPath: `${OWNER}/talk/bb366887-daff-4a6b-be18-55847bdf8c74/final.mp4`,
+    poster: { bucket: "videos", path: `${OWNER}/talk-bb366887-daff-4a6b-be18-55847bdf8c74/still-1.jpg` },
+    made: "One character · your line · gruff voice · lip-sync",
   },
 ];
 
-// Added to SHOWCASE_VIDEOS once its render finishes (4 Nov 2026).
-export const PENDING_SWAP_SHOWCASE: ShowcaseVideo =
-{
-    id: "4d52ec19-1484-4036-b919-272c07302efd",
-    mode: "Character swap",
-    title: "A 14th-Century Conqueror at the Office",
-    idea: "A stock clip of a man in a suit, with Timur the conqueror swapped in",
-    language: "No dialogue",
-    seconds: 10,
-    orientation: "vertical",
-    videoPath: `${OWNER}/swap/4d52ec19-1484-4036-b919-272c07302efd/final.mp4`,
-    made: "Your clip · your character · same moves and sound",
-  };
+// Character swap: no showcase entry yet (5 Nov 2026 — the Office Cat swap came back as the
+// original man; Wan Animate "replace" keeps a human when the target is an animal. A human→human
+// swap works (Timur test on 4 Nov); pick a globally recognisable human character before adding one).
 
 function storageBase(): string | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
