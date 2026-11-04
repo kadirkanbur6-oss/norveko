@@ -254,10 +254,12 @@ export async function GET(req: NextRequest) {
   // fal.ai balance (lip-sync, swaps, image→video clips all run there). Warn at ≤ 20 % of the
   // usual top-up (FAL_TOPUP_USD, default 50) — 5 Nov 2026, Kadir, after the balance hit −$2.40.
   let fal: { balanceUsd: number; topupUsd: number; low: boolean } | null = null;
-  if (process.env.FAL_KEY) {
+  // Reading the balance needs a key with billing:usage:read (FAL_BILLING_KEY); model keys lack it.
+  const falKey = process.env.FAL_BILLING_KEY || process.env.FAL_KEY;
+  if (falKey) {
     try {
       const res = await fetch("https://api.fal.ai/v1/account/billing?expand=credits", {
-        headers: { Authorization: `Key ${process.env.FAL_KEY}` },
+        headers: { Authorization: `Key ${falKey}` },
         cache: "no-store",
       });
       const j = (await res.json()) as { credits?: { current_balance?: number } };
@@ -265,7 +267,7 @@ export async function GET(req: NextRequest) {
       if (res.ok && Number.isFinite(balanceUsd)) {
         const topupUsd = Number(process.env.FAL_TOPUP_USD) || 50;
         fal = { balanceUsd, topupUsd, low: balanceUsd <= topupUsd * 0.2 };
-      } else errors.push(`fal balance: HTTP ${res.status}`);
+      } else errors.push(`fal balance: HTTP ${res.status}${res.status === 403 ? " — add FAL_BILLING_KEY (a fal key with the BILLING / READONLY preset)" : ""}`);
     } catch (err) {
       errors.push(`fal balance: ${err instanceof Error ? err.message : String(err)}`);
     }
