@@ -100,7 +100,7 @@ export const COMPARISON: Array<{ feature: string; detail: string }> = [
   { feature: "Native voice artists in 29 languages", detail: "Plus multilingual Norveko narrators" },
   { feature: "Clips animated from each scene's image", detail: "Visuals match what the narrator says" },
   { feature: "Music chosen by the story's tone", detail: "Licensed tracks, credit added for you" },
-  { feature: "Word-timed, language-aware subtitles", detail: "Correct Turkish İ/ı, exportable .srt/.vtt" },
+  { feature: "Word-timed, language-aware subtitles", detail: "Correct casing in every language, exportable .srt/.vtt" },
   { feature: "Skits, talking characters and character swaps", detail: "Lip-synced voices, crowd shouts and music" },
   { feature: "Plans or pay as you go, pack credits never expire", detail: "Weekly, monthly or yearly — cancel anytime" },
   { feature: "Automatic refunds on failed steps", detail: "You only pay for what was delivered" },

@@ -6,75 +6,81 @@
 // is deleted. URLs are built from NEXT_PUBLIC_SUPABASE_URL so the list works
 // against any Supabase project that holds the same objects.
 
+export type ShowcaseMode = "Narrated video" | "Skit" | "Talking character" | "Character swap";
+
 export interface ShowcaseVideo {
   id: string;
+  /** Which Norveko studio made it (shown on the card). */
+  mode: ShowcaseMode;
   title: string;
-  /** The single sentence the creator typed. */
+  /** What the creator typed or picked. */
   idea: string;
   language: string;
-  style: string;
   seconds: number;
   orientation: "vertical" | "horizontal";
-  /** Storage paths inside the public buckets. */
+  /** R2 key of the finished MP4 (served by /media/videos/r2/…). */
   videoPath: string;
-  thumbnailPath: string;
-  /** Which full-video footage mode produced it. */
-  footage: "hybrid" | "cinematic" | "stills";
+  /** Poster: a path in the public `thumbnails` bucket, a path in the public `videos` bucket, or none (first frame). */
+  poster?: { bucket: "thumbnails" | "videos"; path: string };
+  /** What the video is made of, one short line. */
+  made: string;
 }
 
 const OWNER = "92779a9c-cb1c-47a8-bcc8-e07f4de6dc56";
 
+// 4 Nov 2026 (Kadir: "one English video per mode, labelled, global"): the four studios.
 export const SHOWCASE_VIDEOS: ShowcaseVideo[] = [
   {
-    id: "c52fd94e-f62a-4db2-baf5-1083ae0c57bb",
-    title: "Dyatlov Geçidi: Dokuz Kayakçıyı Ne Öldürdü?",
-    idea: "Dyatlov Geçidi olayı: 1959'da dokuz dağcıya ne oldu?",
-    language: "Türkçe",
-    style: "Mystery",
-    seconds: 58,
+    id: "fd43ddfc-4b45-486d-8b0f-b9b1dfe43f91",
+    mode: "Narrated video",
+    title: "The Three Lighthouse Keepers Who Vanished",
+    idea: "The three lighthouse keepers who vanished from the Flannan Isles in 1900",
+    language: "English",
+    seconds: 31,
     orientation: "vertical",
-    // v1 = re-rendered with "Lost Time" (tragic) instead of a mismatched cue.
-    videoPath: `${OWNER}/c52fd94e-f62a-4db2-baf5-1083ae0c57bb/final-v1.mp4`,
-    thumbnailPath: "c52fd94e-f62a-4db2-baf5-1083ae0c57bb.jpg",
-    footage: "hybrid",
+    videoPath: `${OWNER}/fd43ddfc-4b45-486d-8b0f-b9b1dfe43f91/final.mp4`,
+    poster: { bucket: "thumbnails", path: "fd43ddfc-4b45-486d-8b0f-b9b1dfe43f91.jpg" },
+    made: "Researched script · AI narrator · visuals · music · subtitles",
   },
   {
-    id: "06d78aba-f9a9-4a72-a4fc-36b0682039a9",
-    title: "Penguenler Neden Uçamaz?",
-    idea: "Penguenler neden uçamaz?",
-    language: "Türkçe",
-    style: "Educational",
-    seconds: 30,
+    id: "4b9d2833-3504-47a7-bbfe-61607b374fe8",
+    mode: "Skit",
+    title: "The Cockroach Press Conference",
+    idea: "Reporter: Mr. President, people say you only come out at night. Is that true? President: Lies! I also come out when someone turns on the kitchen light.",
+    language: "English",
+    seconds: 22,
     orientation: "vertical",
-    videoPath: `${OWNER}/06d78aba-f9a9-4a72-a4fc-36b0682039a9/final.mp4`,
-    thumbnailPath: "06d78aba-f9a9-4a72-a4fc-36b0682039a9.jpg",
-    footage: "hybrid",
+    videoPath: `${OWNER}/skit/4b9d2833-3504-47a7-bbfe-61607b374fe8/final.mp4`,
+    poster: { bucket: "videos", path: `${OWNER}/skit-4b9d2833-3504-47a7-bbfe-61607b374fe8/still-3.jpg` },
+    made: "Cast · character voices · lip-sync · crowd & sound effects",
   },
   {
-    id: "f7d77bdb-7f41-4188-ba90-0bf261ba2c98",
-    title: "Kapadokya'nın Yeraltı Sırrı",
-    idea: "Kapadokya'nın yeraltı şehirleri neden inşa edildi?",
-    language: "Türkçe",
-    style: "Mystery",
-    seconds: 30,
+    id: "ccd97b03-9aea-4264-8b0e-db1e8a93f590",
+    mode: "Talking character",
+    title: "Coach Chick's Pep Talk",
+    idea: "Listen up, team! Nobody believed in us. But today we play like champions. Peck hard, run fast, and never, ever chicken out!",
+    language: "English",
+    seconds: 8,
     orientation: "vertical",
-    videoPath: `${OWNER}/f7d77bdb-7f41-4188-ba90-0bf261ba2c98/final.mp4`,
-    thumbnailPath: "f7d77bdb-7f41-4188-ba90-0bf261ba2c98.jpg",
-    footage: "hybrid",
-  },
-  {
-    id: "53010faf-a6fe-463d-b49c-76e81edf1ca5",
-    title: "Hamamböceklerinden Kalıcı Kurtulmanın 6 Yolu",
-    idea: "Türkiye'de viral olan hamamböceği videoları",
-    language: "Türkçe",
-    style: "Educational",
-    seconds: 60,
-    orientation: "vertical",
-    videoPath: `${OWNER}/53010faf-a6fe-463d-b49c-76e81edf1ca5/final.mp4`,
-    thumbnailPath: "53010faf-a6fe-463d-b49c-76e81edf1ca5.jpg",
-    footage: "hybrid",
+    videoPath: `${OWNER}/talk/ccd97b03-9aea-4264-8b0e-db1e8a93f590/final.mp4`,
+    poster: { bucket: "videos", path: `${OWNER}/talk-ccd97b03-9aea-4264-8b0e-db1e8a93f590/still-1.jpg` },
+    made: "One character · your line · cartoon voice · lip-sync",
   },
 ];
+
+// Added to SHOWCASE_VIDEOS once its render finishes (4 Nov 2026).
+export const PENDING_SWAP_SHOWCASE: ShowcaseVideo =
+{
+    id: "4d52ec19-1484-4036-b919-272c07302efd",
+    mode: "Character swap",
+    title: "A 14th-Century Conqueror at the Office",
+    idea: "A stock clip of a man in a suit, with Timur the conqueror swapped in",
+    language: "No dialogue",
+    seconds: 10,
+    orientation: "vertical",
+    videoPath: `${OWNER}/swap/4d52ec19-1484-4036-b919-272c07302efd/final.mp4`,
+    made: "Your clip · your character · same moves and sound",
+  };
 
 function storageBase(): string | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
@@ -88,7 +94,7 @@ export function showcaseVideoUrl(v: ShowcaseVideo): string | null {
 
 export function showcaseThumbnailUrl(v: ShowcaseVideo): string | null {
   const base = storageBase();
-  return base ? `${base}/thumbnails/${v.thumbnailPath}` : null;
+  return base && v.poster ? `${base}/${v.poster.bucket}/${v.poster.path}` : null;
 }
 
 /**

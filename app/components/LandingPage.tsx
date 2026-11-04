@@ -380,7 +380,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           <SectionTitle
             eyebrow="Made with Norveko"
             title="One sentence in. A finished video out."
-            subtitle="Real renders straight from the pipeline — AI visuals, voiceover and word-timed subtitles, no manual editing. Press play."
+            subtitle="One real render from each Norveko studio: a narrated story, a skit, a talking character and a character swap. No manual editing. Press play."
           />
         </Reveal>
         <Reveal delay={100} className="mt-8">
@@ -714,7 +714,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
               <ul className="mx-auto mt-6 max-w-md space-y-3">
                 {[
                   [MessageSquare, "AI Chat", "Generate full content packages conversationally."],
-                  [Wand2, "Multi-language output", "English, Türkçe, Español, Deutsch, Français, Português."],
+                  [Wand2, "29 languages", "English, Español, Deutsch, Français, Português, 日本語, العربية and more."],
                   [Layers, "Projects", "Every generation saved, editable and organized."],
                   [Globe, "Cinematic video prompts", "Ready to paste into any AI video tool."],
                 ].map(([Icon, title, desc]) => {
