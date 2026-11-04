@@ -10,6 +10,7 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { requireUser } from "@/lib/supabase-server";
 import { isAdmin } from "@/lib/admin";
 import { adminDb } from "@/lib/api-keys";
+import { estimateCostUsd, type UsageProvider } from "@/lib/pipeline/usage";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -94,15 +95,30 @@ export async function GET(req: NextRequest) {
     ),
     all("skit_jobs", (a, b) => db.from("skit_jobs").select("id, user_id, status, phase, script, credits, refunded, error, created_at").neq("status", "draft").order("created_at", { ascending: false }).range(a, Math.min(b, JOB_LIST - 1)), errors),
     all("swap_jobs", (a, b) => db.from("swap_jobs").select("id, user_id, kind, status, phase, character_name, credits, refunded, error, created_at").order("created_at", { ascending: false }).range(a, Math.min(b, JOB_LIST - 1)), errors),
-    all("provider_usage", (a, b) => db.from("provider_usage").select("created_at, user_id, step, provider, model, estimated_cost_usd, status").gte("created_at", since).order("created_at", { ascending: false }).range(a, b), errors),
+    all("provider_usage", (a, b) => db.from("provider_usage").select("created_at, user_id, step, provider, model, quantity, estimated_cost_usd, status").gte("created_at", since).order("created_at", { ascending: false }).range(a, b), errors),
     all("credit_transactions", (a, b) => db.from("credit_transactions").select("user_id, type, amount, created_at").gte("created_at", since).order("created_at", { ascending: false }).range(a, b), errors),
+    // Narrated videos, skits, talking characters and swaps all count.
     Promise.all(
       (["running", "completed", "failed"] as const).map(async (status) => {
-        const { count } = await db.from("pipeline_jobs").select("id", { count: "exact", head: true }).eq("status", status);
-        return [status, count ?? 0] as const;
+        const counts = await Promise.all(
+          (["pipeline_jobs", "skit_jobs", "swap_jobs"] as const).map(async (table) => {
+            const { count, error } = await db.from(table).select("id", { count: "exact", head: true }).eq("status", status);
+            if (error) errors.push(`${table} count: ${error.message}`);
+            return count ?? 0;
+          })
+        );
+        return [status, counts.reduce((t, c) => t + c, 0)] as const;
       })
     ),
   ]);
+
+  // Rows logged before a model was in the price list were stored as $0:
+  // price them now from the units they used.
+  for (const u of usage) {
+    if (u.status === "ok" && num(u.estimated_cost_usd) === 0 && num(u.quantity) > 0) {
+      u.estimated_cost_usd = estimateCostUsd(str(u.provider) as UsageProvider, str(u.model), { quantity: num(u.quantity) });
+    }
+  }
 
   // ---- per-user roll-ups -------------------------------------------------
   const email = new Map(users.map((u) => [u.id, u.email ?? ""]));

@@ -75,6 +75,9 @@ export const PRICE_LIST: Record<string, Price> = {
   "kling:kling-v2-1": { perUnit: 0.056 },
   // fal Seedance 1.5 Pro image→video, silent 720p — per second (~$0.13 / 5 s).
   "fal:fal-ai/bytedance/seedance/v1.5/pro/image-to-video": { perUnit: 0.026 },
+  // fal lip-sync (on-camera presenter) — per second of output, 720p (3 Nov 2026).
+  "fal:fal-ai/kling-video/ai-avatar/v2/standard": { perUnit: 0.0562 },
+  "fal:veed/fabric-1.0": { perUnit: 0.15 },
   // Shotstack — per second of rendered output (pay-as-you-go $0.20/min).
   "shotstack:render": { perUnit: 0.0034 },
 };

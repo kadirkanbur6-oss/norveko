@@ -276,7 +276,7 @@ export default function AdminPage() {
                 <Stat label="Revenue (all time)" value={usd(o.revenueUsd)} note={`${usd(o.revenueWindowUsd)} in the ${windowLabel}${o.refundedUsd ? ` · ${usd(o.refundedUsd)} refunded` : ""}`} />
                 <Stat label="Paying users" value={int(o.payingUsers)} note={`${int(o.activeSubscriptions)} active subscriptions`} />
                 <Stat label={`Provider cost, ${windowLabel}`} value={usd(o.costWindowUsd)} note={`${int(o.creditsSpentWindow)} credits spent by users`} />
-                <Stat label="Videos running now" value={int(o.jobs.running)} />
+                <Stat label="Running now" value={int(o.jobs.running)} />
                 <Stat label="Completed (all time)" value={int(o.jobs.completed)} />
                 <Stat label="Failed (all time)" value={int(o.jobs.failed)} note={`${int(o.failedWindow)} in the ${windowLabel}`} />
                 <Stat label="Unspent credits" value={int(o.creditsOutstanding)} note="Across every account" />
