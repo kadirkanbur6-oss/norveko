@@ -25,7 +25,7 @@ function buys(p: SubscriptionPlan): string[] {
   const v60 = Math.floor(p.credits / JOB_COSTS.video60);
   const v30 = Math.floor(p.credits / JOB_COSTS.video30);
   return [
-    `${p.credits.toLocaleString()} credits every ${per}${p.period === "year" ? " (billed yearly)" : ""}`,
+    `${p.credits.toLocaleString("en-US")} credits every ${per}${p.period === "year" ? " (billed yearly)" : ""}`,
     v60 > 0
       ? `≈ ${v60} finished 60 s video${v60 === 1 ? "" : "s"} a ${per} (or ${v30} × 30 s)`
       : `≈ ${v30} finished 30 s video${v30 === 1 ? "" : "s"} a ${per}`,
@@ -106,8 +106,8 @@ export default function SubscriptionPlans({
               </div>
               <p className="mt-1 text-xs text-gray-500">
                 {plan.period === "month"
-                  ? `≈ ${monthlyCredits(plan).toLocaleString()} credits a month`
-                  : `≈ $${monthlyPrice(plan)} a month · ${monthlyCredits(plan).toLocaleString()} credits a month`}
+                  ? `≈ ${monthlyCredits(plan).toLocaleString("en-US")} credits a month`
+                  : `≈ $${monthlyPrice(plan)} a month · ${monthlyCredits(plan).toLocaleString("en-US")} credits a month`}
               </p>
               <ul className="mt-3 flex-1 space-y-1.5 text-xs text-gray-300">
                 {buys(plan).map((line) => (

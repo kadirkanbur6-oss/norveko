@@ -445,7 +445,7 @@ export default function ScriptLab() {
               <tbody>
                 {past.map((p) => (
                   <tr key={p.id} className="border-t border-white/5">
-                    <td className="py-1">{p.savedAt ? new Date(p.savedAt).toLocaleString() : p.id}</td>
+                    <td className="py-1">{p.savedAt ? new Date(p.savedAt).toLocaleString("en-US") : p.id}</td>
                     <td className="font-mono">{p.model}</td>
                     <td className="font-mono">{p.promptVersion}</td>
                     <td className="font-semibold text-white">{p.average ?? "–"}</td>

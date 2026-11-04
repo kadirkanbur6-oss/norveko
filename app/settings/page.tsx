@@ -19,7 +19,6 @@ import TeamCard from "../components/TeamCard";
 import BrandKitCard from "../components/BrandKitCard";
 import VoiceCloneCard from "../components/VoiceCloneCard";
 import CharactersCard from "../components/CharactersCard";
-import ReferralCard from "../components/ReferralCard";
 import PageTabs, { PageHeader, useTabParam, type PageTab } from "../components/PageTabs";
 
 const SETTINGS_TABS: PageTab[] = [
@@ -27,7 +26,6 @@ const SETTINGS_TABS: PageTab[] = [
   { id: "brand", label: "Brand & voice" },
   { id: "characters", label: "Characters" },
   { id: "connections", label: "Connected channels" },
-  { id: "invite", label: "Invite & earn" },
   { id: "team", label: "Team" },
   { id: "api", label: "API" },
 ];
@@ -257,7 +255,6 @@ export default function SettingsPage() {
                 </>
               )}
 
-              {tab === "invite" && <ReferralCard />}
 
               {tab === "team" && <TeamCard />}
 

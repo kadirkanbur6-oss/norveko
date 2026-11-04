@@ -487,7 +487,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                 </div>
 
                 <p className="mt-2 text-sm font-medium text-gray-300">
-                  {plan.credits.toLocaleString()} credits
+                  {plan.credits.toLocaleString("en-US")} credits
                 </p>
                 <ul className="mt-3 space-y-1.5 text-xs text-gray-300">
                   {plan.buys.map((line) => (

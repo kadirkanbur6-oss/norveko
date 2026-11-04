@@ -1424,8 +1424,8 @@ function ChatContent() {
               </div>
             )}
 
-            {/* Video clips (Kling) — gated until launch */}
-            {!fullVideoOn && (
+            {/* Video clips (Kling) — only shown when the feature is on (a "coming soon" card was just clutter). */}
+            {!fullVideoOn && videoAvailable && (
             <div
               className={`mt-4 rounded-2xl border p-4 ${
                 videoAvailable

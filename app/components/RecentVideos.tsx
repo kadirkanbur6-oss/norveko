@@ -24,6 +24,9 @@ export default async function RecentVideos() {
     error = true;
   }
 
+  // Nothing to show yet (no public uploads or the daily snapshot hasn't run): keep the dashboard clean.
+  if (!error && videos.length === 0) return null;
+
   return (
     <section className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-6">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -33,10 +36,6 @@ export default async function RecentVideos() {
             Daily cached performance from your latest YouTube uploads.
           </p>
         </div>
-
-        <span className="rounded-full border border-blue-400/30 bg-blue-500/10 px-4 py-2 text-sm text-blue-200">
-          Daily Cache
-        </span>
       </div>
 
       {error ? (

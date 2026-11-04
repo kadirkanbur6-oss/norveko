@@ -104,7 +104,7 @@ export default function TeamCard() {
                 <span className="min-w-0 flex-1 truncate text-gray-200">
                   {m.email ?? "Member"} {m.you && <span className="text-xs text-gray-500">(you)</span>}
                 </span>
-                <span className="text-xs text-gray-500">joined {new Date(m.joinedAt).toLocaleDateString()}</span>
+                <span className="text-xs text-gray-500">joined {new Date(m.joinedAt).toLocaleDateString("en-US")}</span>
                 {t.role === "owner" && (
                   <button
                     type="button"
@@ -145,7 +145,7 @@ export default function TeamCard() {
                   {t.invites.length} open invite{t.invites.length > 1 ? "s" : ""} ·{" "}
                   {t.invites.map((i) => (
                     <button key={i.id} type="button" onClick={() => act("revokeInvite", { id: i.id })} className="mr-2 text-gray-400 underline hover:text-white">
-                      cancel one from {new Date(i.createdAt).toLocaleDateString()}
+                      cancel one from {new Date(i.createdAt).toLocaleDateString("en-US")}
                     </button>
                   ))}
                 </p>

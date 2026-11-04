@@ -62,7 +62,7 @@ const COST_ROWS: Array<[string, string]> = [
 ];
 
 function fmtDate(d: string): string {
-  return new Date(d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  return new Date(d).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
 }
 
 export default function BillingPage() {
@@ -289,7 +289,7 @@ export default function BillingPage() {
                       </span>
                     </p>
                     <p className="mt-1 text-xs text-gray-400">
-                      {subscription.credits.toLocaleString()} credits every {subscription.grantEvery}
+                      {subscription.credits.toLocaleString("en-US")} credits every {subscription.grantEvery}
                       {subscription.endsAt
                         ? ` · ends ${fmtDate(subscription.endsAt)}`
                         : subscription.renewsAt
@@ -350,7 +350,7 @@ export default function BillingPage() {
                     </div>
                     <div className="mt-2 flex items-center gap-2 text-sm text-yellow-300">
                       <Coins size={16} />
-                      {pack.credits.toLocaleString()} credits
+                      {pack.credits.toLocaleString("en-US")} credits
                       <span className="text-xs text-gray-500">· ${((pack.priceUsd / pack.credits) * 100).toFixed(2)} per 100</span>
                     </div>
 

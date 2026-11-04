@@ -130,7 +130,7 @@ export default function VoiceCloneCard() {
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#0d0d16] p-4">
           <div>
             <p className="text-sm font-semibold">{clone.name}</p>
-            <p className="text-xs text-gray-500">Created {new Date(clone.createdAt).toLocaleDateString()}</p>
+            <p className="text-xs text-gray-500">Created {new Date(clone.createdAt).toLocaleDateString("en-US")}</p>
           </div>
           <button
             type="button"

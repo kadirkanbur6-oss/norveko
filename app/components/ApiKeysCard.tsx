@@ -99,7 +99,7 @@ export default function ApiKeysCard() {
                   <span className="font-medium text-white">{k.name}</span>
                   <code className="font-mono text-xs text-gray-400">{k.prefix}…</code>
                   <span className="text-xs text-gray-500">
-                    {k.last_used_at ? `last used ${new Date(k.last_used_at).toLocaleDateString()}` : "never used"}
+                    {k.last_used_at ? `last used ${new Date(k.last_used_at).toLocaleDateString("en-US")}` : "never used"}
                   </span>
                   <button
                     type="button"

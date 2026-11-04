@@ -166,7 +166,7 @@ export default function ProjectDetailPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState<TabId>("script");
+  const [pickedTab, setActiveTab] = useState<TabId>("script");
   const [sectionParam, setSection] = useTabParam(SECTIONS, "");
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -308,6 +308,28 @@ export default function ProjectDetailPage() {
     }
   }
 
+  // Only tabs that have something in them (a skit or talking-character project has no scene plan or prompts).
+  function tabHasContent(tab: TabId): boolean {
+    const c = project?.content ? normalizeContent(project.content) : null;
+    if (!c) return false;
+    switch (tab) {
+      case "script":
+        return Boolean(c.hook?.trim() || c.script?.trim());
+      case "scenes":
+        return c.scenes.length > 0;
+      case "prompts":
+        return c.scenes.some((x) => x.videoPrompt?.trim());
+      case "titles":
+        return c.titles.length > 0;
+      case "description":
+        return Boolean(c.description?.trim());
+      case "tags":
+        return c.tags.length > 0;
+      case "thumbnail":
+        return Boolean(c.thumbnailIdea?.trim() || thumbnailUrl);
+    }
+  }
+
   async function handleCopy() {
     await navigator.clipboard.writeText(getTabText(activeTab));
     setCopied(true);
@@ -365,6 +387,8 @@ export default function ProjectDetailPage() {
     null;
 
   const thumbnailUrl = normalizedProjectContent?.thumbnailUrl ?? null;
+  const shownTabs = TABS.filter((t) => tabHasContent(t.id));
+  const activeTab: TabId = shownTabs.some((t) => t.id === pickedTab) ? pickedTab : shownTabs[0]?.id ?? "script";
   const sceneClips = (normalizedProjectContent?.scenes ?? []).filter(
     (scene) => typeof scene.videoUrl === "string" && scene.videoUrl
   );
@@ -609,7 +633,13 @@ export default function ProjectDetailPage() {
               </div>
 
               <p className="mt-3 text-xs text-gray-500">
-                {[project.platform, project.style, project.duration, formatDate(project.created_at)].filter(Boolean).join(" · ")}
+                {[
+                  project.platform,
+                  // Older skit / talk / swap projects were saved as "Cinematic".
+                  (project.content as { skit?: unknown } | null)?.skit ? "Skit" : (project.content as { talk?: unknown } | null)?.talk ? "Talking character" : (project.content as { swap?: unknown } | null)?.swap ? "Character swap" : project.style,
+                  project.duration,
+                  formatDate(project.created_at),
+                ].filter(Boolean).join(" · ")}
               </p>
 
               {saveMessage && !editing && (
@@ -739,7 +769,7 @@ export default function ProjectDetailPage() {
                 <div className="mt-6 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 sm:p-6">
                   {/* Tabs */}
                   <div className="flex flex-wrap gap-2">
-                    {TABS.map((tab) => (
+                    {shownTabs.map((tab) => (
                       <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}

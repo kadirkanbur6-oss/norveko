@@ -70,7 +70,7 @@ export default function InstagramPublish({
 
       {post && (
         <p className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-green-400/30 bg-green-500/10 p-3 text-sm text-green-200">
-          Posted {new Date(post.postedAt).toLocaleString()}.
+          Posted {new Date(post.postedAt).toLocaleString("en-US")}.
           {post.permalink && (
             <a href={post.permalink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold underline">
               Open on Instagram <ExternalLink size={13} aria-hidden />

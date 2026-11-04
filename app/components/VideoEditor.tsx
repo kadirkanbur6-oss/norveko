@@ -669,7 +669,7 @@ export default function VideoEditor({ projectId, vertical }: { projectId: string
                           type="button"
                           onClick={() => edit("restore", { action: "restoreScene", index: slot.index, url: h.url })}
                           disabled={busy !== null}
-                          title={h.url === "original" ? "Go back to the original scene" : `From ${new Date(h.at).toLocaleString()}`}
+                          title={h.url === "original" ? "Go back to the original scene" : `From ${new Date(h.at).toLocaleString("en-US")}`}
                           className={`relative overflow-hidden rounded-md border border-white/10 transition hover:border-blue-400/60 disabled:opacity-50 ${vertical ? "h-20 w-12" : "h-12 w-20"}`}
                         >
                           {h.url === "original" ? (
@@ -724,7 +724,7 @@ export default function VideoEditor({ projectId, vertical }: { projectId: string
                 {state.versions!.map((v) => (
                   <li key={v.url} className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-[#0d0d16] px-3 py-2 text-sm">
                     <span className="font-semibold text-white">{v.version === 0 ? "First render" : `Version ${v.version}`}</span>
-                    <span className="text-xs text-gray-500">replaced {new Date(v.at).toLocaleString()}</span>
+                    <span className="text-xs text-gray-500">replaced {new Date(v.at).toLocaleString("en-US")}</span>
                     <a href={v.url} target="_blank" rel="noreferrer" className="ml-auto text-xs text-blue-300 hover:text-white">
                       Watch
                     </a>

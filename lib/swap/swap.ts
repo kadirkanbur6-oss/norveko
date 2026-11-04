@@ -223,7 +223,7 @@ async function finish(db: SupabaseClient, row: SwapRow, sourceUrl: string): Prom
       user_id: row.user_id,
       title,
       platform: row.vertical ? "YouTube Shorts" : "YouTube Long-form",
-      style: "Cinematic",
+      style: talk ? "Talking character" : "Character swap",
       duration: `${Math.round(row.source_seconds)} seconds`,
       idea: (talk ? row.script : row.prompt) || title,
       status: "draft",

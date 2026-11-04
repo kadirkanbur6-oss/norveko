@@ -302,7 +302,7 @@ export default function SwapStudio() {
                     <Film size={15} className="text-gray-500" />
                     <span className="font-medium">{s.characterName}</span>
                     <span className="text-xs text-gray-500">
-                      {Math.round(s.seconds)} s · {new Date(s.createdAt).toLocaleString()}
+                      {Math.round(s.seconds)} s · {new Date(s.createdAt).toLocaleString("en-US")}
                     </span>
                     <span className="ml-auto">
                       {s.status === "running" ? (

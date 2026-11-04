@@ -513,7 +513,7 @@ export default function SeriesPage() {
                           {s.publish.youtube?.enabled ? " · YouTube" : ""}
                           {s.publish.tiktok?.enabled ? " · TikTok" : ""}
                         </p>
-                        {s.nextAt && <p className="mt-1 text-xs text-blue-300">Next episode: {new Date(s.nextAt).toLocaleString()}</p>}
+                        {s.nextAt && <p className="mt-1 text-xs text-blue-300">Next episode: {new Date(s.nextAt).toLocaleString("en-US")}</p>}
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <button
@@ -554,7 +554,7 @@ export default function SeriesPage() {
                               <div className="min-w-0">
                                 <p className="truncate text-gray-200">{e.idea ?? "Picking a subject…"}</p>
                                 <p className="text-xs text-gray-500">
-                                  {new Date(e.scheduled_for).toLocaleString()} · <span className={st.cls}>{st.label}</span>
+                                  {new Date(e.scheduled_for).toLocaleString("en-US")} · <span className={st.cls}>{st.label}</span>
                                   {e.error ? ` — ${e.error}` : ""}
                                 </p>
                               </div>

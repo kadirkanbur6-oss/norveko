@@ -172,7 +172,7 @@ export default function YouTubePublish({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="flex items-center gap-2 text-green-300">
               <CheckCircle2 size={16} aria-hidden />
-              {upload.publishAt ? `Scheduled for ${new Date(upload.publishAt).toLocaleString()}` : `On YouTube · ${upload.privacy}`}
+              {upload.publishAt ? `Scheduled for ${new Date(upload.publishAt).toLocaleString("en-US")}` : `On YouTube · ${upload.privacy}`}
             </span>
             <a href={upload.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-red-300 hover:text-red-200">
               Open on YouTube <ExternalLink size={13} aria-hidden />

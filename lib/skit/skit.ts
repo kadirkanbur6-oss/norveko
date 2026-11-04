@@ -633,7 +633,7 @@ async function finish(db: SupabaseClient, row: SkitRow, renderUrl: string, secon
       user_id: row.user_id,
       title: plan.title,
       platform: row.vertical ? "YouTube Shorts" : "YouTube Long-form",
-      style: "Cinematic",
+      style: "Skit",
       duration: `${Math.round(seconds)} seconds`,
       idea: row.script.slice(0, 500),
       status: "draft",

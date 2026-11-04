@@ -39,7 +39,7 @@ export default function ReferralCard() {
 
   const stat = (label: string, value: number) => (
     <div className="rounded-xl border border-white/10 bg-[#0d0d16] p-3 text-center">
-      <p className="text-lg font-bold text-white">{value.toLocaleString()}</p>
+      <p className="text-lg font-bold text-white">{value.toLocaleString("en-US")}</p>
       <p className="text-xs text-gray-500">{label}</p>
     </div>
   );

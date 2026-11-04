@@ -320,7 +320,7 @@ export default function SkitStudio({ text, onStarted }: { text: string; onStarte
               <li key={s.id} className="rounded-xl border border-white/10 bg-[#0d0d16] px-4 py-3">
                 <div className="flex flex-wrap items-center gap-3 text-sm">
                   <span className="font-medium">{s.title}</span>
-                  <span className="text-xs text-gray-500">{new Date(s.createdAt).toLocaleString()}</span>
+                  <span className="text-xs text-gray-500">{new Date(s.createdAt).toLocaleString("en-US")}</span>
                   <span className="ml-auto">
                     {s.status === "running" ? (
                       <span className="inline-flex items-center gap-1.5 text-xs text-sky-300">
