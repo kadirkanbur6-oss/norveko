@@ -598,12 +598,14 @@ test("subscriptions: plan margins and monthly grant dates", async () => {
     const net = p.priceUsd * 0.95 - 0.5;
     const credits = p.period === "year" ? p.credits * 12 : p.credits;
     const margin = 1 - (credits * REVENUE_PER_CREDIT_USD * 0.6) / net; // cost share = 60% of baseline revenue
-    assert.ok(margin >= 0.4, `${p.id}: ${(margin * 100).toFixed(1)}%`);
-    // …and still ≥ 40% after the inviter's referral reward on that grant.
+    // Yearly ("2 months free") is the one deliberate discount; everything else keeps 40%.
+    const floor = p.period === "year" ? 0.3 : 0.4;
+    assert.ok(margin >= floor, `${p.id}: ${(margin * 100).toFixed(1)}%`);
+    // …and the inviter's referral reward never pushes it below that.
     const grants = p.period === "year" ? 12 : 1;
     const reward = rewardFor(p.credits, netPerGrantUsd(p)) * grants;
     const withReward = 1 - ((credits + reward) * REVENUE_PER_CREDIT_USD * 0.6) / net;
-    assert.ok(withReward >= 0.4 - 1e-9, `${p.id} with referral: ${(withReward * 100).toFixed(1)}%`);
+    assert.ok(withReward >= floor - 1e-9, `${p.id} with referral: ${(withReward * 100).toFixed(1)}%`);
   }
   // Packs: the reward is the full 20% only where the pack has the headroom.
   assert.equal(rewardFor(500, 9 * 0.95 - 0.5), 100);
