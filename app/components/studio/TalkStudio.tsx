@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Check, Loader2, MessageCircle, Mic, Plus, Upload, Volume2 } from "lucide-react";
 import { CharacterCreator, type CharacterItem } from "../CharactersCard";
+import FinishedVideo from "./FinishedVideo";
 import GenerationStage from "../GenerationStage";
 
 type Talk = {
@@ -54,6 +55,9 @@ export default function TalkStudio({ text: outerText }: { text?: string } = {}) 
   const [rights, setRights] = useState(false);
   const [busy, setBusy] = useState<"" | "voice" | "upload" | "start">("");
   const [error, setError] = useState("");
+  // Jobs seen running on this page; when one finishes it plays right here.
+  const seenRunning = useRef<Set<string>>(new Set());
+  const [finished, setFinished] = useState<{ title: string; url: string; projectId: string | null; vertical: boolean } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
 
@@ -66,6 +70,15 @@ export default function TalkStudio({ text: outerText }: { text?: string } = {}) 
     setVoices(d.voices ?? []);
     setVoiceId((v) => v || d.voices?.[0]?.id || "");
     setTalks(d.talks ?? []);
+      for (const x of (d.talks ?? []) as Array<{ id: string; status: string; outputUrl: string | null; projectId: string | null; vertical: boolean } & Record<string, unknown>>) {
+        if (x.status === "running") seenRunning.current.add(x.id);
+        else if (seenRunning.current.has(x.id)) {
+          seenRunning.current.delete(x.id);
+          if (x.status === "completed" && x.outputUrl) {
+            setFinished({ title: String(`${(x as Record<string, unknown>).characterName} talks`), url: x.outputUrl, projectId: x.projectId, vertical: x.vertical });
+          }
+        }
+      }
   }, []);
 
   useEffect(() => {
@@ -168,6 +181,9 @@ export default function TalkStudio({ text: outerText }: { text?: string } = {}) 
 
   return (
         <div className="space-y-5">
+      {finished && (
+        <FinishedVideo {...finished} onClose={() => setFinished(null)} />
+      )}
           {talks.some((t) => t.status === "running") && (
             <div ref={stageRef} className="scroll-mt-20 space-y-4">
               {talks

@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Clapperboard, Loader2, Sparkles, Volume2 } from "lucide-react";
+import FinishedVideo from "./FinishedVideo";
 import GenerationStage, { type StageStep } from "../GenerationStage";
 
 type Skit = {
@@ -61,6 +62,9 @@ export default function SkitStudio({ text }: { text: string }) {
   const [rights, setRights] = useState(false);
   const [busy, setBusy] = useState<"" | "plan" | "start">("");
   const [error, setError] = useState("");
+  // Jobs seen running on this page; when one finishes it plays right here.
+  const seenRunning = useRef<Set<string>>(new Set());
+  const [finished, setFinished] = useState<{ title: string; url: string; projectId: string | null; vertical: boolean } | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
@@ -68,6 +72,15 @@ export default function SkitStudio({ text }: { text: string }) {
     if (d?.success) {
       setAllowed(Boolean(d.allowed));
       setSkits(d.skits ?? []);
+      for (const x of (d.skits ?? []) as Array<{ id: string; status: string; outputUrl: string | null; projectId: string | null; vertical: boolean } & Record<string, unknown>>) {
+        if (x.status === "running") seenRunning.current.add(x.id);
+        else if (seenRunning.current.has(x.id)) {
+          seenRunning.current.delete(x.id);
+          if (x.status === "completed" && x.outputUrl) {
+            setFinished({ title: String((x as Record<string, unknown>).title), url: x.outputUrl, projectId: x.projectId, vertical: x.vertical });
+          }
+        }
+      }
     }
   }, []);
 
@@ -149,6 +162,9 @@ export default function SkitStudio({ text }: { text: string }) {
 
   return (
     <div className="space-y-5">
+      {finished && (
+        <FinishedVideo {...finished} onClose={() => setFinished(null)} />
+      )}
       {making.length > 0 && (
         <div ref={stageRef} className="scroll-mt-20 space-y-4">
           {making.map((x) => (

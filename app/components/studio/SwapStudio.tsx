@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Check, Film, Loader2, Plus, Shuffle, Upload } from "lucide-react";
 import { CharacterCreator, type CharacterItem } from "../CharactersCard";
+import FinishedVideo from "./FinishedVideo";
 import GenerationStage from "../GenerationStage";
 
 type Swap = {
@@ -35,6 +36,9 @@ export default function SwapStudio() {
   const [rights, setRights] = useState(false);
   const [busy, setBusy] = useState<"" | "upload" | "start">("");
   const [error, setError] = useState("");
+  // Jobs seen running on this page; when one finishes it plays right here.
+  const seenRunning = useRef<Set<string>>(new Set());
+  const [finished, setFinished] = useState<{ title: string; url: string; projectId: string | null; vertical: boolean } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
 
@@ -44,6 +48,15 @@ export default function SwapStudio() {
       setAllowed(Boolean(d.allowed));
       setMaxSeconds(d.maxSeconds ?? 15);
       setSwaps(d.swaps ?? []);
+      for (const x of (d.swaps ?? []) as Array<{ id: string; status: string; outputUrl: string | null; projectId: string | null; vertical: boolean } & Record<string, unknown>>) {
+        if (x.status === "running") seenRunning.current.add(x.id);
+        else if (seenRunning.current.has(x.id)) {
+          seenRunning.current.delete(x.id);
+          if (x.status === "completed" && x.outputUrl) {
+            setFinished({ title: String(`${(x as Record<string, unknown>).characterName} — character swap`), url: x.outputUrl, projectId: x.projectId, vertical: x.vertical });
+          }
+        }
+      }
     }
   }, []);
 
@@ -114,6 +127,9 @@ export default function SwapStudio() {
 
   return (
         <div className="space-y-5">
+      {finished && (
+        <FinishedVideo {...finished} onClose={() => setFinished(null)} />
+      )}
           {swaps.some((x) => x.status === "running") && (
             <div ref={stageRef} className="scroll-mt-20 space-y-4">
               {swaps
