@@ -250,6 +250,26 @@ export async function GET(req: NextRequest) {
   const inWindow = completed.filter((p) => p.createdAt >= since);
   const sum = (list: Array<{ amountUsd: number }>) => list.reduce((t, p) => t + p.amountUsd, 0);
   const counts = Object.fromEntries(jobCounts);
+
+  // fal.ai balance (lip-sync, swaps, image→video clips all run there). Warn at ≤ 20 % of the
+  // usual top-up (FAL_TOPUP_USD, default 50) — 5 Nov 2026, Kadir, after the balance hit −$2.40.
+  let fal: { balanceUsd: number; topupUsd: number; low: boolean } | null = null;
+  if (process.env.FAL_KEY) {
+    try {
+      const res = await fetch("https://api.fal.ai/v1/account/billing?expand=credits", {
+        headers: { Authorization: `Key ${process.env.FAL_KEY}` },
+        cache: "no-store",
+      });
+      const j = (await res.json()) as { credits?: { current_balance?: number } };
+      const balanceUsd = Number(j.credits?.current_balance);
+      if (res.ok && Number.isFinite(balanceUsd)) {
+        const topupUsd = Number(process.env.FAL_TOPUP_USD) || 50;
+        fal = { balanceUsd, topupUsd, low: balanceUsd <= topupUsd * 0.2 };
+      } else errors.push(`fal balance: HTTP ${res.status}`);
+    } catch (err) {
+      errors.push(`fal balance: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
   const weekAgo = new Date(now - 7 * 86400_000).toISOString();
 
   return NextResponse.json({
@@ -271,6 +291,7 @@ export async function GET(req: NextRequest) {
       creditsSpentWindow: Array.from(spent.values()).reduce((t, v) => t + v, 0),
       jobs: { running: counts.running ?? 0, completed: counts.completed ?? 0, failed: counts.failed ?? 0 },
       failedWindow: generations.filter((g) => g.status === "failed" && g.createdAt >= since).length,
+      fal,
       generationOpen: process.env.GENERATION_ENABLED !== "false",
       fullVideoOpen: process.env.FULL_VIDEO_ENABLED === "true",
     },

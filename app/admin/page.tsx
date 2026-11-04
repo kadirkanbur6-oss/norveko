@@ -25,6 +25,7 @@ interface Overview {
   failedWindow: number;
   generationOpen: boolean;
   fullVideoOpen: boolean;
+  fal: { balanceUsd: number; topupUsd: number; low: boolean } | null;
 }
 interface Daily {
   day: string;
@@ -271,6 +272,15 @@ export default function AdminPage() {
 
           {data && o && tab === "overview" && (
             <div className="space-y-4">
+              {o.fal?.low && (
+                <div role="alert" className="rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                  <strong>fal.ai balance is low: {usd(o.fal.balanceUsd)}</strong> — under 20% of a {usd(o.fal.topupUsd)} top-up. Lip-sync, swaps and
+                  image→video clips stop when it runs out (users get refunds, but videos fail).{" "}
+                  <a href="https://fal.ai/dashboard/usage-billing/credits" target="_blank" rel="noreferrer" className="underline">
+                    Add credits
+                  </a>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <Stat label="Users" value={int(o.users)} note={`+${int(o.newUsers)} in the ${windowLabel} · ${int(o.activeUsers)} signed in this week`} />
                 <Stat label="Revenue (all time)" value={usd(o.revenueUsd)} note={`${usd(o.revenueWindowUsd)} in the ${windowLabel}${o.refundedUsd ? ` · ${usd(o.refundedUsd)} refunded` : ""}`} />
@@ -280,6 +290,7 @@ export default function AdminPage() {
                 <Stat label="Completed (all time)" value={int(o.jobs.completed)} />
                 <Stat label="Failed (all time)" value={int(o.jobs.failed)} note={`${int(o.failedWindow)} in the ${windowLabel}`} />
                 <Stat label="Unspent credits" value={int(o.creditsOutstanding)} note="Across every account" />
+                {o.fal && <Stat label="fal.ai balance" value={usd(o.fal.balanceUsd)} note={o.fal.low ? "Low — add credits" : `Warns at ${usd(o.fal.topupUsd * 0.2)}`} />}
               </div>
               <div className="grid gap-3 lg:grid-cols-3">
                 <Bars title="Sign-ups per day" total={int(o.newUsers)} data={data.daily} value={(d) => d.signups} format={int} />
