@@ -49,6 +49,16 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        {/* Browser page translation (e.g. Chrome → Turkish) swaps React's text nodes for its own, and the next
+            update then crashes with "insertBefore/removeChild: not a child of this node" (4 Nov 2026: /chat skit
+            plan). Make those two calls forgiving so translated pages keep working (facebook/react#11538). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){if(typeof Node!=="function"||!Node.prototype)return;var r=Node.prototype.removeChild;Node.prototype.removeChild=function(c){if(c.parentNode!==this){return c}return r.apply(this,arguments)};var i=Node.prototype.insertBefore;Node.prototype.insertBefore=function(n,ref){if(ref&&ref.parentNode!==this){return i.call(this,n,null)}return i.apply(this,arguments)}})();`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         {/* Keyboard / screen-reader users can jump past the sidebar and nav. */}
         <a href="#main-content" className="nv-skip-link">
