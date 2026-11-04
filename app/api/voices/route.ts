@@ -8,7 +8,9 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/supabase-server";
-import { getSubscriptionTier, listLibraryVoices, listVoices } from "@/lib/pipeline/elevenlabs";
+// Lazy: the ElevenLabs module throws at import without its key, and the Gemini voices should still load.
+import type { listLibraryVoices, listVoices } from "@/lib/pipeline/elevenlabs";
+const el = () => import("@/lib/pipeline/elevenlabs");
 import { isGenerationEnabled, LAUNCH_LOCK_MESSAGE } from "@/lib/pipeline/features";
 import { LANGUAGES, isOneOf, languageCode } from "@/lib/pipeline/options";
 import { GEMINI_VOICES, GEMINI_VOICE_PREFIX } from "@/lib/pipeline/gemini-tts";
@@ -24,7 +26,7 @@ const libraryCache = new Map<string, { at: number; voices: Awaited<ReturnType<ty
 
 async function getAccountVoices() {
   if (accountCache && Date.now() - accountCache.at < VOICES_TTL_MS) return accountCache.voices;
-  const voices = await listVoices();
+  const voices = await (await el()).listVoices();
   accountCache = { at: Date.now(), voices };
   return voices;
 }
@@ -34,7 +36,7 @@ async function getTier() {
   if (tierCache && Date.now() - tierCache.at < VOICES_TTL_MS) return tierCache.tier;
   let tier: string | null = null;
   try {
-    tier = await getSubscriptionTier();
+    tier = await (await el()).getSubscriptionTier();
   } catch {
     tier = null;
   }
@@ -45,7 +47,7 @@ async function getTier() {
 async function getLibraryVoices(code: string) {
   const hit = libraryCache.get(code);
   if (hit && Date.now() - hit.at < VOICES_TTL_MS) return hit.voices;
-  const voices = await listLibraryVoices(code);
+  const voices = await (await el()).listLibraryVoices(code);
   libraryCache.set(code, { at: Date.now(), voices });
   return voices;
 }

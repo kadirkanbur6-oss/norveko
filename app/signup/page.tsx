@@ -2,10 +2,12 @@
 
 import { FormEvent, useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { callbackUrl, safeNext } from "@/lib/safe-next";
 import { supabase } from "../lib/supabase";
 
 function SignupContent() {
   const searchParams = useSearchParams();
+  const next = safeNext(searchParams.get("next"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -42,6 +44,8 @@ function SignupContent() {
     const { error } = await supabase.auth.signUp({
       email,
       password,
+      // The verification link comes back to where they were going (e.g. a team invite).
+      options: next ? { emailRedirectTo: callbackUrl(next) } : undefined,
     });
 
     setIsLoading(false);
@@ -63,7 +67,7 @@ function SignupContent() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${typeof window !== "undefined" ? window.location.origin : ""}/auth/callback`,
+        redirectTo: callbackUrl(next),
       },
     });
 
@@ -164,7 +168,7 @@ function SignupContent() {
 
         <p className="mt-6 text-center text-sm text-gray-400">
           Already have an account?{" "}
-          <a href="/login" className="font-semibold text-violet-300 hover:text-violet-100">
+          <a href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} className="font-semibold text-violet-300 hover:text-violet-100">
             Sign in
           </a>
         </p>

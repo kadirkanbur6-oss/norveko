@@ -21,7 +21,7 @@ export interface NarrationResult {
 export async function synthesizeNarration(
   text: string,
   voiceId: string,
-  options: { speed?: number; direction?: string | null } = {}
+  options: { speed?: number; direction?: string | null; /** false: skip the paid forced alignment (skits, talk — no captions). */ align?: boolean } = {}
 ): Promise<NarrationResult> {
   const { isGeminiVoiceId, geminiVoiceName, generateGeminiSpeech, pcmToWav, GEMINI_TTS_MODEL } = await import("./gemini-tts");
   if (isGeminiVoiceId(voiceId)) {
@@ -44,7 +44,7 @@ export async function synthesizeNarration(
       speech = { audio: pcmToWav(pcm, rate), contentType: "audio/wav", seconds: pcm.length / (rate * 2) };
     }
     let alignment: CharacterAlignment | null = null;
-    try {
+    if (options.align !== false) try {
       const { forceAlign } = await import("./elevenlabs");
       alignment = await forceAlign(speech.audio, text, speech.contentType);
     } catch (err) {

@@ -2,12 +2,14 @@
 
 import { FormEvent, useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { callbackUrl, safeNext } from "@/lib/safe-next";
 import { supabase } from "../lib/supabase";
 import { INTRO_FLAG } from "../components/WelcomeIntro";
 
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const next = safeNext(searchParams.get("next"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -53,7 +55,7 @@ function LoginContent() {
     } catch {
       // storage unavailable — the dashboard simply opens without the intro
     }
-    router.push("/dashboard");
+    router.push(next ?? "/dashboard");
   }
 
   async function handleResendVerification() {
@@ -63,7 +65,7 @@ function LoginContent() {
       type: "signup",
       email,
       options: {
-        emailRedirectTo: `${typeof window !== "undefined" ? window.location.origin : ""}/auth/callback`,
+        emailRedirectTo: callbackUrl(next),
       },
     });
     if (error) {
@@ -81,7 +83,7 @@ function LoginContent() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${typeof window !== "undefined" ? window.location.origin : ""}/auth/callback`,
+        redirectTo: callbackUrl(next),
       },
     });
 
@@ -191,7 +193,7 @@ function LoginContent() {
 
         <p className="mt-6 text-center text-sm text-gray-400">
           Don&apos;t have an account?{' '}
-          <a href="/signup" className="font-semibold text-violet-300 hover:text-violet-100">
+          <a href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"} className="font-semibold text-violet-300 hover:text-violet-100">
             Sign up
           </a>
         </p>

@@ -292,20 +292,21 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             <div>
               <span className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-4 py-1.5 text-xs text-blue-200">
                 <Zap size={14} />
-                One Prompt → Complete Content Package
+                One idea → a finished video
               </span>
 
               <h1 className="mt-5 text-3xl font-black leading-tight tracking-tight sm:text-4xl lg:text-5xl">
-                Your entire content pipeline.{" "}
+                Write the idea.{" "}
                 <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  One AI.
+                  Get the video.
                 </span>
               </h1>
 
               <p className="mt-4 max-w-lg text-base text-gray-400 sm:text-lg">
-                Describe your video idea once. Norveko writes the script, plans
-                every scene, generates cinematic video prompts, designs your
-                thumbnail concept and handles SEO — in seconds.
+                Norveko researches your topic, writes the script, voices it, adds
+                visuals, music and a thumbnail, and renders the MP4. It also turns
+                a joke into an animated skit or makes a character talk. Then you
+                publish to YouTube, TikTok or Instagram from the same place.
               </p>
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4">

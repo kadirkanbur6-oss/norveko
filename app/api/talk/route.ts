@@ -125,10 +125,10 @@ export async function POST(req: Request) {
     try {
       const { synthesizeNarration } = await import("@/lib/pipeline/tts");
       const speech = style
-        ? await synthesizeNarration(text, `gemini:${voiceFor(style, gender as "male" | "female")}`, {
+        ? await synthesizeNarration(text, `gemini:${voiceFor(style, gender as "male" | "female")}`, { align: false,
             direction: styleDirection(style, "the character", "talking straight to the camera"),
           })
-        : await synthesizeNarration(text, voiceId, {
+        : await synthesizeNarration(text, voiceId, { align: false,
             direction: "Say this in character, expressively and naturally, like a person talking to a camera — not like a narrator",
           });
       if (style && speech.ext === "wav") speech.audio = applyVoiceStyle(speech.audio, style);

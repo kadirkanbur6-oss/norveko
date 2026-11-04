@@ -342,7 +342,7 @@ async function stepShots(db: SupabaseClient, row: SkitRow) {
       jobs.push(async () => {
         const c = plan.characters.find((x) => x.id === s.speaker)!;
         const style: VoiceStyle = c.voiceStyle ?? "comic";
-        const speech = await synthesizeNarration(s.line, `gemini:${c.voice}`, {
+        const speech = await synthesizeNarration(s.line, `gemini:${c.voice}`, { align: false,
           direction: c.voiceStyle ? styleDirection(style, c.name, s.tone) : `Perform this line as ${c.name}, a cartoon character in a comedy sketch, ${s.tone || "expressively"} — acted, not narrated. Say only the line`,
         });
         // Cartoon / gruff: the take is pitched up or down (its timing changes with it).
@@ -350,10 +350,6 @@ async function stepShots(db: SupabaseClient, row: SkitRow) {
         const path = `${row.user_id}/skit/${row.id}/line-${s.id}-${randomUUID().slice(0, 8)}.${speech.ext}`;
         const lineUrl = await storeMedia(db, path, audio, speech.contentType);
         s.audioSeconds = Math.round(audioSeconds(audio, speech.ext) * 100) / 100;
-        if (speech.alignment && audio === speech.audio) {
-          const { alignmentToCues } = await import("@/lib/pipeline/captions");
-          s.cues = alignmentToCues(speech.alignment);
-        }
         s.audioUrl = lineUrl;
       });
     if (s.crowd && !s.crowdUrls)
@@ -368,7 +364,7 @@ async function stepShots(db: SupabaseClient, row: SkitRow) {
           const picks = [men[0], women[0], men[1], women[1]].filter(Boolean).slice(0, CROWD_VOICES);
           const parts = await Promise.all(
             picks.map(async (v, k) => {
-              const speech = await synthesizeNarration(s.crowd, `gemini:${v.name}`, {
+              const speech = await synthesizeNarration(s.crowd, `gemini:${v.name}`, { align: false,
                 direction: "Shout this loudly and excitedly as one person in a big cheering crowd at a rally, slightly overlapping the others",
               });
               const path = `${row.user_id}/skit/${row.id}/crowd-${s.id}-${k}.${speech.ext}`;

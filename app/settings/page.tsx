@@ -177,9 +177,9 @@ export default function SettingsPage() {
                 </div>
 
                 <p className="mt-2 text-sm text-gray-400">
-                  Dashboard stats are pulled from this channel. Channel IDs
-                  start with &quot;UC&quot; — find yours in YouTube Studio →
-                  Settings → Channel → Advanced settings.
+                  Dashboard stats come from this channel. Connecting YouTube under{" "}
+                  <button type="button" onClick={() => setTab("connections")} className="text-sky-300 hover:text-sky-200">Connected channels</button> fills it in for you.
+                  To track a different channel, paste its ID (starts with &quot;UC&quot;, YouTube Studio → Settings → Channel → Advanced settings).
                 </p>
 
                 <div className="mt-4">

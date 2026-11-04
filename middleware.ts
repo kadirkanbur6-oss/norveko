@@ -36,8 +36,11 @@ async function handle(request: NextRequest) {
 
   if (!user) {
     if (!PUBLIC_PAGES.includes(pathname)) {
+      // Come back here after signing in (e.g. a team invite link).
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/login";
+      redirectUrl.search = "";
+      redirectUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
       return NextResponse.redirect(redirectUrl);
     }
 
@@ -45,9 +48,9 @@ async function handle(request: NextRequest) {
   }
 
   if (pathname === "/login" || pathname === "/signup" || pathname === "/forgot-password") {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/dashboard";
-    return NextResponse.redirect(redirectUrl);
+    const next = request.nextUrl.searchParams.get("next");
+    const target = next && /^\/(?![\/\\])/.test(next) ? next : "/dashboard";
+    return NextResponse.redirect(new URL(target, request.url));
   }
 
   return response;

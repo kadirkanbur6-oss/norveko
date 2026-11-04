@@ -3,7 +3,6 @@ import { requireUser } from "@/lib/supabase-server";
 import type { YouTubeVideo } from "@/lib/youtube-types";
 import { getCachedChannelStats, getCachedVideos } from "../../../lib/dashboardData";
 import { getChannelGrowth } from "../../lib/channelGrowth";
-import { generateChannelInsights } from "../../../lib/gemini";
 
 
 export async function GET() {
@@ -56,7 +55,7 @@ export async function GET() {
         publishedAt: video.snippet?.publishedAt,
       }));
 
-    const insights = await generateChannelInsights({
+    const insights = await (await import("../../../lib/gemini")).generateChannelInsights({
       subscriberCount: stats.subscriberCount ?? "0",
       viewCount: stats.viewCount ?? "0",
       videoCount: stats.videoCount ?? "0",

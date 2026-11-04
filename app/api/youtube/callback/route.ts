@@ -58,6 +58,15 @@ export async function GET(req: NextRequest) {
       created_at: new Date().toISOString(),
     });
     if (error) throw new Error(error.message);
+    // The dashboard stats use the same channel, so nobody has to paste a channel ID by hand.
+    try {
+      const db = adminDb();
+      const { data: link } = await db.from("user_channels").select("id").eq("user_id", user.id).maybeSingle();
+      if (link) await db.from("user_channels").update({ channel_id: channel.id }).eq("user_id", user.id);
+      else await db.from("user_channels").insert({ user_id: user.id, channel_id: channel.id });
+    } catch (linkErr) {
+      console.warn("[youtube] dashboard channel not linked:", linkErr);
+    }
     return back(returnTo, "connected");
   } catch (err) {
     console.error("[youtube] connect failed:", err);

@@ -1987,7 +1987,8 @@ export function createPipelineRunner(deps: RunnerDeps) {
     const thumb = fresh.steps?.thumbnail ?? {};
     const voice = fresh.steps?.voiceover ?? {};
     const voiceoverUrl = typeof voice.audio_url === "string" ? voice.audio_url : "";
-    const captions = Array.isArray(voice.captions) && voice.captions.length ? voice.captions : undefined;
+    // A full video keeps cues for its timeline; the project only gets them (for .srt export) when subtitles were bought.
+    const captions = Array.isArray(voice.captions) && voice.captions.length && (voice.subtitles === true || !fresh.steps?.render) ? voice.captions : undefined;
     const finalVideoUrl =
       typeof fresh.steps?.render?.video_url === "string" ? (fresh.steps.render.video_url as string) : undefined;
     const research =
