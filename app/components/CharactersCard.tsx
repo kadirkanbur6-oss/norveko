@@ -54,6 +54,15 @@ export function CharacterCreator({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  // The form opens below the fold in the studios ("+ New"): bring it into view
+  // and focus the name, otherwise it looks like nothing happened (5 Nov 2026).
+  useEffect(() => {
+    rootRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    nameRef.current?.focus({ preventScroll: true });
+  }, []);
 
   const needsPhotos = kind === "self" || kind === "person";
   // Historical figures: photos are optional (a portrait you picked); otherwise we find one.
@@ -94,7 +103,7 @@ export function CharacterCreator({
   }
 
   return (
-    <div className={`rounded-xl border border-white/10 bg-[#0d0d16] p-4 ${className}`}>
+    <div ref={rootRef} className={`rounded-xl border border-white/10 bg-[#0d0d16] p-4 ${className}`}>
       <p className="text-sm font-medium text-white">Add a character</p>
       <div className="mt-3 grid gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Character type">
         {KINDS.map((k) => {
@@ -124,6 +133,7 @@ export function CharacterCreator({
         <label className="block">
           <span className="mb-1 block text-xs text-gray-400">{kind === "historical" ? "Who? (e.g. Fatih Sultan Mehmet)" : "Name"}</span>
           <input
+            ref={nameRef}
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={40}
