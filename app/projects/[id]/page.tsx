@@ -22,6 +22,7 @@ import VoiceoverDownloads from "../../components/VoiceoverDownloads";
 import ScriptFeedback from "../../components/ScriptFeedback";
 import YouTubePublish from "../../components/YouTubePublish";
 import VideoEditor from "../../components/VideoEditor";
+import SkitEditor from "../../components/studio/SkitEditor";
 import TikTokPublish from "../../components/TikTokPublish";
 import InstagramPublish from "../../components/InstagramPublish";
 import PageTabs, { useTabParam } from "../../components/PageTabs";
@@ -711,9 +712,11 @@ export default function ProjectDetailPage() {
                 )}
                 {section === "publish" && normalizedProjectContent?.finalVideoUrl && <ShortsFromVideo projectId={projectId} />}
                 {section === "publish" && normalizedProjectContent?.finalVideoUrl && <TranslateVideo projectId={projectId} />}
-                {section === "video" && normalizedProjectContent?.finalVideoUrl && (
+                {section === "video" && normalizedProjectContent?.finalVideoUrl && (project.content as { skit?: unknown } | null)?.skit ? (
+                  <SkitEditor projectId={projectId} />
+                ) : section === "video" && normalizedProjectContent?.finalVideoUrl ? (
                   <VideoEditor projectId={projectId} vertical={project.platform !== "YouTube Long-form"} />
-                )}
+                ) : null}
                 {section !== "content" && (project.content as { watermarked?: boolean } | null)?.watermarked === true && (
                   <div className="mt-6 flex flex-col gap-2 rounded-xl border border-purple-400/30 bg-purple-500/10 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-gray-200">

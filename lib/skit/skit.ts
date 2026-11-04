@@ -13,10 +13,13 @@
 // lease (lease_until) keeps two callers from doing the same step.
 
 import "server-only";
+import * as visualStyles from "@/lib/pipeline/visual-styles";
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AVATAR_COST_PER_SECOND, RENDER_CREDITS_PER_30S, creditsForCost } from "@/lib/pipeline/steps";
 import { wordsPerSecond } from "@/lib/pipeline/narration";
+import type { CaptionCue } from "@/lib/pipeline/captions";
+import { musicCredit } from "@/lib/pipeline/music";
 
 export const SKIT_MAX_SHOTS = 8;
 export const SKIT_MAX_CHARACTERS = 4;
@@ -62,14 +65,25 @@ export interface SkitShot {
   sfxUrl?: string;
   crowdUrls?: string[];
   crowdSeconds?: number;
+  /** Subtitle cues of this shot's line, relative to its audio. */
+  cues?: CaptionCue[];
   fal?: { requestId: string; statusUrl: string; responseUrl: string } | null;
   clipUrl?: string | null;
+  /** Set by "Make this shot again" after the skit is done. */
+  editedClipUrl?: string | null;
   clipFailed?: boolean;
 }
 
 export interface SkitPlan {
   /** When each making phase began (ISO). */
   phaseAt?: Record<string, string>;
+  /** Burned-in subtitles of the lines (on by default). */
+  captions?: boolean;
+  captionStyle?: string;
+  /** Background music (comedy pieces); `false` to leave it out. */
+  music?: { id: string; title: string; url: string } | false | null;
+  /** Re-renders after edits (file names stay unique for CDNs). */
+  renderVersion?: number;
   title: string;
   language: string; // ISO code
   look: (typeof SKIT_LOOKS)[number];
@@ -81,7 +95,7 @@ export interface SkitRow {
   id: string;
   user_id: string;
   billed_to: string | null;
-  status: "running" | "completed" | "failed";
+  status: "draft" | "running" | "completed" | "failed";
   phase: "cast" | "shots" | "animate" | "render" | "done";
   script: string;
   plan: SkitPlan;
@@ -323,6 +337,10 @@ async function stepShots(db: SupabaseClient, row: SkitRow) {
         const { error } = await db.storage.from("videos").upload(path, speech.audio, { contentType: speech.contentType, upsert: true });
         if (error) throw new Error(error.message);
         s.audioSeconds = Math.round(audioSeconds(speech.audio, speech.ext) * 100) / 100;
+        if (speech.alignment) {
+          const { alignmentToCues } = await import("@/lib/pipeline/captions");
+          s.cues = alignmentToCues(speech.alignment);
+        }
         s.audioUrl = publicUrl(db, path);
       });
     if (s.crowd && !s.crowdUrls)
@@ -413,26 +431,55 @@ async function stepAnimate(db: SupabaseClient, row: SkitRow): Promise<boolean> {
       }
     }
   );
-  const age = Date.now() - Date.parse(row.created_at);
+  // From when animating began (an edit of an old skit starts its own clock).
+  const age = Date.now() - Date.parse(row.plan.phaseAt?.animate ?? row.plan.phaseAt?.shots ?? row.created_at);
   if (age > ANIMATE_TIMEOUT_MS) for (const s of plan.shots) if (!s.clipUrl) s.clipFailed = true;
   const done = plan.shots.every((s) => s.clipUrl || s.clipFailed);
   await save(db, row, { plan });
   return done;
 }
 
-/** Shotstack edit: shots one after another; voices, sound effects on their own tracks. */
-export function buildSkitEdit(plan: SkitPlan, vertical: boolean) {
+/** Where each shot sits on the timeline (seconds). */
+export function skitLayout(plan: SkitPlan): Array<{ start: number; length: number }> {
+  let t = 0;
+  return plan.shots.map((s) => {
+    const silentLength = Math.max(s.seconds, s.crowdUrls?.length && s.crowdSeconds ? s.crowdSeconds + 0.6 : 0);
+    const length = Math.round((s.line ? (s.audioSeconds ?? 2) + 0.3 : silentLength) * 100) / 100;
+    const start = Math.round(t * 100) / 100;
+    t += length;
+    return { start, length };
+  });
+}
+
+/** Subtitles for the whole skit: every line (and crowd shout) at its place on the timeline. */
+export function skitCues(plan: SkitPlan): CaptionCue[] {
+  const layout = skitLayout(plan);
+  const cues: CaptionCue[] = [];
+  plan.shots.forEach((s, i) => {
+    const { start, length } = layout[i];
+    if (s.line && s.cues?.length) {
+      for (const c of s.cues) cues.push({ start: start + 0.1 + c.start, end: Math.min(start + length, start + 0.1 + c.end), text: c.text });
+    } else if (s.line) {
+      cues.push({ start: start + 0.1, end: start + length - 0.05, text: s.line });
+    } else if (s.crowd && s.crowdUrls?.length) {
+      cues.push({ start: start + 0.2, end: start + length - 0.1, text: s.crowd });
+    }
+  });
+  return cues.filter((c) => c.end - c.start > 0.2);
+}
+
+/** Shotstack edit: shots one after another; voices, crowd, effects, subtitles and music on their own tracks. */
+export function buildSkitEdit(plan: SkitPlan, vertical: boolean, extras: { captionsUrl?: string | null; musicUrl?: string | null } = {}) {
   const video: Array<Record<string, unknown>> = [];
   const voices: Array<Record<string, unknown>> = [];
   const sfx: Array<Record<string, unknown>> = [];
   const crowd: Array<Array<Record<string, unknown>>> = Array.from({ length: CROWD_VOICES }, () => []);
-  let t = 0;
-  for (const s of plan.shots) {
-    const silentLength = Math.max(s.seconds, s.crowdUrls?.length && s.crowdSeconds ? s.crowdSeconds + 0.6 : 0);
-    const length = Math.round((s.line ? (s.audioSeconds ?? 2) + 0.3 : silentLength) * 100) / 100;
-    const start = Math.round(t * 100) / 100;
-    if (s.clipUrl) {
-      video.push({ asset: { type: "video", src: s.clipUrl, volume: 0 }, start, length, fit: "cover" });
+  const layout = skitLayout(plan);
+  plan.shots.forEach((s, i) => {
+    const { start, length } = layout[i];
+    const clipUrl = s.editedClipUrl ?? s.clipUrl;
+    if (clipUrl) {
+      video.push({ asset: { type: "video", src: clipUrl, volume: 0 }, start, length, fit: "cover" });
     } else if (s.imageUrl) {
       video.push({ asset: { type: "image", src: s.imageUrl }, start, length, fit: "cover", effect: s.camera === "wide" ? "zoomInSlow" : "zoomIn" });
     }
@@ -443,23 +490,112 @@ export function buildSkitEdit(plan: SkitPlan, vertical: boolean) {
       crowd[k].push({ asset: { type: "audio", src, volume: 0.7 }, start: at, length: Math.max(0.5, Math.min(s.crowdSeconds ?? length, start + length - at + 0.4)) });
     });
     if (s.sfxUrl) sfx.push({ asset: { type: "audio", src: s.sfxUrl, volume: s.line ? 0.35 : 0.8 }, start, length: Math.max(length, 1.5) });
-    t += length;
+  });
+  const last = layout[layout.length - 1];
+  const total = last ? Math.round((last.start + last.length) * 100) / 100 : 1;
+  const size = vertical ? { width: 1080, height: 1920 } : { width: 1920, height: 1080 };
+  const tracks: Array<{ clips: Array<Record<string, unknown>> }> = [];
+  if (extras.captionsUrl) {
+    const { captionStyle } = visualStyles;
+    const cap = captionStyle(plan.captionStyle);
+    tracks.push({
+      clips: [
+        {
+          asset: {
+            type: "rich-caption",
+            src: extras.captionsUrl,
+            font: { family: cap.font, size: vertical ? cap.size : Math.round(cap.size * 0.76), color: cap.color, weight: cap.font.includes("ExtraBold") ? 800 : 600 },
+            ...(cap.stroke ? { stroke: { width: cap.stroke.width, color: cap.stroke.color, opacity: 1 } } : {}),
+            animation: { style: cap.animation },
+            ...(cap.active || cap.activeBackground
+              ? { active: { font: { ...(cap.active ? { color: cap.active } : {}), ...(cap.activeBackground ? { background: cap.activeBackground } : {}) } } }
+              : {}),
+            align: { vertical: "middle" },
+          },
+          start: 0,
+          length: "end",
+          width: Math.round(size.width * 0.86),
+          height: Math.round(size.height * (vertical ? 0.16 : 0.2)),
+          position: "bottom",
+          offset: { x: 0, y: vertical ? 0.14 : 0.07 },
+        },
+      ],
+    });
   }
-  const total = Math.round(t * 100) / 100;
+  tracks.push({ clips: voices }, ...crowd.filter((c) => c.length).map((clips) => ({ clips })));
+  if (sfx.length) tracks.push({ clips: sfx });
+  if (extras.musicUrl) {
+    tracks.push({ clips: [{ asset: { type: "audio", src: extras.musicUrl, volume: 0.08, effect: "fadeInFadeOut" }, start: 0, length: total }] });
+  }
+  tracks.push({ clips: video });
   return {
     total,
     edit: {
-      timeline: {
-        background: "#000000",
-        tracks: [{ clips: voices }, ...crowd.filter((c) => c.length).map((clips) => ({ clips })), ...(sfx.length ? [{ clips: sfx }] : []), { clips: video }],
-      },
-      output: { format: "mp4", fps: 30, size: vertical ? { width: 1080, height: 1920 } : { width: 1920, height: 1080 }, quality: "medium", range: { start: 0, length: total } },
+      timeline: { background: "#000000", tracks },
+      output: { format: "mp4", fps: 30, size, quality: "medium", range: { start: 0, length: total } },
     },
   };
 }
 
+/** Subtitles file + background music for a render (both optional, never fatal). */
+async function renderExtras(db: SupabaseClient, row: SkitRow): Promise<{ captionsUrl: string | null; musicUrl: string | null }> {
+  const plan = row.plan;
+  const version = plan.renderVersion ?? 0;
+  let captionsUrl: string | null = null;
+  if (plan.captions !== false) {
+    try {
+      const { cuesToSrt } = await import("@/lib/pipeline/captions");
+      const cues = skitCues(plan);
+      if (cues.length) {
+        const style = visualStyles.captionStyle(plan.captionStyle);
+        const srt = cuesToSrt(cues, { uppercase: style.uppercase ? plan.language || "en" : false });
+        const path = `${row.user_id}/skit/${row.id}/captions-${version}.srt`;
+        const { error } = await db.storage.from("videos").upload(path, Buffer.from(srt, "utf8"), { contentType: "application/x-subrip", upsert: true });
+        if (!error) captionsUrl = publicUrl(db, path);
+      }
+    } catch (err) {
+      console.warn(`[skit] ${row.id} captions skipped:`, err instanceof Error ? err.message : err);
+    }
+  }
+  let musicUrl: string | null = null;
+  if (plan.music !== false) {
+    if (plan.music && plan.music.url) musicUrl = plan.music.url;
+    else {
+      const { comedyTracksFor } = await import("@/lib/pipeline/music");
+      for (const t of comedyTracksFor(row.id)) {
+        try {
+          const path = `music/${t.id}.mp3`;
+          const { data: existing } = await db.storage.from("videos").list("music", { search: `${t.id}.mp3`, limit: 1 });
+          if (!existing?.some((f) => f.name === `${t.id}.mp3`)) {
+            const res = await fetch(t.sourceUrl, { cache: "no-store" });
+            if (!res.ok) continue;
+            const { error } = await db.storage.from("videos").upload(path, Buffer.from(await res.arrayBuffer()), { contentType: "audio/mpeg", upsert: true });
+            if (error) continue;
+          }
+          musicUrl = publicUrl(db, path);
+          plan.music = { id: t.id, title: t.title, url: musicUrl };
+          break;
+        } catch {
+          /* try the next piece */
+        }
+      }
+    }
+  }
+  return { captionsUrl, musicUrl };
+}
+
+/** Start the final cut (first render or after edits). */
+async function startRender(db: SupabaseClient, row: SkitRow) {
+  const extras = await renderExtras(db, row);
+  const { submitRender } = await import("@/lib/pipeline/shotstack");
+  const { edit } = buildSkitEdit(row.plan, row.vertical, extras);
+  const renderId = await submitRender(edit);
+  await save(db, row, { plan: row.plan, phase: "render", render_id: renderId });
+}
+
 async function finish(db: SupabaseClient, row: SkitRow, renderUrl: string, seconds: number) {
-  const key = `${row.user_id}/skit/${row.id}/final.mp4`;
+  const version = row.plan.renderVersion ?? 0;
+  const key = `${row.user_id}/skit/${row.id}/final${version ? `-v${version}` : ""}.mp4`;
   let url: string;
   const r2 = await import("@/lib/storage/r2");
   if (r2.r2Configured()) {
@@ -476,6 +612,25 @@ async function finish(db: SupabaseClient, row: SkitRow, renderUrl: string, secon
     .filter((s) => s.line)
     .map((s) => `${plan.characters.find((c) => c.id === s.speaker)?.name ?? ""}: ${s.line}`)
     .join("\n");
+  if (row.project_id) {
+    // An edit of a finished skit: the same project gets the new cut.
+    const { data: existing } = await db.from("projects").select("content").eq("id", row.project_id).maybeSingle();
+    const content = (existing?.content ?? {}) as Record<string, unknown>;
+    await db
+      .from("projects")
+      .update({
+        content: {
+          ...content,
+          finalVideoUrl: url,
+          thumbnailUrl: plan.shots.find((s) => s.imageUrl)?.imageUrl ?? content.thumbnailUrl,
+          description: plan.music ? `${dialogue}\n\n${musicCredit(plan.music)}` : dialogue,
+        },
+        duration: `${Math.round(seconds)} seconds`,
+      })
+      .eq("id", row.project_id);
+    await save(db, row, { phase: "done", status: "completed", output_url: url, lease_until: null });
+    return;
+  }
   const { data: project } = await db
     .from("projects")
     .insert({
@@ -488,7 +643,7 @@ async function finish(db: SupabaseClient, row: SkitRow, renderUrl: string, secon
       status: "draft",
       content: {
         titles: [plan.title],
-        description: dialogue,
+        description: plan.music ? `${dialogue}\n\n${musicCredit(plan.music)}` : dialogue,
         tags: [],
         finalVideoUrl: url,
         thumbnailUrl: plan.shots.find((s) => s.imageUrl)?.imageUrl,
@@ -510,10 +665,7 @@ export async function advanceSkitJob(db: SupabaseClient, row: SkitRow): Promise<
     else if (row.phase === "animate") {
       if (await stepAnimate(db, row)) {
         if (row.plan.shots.every((s) => !s.imageUrl)) return (await fail(db, row, "The pictures couldn't be made."), row);
-        const { submitRender } = await import("@/lib/pipeline/shotstack");
-        const { edit } = buildSkitEdit(row.plan, row.vertical);
-        const renderId = await submitRender(edit);
-        await save(db, row, { phase: "render", render_id: renderId });
+        await startRender(db, row);
       }
     } else if (row.phase === "render" && row.render_id) {
       const { getRender } = await import("@/lib/pipeline/shotstack");
@@ -540,4 +692,50 @@ export async function advanceSkitJobs(db: SupabaseClient): Promise<number> {
   if (error) return 0;
   await Promise.allSettled(((data ?? []) as SkitRow[]).map((row) => advanceSkitJob(db, row)));
   return data?.length ?? 0;
+}
+
+
+/* ---------------- Editing a finished skit ---------------- */
+
+export const MAX_SKIT_EDITS = 12;
+
+/** Credits to make one shot again (picture + its animation). */
+export function shotRedoCredits(plan: SkitPlan, index: number): number {
+  const s = plan.shots[index];
+  if (!s) return 0;
+  const animate = s.line ? Math.ceil((s.audioSeconds ?? 3) * 1.1) * AVATAR_COST_PER_SECOND : CLIP_COST;
+  return creditsForCost(IMAGE_COST + animate) + RENDER_CREDITS_PER_30S;
+}
+
+/**
+ * Make one shot again (new picture, optionally with a note, then its animation)
+ * and re-cut the skit. The project keeps its id; the new MP4 replaces the old.
+ */
+export function prepareShotRedo(row: SkitRow, index: number, note: string): SkitRow["plan"] {
+  const plan = row.plan;
+  const s = plan.shots[index];
+  if (!s) throw new Error("No such shot.");
+  if (note) s.action = `${note}. ${s.action}`.slice(0, 400);
+  delete s.imageUrl;
+  delete s.fal;
+  delete s.clipUrl;
+  delete s.clipFailed;
+  delete s.editedClipUrl;
+  plan.renderVersion = (plan.renderVersion ?? 0) + 1;
+  (plan as SkitPlan & { edits?: number }).edits = ((plan as SkitPlan & { edits?: number }).edits ?? 0) + 1;
+  return plan;
+}
+
+/** Re-cut with subtitles / music switched on or off (free). */
+export function prepareRecut(row: SkitRow, opts: { captions?: boolean; music?: boolean }): SkitRow["plan"] {
+  const plan = row.plan;
+  if (typeof opts.captions === "boolean") plan.captions = opts.captions;
+  if (typeof opts.music === "boolean") plan.music = opts.music ? null : false;
+  plan.renderVersion = (plan.renderVersion ?? 0) + 1;
+  (plan as SkitPlan & { edits?: number }).edits = ((plan as SkitPlan & { edits?: number }).edits ?? 0) + 1;
+  return plan;
+}
+
+export function editsUsed(plan: SkitPlan): number {
+  return (plan as SkitPlan & { edits?: number }).edits ?? 0;
 }

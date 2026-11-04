@@ -9,7 +9,19 @@ import { requireUser } from "@/lib/supabase-server";
 import { adminDb } from "@/lib/api-keys";
 import { isFullVideoEnabled, isGenerationEnabled, LAUNCH_LOCK_MESSAGE } from "@/lib/pipeline/features";
 import { hasPurchased, isWatermarkExempt } from "@/lib/pipeline/watermark-policy";
-import { SKIT_MAX_SCRIPT, advanceSkitJob, estimateSeconds, planSkit, skitCredits, type SkitRow } from "@/lib/skit/skit";
+import {
+  MAX_SKIT_EDITS,
+  SKIT_MAX_SCRIPT,
+  advanceSkitJob,
+  editsUsed,
+  estimateSeconds,
+  planSkit,
+  prepareRecut,
+  prepareShotRedo,
+  shotRedoCredits,
+  skitCredits,
+  type SkitRow,
+} from "@/lib/skit/skit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,8 +54,12 @@ function view(r: SkitRow) {
       crowd: s.crowd ?? "",
       imageUrl: s.imageUrl ?? null,
       ready: Boolean(s.clipUrl || s.clipFailed),
+      redoCredits: shotRedoCredits(plan, shots.indexOf(s)),
     })),
     phaseAt: plan?.phaseAt ?? {},
+    captions: plan?.captions !== false,
+    music: plan?.music !== false,
+    editsLeft: Math.max(0, MAX_SKIT_EDITS - editsUsed(plan)),
     updatedAt: r.updated_at,
     outputUrl: r.output_url,
     projectId: r.project_id,
@@ -61,6 +77,12 @@ export async function GET(req: Request) {
   if (!user) return bad("Not authenticated", 401);
   const db = adminDb();
   const id = new URL(req.url).searchParams.get("id");
+  const projectId = new URL(req.url).searchParams.get("project");
+  if (projectId) {
+    const { data } = await db.from("skit_jobs").select("*").eq("project_id", projectId).eq("user_id", user.id).maybeSingle();
+    if (!data) return NextResponse.json({ success: true, skit: null });
+    return NextResponse.json({ success: true, skit: view(await advanceSkitJob(db, data as SkitRow)) });
+  }
   if (id) {
     const { data } = await db.from("skit_jobs").select("*").eq("id", id).eq("user_id", user.id).maybeSingle();
     if (!data) return bad("Not found", 404);
@@ -107,6 +129,57 @@ export async function POST(req: Request) {
       console.error("[skit] plan failed:", err);
       return bad(err instanceof Error && /script|lines|speaking/.test(err.message) ? err.message : "The scene couldn't be planned. Try again.", 502);
     }
+  }
+
+  // Edits of a finished skit: make one shot again (paid) or re-cut with subtitles/music on or off (free).
+  if (body.action === "redoShot" || body.action === "recut") {
+    const { data } = await db.from("skit_jobs").select("*").eq("id", String(body.id ?? "")).eq("user_id", user.id).maybeSingle();
+    const row = data as SkitRow | null;
+    if (!row || row.status === "draft") return bad("Skit not found.", 404);
+    if (row.status === "running") return bad("This skit is still being made.", 409);
+    if (!row.project_id) return bad("Only finished skits can be edited.");
+    if (editsUsed(row.plan) >= MAX_SKIT_EDITS) return bad("This skit has been edited as many times as allowed.", 429);
+    let credits = 0;
+    let plan = row.plan;
+    let phase: SkitRow["phase"] = "animate";
+    if (body.action === "redoShot") {
+      const index = Number(body.index);
+      if (!Number.isInteger(index) || !row.plan.shots[index]) return bad("Pick a shot.");
+      const note = typeof body.note === "string" ? body.note.replace(/[<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, 200) : "";
+      credits = shotRedoCredits(row.plan, index);
+      plan = prepareShotRedo(row, index, note);
+      phase = "shots";
+    } else {
+      plan = prepareRecut(row, { captions: body.captions as boolean | undefined, music: body.music as boolean | undefined });
+    }
+    const { payerFor } = await import("@/lib/teams");
+    const payer = await payerFor(db, user.id);
+    if (credits > 0) {
+      const { data: paid, error: payErr } = await db.rpc("deduct_credits", { p_user_id: payer, p_amount: credits, p_reason: `Skit edit: ${row.plan.title}` });
+      if (payErr) return bad(payErr.message, 500);
+      if (!paid) return bad(`Not enough credits — this costs ${credits}.`, 402, { code: "insufficient_credits" });
+    }
+    const { error } = await db
+      .from("skit_jobs")
+      .update({
+        plan: { ...plan, phaseAt: { [phase]: new Date().toISOString() } },
+        status: "running",
+        phase,
+        credits,
+        refunded: false,
+        error: null,
+        render_id: null,
+        billed_to: payer !== user.id ? payer : null,
+        lease_until: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", row.id)
+      .neq("status", "running");
+    if (error) {
+      if (credits > 0) await db.rpc("add_credits", { p_user_id: payer, p_amount: credits, p_type: "refund", p_reason: "Refund: skit edit could not start" });
+      return bad("The edit couldn't be started.", 500);
+    }
+    return NextResponse.json({ success: true, id: row.id, credits });
   }
 
   if (body.action === "start") {

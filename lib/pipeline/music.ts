@@ -145,3 +145,22 @@ export function musicCredit(t: Pick<MusicTrack, "title">): string {
 
 /** Background level under narration (≈ -18 dB). */
 export const MUSIC_VOLUME = 0.13;
+
+/**
+ * Light, funny pieces for skits and talking characters (3 Nov 2026) — Kevin
+ * MacLeod's Humorous/Bouncy catalogue, kept out of the serious moods above.
+ */
+export const COMEDY_TRACKS: MusicTrack[] = [
+  track("Monkeys Spinning Monkeys", "upbeat", "4:05"),
+  track("Sneaky Snitch", "upbeat", "2:20"),
+  track("Fluffing a Duck", "upbeat", "1:46"),
+  track("Investigations", "upbeat", "2:23"),
+  track("Pixel Peeker Polka - faster", "upbeat", "2:01"),
+  track("Merry Go", "upbeat", "2:20"),
+];
+
+/** Comedy tracks in a deterministic order for this seed (first one that downloads wins). */
+export function comedyTracksFor(seed: string): MusicTrack[] {
+  const start = hash(seed) % COMEDY_TRACKS.length;
+  return COMEDY_TRACKS.map((_, i) => COMEDY_TRACKS[(start + i) % COMEDY_TRACKS.length]);
+}
