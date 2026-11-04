@@ -91,7 +91,16 @@ export default function DevelopersPage() {
       </section>
 
       <section>
-        <h2>4. Good to know</h2>
+        <h2>4. Skits with dialogue</h2>
+        <p>
+          <code>POST /api/v1/skits</code> with <code>{`{"script": "…the joke with each character's lines… make it like the viral cockroach videos", "orientation": "vertical"}`}</code>{" "}
+          plans the cast and shots, charges the credits and starts making it. Poll <code>GET /api/v1/skits/:id</code> until{" "}
+          <code>status</code> is <code>completed</code>; <code>video_url</code> is the finished MP4. <code>GET /api/v1/skits</code> lists your 20 most recent skits.
+        </p>
+      </section>
+
+      <section>
+        <h2>5. Good to know</h2>
         <ul>
           <li>A 60-second video usually takes 4–8 minutes; 10-minute videos take longer.</li>
           <li>API videos never pause for script review. Edit, translate or cut Shorts from them in the workspace.</li>

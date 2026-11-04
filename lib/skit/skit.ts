@@ -654,6 +654,11 @@ async function finish(db: SupabaseClient, row: SkitRow, renderUrl: string, secon
     .select("id")
     .single();
   await save(db, row, { phase: "done", status: "completed", output_url: url, project_id: project?.id ?? null, lease_until: null });
+  // A series episode gets published now.
+  if ((plan as SkitPlan & { series?: unknown }).series) {
+    const { onSkitCompleted } = await import("@/lib/series/run");
+    await onSkitCompleted(db, row).catch((err) => console.error(`[skit] ${row.id} publish failed:`, err));
+  }
 }
 
 /** One step of work on a skit (each fits well inside a minute). */

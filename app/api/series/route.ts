@@ -31,7 +31,8 @@ export async function GET() {
   // Episodes still "generating" whose job failed show as failed.
   const jobIds = (episodes ?? []).filter((e) => e.status === "generating" && e.job_id).map((e) => e.job_id as string);
   const { data: jobs } = jobIds.length ? await db.from("pipeline_jobs").select("id, status, error").in("id", jobIds) : { data: [] };
-  const jobStatus = new Map((jobs ?? []).map((j: { id: string; status: string; error: string | null }) => [j.id, j]));
+  const { data: skits } = jobIds.length ? await db.from("skit_jobs").select("id, status, error").in("id", jobIds) : { data: [] };
+  const jobStatus = new Map([...(jobs ?? []), ...(skits ?? [])].map((j: { id: string; status: string; error: string | null }) => [j.id, j]));
 
   const now = new Date();
   return NextResponse.json({

@@ -25,6 +25,7 @@ import { validPublishAt, type YouTubePrivacy } from "@/lib/youtube/metadata";
 import type { TikTokPrivacy } from "@/lib/tiktok/client";
 import { upcomingSlots } from "./schedule";
 import { brandSnapshot, rowToKit } from "@/lib/brand/kit";
+import { CREATIVE_COSTS } from "@/lib/skit/pricing";
 
 /** How far ahead the tick creates episodes. Daily cron (Hobby): 26 h; hourly cron: set SERIES_LOOKAHEAD_HOURS=2. */
 export const LOOKAHEAD_HOURS = Number(process.env.SERIES_LOOKAHEAD_HOURS) || 26;
@@ -41,6 +42,8 @@ export interface SeriesSettings {
   footage: FootageMode;
   research: boolean;
   notes?: string | null;
+  /** "skit" (4 Nov 2026): each episode is a new comedy skit with dialogue instead of a narrated video. */
+  format?: "narrated" | "skit";
 }
 
 export interface SeriesPublish {
@@ -82,7 +85,30 @@ export function episodeOptions(s: SeriesSettings): PipelineOptions {
 }
 
 export function episodeCost(s: SeriesSettings): number {
+  // Skits are priced once their scene is planned; show the typical 20 s skit.
+  if (s.format === "skit") return CREATIVE_COSTS.skit20;
   return totalPipelineCredits(episodeOptions(s));
+}
+
+/** Next skit of a skit series: a fresh joke/scene with its lines, in the series' language. */
+export async function pickNextSkit(series: SeriesRow, previous: string[]): Promise<{ idea: string; script: string }> {
+  const { data } = await chatJSON<{ idea?: string; script?: string }>({
+    model: SCRIPT_MODEL,
+    effort: "low",
+    timeoutMs: 60_000,
+    system:
+      "You write the next episode of a short comedy-skit series for TikTok/Reels/Shorts: one ORIGINAL joke or funny scene, 2–4 characters, 3–6 short spoken lines, a clear punchline at the end. Never repeat or closely paraphrase a previous episode. No real, named living people. Return JSON only.",
+    user: `Series: ${series.name}
+What the series is about and how it should look: ${series.topic}
+Language of the dialogue: ${series.settings.language}
+Previous episodes (do NOT repeat these):
+${previous.length ? previous.map((p) => `- ${p}`).join("\n") : "- (none yet)"}
+
+Return {"idea": "<one-line summary in ${series.settings.language}>", "script": "<the skit: a line of setting, then each spoken line as '- Name: line' in ${series.settings.language}, then the visual style the series asks for>"}`,
+  });
+  const script = typeof data.script === "string" ? data.script.trim().slice(0, 1400) : "";
+  if (script.length < 20) throw new Error("No skit was written.");
+  return { idea: (typeof data.idea === "string" ? data.idea.trim() : "").slice(0, 300) || script.slice(0, 120), script };
 }
 
 /** Series are a paid feature (and need full-video access). */
@@ -147,6 +173,8 @@ export async function createEpisode(db: SupabaseClient, series: SeriesRow, sched
     .not("idea", "is", null)
     .order("scheduled_for", { ascending: false })
     .limit(40);
+  if (series.settings.format === "skit") return createSkitEpisode(db, series, episode.id, (prev ?? []).map((p: { idea: string }) => p.idea), skip);
+
   const idea = await pickNextIdea(series, (prev ?? []).map((p: { idea: string }) => p.idea));
   await db.from("series_episodes").update({ idea }).eq("id", episode.id);
 
@@ -209,6 +237,62 @@ export async function createEpisode(db: SupabaseClient, series: SeriesRow, sched
   return { status: "created", episodeId: episode.id };
 }
 
+/** A skit episode: write a new skit, plan it, charge it and start making it (lib/skit). */
+async function createSkitEpisode(
+  db: SupabaseClient,
+  series: SeriesRow,
+  episodeId: string,
+  previous: string[],
+  skip: (reason: string) => Promise<EpisodeOutcome>
+): Promise<EpisodeOutcome> {
+  let written: { idea: string; script: string };
+  try {
+    written = await pickNextSkit(series, previous);
+  } catch {
+    return skip("The next skit couldn't be written.");
+  }
+  await db.from("series_episodes").update({ idea: written.idea }).eq("id", episodeId);
+  const { planSkit, skitCredits } = await import("@/lib/skit/skit");
+  const { GEMINI_VOICES } = await import("@/lib/pipeline/gemini-tts");
+  let plan: Awaited<ReturnType<typeof planSkit>>;
+  try {
+    plan = await planSkit(written.script, GEMINI_VOICES);
+  } catch {
+    return skip("The skit couldn't be planned.");
+  }
+  (plan as typeof plan & { series?: { id: string; episodeId: string } }).series = { id: series.id, episodeId };
+  const cost = skitCredits(plan);
+  const { payerFor } = await import("@/lib/teams");
+  const payer = await payerFor(db, series.user_id);
+  const { data: paid, error: deductError } = await db.rpc("deduct_credits", {
+    p_user_id: payer,
+    p_amount: cost,
+    p_reason: `Series "${series.name.slice(0, 60)}": skit episode`,
+  });
+  if (deductError) return skip("Could not charge credits.");
+  if (!paid) return skip(`Not enough credits (this skit costs ${cost}).`);
+  const { randomUUID } = await import("node:crypto");
+  const id = randomUUID();
+  const { error } = await db.from("skit_jobs").insert({
+    id,
+    user_id: series.user_id,
+    billed_to: payer !== series.user_id ? payer : null,
+    status: "running",
+    phase: "cast",
+    script: written.script,
+    plan,
+    vertical: series.settings.orientation !== "horizontal",
+    credits: cost,
+  });
+  if (error) {
+    await db.rpc("add_credits", { p_user_id: payer, p_amount: cost, p_type: "refund", p_reason: "Refund: series skit could not start" });
+    return skip("The skit could not be started.");
+  }
+  // The minute heartbeat makes it; publishing happens when it finishes (onSkitCompleted).
+  await db.from("series_episodes").update({ job_id: id, status: "generating" }).eq("id", episodeId);
+  return { status: "created", episodeId };
+}
+
 /** Cron: create episodes for every active series' upcoming post times. */
 export async function runSeriesTick(db: SupabaseClient = adminDb(), now = new Date(), lookaheadHours = LOOKAHEAD_HOURS) {
   const { data: rows, error } = await db.from("series").select("*").eq("active", true).limit(500);
@@ -235,11 +319,22 @@ export async function onJobCompleted(jobId: string): Promise<void> {
   const db = adminDb();
   const { data: job } = await db.from("pipeline_jobs").select("id, user_id, options, steps").eq("id", jobId).maybeSingle();
   const ref = (job?.options as { series?: { id?: string; episodeId?: string } } | null)?.series;
-  if (!job || !ref?.episodeId) return;
-  const { data: episode } = await db.from("series_episodes").select("*").eq("id", ref.episodeId).maybeSingle();
-  if (!episode || episode.status !== "generating") return;
+  if (!job || !ref?.episodeId || !ref.id) return;
   const projectId = (job.steps as { result?: { project_id?: string } })?.result?.project_id ?? null;
-  const { data: series } = await db.from("series").select("*").eq("id", ref.id).maybeSingle();
+  await publishEpisode(db, job.user_id, ref.id, ref.episodeId, projectId);
+}
+
+/** Skit hook: publish a finished skit episode. */
+export async function onSkitCompleted(db: SupabaseClient, skit: { user_id: string; project_id: string | null; plan: unknown }): Promise<void> {
+  const ref = (skit.plan as { series?: { id?: string; episodeId?: string } } | null)?.series;
+  if (!ref?.id || !ref.episodeId) return;
+  await publishEpisode(db, skit.user_id, ref.id, ref.episodeId, skit.project_id);
+}
+
+async function publishEpisode(db: SupabaseClient, userId: string, seriesId: string, episodeId: string, projectId: string | null): Promise<void> {
+  const { data: episode } = await db.from("series_episodes").select("*").eq("id", episodeId).maybeSingle();
+  if (!episode || episode.status !== "generating") return;
+  const { data: series } = await db.from("series").select("*").eq("id", seriesId).maybeSingle();
   // Claim it first so a concurrent completion can't publish twice.
   const { data: claimed } = await db
     .from("series_episodes")
@@ -261,7 +356,7 @@ export async function onJobCompleted(jobId: string): Promise<void> {
     const { publishProjectToYouTube } = await import("@/lib/youtube/publish");
     // Scheduled for the series' post time when it is still ahead, otherwise now.
     const publishAt = validPublishAt(episode.scheduled_for);
-    const r = await publishProjectToYouTube(db, job.user_id, projectId, { privacy: publish.youtube.privacy, publishAt });
+    const r = await publishProjectToYouTube(db, userId, projectId, { privacy: publish.youtube.privacy, publishAt });
     if (r.ok) results.youtube = r.youtube;
     else errors.push(`YouTube: ${r.error}`);
   }
@@ -272,7 +367,7 @@ export async function onJobCompleted(jobId: string): Promise<void> {
     const caption = [content.titles?.[0] ?? project?.title ?? "", (content.tags ?? []).slice(0, 5).map((t) => `#${t.replace(/[^\p{L}\p{N}_]/gu, "")}`).join(" ")]
       .filter(Boolean)
       .join("\n\n");
-    const r = await publishProjectToTikTok(db, job.user_id, projectId, {
+    const r = await publishProjectToTikTok(db, userId, projectId, {
       caption,
       privacy: publish.tiktok.privacy,
       allowComment: publish.tiktok.allowComment,

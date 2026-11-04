@@ -234,6 +234,8 @@ async function finish(db: SupabaseClient, row: SwapRow, sourceUrl: string): Prom
     .select("id")
     .single();
   await patch(db, row, { phase: "done", status: "completed", output_url: url, project_id: project?.id ?? null });
+  // A swap's source clip is never read again: free the space (best effort).
+  if (!talk && /\/swap\/src-/.test(row.source_path)) await db.storage.from("videos").remove([row.source_path]).catch(() => undefined);
   return row;
 }
 

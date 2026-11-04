@@ -69,6 +69,7 @@ function emptyForm() {
     captionStyle: "bold",
     voiceId: "gemini:Charon",
     footage: "hybrid",
+    format: "narrated" as "narrated" | "skit",
     research: true,
     days: [1, 3, 5] as number[],
     time: "18:00",
@@ -153,6 +154,7 @@ export default function SeriesPage() {
             voiceId: form.voiceId,
             footage: form.footage,
             research: form.research,
+            format: form.format,
           },
           days: form.days,
           post_time: form.time,
@@ -269,6 +271,24 @@ export default function SeriesPage() {
                       </select>
                     </div>
                   </div>
+                  <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Episode format">
+                    {([
+                      ["narrated", "Narrated videos", "A researched story with a narrator"],
+                      ["skit", "Comedy skits", "A new joke with talking characters each time"],
+                    ] as const).map(([id, label, hint]) => (
+                      <button
+                        key={id}
+                        type="button"
+                        role="radio"
+                        aria-checked={form.format === id}
+                        onClick={() => set("format", id)}
+                        className={`rounded-xl border px-4 py-2 text-left transition ${form.format === id ? "border-blue-400/60 bg-blue-500/10" : "border-white/10 hover:border-white/25"}`}
+                      >
+                        <span className="block text-sm font-semibold text-white">{label}</span>
+                        <span className="block text-xs text-gray-500">{hint}</span>
+                      </button>
+                    ))}
+                  </div>
                   <div>
                     <label htmlFor="s-topic" className="mb-1 block text-xs uppercase tracking-wider text-gray-500">What is the series about?</label>
                     <textarea
@@ -277,10 +297,14 @@ export default function SeriesPage() {
                       maxLength={1000}
                       value={form.topic}
                       onChange={(e) => set("topic", e.target.value)}
-                      placeholder="Real unsolved disappearances and mysteries from the 20th century — one case per episode."
+                      placeholder={form.format === "skit" ? "Office life jokes, played by talking cockroaches in suits — like the viral cockroach videos." : "Real unsolved disappearances and mysteries from the 20th century — one case per episode."}
                       className={input}
                     />
-                    <p className="mt-1 text-xs text-gray-500">Norveko picks a new, specific subject for every episode and never repeats one.</p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {form.format === "skit"
+                        ? "Norveko writes a new skit for every episode (and never repeats one), then casts, voices and animates it. Say how it should look."
+                        : "Norveko picks a new, specific subject for every episode and never repeats one."}
+                    </p>
                   </div>
                   <div className="grid gap-4 sm:grid-cols-4">
                     <div>
@@ -318,6 +342,7 @@ export default function SeriesPage() {
                     </div>
                   </div>
                   <VisualStylePicker value={form.visualStyle} onChange={(v) => set("visualStyle", v)} />
+                  {form.format !== "skit" && (
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <label htmlFor="s-footage" className="mb-1 block text-xs uppercase tracking-wider text-gray-500">Footage</label>
@@ -332,6 +357,7 @@ export default function SeriesPage() {
                       Research every topic on the web first
                     </label>
                   </div>
+                  )}
                   <CaptionStylePicker value={form.captionStyle} onChange={(v) => set("captionStyle", v)} />
 
                   {/* Schedule */}

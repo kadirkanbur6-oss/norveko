@@ -82,6 +82,7 @@ export function validateSeries(body: Record<string, unknown>): { ok: true; value
         footage,
         research: s.research !== false,
         notes,
+        format: s.format === "skit" ? "skit" : "narrated",
       },
       days,
       post_time: body.post_time as string,
