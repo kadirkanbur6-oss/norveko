@@ -286,6 +286,17 @@ export async function POST(req: Request) {
         const { getRender } = await import("@/lib/pipeline/shotstack");
         return NextResponse.json({ success: true, render: await getRender(String(body.id ?? "")) });
       }
+      // Submit a tiny request to a fal model and return its raw answer (to read a real error).
+      case "fal-probe": {
+        const model = String(body.model ?? "").replace(/[^a-z0-9/._-]/gi, "");
+        if (!model) return NextResponse.json({ success: false, error: "model" }, { status: 400 });
+        const res = await fetch(`https://queue.fal.run/${model}`, {
+          method: "POST",
+          headers: { Authorization: `Key ${process.env.FAL_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify(body.input ?? {}),
+        });
+        return NextResponse.json({ success: res.ok, status: res.status, body: (await res.text()).slice(0, 2000) });
+      }
       case "fal-raw": {
         const url = String(body.url ?? "");
         if (!/^https:\/\/queue\.fal\.run\//.test(url)) return NextResponse.json({ success: false, error: "fal queue urls only" }, { status: 400 });
