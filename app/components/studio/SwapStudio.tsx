@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Check, Film, Loader2, Plus, Shuffle, Upload } from "lucide-react";
 import { CharacterCreator, type CharacterItem } from "../CharactersCard";
+import GenerationStage from "../GenerationStage";
 
 type Swap = {
   id: string;
@@ -35,6 +36,7 @@ export default function SwapStudio() {
   const [busy, setBusy] = useState<"" | "upload" | "start">("");
   const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     const d = await fetch("/api/swap").then((r) => r.json()).catch(() => null);
@@ -100,6 +102,7 @@ export default function SwapStudio() {
       setRights(false);
       setPrompt("");
       await load();
+      setTimeout(() => stageRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
     } catch (err) {
       setError(err instanceof Error ? err.message : "The swap couldn't be started.");
     } finally {
@@ -111,6 +114,36 @@ export default function SwapStudio() {
 
   return (
         <div className="space-y-5">
+          {swaps.some((x) => x.status === "running") && (
+            <div ref={stageRef} className="scroll-mt-20 space-y-4">
+              {swaps
+                .filter((x) => x.status === "running")
+                .map((x) => (
+                  <GenerationStage
+                    key={x.id}
+                    title={`${x.characterName} swap`}
+                    createdAt={x.createdAt}
+                    steps={[
+                      {
+                        id: "swap",
+                        label: "Putting your character into the clip",
+                        status: x.phase === "render" ? "completed" : "running",
+                        startedAt: x.createdAt,
+                        expected: Math.max(240, x.seconds * 110),
+                        messages: ["Tracking every move in the clip…", "Matching light and expressions…", "This is the slow part — hang tight…"],
+                      },
+                      {
+                        id: "sound",
+                        label: "Adding the clip's own sound",
+                        status: x.phase === "render" ? "running" : "pending",
+                        expected: 60,
+                        messages: ["Laying the original sound back on…", "Rendering the final MP4…"],
+                      },
+                    ]}
+                  />
+                ))}
+            </div>
+          )}
 
           {allowed === false && (
             <div className={card}>

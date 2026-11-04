@@ -43,6 +43,8 @@ function view(r: SkitRow) {
       imageUrl: s.imageUrl ?? null,
       ready: Boolean(s.clipUrl || s.clipFailed),
     })),
+    phaseAt: plan?.phaseAt ?? {},
+    updatedAt: r.updated_at,
     outputUrl: r.output_url,
     projectId: r.project_id,
     error: r.error,

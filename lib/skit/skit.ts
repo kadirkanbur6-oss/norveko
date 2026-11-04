@@ -68,6 +68,8 @@ export interface SkitShot {
 }
 
 export interface SkitPlan {
+  /** When each making phase began (ISO). */
+  phaseAt?: Record<string, string>;
   title: string;
   language: string; // ISO code
   look: (typeof SKIT_LOOKS)[number];
@@ -212,6 +214,12 @@ export function skitCredits(plan: SkitPlan): number {
 const publicUrl = (db: SupabaseClient, path: string) => db.storage.from("videos").getPublicUrl(path).data.publicUrl;
 
 async function save(db: SupabaseClient, row: SkitRow, values: Partial<SkitRow>) {
+  // Remember when each phase began (the progress screen estimates from it).
+  if (values.phase && values.phase !== row.phase) {
+    const plan = (values.plan ?? row.plan) as SkitPlan & { phaseAt?: Record<string, string> };
+    plan.phaseAt = { ...(plan.phaseAt ?? {}), [values.phase]: new Date().toISOString() };
+    values = { ...values, plan };
+  }
   Object.assign(row, values);
   await db.from("skit_jobs").update({ ...values, updated_at: new Date().toISOString() }).eq("id", row.id);
 }

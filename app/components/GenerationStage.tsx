@@ -12,10 +12,15 @@ import BrandMark from "./BrandMark";
 import type { PipelineStepId } from "@/lib/pipeline/steps";
 
 export interface StageStep {
-  id: PipelineStepId;
+  /** A pipeline step id, or any id when `expected` and `messages` are given (skits, talk, swap). */
+  id: PipelineStepId | string;
   label: string;
   status: "pending" | "running" | "completed" | "failed" | "skipped";
   startedAt?: string;
+  /** Typical seconds for this step (progress estimate). */
+  expected?: number;
+  /** Rotating status lines while this step runs. */
+  messages?: string[];
 }
 
 // Typical wall-clock per step; only used for the progress estimate.
@@ -75,9 +80,15 @@ function formatElapsed(ms: number): string {
 export default function GenerationStage({
   steps,
   createdAt,
+  title,
+  children,
 }: {
   steps: StageStep[];
   createdAt?: string;
+  /** Shown above the step label (e.g. the skit's title). */
+  title?: string;
+  /** Extra content under the progress (e.g. shot previews). */
+  children?: React.ReactNode;
 }) {
   const [now, setNow] = useState(() => Date.now());
   const [tick, setTick] = useState(0);
@@ -101,15 +112,16 @@ export default function GenerationStage({
     };
   }, []);
 
+  const expected = (s: StageStep) => s.expected ?? EXPECTED_SECONDS[s.id as PipelineStepId] ?? 60;
   const running = steps.find((s) => s.status === "running");
-  const activeId: PipelineStepId = running?.id ?? steps.find((s) => s.status === "pending")?.id ?? "script";
-  const messages = MESSAGES[activeId];
+  const active = running ?? steps.find((s) => s.status === "pending");
+  const messages = active?.messages ?? MESSAGES[(active?.id ?? "script") as PipelineStepId] ?? ["Working on it…"];
   const message = messages[tick % messages.length];
 
-  const totalWeight = steps.reduce((sum, s) => sum + EXPECTED_SECONDS[s.id], 0) || 1;
+  const totalWeight = steps.reduce((sum, s) => sum + expected(s), 0) || 1;
   let done = 0;
   for (const s of steps) {
-    const w = EXPECTED_SECONDS[s.id];
+    const w = expected(s);
     if (s.status === "completed" || s.status === "skipped") done += w;
     else if (s.status === "running") {
       const started = s.startedAt ? Date.parse(s.startedAt) : now;
@@ -146,7 +158,7 @@ export default function GenerationStage({
 
         <div className="min-w-0 flex-1 text-center sm:text-left">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-300/80">
-            Generating
+            {title ? `Making “${title}”` : "Generating"}
           </p>
           <h3 className="mt-1 text-lg font-bold text-white sm:text-xl">
             {running?.label ?? "Preparing your job"}
@@ -180,6 +192,8 @@ export default function GenerationStage({
             <span className="tabular-nums">~{percent}%</span>
             <span className="tabular-nums">{formatElapsed(elapsedMs)} elapsed</span>
           </div>
+
+          {children}
 
           <p className="mt-3 text-xs text-gray-500">
             You can leave this page — the job keeps running and the result lands in{" "}

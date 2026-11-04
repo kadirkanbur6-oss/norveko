@@ -4,9 +4,10 @@
 // and shot list with a price → a finished short with voices, lip-sync and
 // sound effects.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Clapperboard, Loader2, Sparkles, Volume2 } from "lucide-react";
+import GenerationStage, { type StageStep } from "../GenerationStage";
 
 type Skit = {
   id: string;
@@ -18,6 +19,7 @@ type Skit = {
   seconds: number;
   characters: Array<{ id: string; name: string; look: string; voice: string }>;
   shots: Array<{ id: string; camera: string; speaker: string | null; line: string; action: string; sfx: string; crowd: string; imageUrl: string | null; ready: boolean }>;
+  phaseAt?: Record<string, string>;
   outputUrl: string | null;
   projectId: string | null;
   error: string | null;
@@ -31,6 +33,22 @@ const PHASE_LABEL: Record<string, string> = {
   render: "Cutting it together…",
 };
 
+const SKIT_STEPS: Array<{ id: string; label: string; expected: number; messages: string[] }> = [
+  { id: "cast", label: "Casting the characters", expected: 35, messages: ["Designing each character…", "Drawing their reference portraits…", "Keeping every face consistent…"] },
+  { id: "shots", label: "Drawing the shots and recording the voices", expected: 60, messages: ["Setting up each shot…", "Recording every line in character…", "Adding the crowd and sound effects…"] },
+  { id: "animate", label: "Bringing the shots to life", expected: 240, messages: ["Syncing lips to every line…", "Animating the silent shots…", "This is the slow part — hang tight…", "Checking finished shots…"] },
+  { id: "render", label: "Cutting it together", expected: 70, messages: ["Laying the shots on the timeline…", "Mixing voices, crowd and effects…", "Rendering the final MP4…"] },
+];
+
+function skitStage(s: Skit): StageStep[] {
+  const at = SKIT_STEPS.findIndex((x) => x.id === s.phase);
+  return SKIT_STEPS.map((x, i) => ({
+    ...x,
+    status: i < at ? "completed" : i === at ? "running" : "pending",
+    startedAt: s.phaseAt?.[x.id] ?? (i === 0 ? s.createdAt : undefined),
+  }));
+}
+
 const chip = (on: boolean) =>
   `rounded-full border px-3 py-1 text-xs transition ${on ? "border-sky-400/60 bg-sky-500/15 text-white" : "border-white/10 text-gray-300 hover:border-white/25"}`;
 
@@ -43,6 +61,7 @@ export default function SkitStudio({ text }: { text: string }) {
   const [rights, setRights] = useState(false);
   const [busy, setBusy] = useState<"" | "plan" | "start">("");
   const [error, setError] = useState("");
+  const stageRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     const d = await fetch("/api/skit").then((r) => r.json()).catch(() => null);
@@ -102,6 +121,7 @@ export default function SkitStudio({ text }: { text: string }) {
       setDraft(null);
       setRights(false);
       await load();
+      setTimeout(() => stageRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
     } catch (err) {
       setError(err instanceof Error ? err.message : "It couldn't be started.");
     } finally {
@@ -125,8 +145,30 @@ export default function SkitStudio({ text }: { text: string }) {
     );
   }
 
+  const making = skits.filter((x) => x.status === "running");
+
   return (
     <div className="space-y-5">
+      {making.length > 0 && (
+        <div ref={stageRef} className="scroll-mt-20 space-y-4">
+          {making.map((x) => (
+            <GenerationStage key={x.id} steps={skitStage(x)} createdAt={x.createdAt} title={x.title}>
+              {x.shots.some((sh) => sh.imageUrl) && (
+                <div className="mt-4 flex gap-1.5 overflow-x-auto nv-no-scrollbar" aria-label="Shots so far">
+                  {x.shots.map((sh) =>
+                    sh.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img key={sh.id} src={sh.imageUrl} alt="" className={`h-24 shrink-0 rounded-md object-cover transition ${sh.ready ? "" : "opacity-60"}`} />
+                    ) : (
+                      <span key={sh.id} className="h-24 w-14 shrink-0 animate-pulse rounded-md bg-white/5" />
+                    )
+                  )}
+                </div>
+              )}
+            </GenerationStage>
+          ))}
+        </div>
+      )}
       <div className={card}>
         <p className="text-sm text-gray-300">
           Write the joke or scene above with the lines each character says. Add a style if you like — e.g. <span className="text-white">“make it like the viral cockroach videos”</span>. We cast it, voice every character, sync their lips and add the crowd sounds.
@@ -236,18 +278,6 @@ export default function SkitStudio({ text }: { text: string }) {
                     )}
                   </span>
                 </div>
-                {s.status === "running" && s.shots.some((x) => x.imageUrl) && (
-                  <div className="mt-3 flex gap-1.5 overflow-x-auto nv-no-scrollbar">
-                    {s.shots.map((x) =>
-                      x.imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img key={x.id} src={x.imageUrl} alt="" className={`h-20 shrink-0 rounded-md object-cover ${x.ready ? "" : "opacity-60"}`} />
-                      ) : (
-                        <span key={x.id} className="h-20 w-12 shrink-0 animate-pulse rounded-md bg-white/5" />
-                      )
-                    )}
-                  </div>
-                )}
               </li>
             ))}
           </ul>

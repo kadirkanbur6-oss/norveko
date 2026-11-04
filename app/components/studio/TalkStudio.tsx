@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Check, Loader2, MessageCircle, Mic, Plus, Upload, Volume2 } from "lucide-react";
 import { CharacterCreator, type CharacterItem } from "../CharactersCard";
+import GenerationStage from "../GenerationStage";
 
 type Talk = {
   id: string;
@@ -54,6 +55,7 @@ export default function TalkStudio({ text: outerText }: { text?: string } = {}) 
   const [busy, setBusy] = useState<"" | "voice" | "upload" | "start">("");
   const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     const d = await fetch("/api/talk").then((r) => r.json()).catch(() => null);
@@ -150,6 +152,7 @@ export default function TalkStudio({ text: outerText }: { text?: string } = {}) 
       setAudio(null);
       setRights(false);
       await load();
+      setTimeout(() => stageRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
     } catch (err) {
       setError(err instanceof Error ? err.message : "It couldn't be started.");
     } finally {
@@ -165,6 +168,36 @@ export default function TalkStudio({ text: outerText }: { text?: string } = {}) 
 
   return (
         <div className="space-y-5">
+          {talks.some((t) => t.status === "running") && (
+            <div ref={stageRef} className="scroll-mt-20 space-y-4">
+              {talks
+                .filter((t) => t.status === "running")
+                .map((t) => (
+                  <GenerationStage
+                    key={t.id}
+                    title={t.characterName}
+                    createdAt={t.createdAt}
+                    steps={[
+                      { id: "scene", label: "Setting the scene", status: "completed", expected: 25 },
+                      {
+                        id: "lips",
+                        label: "Syncing the lips to the voice",
+                        status: "running",
+                        startedAt: t.createdAt,
+                        expected: 150,
+                        messages: ["Matching every word to the mouth…", "Adding head movement and expressions…", "Rendering the talking video…"],
+                      },
+                      { id: "save", label: "Saving your video", status: "pending", expected: 15 },
+                    ]}
+                  >
+                    {t.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={t.imageUrl} alt="" className="mt-4 h-28 rounded-lg object-cover" />
+                    )}
+                  </GenerationStage>
+                ))}
+            </div>
+          )}
 
           {allowed === false && (
             <div className={card}>
