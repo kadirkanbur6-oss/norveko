@@ -94,7 +94,11 @@ function paidLookup(db: SupabaseClient) {
         userId,
         (async () => {
           const { hasPurchased, isWatermarkExempt } = await import("@/lib/pipeline/watermark-policy");
-          return isWatermarkExempt(userId) || (await hasPurchased(db, userId));
+          if (isWatermarkExempt(userId) || (await hasPurchased(db, userId))) return true;
+          // Owners and admins are never treated as free accounts.
+          const { isAdmin } = await import("@/lib/admin");
+          const { data } = await db.auth.admin.getUserById(userId);
+          return isAdmin(data?.user ?? null);
         })()
       );
     }
@@ -143,8 +147,15 @@ export async function runRetention(db: SupabaseClient, opts: { dryRun?: boolean;
       const mark = (steps.retention ?? {}) as RetentionMark;
       const folder = `${job.user_id}/${job.id}`;
       const projectId = (steps.result as { project_id?: unknown } | undefined)?.project_id;
+      // Content packages (no video) have nothing to remove: mark them so they leave the queue.
+      if (!steps.video && !steps.render) {
+        if (!dryRun && !mark.working_at && job.created_at < workingCutoff) {
+          await db.from("pipeline_jobs").update({ steps: { ...steps, retention: { ...mark, working_at: at } } }).eq("id", job.id);
+        }
+        continue;
+      }
       const free = !(await isPaid(job.user_id));
-      if (free && !mark.video_at) {
+      if (free && !mark.video_at && typeof steps.render?.video_url === "string") {
         const files = await removeFolder(db, folder, () => false, dryRun);
         note("video", job.id, "video", files);
         done++;
