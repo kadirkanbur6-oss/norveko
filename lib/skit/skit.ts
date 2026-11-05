@@ -578,7 +578,9 @@ export function buildSkitEdit(plan: SkitPlan, vertical: boolean, extras: { music
   const total = last ? Math.round((last.start + last.length) * 100) / 100 : 1;
   const size = vertical ? { width: 1080, height: 1920 } : { width: 1920, height: 1080 };
   const tracks: Array<{ clips: Array<Record<string, unknown>> }> = [];
-  tracks.push({ clips: voices }, ...crowd.filter((c) => c.length).map((clips) => ({ clips })));
+  // Shotstack rejects a track with no clips — with Veo talking clips the voice track can be empty (5 Nov 2026).
+  if (voices.length) tracks.push({ clips: voices });
+  tracks.push(...crowd.filter((c) => c.length).map((clips) => ({ clips })));
   if (sfx.length) tracks.push({ clips: sfx });
   if (extras.musicUrl) {
     tracks.push({ clips: [{ asset: { type: "audio", src: extras.musicUrl, volume: 0.08, effect: "fadeInFadeOut" }, start: 0, length: total }] });

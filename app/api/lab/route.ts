@@ -248,6 +248,20 @@ export async function POST(req: Request) {
         if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
         return NextResponse.json({ success: true, path, mb: Math.round(bytes.length / 1e5) / 10 });
       }
+      // Owner's own failed skit back to work from its current phase (keeps the clips already made),
+      // charging its credits again since the failure refunded them (5 Nov 2026: empty voice track bug).
+      case "revive-skit": {
+        const db = admin();
+        const { data: row } = await db.from("skit_jobs").select("*").eq("id", String(body.id ?? "")).eq("user_id", user.id).eq("status", "failed").maybeSingle();
+        if (!row) return NextResponse.json({ success: false, error: "No failed skit of yours with that id." }, { status: 404 });
+        if (row.refunded) {
+          const { data: paid } = await db.rpc("deduct_credits", { p_user_id: row.billed_to ?? row.user_id, p_amount: row.credits, p_reason: "Skit retried (lab)" });
+          if (!paid) return NextResponse.json({ success: false, error: `Not enough credits (${row.credits}).` }, { status: 402 });
+        }
+        const plan = { ...(row.plan as Record<string, unknown>), tries: 0 };
+        const { error } = await db.from("skit_jobs").update({ status: "running", error: null, refunded: false, lease_until: null, plan, updated_at: new Date().toISOString() }).eq("id", row.id);
+        return NextResponse.json({ success: !error, error: error?.message, phase: row.phase });
+      }
       // Older skit / talk / swap projects were saved with style "Cinematic": relabel them (4 Nov 2026).
       case "relabel-creative-projects": {
         const db = admin();
