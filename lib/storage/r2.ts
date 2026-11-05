@@ -89,15 +89,16 @@ export async function signedR2Url(key: string, downloadName?: string | null, exp
   );
 }
 
-/** Delete every object under a prefix (account deletion: `<userId>/`). */
-export async function deleteR2Prefix(prefix: string): Promise<number> {
+/** Delete every object under a prefix (account deletion: `<userId>/`); `keep` spares keys, `dryRun` only counts. */
+export async function deleteR2Prefix(prefix: string, opts: { keep?: (key: string) => boolean; dryRun?: boolean } = {}): Promise<number> {
   if (!r2Configured() || !prefix) return 0;
   let deleted = 0;
   let token: string | undefined;
   do {
     const list = await r2().send(new ListObjectsV2Command({ Bucket: env("R2_BUCKET"), Prefix: prefix, ContinuationToken: token }));
-    const keys = (list.Contents ?? []).map((o) => ({ Key: o.Key! })).filter((o) => o.Key);
-    if (keys.length) {
+    const keys = (list.Contents ?? []).map((o) => ({ Key: o.Key! })).filter((o) => o.Key && !opts.keep?.(o.Key));
+    if (opts.dryRun) deleted += keys.length;
+    else if (keys.length) {
       await r2().send(new DeleteObjectsCommand({ Bucket: env("R2_BUCKET"), Delete: { Objects: keys, Quiet: true } }));
       deleted += keys.length;
     }

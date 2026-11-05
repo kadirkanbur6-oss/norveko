@@ -84,6 +84,7 @@ export const PAID_INCLUDES = [
   "29 languages, Norveko narrators and native voice artists",
   "Word-timed subtitles (.srt / .vtt) and story-matched music",
   "Pack credits never expire, and failed steps are refunded automatically",
+  "Your finished videos are kept as long as your account exists",
 ];
 
 /**
@@ -112,6 +113,7 @@ export const FREE_TRIAL_RULES = [
   "Every feature unlocked so you can judge the quality",
   "One free trial per person; temporary emails aren't eligible",
   "Thumbnails and videos carry a small Norveko watermark",
+  "Finished videos are kept for 7 days, so download what you want to keep",
   "Subscribe or buy any pack and the watermark disappears, also from what you already made",
 ];
 

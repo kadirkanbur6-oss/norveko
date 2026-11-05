@@ -179,6 +179,14 @@ export default function PrivacyPage() {
           a reasonable period, except where retention is required by law (for
           example, purchase records for tax purposes).
         </p>
+        <p>
+          Generated media follows its own schedule. The working files behind a
+          video (scene clips and pictures, voice lines, sound effects) are
+          deleted 30 days after the video is made; the finished video, its cover
+          and its voice-over stay. On an account that has never bought a plan or
+          a credit pack, finished videos are deleted 7 days after they are made;
+          the project with its script, voice-over and cover stays.
+        </p>
       </section>
 
       <section>

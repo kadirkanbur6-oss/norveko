@@ -180,7 +180,20 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>10. Termination</h2>
+        <h2>10. Storage of Generated Media</h2>
+        <p>
+          We keep finished videos for as long as your account exists if you
+          have bought a plan or a credit pack. On a free account, finished
+          videos are deleted 7 days after they are made, so download anything
+          you want to keep. For every account, the working files behind a video
+          are deleted after 30 days; after that the video can no longer be
+          edited, re-rendered, translated or cut into Shorts, but the finished
+          video stays.
+        </p>
+      </section>
+
+      <section>
+        <h2>11. Termination</h2>
         <p>
           You may stop using the Service and delete your account at any time.
           We may suspend or terminate your access if you breach these Terms.
@@ -191,7 +204,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>11. Changes to These Terms</h2>
+        <h2>12. Changes to These Terms</h2>
         <p>
           We may update these Terms from time to time. If we make material
           changes, we will notify you by email or through the Service. Your
@@ -201,7 +214,7 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>12. Contact</h2>
+        <h2>13. Contact</h2>
         <p>
           If you have questions about these Terms, contact us at{" "}
           <a href={`mailto:${SUPPORT_EMAIL}`} className="text-blue-300 underline">

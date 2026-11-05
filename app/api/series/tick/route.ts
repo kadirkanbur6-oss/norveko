@@ -31,5 +31,15 @@ export async function GET(request: Request) {
   } catch (err) {
     console.error("[tick] subscription grants failed:", err);
   }
-  return NextResponse.json({ success: true, ...summary, subscriptionGrants: grants });
+  // Same heartbeat: remove old working files and free accounts' week-old videos (lib/retention.ts).
+  let retention: { workingCleaned: number; videosRemoved: number; files: number } | null = null;
+  try {
+    const { runRetention, RETENTION_LIVE } = await import("@/lib/retention");
+    const { adminDb } = await import("@/lib/series/run");
+    const r = await runRetention(adminDb(), { dryRun: !RETENTION_LIVE });
+    retention = { workingCleaned: r.workingCleaned, videosRemoved: r.videosRemoved, files: r.files };
+  } catch (err) {
+    console.error("[tick] retention failed:", err);
+  }
+  return NextResponse.json({ success: true, ...summary, subscriptionGrants: grants, retention });
 }

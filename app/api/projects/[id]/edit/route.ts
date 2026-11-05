@@ -121,6 +121,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { user } = await requireUser();
   if (!user) return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
   const job = await jobForProject(user.id, id);
+  const { workingFilesRemoved, WORKING_FILES_GONE_MESSAGE } = await import("@/lib/retention");
+  if (job && workingFilesRemoved((job.steps as Record<string, unknown>).retention)) {
+    return NextResponse.json({ success: true, editable: false, retryRender: false, expired: true, reason: WORKING_FILES_GONE_MESSAGE, status: job.status });
+  }
   const slots = (job?.steps?.video?.slots as TimelineSlot[] | undefined) ?? [];
   if (!job || typeof job.steps?.render?.video_url !== "string" || !slots.length) {
     // A video whose final render failed (visuals done) can be retried (it costs the refunded render price).
@@ -182,6 +186,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
   if (job.status === "running") {
     return NextResponse.json({ success: false, error: "The video is being rendered. Try again when it has finished." }, { status: 409 });
+  }
+  const { workingFilesRemoved, WORKING_FILES_GONE_MESSAGE } = await import("@/lib/retention");
+  if (workingFilesRemoved((job.steps as Record<string, unknown>).retention)) {
+    return NextResponse.json({ success: false, error: WORKING_FILES_GONE_MESSAGE }, { status: 410 });
   }
   const db = admin();
 

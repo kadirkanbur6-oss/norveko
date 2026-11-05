@@ -84,6 +84,9 @@ export async function GET(req: Request) {
   if (projectId) {
     const { data } = await db.from("skit_jobs").select("*").eq("project_id", projectId).eq("user_id", user.id).maybeSingle();
     if (!data) return NextResponse.json({ success: true, skit: null });
+    // Working files gone after 30 days: no skit editor for this project (lib/retention.ts).
+    const { workingFilesRemoved } = await import("@/lib/retention");
+    if (workingFilesRemoved(((data as SkitRow).plan as unknown as Record<string, unknown>)?.retention)) return NextResponse.json({ success: true, skit: null });
     return NextResponse.json({ success: true, skit: view(await advanceSkitJob(db, data as SkitRow)) });
   }
   if (id) {
@@ -154,6 +157,8 @@ export async function POST(req: Request) {
     if (!row || row.status === "draft") return bad("Skit not found.", 404);
     if (row.status === "running") return bad("This skit is still being made.", 409);
     if (!row.project_id) return bad("Only finished skits can be edited.");
+    const { workingFilesRemoved, WORKING_FILES_GONE_MESSAGE } = await import("@/lib/retention");
+    if (workingFilesRemoved((row.plan as unknown as Record<string, unknown>).retention)) return bad(WORKING_FILES_GONE_MESSAGE, 410);
     if (editsUsed(row.plan) >= MAX_SKIT_EDITS) return bad("This skit has been edited as many times as allowed.", 429);
     let credits = 0;
     let plan = row.plan;

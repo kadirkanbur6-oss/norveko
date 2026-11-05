@@ -309,6 +309,12 @@ export async function POST(req: Request) {
         const bytes = await copyUrlToR2(r.url, key, "video/mp4");
         return NextResponse.json({ success: true, done: true, key, bytes, url: r2PublicUrl(key) });
       }
+      // Media retention (lib/retention.ts): { dryRun: true } lists what would be removed.
+      case "retention": {
+        const { runRetention } = await import("@/lib/retention");
+        const r = await runRetention(admin(), { dryRun: body.dryRun !== false });
+        return NextResponse.json({ success: true, ...r });
+      }
       // Can provider_usage take a skit/talk/swap row? (6 Nov 2026: none showed up.) Inserts one
       // test row for a non-pipeline job id, reports the database error if any, deletes it again.
       case "usage-probe": {

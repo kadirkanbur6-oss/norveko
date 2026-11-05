@@ -46,6 +46,8 @@ async function sourceFor(userId: string, projectId: string): Promise<{ job: Sour
     .maybeSingle();
   const job = (data as SourceJob | null) ?? null;
   if (!job) return { job: null, reason: "Only videos made with Norveko's full video can be translated." };
+  const { workingFilesRemoved, WORKING_FILES_GONE_MESSAGE } = await import("@/lib/retention");
+  if (workingFilesRemoved((job.steps as Record<string, unknown> | undefined)?.retention)) return { job: null, reason: WORKING_FILES_GONE_MESSAGE };
   const slots = job.steps?.video?.slots;
   if (!job.steps?.render || !Array.isArray(slots) || !slots.length) {
     return { job: null, reason: "Only finished full videos can be translated." };

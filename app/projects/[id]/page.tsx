@@ -681,6 +681,18 @@ export default function ProjectDetailPage() {
                     )}
                   </details>
                 )}
+                {(project.content as { retention?: { video_at?: string } } | null)?.retention?.video_at && (
+                  <div className="mt-6 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+                    <p className="font-semibold">This video was removed</p>
+                    <p className="mt-1 text-amber-100/75">
+                      Free accounts keep finished videos for 7 days. The script, voice-over and cover are still here. Buy any pack or plan and
+                      every video you make from then on is kept.{" "}
+                      <Link href="/billing" className="font-medium text-white underline underline-offset-2">
+                        See plans
+                      </Link>
+                    </p>
+                  </div>
+                )}
                 {section === "video" && normalizedProjectContent?.finalVideoUrl && (
                   <div className="mt-6 rounded-2xl border border-purple-400/30 bg-gradient-to-br from-purple-500/10 to-blue-500/5 p-4 sm:p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">

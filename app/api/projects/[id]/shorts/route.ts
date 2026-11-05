@@ -51,6 +51,8 @@ async function sourceFor(userId: string, projectId: string): Promise<{ job: Sour
   const job = (data as SourceJob | null) ?? null;
   if (!job || !job.steps?.render || !Array.isArray(job.steps?.video?.slots)) return { job: null };
   if (job.options?.short) return { job: null };
+  const { workingFilesRemoved, WORKING_FILES_GONE_MESSAGE } = await import("@/lib/retention");
+  if (workingFilesRemoved((job.steps as Record<string, unknown> | undefined)?.retention)) return { job: null, reason: WORKING_FILES_GONE_MESSAGE };
   const total = Number(job.steps.video.total_seconds) || 0;
   if (total <= SHORT_FORM_MAX_SECONDS + 5) return { job: null, reason: "Already short." };
   if (job.steps.render.status !== "completed") return { job: null, reason: "Cut Shorts once the video has finished rendering." };
