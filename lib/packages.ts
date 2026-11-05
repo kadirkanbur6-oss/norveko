@@ -34,7 +34,9 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
   },
   {
     id: "pro",
-    name: "Pro",
+    // Display name only (the id and Paddle price stay "pro"); renamed 5 Nov 2026 so the
+    // one-time pack is not confused with the "Pro" subscription plan.
+    name: "Growth",
     credits: 2000,
     priceUsd: 29,
     paddlePriceId:

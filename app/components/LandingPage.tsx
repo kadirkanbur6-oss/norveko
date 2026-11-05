@@ -10,7 +10,7 @@ import HeroBackground from "./HeroBackground";
 import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
 import SignOutButton from "./SignOutButton";
 import BrandMark from "./BrandMark";
-import { COMPARISON, FREE_TRIAL_CREDITS, PAID_INCLUDES, TRIAL_VIDEO_PUBLIC, planDetails } from "@/lib/plans";
+import { COMPARISON, FREE_CREDITS_BUY, FREE_TRIAL_CREDITS, PAID_INCLUDES, TRIAL_VIDEO_PUBLIC, planDetails } from "@/lib/plans";
 import SubscriptionPlans from "./SubscriptionPlans";
 import { CREATIVE_COSTS } from "@/lib/skit/pricing";
 import {
@@ -20,6 +20,7 @@ import {
   VOICE_CREDITS_PER_MIN,
   scriptCredits,
 } from "@/lib/pipeline/steps";
+import { JOB_COSTS } from "@/lib/plans";
 import {
   ArrowRight,
   Drama,
@@ -30,17 +31,9 @@ import {
   Crown,
   Minus,
   ChevronDown,
-  Clapperboard,
-  FileText,
   Globe,
-  Image as ImageIcon,
-  Layers,
-  Lightbulb,
   Menu,
   PlayCircle,
-  MessageSquare,
-  Search,
-  Wand2,
   X,
   Zap,
 } from "lucide-react";
@@ -128,26 +121,6 @@ function SectionTitle({
 
 /* ---------- Data ---------- */
 
-const WORKFLOW_STEPS = [
-  { icon: Lightbulb, label: "Idea" },
-  { icon: FileText, label: "Script" },
-  { icon: Layers, label: "Scene Plan" },
-  { icon: Clapperboard, label: "Video Prompts" },
-  { icon: ImageIcon, label: "Thumbnail" },
-  { icon: Search, label: "SEO" },
-];
-
-const FORMATS = [
-  "YouTube Shorts",
-  "YouTube Long Form",
-  "TikTok",
-  "Instagram Reels",
-  "Podcast",
-  "Blog Post",
-  "X / Twitter Thread",
-  "LinkedIn",
-];
-
 const LANGUAGES = LANGUAGE_OPTIONS.map((l) => l.label);
 
 // What a pack buys, from the single source of credit prices (steps.ts).
@@ -161,20 +134,44 @@ const PRICING = planDetails().map(({ pack, tagline, buys, featured }) => ({
 
 const FAQS = [
   {
-    q: "Do I need my own API keys?",
-    a: "No. Norveko runs on its own AI infrastructure. You sign up, get free credits and start generating immediately — no API keys, no setup.",
+    q: "Does Norveko make the actual video file?",
+    a: "Yes. Type the idea and you get a finished MP4 — researched script, narration, AI visuals or stock footage, music, word-timed subtitles and a thumbnail — as a 30 or 60-second Short or a 3 or 10-minute long-form video. You can also turn a joke into an animated skit, make a character say your line, or swap a character into a clip. If you only want the script, voiceover and thumbnail, turn the video off and pay less.",
   },
   {
-    q: "Which AI models does Norveko use?",
-    a: "Norveko is powered by state-of-the-art large language models, tuned with production-grade prompts for content creation. You get the output — we handle the model layer.",
-  },
-  {
-    q: "Does Norveko generate the video files?",
-    a: "Every generation gives you the script, scene plan, cinematic video prompts, a generated thumbnail image and full SEO metadata. Add AI voiceover and word-timed subtitles (.srt/.vtt) with one toggle. Full MP4 rendering — AI visuals, voice and subtitles cut to a Short or a long-form video of up to 10 minutes — is rolling out in beta.",
+    q: "What do my free credits get me?",
+    a: `${FREE_TRIAL_CREDITS} free credits on signup, no card needed: ${FREE_CREDITS_BUY}.${TRIAL_VIDEO_PUBLIC ? " Your first 30-second video is free on top of that." : ""} Free-trial thumbnails and videos carry a small Norveko watermark; any plan or pack removes it — also from what you already made.`,
   },
   {
     q: "How does the credit system work?",
-    a: `You get 50 free credits on signup. A 60-second content package with thumbnail costs ${scriptCredits("60 seconds") + THUMBNAIL_CREDITS} credits; web research adds ${RESEARCH_CREDITS}, a Norveko narrator ${VOICE_CREDITS_PER_MIN.gemini} per minute (ElevenLabs voices ${VOICE_CREDITS_PER_MIN.elevenlabs} per minute) and subtitles ${SUBTITLES_CREDITS_PER_MIN} per minute. The exact total is shown before you click Generate. Pack credits never expire (plan credits refresh each period), and if a step fails, the unfinished steps are refunded automatically while everything already produced is kept in your project.`,
+    a: `Everything is priced in credits and the exact total is shown before you click Generate. A 60-second content package with research, narration and subtitles is ${JOB_COSTS.package60} credits; a finished 60-second video is about ${JOB_COSTS.video60} (${JOB_COSTS.video30} for 30 seconds); web research adds ${RESEARCH_CREDITS}, a thumbnail ${THUMBNAIL_CREDITS}, a Norveko narrator ${VOICE_CREDITS_PER_MIN.gemini} per minute (native voice artists ${VOICE_CREDITS_PER_MIN.elevenlabs}), subtitles ${SUBTITLES_CREDITS_PER_MIN} per minute and a 60-second script ${scriptCredits("60 seconds")}. Pack credits never expire; plan credits refresh every period.`,
+  },
+  {
+    q: "What if something fails?",
+    a: "You only pay for what was delivered. If a step fails, the credits for everything that didn't finish come back automatically, and the parts that did finish (script, voiceover, thumbnail) are kept in your project. A failed final render can be retried for free.",
+  },
+  {
+    q: "How long does a video take?",
+    a: "A 30 or 60-second video is usually ready in 5–10 minutes; long-form videos take longer. You can close the tab — the progress is saved and the video waits in Projects.",
+  },
+  {
+    q: "Can I use the videos commercially?",
+    a: "Yes. Everything you generate on a paid plan or pack is yours to publish and monetise on YouTube, TikTok, Instagram or anywhere else. Background music is licensed; its credit line is added to the description for you.",
+  },
+  {
+    q: "Can I review or edit before publishing?",
+    a: "Yes. Turn on \"Review the script first\" and nothing is filmed until you approve the script and scenes. After rendering, the timeline editor lets you swap a scene's picture or clip, re-time cuts, fix subtitle lines and re-render.",
+  },
+  {
+    q: "Which languages and voices?",
+    a: `Scripts and narration in ${LANGUAGE_OPTIONS.length} languages. Norveko narrators speak all of them; native voice artists are available per language, and you can clone your own voice on any paid plan.`,
+  },
+  {
+    q: "Which AI models does Norveko use?",
+    a: "The best model for each step, swapped as better ones appear: OpenAI and Google models for research and writing, Google and ElevenLabs voices, Google image models for scenes and thumbnails, Kling and Seedance for motion, and a cloud render farm for the final cut. You never need your own API keys.",
+  },
+  {
+    q: "Can I get a refund?",
+    a: "Unused credit packs can be refunded within 14 days of purchase; subscriptions can be cancelled anytime and stop at the end of the period. Failed generations are refunded automatically. See the refund policy for the details.",
   },
 ];
 
@@ -197,7 +194,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           <nav className="hidden items-center gap-8 text-sm text-gray-400 md:flex">
             <a href="#examples" className="transition hover:text-white">Examples</a>
             <a href="#pricing" className="transition hover:text-white">Pricing</a>
-            <a href="#workflow" className="transition hover:text-white">Workflow</a>
+            <a href="#workflow" className="transition hover:text-white">How it works</a>
             <a href="#templates" className="transition hover:text-white">Templates</a>
             <a href="#faq" className="transition hover:text-white">FAQ</a>
           </nav>
@@ -250,7 +247,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
               {[
                 ["#examples", "Examples"],
                 ["#pricing", "Pricing"],
-                ["#workflow", "Workflow"],
+                ["#workflow", "How it works"],
                 ["#templates", "Templates"],
                 ["#faq", "FAQ"],
               ].map(([href, label]) => (
@@ -326,7 +323,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
               </div>
 
               <p className="mt-3 text-xs text-gray-500">
-                No credit card required · {FREE_TRIAL_CREDITS} free credits{TRIAL_VIDEO_PUBLIC ? " + a free video" : ""} on signup
+                No credit card required · {FREE_TRIAL_CREDITS} free credits{TRIAL_VIDEO_PUBLIC ? " + a free video" : ""} on signup (≈ {FREE_CREDITS_BUY.split(" — ")[0]})
               </p>
             </div>
           </Reveal>
@@ -389,7 +386,9 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
         <Reveal delay={200}>
           <p className="mt-5 flex items-center justify-center gap-2 text-center text-xs text-gray-500">
             <PlayCircle size={14} className="text-blue-300" />
-            Full video rendering is rolling out in beta. Every account already gets the script, scene plan, thumbnail, voiceover and subtitles.
+            {TRIAL_VIDEO_PUBLIC
+              ? `Your first 30-second video is on us — no credits needed. Then ${FREE_TRIAL_CREDITS} free credits for ${FREE_CREDITS_BUY}.`
+              : `Every account starts with ${FREE_TRIAL_CREDITS} free credits — ${FREE_CREDITS_BUY}. Finished-video rendering is being switched on account by account.`}
           </p>
         </Reveal>
       </section>
@@ -445,7 +444,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           <SectionTitle
             eyebrow="Pricing"
             title="Start free. Scale when you're ready."
-            subtitle={`Every account starts with ${FREE_TRIAL_CREDITS} free credits${TRIAL_VIDEO_PUBLIC ? " and one free 30-second video" : ""}. Pick a weekly, monthly or yearly plan — or pay as you go with packs that never expire.`}
+            subtitle={`Every account starts with ${FREE_TRIAL_CREDITS} free credits (≈ ${FREE_CREDITS_BUY})${TRIAL_VIDEO_PUBLIC ? " plus one free 30-second video" : ""}. Then pick a weekly, monthly or yearly plan — or pay as you go with packs that never expire.`}
           />
         </Reveal>
 
@@ -583,94 +582,6 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
       </section>
 
       {/* 3. PROBLEM */}
-      <section className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6">
-        <Reveal>
-          <SectionTitle
-            eyebrow="The Problem"
-            title="Creating content shouldn't require 10 subscriptions."
-            subtitle="A script tool here, a prompt tool there, an SEO tool somewhere else. Your ideas die in the tab chaos."
-          />
-        </Reveal>
-
-        <div className="mt-8 grid items-center gap-6 lg:grid-cols-[1fr_auto_1fr]">
-          <Reveal>
-            <GlassCard className="p-5">
-              <p className="text-sm font-semibold text-gray-400">The scattered way</p>
-              <ul className="mt-3 space-y-2 text-sm text-gray-500">
-                {[
-                  "One tool for scripts",
-                  "Another for video prompts",
-                  "Another for thumbnail ideas",
-                  "Another for titles & SEO",
-                  "Copy-paste between 5+ tabs",
-                ].map((item) => (
-                  <li key={item} className="flex items-center gap-3">
-                    <span className="h-1.5 w-1.5 rounded-full bg-red-400/60" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </GlassCard>
-          </Reveal>
-
-          <Reveal delay={100}>
-            <div className="flex justify-center">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-r from-blue-500 to-purple-600">
-                <ArrowRight size={20} className="rotate-90 lg:rotate-0" />
-              </div>
-            </div>
-          </Reveal>
-
-          <Reveal delay={200}>
-            <GlassCard className="border-blue-400/30 p-5">
-              <p className="text-sm font-semibold text-blue-200">The Norveko way</p>
-              <ul className="mt-3 space-y-2 text-sm text-gray-300">
-                {[
-                  "One idea in",
-                  "Script, scenes, prompts out",
-                  "Thumbnail concept included",
-                  "SEO title, description & tags",
-                  "One workspace. One flow.",
-                ].map((item) => (
-                  <li key={item} className="flex items-center gap-3">
-                    <Check size={15} className="shrink-0 text-green-400" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </GlassCard>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* 4. WORKFLOW */}
-      <section id="workflow" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6">
-        <Reveal>
-          <SectionTitle
-            eyebrow="Workflow"
-            title="From idea to publish-ready. In one flow."
-          />
-        </Reveal>
-
-        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {WORKFLOW_STEPS.map((step, i) => {
-            const Icon = step.icon;
-            return (
-              <Reveal key={step.label} delay={i * 60}>
-                <GlassCard className="group h-full p-4 text-center">
-                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-600/20 text-blue-300 transition group-hover:scale-110">
-                    <Icon size={18} />
-                  </div>
-                  <p className="mt-2 text-[10px] font-bold text-gray-500">0{i + 1}</p>
-                  <h3 className="mt-0.5 text-sm font-bold">{step.label}</h3>
-                </GlassCard>
-              </Reveal>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* 4b. NICHE TEMPLATES */}
       <section id="templates" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6">
         <Reveal>
           <SectionTitle
@@ -703,82 +614,19 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
         </div>
       </section>
 
-      {/* 5. AI WORKSPACE */}
-      <section id="workspace" className="relative scroll-mt-20 overflow-hidden py-12">
-        <div className="pointer-events-none absolute left-1/2 top-1/2 h-[400px] w-[min(700px,120vw)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-purple-600/10 blur-3xl" />
-
-        <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-4 sm:px-6 lg:grid-cols-2">
-          <Reveal>
-            <div>
-              <SectionTitle eyebrow="AI Workspace" title="Your creator command center." />
-              <ul className="mx-auto mt-6 max-w-md space-y-3">
-                {[
-                  [MessageSquare, "AI Chat", "Generate full content packages conversationally."],
-                  [Wand2, "29 languages", "English, Español, Deutsch, Français, Português, 日本語, العربية and more."],
-                  [Layers, "Projects", "Every generation saved, editable and organized."],
-                  [Globe, "Cinematic video prompts", "Ready to paste into any AI video tool."],
-                ].map(([Icon, title, desc]) => {
-                  const IconComp = Icon as React.ElementType;
-                  return (
-                    <li key={title as string} className="flex gap-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-blue-300">
-                        <IconComp size={18} />
-                      </div>
-                      <div>
-                        <p className="font-semibold">{title as string}</p>
-                        <p className="text-sm text-gray-400">{desc as string}</p>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          </Reveal>
-
-          <Reveal delay={100}>
-            <GlassCard className="p-5">
-              <div className="mb-3 flex items-center justify-between">
-                <span className="text-sm font-semibold">AI Workspace</span>
-                <span className="rounded-full border border-green-400/30 bg-green-500/10 px-3 py-1 text-xs text-green-300">
-                  Live
-                </span>
-              </div>
-              <div className="space-y-2">
-                {[
-                  ["Script", "Full voice-over, hook-first structure"],
-                  ["Scene Plan", "6 scenes · shot descriptions"],
-                  ["Video Prompts", "Cinematic English prompts per scene"],
-                  ["Titles", "5 click-optimized options"],
-                  ["Tags & Description", "SEO-ready metadata"],
-                ].map(([t, d]) => (
-                  <div
-                    key={t}
-                    className="flex items-center justify-between rounded-xl border border-white/10 bg-[#0d0d16] p-3"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold">{t}</p>
-                      <p className="text-xs text-gray-500">{d}</p>
-                    </div>
-                    <Check size={16} className="text-green-400" />
-                  </div>
-                ))}
-              </div>
-            </GlassCard>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* 6. HOW IT WORKS */}
-      <section className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6">
+      {/* 6. HOW IT WORKS (5 Nov 2026: one story — idea → video → publish; the old
+          "content package" sections (problem / 6-step workflow / workspace / formats) were
+          cut: the page told two different products) */}
+      <section id="workflow" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6">
         <Reveal>
-          <SectionTitle eyebrow="How it works" title="Three steps. That's it." />
+          <SectionTitle eyebrow="How it works" title="Three steps. That's it." subtitle="No editor, no prompt-juggling, no stock-clip hunting." />
         </Reveal>
 
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {[
-            ["1", "Describe your idea", "One sentence is enough. Pick platform, style and duration."],
-            ["2", "Norveko creates everything", "Script, scene plan, video prompts, thumbnail concept, SEO."],
-            ["3", "Copy & publish", "Take your package to your editor and AI video tools."],
+            ["1", "Describe your idea", "One sentence, a link to an article, or a joke with its lines. Pick the platform, length and language — or start from a template."],
+            ["2", "Norveko makes the video", "It researches the topic, writes and fact-checks the script, records the narration, makes the visuals, adds music, subtitles and a thumbnail, then renders the MP4. Want a say? Review the script before anything is filmed."],
+            ["3", "Publish", "Download the MP4 or post it to YouTube, TikTok or Instagram from the project page. Translate it into another language or cut Shorts from a long video with one click."],
           ].map(([num, title, desc], i) => (
             <Reveal key={num} delay={i * 100}>
               <div className="relative">
@@ -790,23 +638,6 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                   <p className="mt-1.5 text-sm text-gray-400">{desc}</p>
                 </GlassCard>
               </div>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* 7. FORMATS */}
-      <section className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6">
-        <Reveal>
-          <SectionTitle eyebrow="Formats" title="Every format. Every platform." />
-        </Reveal>
-
-        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {FORMATS.map((f, i) => (
-            <Reveal key={f} delay={i * 40}>
-              <GlassCard className="p-3.5 text-center">
-                <p className="text-sm font-semibold">{f}</p>
-              </GlassCard>
             </Reveal>
           ))}
         </div>
@@ -871,10 +702,10 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
         <Reveal>
           <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
             <h2 className="text-3xl font-black sm:text-4xl lg:text-5xl">
-              Ready to replace all your AI tools?
+              Ready to make your first video?
             </h2>
             <p className="mt-3 text-lg text-gray-400">
-              One idea in. A complete content package out.
+              One idea in. A finished video out — on your channel today.
             </p>
             <Link
               href="/signup"
@@ -897,7 +728,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           </Link>
           <nav className="flex flex-wrap justify-center gap-6 gap-y-2 text-sm text-gray-500">
             <a href="#examples" className="transition hover:text-gray-300">Examples</a>
-            <a href="#workflow" className="transition hover:text-gray-300">Workflow</a>
+            <a href="#workflow" className="transition hover:text-gray-300">How it works</a>
             <a href="#pricing" className="transition hover:text-gray-300">Pricing</a>
             <a href="#faq" className="transition hover:text-gray-300">FAQ</a>
             <Link href="/terms" className="transition hover:text-gray-300">Terms</Link>

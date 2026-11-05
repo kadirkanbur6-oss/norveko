@@ -83,8 +83,17 @@ export const PAID_INCLUDES = [
  */
 export const TRIAL_VIDEO_PUBLIC = process.env.NEXT_PUBLIC_FULL_VIDEO_ENABLED === "true";
 
+/** What the sign-up credits buy, in words ("two researched scripts with thumbnails"). */
+export const FREE_CREDITS_BUY = (() => {
+  const packs = Math.floor(FREE_TRIAL_CREDITS / JOB_COSTS.packageText);
+  const narrated = Math.floor(FREE_TRIAL_CREDITS / JOB_COSTS.package60);
+  const words = ["zero", "one", "two", "three", "four", "five"];
+  const w = (n: number) => words[n] ?? String(n);
+  return `${w(packs)} researched script${packs === 1 ? "" : "s"} with scene plan, SEO and thumbnail — or ${w(narrated)} with narration and subtitles`;
+})();
+
 export const FREE_TRIAL_RULES = [
-  `${FREE_TRIAL_CREDITS} free credits on signup — no card needed`,
+  `${FREE_TRIAL_CREDITS} free credits on signup — no card needed (≈ ${FREE_CREDITS_BUY})`,
   ...(TRIAL_VIDEO_PUBLIC ? ["One finished 30-second video, free — once per account"] : []),
   "Every feature unlocked so you can judge the quality",
   "One free trial per person — temporary emails aren't eligible",
