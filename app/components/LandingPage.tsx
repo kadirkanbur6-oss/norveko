@@ -377,7 +377,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           <SectionTitle
             eyebrow="Made with Norveko"
             title="One sentence in. A finished video out."
-            subtitle="Real renders straight from Norveko: a narrated story, a live-action skit, an animated skit and a talking character. No manual editing. Press play."
+            subtitle="Real renders straight from Norveko: a narrated story, an animated skit and a talking character. No manual editing. Press play."
           />
         </Reveal>
         <Reveal delay={100} className="mt-8">

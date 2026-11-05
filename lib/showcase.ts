@@ -43,19 +43,6 @@ export const SHOWCASE_VIDEOS: ShowcaseVideo[] = [
     made: "Researched script · AI narrator · visuals · music · subtitles",
   },
   {
-    // Realistic street interview (the viral man-on-the-street format), 5 Nov 2026.
-    id: "b24376f6-0388-4138-86bd-42853f4bcb0b",
-    mode: "Skit",
-    title: "The Secret to a Happy Marriage",
-    idea: "Reporter: Sir, what's the secret to a happy marriage? Old man: Two words. \"You're right.\" Reporter: And what if she's wrong? Old man: Then I'm suddenly deaf.",
-    language: "English",
-    seconds: 21,
-    orientation: "vertical",
-    videoPath: `${OWNER}/skit/b24376f6-0388-4138-86bd-42853f4bcb0b/final-v1.mp4`,
-    poster: { bucket: "videos", path: `${OWNER}/skit-b24376f6-0388-4138-86bd-42853f4bcb0b/still-3.jpg` },
-    made: "Realistic cast · character voices · lip-sync · cinematic shots",
-  },
-  {
     // First skit whose speaking shots say their lines themselves (Veo 3.1 Fast), 5 Nov 2026 — Kadir: "iyi bu".
     id: "41afe86b-079f-4127-ae59-ec40b8f61f54",
     mode: "Skit",
