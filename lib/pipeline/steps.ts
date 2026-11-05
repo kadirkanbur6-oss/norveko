@@ -204,10 +204,13 @@ export function footageModesFor(duration: string | undefined): FootageMode[] {
 }
 
 /**
- * Stock footage slot (Pixabay/Pexels, free licence): search + copy into our
- * bucket. If nothing fits, the slot gets an AI still at our cost.
+ * Stock footage slot (Pixabay/Pexels, free licence): search + a vision fit check
+ * (≈ $0.004 at Gemini 3.8 Flash's 2027 price). If nothing fits, the slot gets an AI
+ * still ($0.04) at our cost, so the price covers one fallback in five (6 Nov 2026;
+ * was 1 credit, which a long video with many fallbacks sold at a loss).
  */
-export const STOCK_SLOT_CREDITS = 1;
+export const STOCK_FALLBACK_SHARE = 0.2;
+export const STOCK_SLOT_CREDITS = creditsForCost(0.004 + STOCK_FALLBACK_SHARE * 0.04); // 2
 
 export interface FullVideoPlan {
   seconds: number;

@@ -189,7 +189,7 @@ export async function POST(req: NextRequest) {
         const { data: job } = await db.from("pipeline_jobs").select("user_id").eq("id", id).maybeSingle();
         if (!job) return bad("Job not found.", 404);
         const { retryFailedRender } = await import("@/lib/pipeline/rerender");
-        await retryFailedRender(db, id, String(job.user_id));
+        await retryFailedRender(db, id, String(job.user_id), { charge: false });
         const logError = await log(db, { admin_id: admin.id, action, target_user_id: String(job.user_id), target_id: id, note });
         return NextResponse.json({ success: true, logError });
       }

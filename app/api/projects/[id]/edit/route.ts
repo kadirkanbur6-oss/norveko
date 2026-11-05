@@ -10,7 +10,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireUser } from "@/lib/supabase-server";
 import { STILL_SCENE_CREDITS } from "@/lib/pipeline/steps";
-import { FREE_RERENDERS, MAX_RENDER_RETRIES, MAX_RERENDERS, queueRerender, rerenderCredits, retryFailedRender, type RenderVersion } from "@/lib/pipeline/rerender";
+import { MAX_RENDER_RETRIES, MAX_RERENDERS, freeRerendersFor, queueRerender, rerenderCredits, retryFailedRender, retryRenderCredits, type RenderVersion } from "@/lib/pipeline/rerender";
 import { DEFAULT_CAPTION_STYLE } from "@/lib/pipeline/visual-styles";
 import type { TimelineSlot } from "@/lib/pipeline/timeline";
 import type { CaptionCue } from "@/lib/pipeline/captions";
@@ -123,14 +123,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const job = await jobForProject(user.id, id);
   const slots = (job?.steps?.video?.slots as TimelineSlot[] | undefined) ?? [];
   if (!job || typeof job.steps?.render?.video_url !== "string" || !slots.length) {
-    // A video whose final render failed (visuals done) can be retried for free.
+    // A video whose final render failed (visuals done) can be retried (it costs the refunded render price).
     const retryRender =
       Boolean(job) &&
       job!.status === "failed" &&
       job!.steps?.render?.status === "failed" &&
       job!.steps?.video?.status === "completed" &&
       (Number(job!.steps?.render?.retries) || 0) < MAX_RENDER_RETRIES;
-    return NextResponse.json({ success: true, editable: false, retryRender, renderStatus: job?.steps?.render?.status ?? null, status: job?.status ?? null });
+    return NextResponse.json({ success: true, editable: false, retryRender, retryCredits: retryRender ? retryRenderCredits(job!.steps) : 0, renderStatus: job?.steps?.render?.status ?? null, status: job?.status ?? null });
   }
 
   const { MUSIC_TRACKS, pickMusicTrack } = await import("@/lib/pipeline/music");
@@ -156,7 +156,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     captionStyle: (job.options?.captionStyle as string | undefined) ?? DEFAULT_CAPTION_STYLE,
     stillCredits: STILL_SCENE_CREDITS,
     rerendersLeft: Math.max(0, MAX_RERENDERS - version),
-    freeRerendersLeft: Math.max(0, FREE_RERENDERS - version),
+    freeRerendersLeft: Math.max(0, freeRerendersFor(job.steps) - version),
     rerenderCredits: rerenderCredits(job.steps),
     pendingEdits: Boolean(job.steps.render.edits_pending),
     totalSeconds: Number(job.steps.video?.total_seconds) || slots.reduce((m, x) => Math.max(m, x.start + x.length), 0),
@@ -187,10 +187,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (body.action === "retryRender") {
     try {
-      await retryFailedRender(db, job.id, user.id);
-      return NextResponse.json({ success: true, jobId: job.id });
+      const { credits } = await retryFailedRender(db, job.id, user.id);
+      return NextResponse.json({ success: true, jobId: job.id, credits });
     } catch (err) {
-      return NextResponse.json({ success: false, error: err instanceof Error ? err.message : "Could not retry." }, { status: 400 });
+      const msg = err instanceof Error ? err.message : "Could not retry.";
+      return NextResponse.json({ success: false, error: msg, ...(msg.startsWith("Not enough credits") ? { code: "insufficient_credits" } : {}) }, { status: msg.startsWith("Not enough credits") ? 402 : 400 });
     }
   }
 

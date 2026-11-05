@@ -187,6 +187,23 @@ export async function addLibraryVoice(
 }
 
 /**
+ * Free one custom-voice slot by removing a Voice Library voice the account added
+ * (never a premade voice, never a protected one such as a creator's clone).
+ * Returns false when nothing could be removed (every slot holds a clone).
+ */
+export async function freeLibrarySlot(protectedIds: ReadonlySet<string>): Promise<boolean> {
+  const existing = await listVoices();
+  const removable = existing.filter((v) => v.category !== "premade" && v.category !== "cloned" && !protectedIds.has(v.voice_id));
+  if (!removable.length) return false;
+  const res = await fetch(`${ELEVENLABS_BASE_URL}/v1/voices/${encodeURIComponent(removable[0].voice_id)}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+    signal: AbortSignal.timeout(20_000),
+  }).catch(() => null);
+  return Boolean(res?.ok);
+}
+
+/**
  * Instant voice clone from the creator's own samples (POST /v1/voices/add).
  * Uses one of the plan's custom-voice slots. Returns the new voice id.
  */

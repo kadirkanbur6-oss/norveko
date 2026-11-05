@@ -57,7 +57,7 @@ export const PRICE_LIST: Record<string, Price> = {
   "gemini:gemini-2.5-pro": { inputPer1M: 1.25, outputPer1M: 10.0 },
   "gemini:gemini-2.5-flash": { inputPer1M: 0.3, outputPer1M: 2.5 },
   "gemini:gemini-3-pro-preview": { inputPer1M: 2.0, outputPer1M: 12.0 },
-  // Gemini 3.8 Flash: promo rate until 31 Dec 2026, doubles to $1.50/$7.50 from 2027.
+  // Gemini 3.8 Flash: promo rate until 31 Dec 2026, doubles to $1.50/$7.50 from 2027 (DATED_PRICES).
   "gemini:gemini-3.8-flash": { inputPer1M: 0.75, outputPer1M: 3.75 },
   // ElevenLabs — per character. API rate $0.08/1K on every plan (31 Oct 2026);
   // plan credits are prepaid, so use the Creator effective rate ≈ $0.18/1K.
@@ -85,10 +85,18 @@ export const PRICE_LIST: Record<string, Price> = {
   "shotstack:render": { perUnit: 0.0034 },
 };
 
-function priceFor(provider: UsageProvider, model: string): Price | null {
+/** Announced price changes: from `from` on, the entry replaces PRICE_LIST's. */
+export const DATED_PRICES: Array<{ key: string; from: string; price: Price }> = [
+  // Gemini 3.8 Flash promo ends 31 Dec 2026.
+  { key: "gemini:gemini-3.8-flash", from: "2027-01-01T00:00:00Z", price: { inputPer1M: 1.5, outputPer1M: 7.5 } },
+];
+
+export function priceFor(provider: UsageProvider, model: string, now: Date = new Date()): Price | null {
   const key = `${provider}:${model}`;
   const overrides = parseOverrides();
-  return overrides[key] ?? PRICE_LIST[key] ?? null;
+  if (overrides[key]) return overrides[key];
+  const dated = DATED_PRICES.filter((d) => d.key === key && now >= new Date(d.from)).sort((a, b) => b.from.localeCompare(a.from))[0];
+  return dated?.price ?? PRICE_LIST[key] ?? null;
 }
 
 let cachedOverrides: Record<string, Price> | null = null;
@@ -147,6 +155,9 @@ export async function recordProviderUsage(db: SupabaseClient, record: UsageRecor
   });
   if (error) {
     console.error(`[usage] insert failed for job ${record.jobId}/${record.step}:`, error.message);
+    // A silent failure here makes the admin cost figures wrong; surface it once per cause.
+    const { captureError } = await import("@/lib/observability");
+    await captureError(new Error(`provider_usage insert failed: ${error.message}`), { jobId: record.jobId, step: String(record.step), code: error.code });
     return false;
   }
   return true;

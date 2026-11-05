@@ -1,7 +1,8 @@
 "use client";
 
 // Shown on a project whose visuals were made but whose final render failed:
-// one click renders the video again (free) and the page updates when it's done.
+// one click renders the video again (for the render credits the failure refunded)
+// and the page updates when it's done.
 
 import { useEffect, useState } from "react";
 import { Loader2, RotateCcw } from "lucide-react";
@@ -9,6 +10,7 @@ import { Loader2, RotateCcw } from "lucide-react";
 export default function RetryRender({ projectId }: { projectId: string }) {
   const [state, setState] = useState<"hidden" | "ready" | "working" | "error">("hidden");
   const [message, setMessage] = useState("");
+  const [credits, setCredits] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -16,7 +18,10 @@ export default function RetryRender({ projectId }: { projectId: string }) {
       .then((r) => r.json())
       .then((d) => {
         if (cancelled) return;
-        if (d?.retryRender) setState("ready");
+        if (d?.retryRender) {
+          setCredits(Number(d.retryCredits) || 0);
+          setState("ready");
+        }
         else if (d?.status === "running" && d?.renderStatus && d.renderStatus !== "completed") setState("working");
       })
       .catch(() => {});
@@ -33,7 +38,7 @@ export default function RetryRender({ projectId }: { projectId: string }) {
         if (d?.editable) window.location.reload();
         else if (d?.retryRender) {
           setState("error");
-          setMessage("The render failed again. Please contact support.");
+          setMessage("The render failed again and its credits were refunded. Please contact support.");
         }
       } catch {
         // keep polling
@@ -68,7 +73,10 @@ export default function RetryRender({ projectId }: { projectId: string }) {
         <p className="mt-0.5 text-amber-100/70">
           {state === "working"
             ? "Long videos can take 20–40 minutes. You can leave this page."
-            : message || "Your script, voice and visuals are saved. Render the video again. It's free."}
+            : message ||
+              (credits > 0
+                ? `Your script, voice and visuals are saved, and the render's ${credits} credits were refunded. Rendering again uses them; if it fails, you get them back.`
+                : "Your script, voice and visuals are saved. Render the video again.")}
         </p>
       </div>
       {state !== "working" ? (
@@ -77,7 +85,7 @@ export default function RetryRender({ projectId }: { projectId: string }) {
           onClick={retry}
           className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-amber-400 px-4 py-2 text-sm font-semibold text-black transition hover:bg-amber-300"
         >
-          <RotateCcw size={15} aria-hidden /> Render again
+          <RotateCcw size={15} aria-hidden /> {credits > 0 ? `Render again · ${credits} credits` : "Render again"}
         </button>
       ) : (
         <Loader2 size={18} className="shrink-0 animate-spin text-amber-200" aria-hidden />

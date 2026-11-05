@@ -2,8 +2,8 @@
 // Queue a re-render of a finished full video (only the render step runs
 // again; script, voice and visuals are reused). Used by "Edit video" on the
 // project page and by the lab. The first FREE_RERENDERS are included with the
-// video; after that each one costs the render price (5 Nov 2026: free re-renders
-// were our biggest unpaid provider cost). Capped per job at MAX_RERENDERS.
+// video (one for videos over a minute); after that each one costs the render price
+// (5 Nov 2026: free re-renders were our biggest unpaid provider cost). Capped per job at MAX_RERENDERS.
 
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -11,15 +11,28 @@ import { isCaptionStyle } from "./visual-styles";
 import { RENDER_CREDITS_PER_30S } from "./steps";
 
 export const MAX_RERENDERS = 10;
-/** Re-renders included with every video; later ones are charged (rerenderCredits). */
+/** Re-renders included with a Short (≤ 60 s); later ones are charged (rerenderCredits). */
 export const FREE_RERENDERS = 3;
+/**
+ * Long videos (> 60 s) include one free re-render (6 Nov 2026): a 10-minute render
+ * costs us ≈ $2.04, so three free ones cost more than the whole video earns.
+ */
+export const FREE_RERENDERS_LONG = 1;
+
+function videoSeconds(steps: Record<string, Record<string, unknown>> | null | undefined): number {
+  return Number(steps?.video?.total_seconds) || Number(steps?.voiceover?.duration_seconds) || 30;
+}
+
+/** Free re-renders this video comes with. */
+export function freeRerendersFor(steps: Record<string, Record<string, unknown>> | null | undefined): number {
+  return videoSeconds(steps) > 65 ? FREE_RERENDERS_LONG : FREE_RERENDERS;
+}
 
 /** Credits the NEXT re-render of this job costs (0 while free ones are left). */
 export function rerenderCredits(steps: Record<string, Record<string, unknown>> | null | undefined): number {
   const version = Number(steps?.render?.version) || 0;
-  if (version < FREE_RERENDERS) return 0;
-  const seconds = Number(steps?.video?.total_seconds) || Number(steps?.voiceover?.duration_seconds) || 30;
-  return RENDER_CREDITS_PER_30S * Math.max(1, Math.ceil(seconds / 30));
+  if (version < freeRerendersFor(steps)) return 0;
+  return RENDER_CREDITS_PER_30S * Math.max(1, Math.ceil(videoSeconds(steps) / 30));
 }
 
 export interface RerenderChanges {
@@ -97,16 +110,31 @@ export async function queueRerender(
   return { version };
 }
 
-/** A failed render can be tried again for free (the failure was ours), a couple of times. */
+/** A failed render can be tried again a couple of times. */
 export const MAX_RENDER_RETRIES = 2;
 
 /**
- * Retry a job whose visuals were made but whose final render failed. Credits
- * for the render were refunded by failJob; the retry is free, and a second
- * failure refunds nothing more (failJob refunds once). On success the partial
- * project gets the video (finalizeJob → refreshProjectVideo).
+ * Credits a retry of a failed render costs: the render price the failure gave back
+ * (6 Nov 2026). The creator pays the render once in total, and a retry that fails
+ * again is refunded (rerender_credits → failJob). Free-trial videos stay free.
  */
-export async function retryFailedRender(db: SupabaseClient, jobId: string, userId: string): Promise<void> {
+export function retryRenderCredits(steps: Record<string, Record<string, unknown>> | null | undefined): number {
+  return Math.max(0, Number(steps?.render?.credits) || 0);
+}
+
+/**
+ * Retry a job whose visuals were made but whose final render failed. failJob
+ * refunded the render, so the retry charges that price again (retryRenderCredits;
+ * `charge: false` for support retries from the admin panel); if it fails again
+ * the charge is refunded. On success the partial project gets the video
+ * (finalizeJob → refreshProjectVideo).
+ */
+export async function retryFailedRender(
+  db: SupabaseClient,
+  jobId: string,
+  userId: string,
+  opts: { charge?: boolean } = {}
+): Promise<{ credits: number }> {
   const { data: job } = await db.from("pipeline_jobs").select("*").eq("id", jobId).maybeSingle();
   if (!job || job.user_id !== userId) throw new Error("Video not found.");
   const steps = (job.steps ?? {}) as Record<string, Record<string, unknown>>;
@@ -115,6 +143,15 @@ export async function retryFailedRender(db: SupabaseClient, jobId: string, userI
   }
   const retries = Number(steps.render.retries) || 0;
   if (retries >= MAX_RENDER_RETRIES) throw new Error("This render has already been retried. Please contact support.");
+  const credits = opts.charge === false ? 0 : retryRenderCredits(steps);
+  let payer = userId;
+  if (credits > 0) {
+    const { payerFor } = await import("@/lib/teams");
+    payer = await payerFor(db, userId);
+    const { data: ok, error: deductError } = await db.rpc("deduct_credits", { p_user_id: payer, p_amount: credits, p_reason: "Render the video again" });
+    if (deductError) throw new Error("Could not charge credits.");
+    if (!ok) throw new Error(`Not enough credits. Rendering again costs ${credits} credits.`);
+  }
   steps.render = {
     ...steps.render,
     status: "pending",
@@ -122,6 +159,8 @@ export async function retryFailedRender(db: SupabaseClient, jobId: string, userI
     provider_status: null,
     error: null,
     retries: retries + 1,
+    // Refunded by failJob if this try fails too.
+    rerender_credits: credits,
     queued_at: new Date().toISOString(),
   };
   const { error } = await db
@@ -129,7 +168,11 @@ export async function retryFailedRender(db: SupabaseClient, jobId: string, userI
     .update({ steps, status: "running", current_step: "render", error: null })
     .eq("id", jobId)
     .eq("status", "failed");
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (credits > 0) await db.rpc("add_credits", { p_user_id: payer, p_amount: credits, p_type: "refund", p_reason: "Refund: render retry could not start" });
+    throw new Error(error.message);
+  }
   const { kickJob } = await import("./runner");
   await kickJob(jobId);
+  return { credits };
 }

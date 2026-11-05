@@ -273,6 +273,19 @@ export async function POST(req: Request) {
         }
         return NextResponse.json({ success: true, removed: removed.length, mb, failed: found.length - removed.length });
       }
+      // Can provider_usage take a skit/talk/swap row? (6 Nov 2026: none showed up.) Inserts one
+      // test row for a non-pipeline job id, reports the database error if any, deletes it again.
+      case "usage-probe": {
+        const db = admin();
+        const jobId = crypto.randomUUID();
+        const { error } = await db.from("provider_usage").insert({
+          job_id: jobId, user_id: user.id, step: "talk", provider: "fal", model: "probe", unit: "seconds",
+          quantity: 1, estimated_cost_usd: 0, duration_ms: 0, status: "ok",
+        });
+        if (!error) await db.from("provider_usage").delete().eq("job_id", jobId);
+        const { count } = await db.from("provider_usage").select("id", { count: "exact", head: true }).in("step", ["skit", "talk", "swap"]);
+        return NextResponse.json({ success: true, insertError: error ? { code: error.code, message: error.message } : null, creativeRows: count ?? 0 });
+      }
       // Where Supabase Storage space goes (5 Nov 2026: free plan 1 GB full). Read-only.
       case "storage-report": {
         const db = admin();

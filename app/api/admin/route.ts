@@ -305,6 +305,19 @@ export async function GET(req: NextRequest) {
   }
   const weekAgo = new Date(now - 7 * 86400_000).toISOString();
 
+  // Stock slots that found nothing and became AI stills at our cost (priced for ≤ 20 %,
+  // STOCK_FALLBACK_SHARE in steps.ts): the share over the window's finished videos.
+  let stockSlots = 0;
+  let stockFallbacks = 0;
+  for (const j of jobs) {
+    if (str(j.created_at) < since) continue;
+    const slots = ((j.steps as Record<string, Record<string, unknown>> | null)?.video?.slots ?? []) as Array<Record<string, unknown>>;
+    for (const sl of slots) {
+      if (sl.stockFallback) stockFallbacks++;
+      if (sl.kind === "stock" || sl.kind === "archive" || sl.stockFallback) stockSlots++;
+    }
+  }
+
   return NextResponse.json({
     success: true,
     days,
@@ -325,6 +338,7 @@ export async function GET(req: NextRequest) {
       jobs: { running: counts.running ?? 0, completed: counts.completed ?? 0, failed: counts.failed ?? 0 },
       failedWindow: generations.filter((g) => g.status === "failed" && g.createdAt >= since).length,
       fal,
+      stock: { slots: stockSlots, fallbacks: stockFallbacks, share: stockSlots ? stockFallbacks / stockSlots : 0 },
       generationOpen: process.env.GENERATION_ENABLED !== "false",
       fullVideoOpen: process.env.FULL_VIDEO_ENABLED === "true",
     },

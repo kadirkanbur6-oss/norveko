@@ -61,17 +61,35 @@ export async function POST(req: Request) {
   }
 
   const name = cleanVoiceName(form.get("name"));
-  const { cloneVoice, deleteVoice } = await import("@/lib/pipeline/elevenlabs");
-  let voiceId: string;
-  try {
-    voiceId = await cloneVoice({
+  const { cloneVoice, deleteVoice, freeLibrarySlot } = await import("@/lib/pipeline/elevenlabs");
+  const clone = () =>
+    cloneVoice({
       name: `Norveko · ${name} · ${user.id.slice(0, 8)}`,
       description: "Creator's own voice (Norveko instant clone).",
       files: files.map((f, i) => ({ data: f, filename: f.name || `sample-${i + 1}.webm` })),
     });
+  let voiceId: string;
+  try {
+    try {
+      voiceId = await clone();
+    } catch (err) {
+      // Slots full (ElevenLabs Starter has 10): make room by removing a library voice
+      // the account added for a narration (clones are never removed), then try once more.
+      if ((err as { code?: string }).code !== "slots_full") throw err;
+      const { cloneOwners } = await import("@/lib/voice/clones");
+      const owners = await cloneOwners(db).catch(() => new Map<string, string>());
+      const freed = await freeLibrarySlot(new Set(owners.keys()));
+      if (!freed) throw err;
+      voiceId = await clone();
+    }
   } catch (err) {
     console.error("[voice-clone] clone failed:", err);
     const code = (err as { code?: string }).code;
+    if (code === "slots_full") {
+      // Every slot holds a creator's clone: the ElevenLabs plan needs more voice slots.
+      const { captureError } = await import("@/lib/observability");
+      await captureError(new Error("ElevenLabs voice slots full: upgrade the plan for more voice clones"), { route: "voices/clone" });
+    }
     const error =
       code === "slots_full"
         ? "We can't create new voices right now. Please try again later."

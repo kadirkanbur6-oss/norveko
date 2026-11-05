@@ -648,3 +648,22 @@ test("skits: long lines split into clip-sized shots of the same speaker, every w
   assert.equal(capped.length, 2);
   assert.equal(capped.map((p) => p.line).join(" "), long);
 });
+
+test("cost fixes (6 Nov 2026): long videos get one free re-render, retries re-charge the refunded render, dated prices", async () => {
+  const { freeRerendersFor, rerenderCredits, retryRenderCredits } = await import("./rerender");
+  const { priceFor } = await import("./usage");
+  const { STOCK_SLOT_CREDITS, RENDER_CREDITS_PER_30S } = await import("./steps");
+  const short = { video: { total_seconds: 60 }, render: { version: 2 } };
+  const long = { video: { total_seconds: 600 }, render: { version: 1 } };
+  assert.equal(freeRerendersFor(short), 3);
+  assert.equal(rerenderCredits(short), 0, "third re-render of a Short is still free");
+  assert.equal(freeRerendersFor(long), 1);
+  assert.equal(rerenderCredits(long), RENDER_CREDITS_PER_30S * 20, "second re-render of a 10-minute video is charged");
+  assert.equal(retryRenderCredits({ render: { credits: 320 } }), 320);
+  assert.equal(retryRenderCredits({ render: {} }), 0, "free-trial renders stay free");
+  assert.equal(STOCK_SLOT_CREDITS, 2);
+  const now = priceFor("gemini", "gemini-3.8-flash", new Date("2026-12-31T12:00:00Z")) as { inputPer1M: number };
+  const later = priceFor("gemini", "gemini-3.8-flash", new Date("2027-01-02T00:00:00Z")) as { inputPer1M: number };
+  assert.equal(now.inputPer1M, 0.75);
+  assert.equal(later.inputPer1M, 1.5);
+});

@@ -29,6 +29,7 @@ interface Overview {
   generationOpen: boolean;
   fullVideoOpen: boolean;
   fal: { balanceUsd: number; topupUsd: number; low: boolean } | null;
+  stock?: { slots: number; fallbacks: number; share: number };
 }
 interface Daily {
   day: string;
@@ -308,6 +309,13 @@ export default function AdminPage() {
                 <Stat label="Failed (all time)" value={int(o.jobs.failed)} note={`${int(o.failedWindow)} in the ${windowLabel}`} />
                 <Stat label="Unspent credits" value={int(o.creditsOutstanding)} note="Across every account" />
                 {o.fal && <Stat label="fal.ai balance" value={usd(o.fal.balanceUsd)} note={o.fal.low ? "Low, add credits" : `Warns at ${usd(o.fal.topupUsd * 0.2)}`} />}
+                {o.stock && o.stock.slots > 0 && (
+                  <Stat
+                    label="Stock fallbacks"
+                    value={`${Math.round(o.stock.share * 100)}%`}
+                    note={o.stock.share > 0.2 ? `Over the 20% the price covers (${o.stock.fallbacks} of ${o.stock.slots})` : `${o.stock.fallbacks} of ${o.stock.slots} stock slots became AI stills`}
+                  />
+                )}
               </div>
               <div className="grid gap-3 lg:grid-cols-3">
                 <Bars title="Sign-ups per day" total={int(o.newUsers)} data={data.daily} value={(d) => d.signups} format={int} />

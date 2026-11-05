@@ -656,12 +656,9 @@ export function createPipelineRunner(deps: RunnerDeps) {
         try {
           const buffer = await providers.downloadVideo(result.videoUrl);
           const storagePath = `${job.user_id}/${job.id}/scene-${clip.sceneNumber}.mp4`;
-          const { error: uploadError } = await db.storage
-            .from("videos")
-            .upload(storagePath, buffer, { contentType: "video/mp4", upsert: true });
-          if (uploadError) throw new Error(uploadError.message);
-          const { data: urlData } = db.storage.from("videos").getPublicUrl(storagePath);
-          clip.video_url = urlData.publicUrl;
+          // R2 when configured (6 Nov 2026: clips filled Supabase's free 1 GB).
+          const { storeMedia } = await import("@/lib/storage/media");
+          clip.video_url = await storeMedia(db, storagePath, buffer, "video/mp4");
           clip.storage_path = storagePath;
           clip.duration = result.durationSeconds;
           clip.status = "succeed";
@@ -961,12 +958,8 @@ export function createPipelineRunner(deps: RunnerDeps) {
         try {
           const buffer = await providers.downloadVideo(result.videoUrl);
           const storagePath = `${job.user_id}/${job.id}/slot-${slot.index}.mp4`;
-          const { error: uploadError } = await db.storage
-            .from("videos")
-            .upload(storagePath, buffer, { contentType: "video/mp4", upsert: true });
-          if (uploadError) throw new Error(uploadError.message);
-          const { data: urlData } = db.storage.from("videos").getPublicUrl(storagePath);
-          slot.url = urlData.publicUrl;
+          const { storeMedia } = await import("@/lib/storage/media");
+          slot.url = await storeMedia(db, storagePath, buffer, "video/mp4");
           slot.storage_path = storagePath;
           slot.sourceSeconds = result.durationSeconds ?? VIDEO_CLIP_SECONDS;
           slot.status = "succeed";
@@ -1061,9 +1054,8 @@ export function createPipelineRunner(deps: RunnerDeps) {
           else if (r.status === "succeed" && r.videoUrl) {
             const buffer = await providers.downloadVideo(r.videoUrl);
             const storagePath = `${job.user_id}/${job.id}/slot-${slot.index}.mp4`;
-            const { error: uploadError } = await db.storage.from("videos").upload(storagePath, buffer, { contentType: "video/mp4", upsert: true });
-            if (uploadError) throw new Error(uploadError.message);
-            slot.url = db.storage.from("videos").getPublicUrl(storagePath).data.publicUrl;
+            const { storeMedia } = await import("@/lib/storage/media");
+            slot.url = await storeMedia(db, storagePath, buffer, "video/mp4");
             slot.storage_path = storagePath;
             slot.sourceSeconds = slot.length;
             slot.status = "succeed";
