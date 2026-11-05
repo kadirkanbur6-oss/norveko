@@ -567,7 +567,7 @@ Credit adjustments call `add_credits(..., p_type => 'admin', ...)`; if
 `credit_transactions.type` has a CHECK constraint, add `'admin'` to it.
 Suspension uses Supabase Auth's ban (`auth.users.banned_until`), nothing extra.
 
-## Sign-up credits: 50 → 70 (6 Nov 2026)
+## Sign-up credits → 70 (6 Nov 2026)
 
 New accounts start with `FREE_TRIAL_CREDITS` (lib/plans.ts, now 70) instead of the free
 trial video (switched off: lib/pipeline/trial.ts `TRIAL_VIDEO_ENABLED`). The grant itself
@@ -585,6 +585,11 @@ join pg_proc p on p.oid = t.tgfoid
 where t.tgrelid = 'auth.users'::regclass and not t.tgisinternal;
 ```
 
-Then change that 50 to 70 (the column default with
-`alter table public.user_credits alter column credits set default 70;`, or the number in the
-handler function with `create or replace function …`). Existing accounts keep their balance.
+It is the trigger function `public.handle_new_user_credits()` (the column default is 0); it
+granted **90** (not the 50 the site said). Set to 70:
+
+```sql
+CREATE OR REPLACE FUNCTION public.handle_new_user_credits() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $function$begin insert into user_credits (user_id, credits) values (new.id, 70) on conflict (user_id) do nothing; insert into credit_transactions (user_id, type, amount, reason) values (new.id, 'welcome', 70, 'Welcome credits'); return new; end;$function$;
+```
+
+Existing accounts keep their balance. Keep this number equal to `FREE_TRIAL_CREDITS`.
