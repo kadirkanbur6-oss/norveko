@@ -629,3 +629,22 @@ test("pricing: skits keep ≥ 30% margin, talk and swap ≥ 40% (5 Nov 2026)", a
   assert.ok(margin(p.talkCreditsFor(10), 10 * s.AVATAR_COST_PER_SECOND + p.SKIT_IMAGE_COST) >= 0.4 - 1e-9);
   assert.ok(margin(p.swapCreditsFor(300, 10) - s.RENDER_CREDITS_PER_30S, (300 / 16) * p.SWAP_COST_PER_16_FRAMES) >= 0.4 - 1e-9);
 });
+
+test("skits: long lines split into clip-sized shots of the same speaker, every word kept (5 Nov 2026)", async () => {
+  const { splitLongLines, speechSeconds } = await import("../skit/split");
+  const base = { setting: "kitchen", camera: "medium" as const, visible: ["c1"], speaker: "c1", tone: "angry", action: "", sfx: "door slam", crowd: "", seconds: 3 };
+  const long = "I told you a hundred times not to touch my sofa. You did it anyway, didn't you? Now the remote is gone, the cushions are gone, and I am still hungry.";
+  const shots = splitLongLines([{ ...base, id: "s1", line: "Short line." }, { ...base, id: "s2", line: long }], "en", 14);
+  const parts = shots.filter((s) => s.id.startsWith("s2"));
+  assert.ok(parts.length >= 2, "the long line is split");
+  assert.equal(parts.map((p) => p.line).join(" "), long, "every word kept, in order");
+  for (const p of parts) assert.ok(speechSeconds(p.line, "en") <= 7.2, `fits a clip: ${p.line}`);
+  assert.ok(parts.every((p) => p.speaker === "c1"));
+  assert.equal(parts[0].sfx, "door slam");
+  assert.ok(parts.slice(1).every((p) => p.sfx === ""), "effects only on the first piece");
+  assert.equal(shots[0].line, "Short line.");
+  // A shot cap keeps the whole line in the last piece.
+  const capped = splitLongLines([{ ...base, id: "s1", line: long }], "en", 2);
+  assert.equal(capped.length, 2);
+  assert.equal(capped.map((p) => p.line).join(" "), long);
+});

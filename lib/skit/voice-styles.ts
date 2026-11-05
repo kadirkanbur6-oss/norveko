@@ -6,7 +6,8 @@
 //   cartoon — high and quick, like the viral cockroach / chick videos: the take
 //             is pitched up by resampling (faster + higher, the classic effect)
 //   comic   — over-the-top acting in a natural voice (no processing)
-//   gruff   — deep, husky older voice: pitched down a little
+//   gruff   — deep, husky older voice from a naturally deep narrator at normal speed
+//             (5 Nov 2026: the old ×0.9 resample made it sound like slowed-down tape)
 
 export type VoiceStyle = "cartoon" | "comic" | "gruff";
 export type VoiceGender = "male" | "female";
@@ -37,7 +38,7 @@ export function voiceFor(style: VoiceStyle, gender: VoiceGender, n = 0): string 
 }
 
 /** Playback-speed factor of the take (> 1 = higher and faster). */
-export const STYLE_RATE: Record<VoiceStyle, number> = { cartoon: 1.3, comic: 1, gruff: 0.9 };
+export const STYLE_RATE: Record<VoiceStyle, number> = { cartoon: 1.3, comic: 1, gruff: 1 };
 
 /** How the TTS should act the line before any processing. */
 export function styleDirection(style: VoiceStyle, who: string, tone?: string): string {
@@ -45,7 +46,7 @@ export function styleDirection(style: VoiceStyle, who: string, tone?: string): s
   if (style === "cartoon")
     return `Perform this line as ${who}, a silly cartoon character in a comedy sketch, ${how} — bouncy, playful, exaggerated, quick. Acted, not narrated. Say only the line`;
   if (style === "gruff")
-    return `Perform this line as ${who}, a gruff, husky, older character in a comedy sketch, ${how} — low, raspy, heavy, unhurried. Acted, not narrated. Say only the line`;
+    return `Perform this line as ${who}, a gruff, husky, older character in a comedy sketch, ${how} — low, raspy and heavy but at a natural conversational pace, never slow or drawn out. Acted, not narrated. Say only the line`;
   return `Perform this line as ${who} in a comedy sketch, ${how} — big, over-the-top comic acting with lots of emotion, like a sitcom. Acted, not narrated. Say only the line`;
 }
 

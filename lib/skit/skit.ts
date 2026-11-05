@@ -21,6 +21,7 @@ import { wordsPerSecond } from "@/lib/pipeline/narration";
 import { SKIT_CLIP_COST, SKIT_IMAGE_COST, SKIT_MARGIN, SKIT_TALK_VIDEO_COST_PER_SECOND, skitCreditsFor } from "./pricing";
 import { TALK_VIDEO_ENABLED, talkClipSeconds } from "@/lib/pipeline/fal-video";
 import { LANGUAGE_OPTIONS } from "@/lib/pipeline/options";
+import { splitLongLines } from "./split";
 import { applyVoiceStyle, isVoiceStyle, styleDirection, voiceFor, type VoiceGender, type VoiceStyle } from "@/lib/skit/voice-styles";
 import { musicCredit } from "@/lib/pipeline/music";
 import { storeMedia } from "@/lib/storage/media";
@@ -133,7 +134,7 @@ Rules:
 - Narration in the script ("after a long silence…", "applause, cheers…") is NOT spoken by a character: turn it into a silent shot (a pause, a reaction) and/or a sound effect. When the script says a crowd shouts or chants words ("yaşa, varol sesleri", "the crowd chants his name"), put those words in "crowd" (in the dialogue language, short, with exclamation marks, e.g. "Yaşa! Var ol! Yaşa!") on a wide crowd shot, together with an applause/cheering "sfx".
 - If the creator asks for a style ("like the viral cockroach videos", "as cats", "anime"), EVERY character becomes that: e.g. Pixar-style 3D cartoon cockroaches with human clothes in human settings. Without a style ask, use friendly Pixar-style 3D cartoon characters.
 - Real, named people become clearly cartoon caricatures of that species, recognisable only through clothes, hairstyle and props. Never put a real person's name in "look" or "setting" — describe what they wear instead. Character "name" may be a short role label in the script's language (e.g. "Başkan", "Gazeteci").
-- At most ${SKIT_MAX_CHARACTERS} characters and ${SKIT_MAX_SHOTS} shots, aim for under ${SKIT_MAX_SECONDS} seconds (the creator's lines always stay whole). Vary the camera (wide establishing shot first, close-ups for punchlines, a wide crowd shot for reactions). A speaking shot shows ONLY the speaker's face (single medium close-up or close-up; others at most from behind) — group shots are for silent moments and reactions.
+- At most ${SKIT_MAX_CHARACTERS} characters and ${SKIT_MAX_SHOTS} shots, aim for under ${SKIT_MAX_SECONDS} seconds (the creator's lines always stay whole). Vary the camera (wide establishing shot first, close-ups for punchlines, a wide crowd shot for reactions). Each speaking shot holds at most about 15 words (one talking clip is 8 seconds): split a longer speech into consecutive shots of the same speaker, keeping every word. A speaking shot shows ONLY the speaker's face (single medium close-up or close-up; others at most from behind) — group shots are for silent moments and reactions.
 - "setting" must fully describe the place in every shot (each picture is drawn on its own), in English. Keep the same place consistent across shots that happen there.
 - "look" is a consistent English visual description: species/type, colours, clothing, props, size. Crowds and extras are described in "setting", not as characters.
 - Give each character a "gender" (male|female, the voice they should have) and one of 3 "voiceStyle"s: "cartoon" (high and quick — small, cute, silly or animal characters, the viral cockroach/chick-video sound; the default for cartoon animals), "comic" (natural voice, over-the-top acting — loud bosses, show-offs, excited people), "gruff" (deep, husky, older — old men/women, tough guys, villains).
@@ -198,7 +199,8 @@ JSON shape:
   });
   if (!shots.some((s) => s.line)) throw new Error("No spoken lines were found. Write the dialogue lines in the script.");
   const look = SKIT_LOOKS.includes(data.look as (typeof SKIT_LOOKS)[number]) ? (data.look as SkitPlan["look"]) : "3d";
-  return { title: clean(data.title, 80) || "Skit", language: clean(data.language, 5).toLowerCase() || "en", look, characters, shots };
+  const language = clean(data.language, 5).toLowerCase() || "en";
+  return { title: clean(data.title, 80) || "Skit", language, look, characters, shots: splitLongLines(shots, language, SKIT_MAX_SHOTS + 6) };
 }
 
 /** Seconds the finished skit will roughly last (speaking shots from word count). */
@@ -451,16 +453,31 @@ const VOICE_SOUND: Record<VoiceStyle, string> = {
   gruff: "a deep, husky, gravelly older voice at a natural pace",
 };
 
+/** Timbres that tell characters apart; each character keeps one for the whole skit. */
+const TIMBRES = ["warm and round", "bright and crisp", "slightly nasal", "rich and smoky", "breathy and soft", "clear and punchy"];
+
+/**
+ * The same voice description goes into every shot of a character (Veo makes the voice
+ * anew per clip, so a fixed, specific description keeps it from drifting between shots).
+ */
+export function voiceSignature(plan: SkitPlan, c: SkitCharacter | undefined): string {
+  if (!c) return "a natural, expressive voice";
+  const gender = c.gender === "female" ? "female" : "male";
+  const index = plan.characters.findIndex((x) => x.id === c.id);
+  const timbre = TIMBRES[(index < 0 ? 0 : index) % TIMBRES.length];
+  const lang = LANGUAGE_OPTIONS.find((l) => l.code === plan.language)?.english ?? "English";
+  return `${VOICE_SOUND[c.voiceStyle ?? "comic"]}, ${gender}, ${timbre}, native ${lang} accent`;
+}
+
 /** Veo prompt for a speaking shot: the picture comes alive and says the line itself. */
 function talkPrompt(plan: SkitPlan, s: SkitShot): string {
   const c = plan.characters.find((x) => x.id === s.speaker);
   const name = c?.name ?? "The character";
-  const gender = c?.gender === "female" ? "female" : "male";
-  const voice = VOICE_SOUND[c?.voiceStyle ?? "comic"];
   const lang = LANGUAGE_OPTIONS.find((l) => l.code === plan.language)?.english ?? "English";
   const line = s.line.replace(/"/g, "'");
   return [
-    `${name} (${c?.look ?? "the character in the picture"}) talks straight to the camera in ${lang}, ${s.tone || "expressively"}, with ${voice} (${gender}).`,
+    `${name} (${c?.look ?? "the character in the picture"}) talks straight to the camera in ${lang}, ${s.tone || "expressively"}.`,
+    `VOICE of ${name}, exactly the same in every shot of this skit: ${voiceSignature(plan, c)}.`,
     `${name} says exactly: "${line}"`,
     `${s.action} Natural lip movement matching every word, lively face and body.`,
     `Only ${name} speaks; anyone else in the frame stays silent with the mouth closed.`,
