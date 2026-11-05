@@ -115,6 +115,17 @@ export const HERO_LOOP_CLIPS: string[] = [
   `${OWNER}/83322c8f-a030-4f85-96f1-5182a686fd25/slot-8.mp4`, // city crowd at night
 ];
 
+/**
+ * One 16:9 cinematic loop that fills the whole hero (6 Nov 2026, Yağmur: "a 10-second
+ * action scene, realistic, a visual feast"). Made with Kling 3 Pro on fal, kept in R2
+ * (lab store-url). When set it replaces the wall of Shorts above.
+ */
+export const HERO_FEATURE_CLIP: string | null = "site/hero-rooftop-jump.mp4";
+
+export function heroFeatureUrl(): string | null {
+  return HERO_FEATURE_CLIP ? `/media/videos/r2/${HERO_FEATURE_CLIP}` : null;
+}
+
 export function heroClipUrl(path: string): string | null {
   const base = storageBase();
   return base ? `${base}/videos/${path}` : null;
