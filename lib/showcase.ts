@@ -56,6 +56,19 @@ export const SHOWCASE_VIDEOS: ShowcaseVideo[] = [
     made: "3D animated cast · characters speak their own lines · AI video shots",
   },
   {
+    // Kadir as a mafia boss, typed line spoken by Veo 3.1 Fast (Talk), 5 Nov 2026.
+    id: "3327ef3a-6a10-4100-bdd7-9a8c588845b9",
+    mode: "Talking character",
+    title: "The Boss Has a Message",
+    idea: "Listen, user. Other people wait for videos. I make them happen.",
+    language: "English",
+    seconds: 8,
+    orientation: "vertical",
+    videoPath: `${OWNER}/talk/3327ef3a-6a10-4100-bdd7-9a8c588845b9/final.mp4`,
+    poster: { bucket: "videos", path: `${OWNER}/talk-3327ef3a-6a10-4100-bdd7-9a8c588845b9/still-1.jpg` },
+    made: "Your photo · your line · cinematic scene · speaks it on camera",
+  },
+  {
     // Bigfoot vlog (viral AI format), 5 Nov 2026.
     id: "bb366887-daff-4a6b-be18-55847bdf8c74",
     mode: "Talking character",

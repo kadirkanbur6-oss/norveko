@@ -110,7 +110,7 @@ export default function ShowcaseGallery() {
   if (!SHOWCASE_VIDEOS.length || !showcaseVideoUrl(SHOWCASE_VIDEOS[0])) return null;
 
   return (
-    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
       {SHOWCASE_VIDEOS.map((v) => (
         <ShowcaseCard key={v.id} video={v} active={activeId === v.id} onActivate={setActiveId} />
       ))}
