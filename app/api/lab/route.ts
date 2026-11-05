@@ -248,6 +248,42 @@ export async function POST(req: Request) {
         if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
         return NextResponse.json({ success: true, path, mb: Math.round(bytes.length / 1e5) / 10 });
       }
+      // Where Supabase Storage space goes (5 Nov 2026: free plan 1 GB full). Read-only.
+      case "storage-report": {
+        const db = admin();
+        const { data: buckets } = await db.storage.listBuckets();
+        const groups = new Map<string, { files: number; mb: number }>();
+        let listed = 0;
+        const walk = async (bucket: string, prefix: string, depth: number) => {
+          for (let offset = 0; offset < 20000 && listed < 60000; offset += 1000) {
+            const { data } = await db.storage.from(bucket).list(prefix, { limit: 1000, offset });
+            if (!data?.length) break;
+            for (const f of data) {
+              const path = prefix ? `${prefix}/${f.name}` : f.name;
+              if (!f.id) {
+                if (depth < 4) await walk(bucket, path, depth + 1);
+                continue;
+              }
+              listed++;
+              const size = Number((f.metadata as { size?: number } | null)?.size ?? 0);
+              // Group: bucket / first folder kind (user ids collapsed) / file kind.
+              const parts = path.split("/");
+              const top = /^[0-9a-f-]{36}$/.test(parts[0]) ? "<user>" : parts[0];
+              const second = parts.length > 2 ? (/^[0-9a-f-]{36}$/.test(parts[1]) ? "<job>" : parts[1].replace(/-[0-9a-f-]{36}$/, "-<id>")) : "";
+              const ext = (f.name.match(/\.([a-z0-9]+)$/i)?.[1] ?? "").toLowerCase();
+              const key = [bucket, top, second, ext].filter(Boolean).join(" / ");
+              const g = groups.get(key) ?? { files: 0, mb: 0 };
+              g.files++;
+              g.mb += size / 1048576;
+              groups.set(key, g);
+            }
+            if (data.length < 1000) break;
+          }
+        };
+        for (const b of buckets ?? []) await walk(b.name, "", 0);
+        const rows = [...groups.entries()].map(([k, v]) => ({ group: k, files: v.files, mb: Math.round(v.mb * 10) / 10 })).sort((a, b) => b.mb - a.mb);
+        return NextResponse.json({ success: true, totalMb: Math.round(rows.reduce((n, r) => n + r.mb, 0)), files: listed, rows: rows.slice(0, 40) });
+      }
       // Owner's own failed skit back to work from its current phase (keeps the clips already made),
       // charging its credits again since the failure refunded them (5 Nov 2026: empty voice track bug).
       case "revive-skit": {
