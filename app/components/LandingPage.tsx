@@ -136,11 +136,11 @@ const PRICING = planDetails().map(({ pack, tagline, buys, featured }) => ({
 const FAQS = [
   {
     q: "Does Norveko make the actual video file?",
-    a: "Yes. Type the idea and you get a finished MP4 — researched script, narration, AI visuals or stock footage, music, word-timed subtitles and a thumbnail — as a 30 or 60-second Short or a 3 or 10-minute long-form video. You can also turn a joke into an animated skit, make a character say your line, or swap a character into a clip. If you only want the script, voiceover and thumbnail, turn the video off and pay less.",
+    a: "Yes. Type the idea and you get a finished MP4 with a researched script, narration, AI visuals or stock footage, music, word-timed subtitles and a thumbnail, as a 30 or 60-second Short or a 3 or 10-minute long-form video. You can also turn a joke into an animated skit, make a character say your line, or swap a character into a clip. If you only want the script, voiceover and thumbnail, turn the video off and pay less.",
   },
   {
     q: "What do my free credits get me?",
-    a: `${FREE_TRIAL_CREDITS} free credits on signup, no card needed: ${FREE_CREDITS_BUY}.${TRIAL_VIDEO_PUBLIC ? " Your first 30-second video is free on top of that." : ""} Free-trial thumbnails and videos carry a small Norveko watermark; any plan or pack removes it — also from what you already made.`,
+    a: `${FREE_TRIAL_CREDITS} free credits on signup, no card needed: ${FREE_CREDITS_BUY}.${TRIAL_VIDEO_PUBLIC ? " Your first 30-second video is free on top of that." : ""} Free-trial thumbnails and videos carry a small Norveko watermark; any plan or pack removes it, also from what you already made.`,
   },
   {
     q: "How does the credit system work?",
@@ -152,7 +152,7 @@ const FAQS = [
   },
   {
     q: "How long does a video take?",
-    a: "A 30 or 60-second video is usually ready in 5–10 minutes; long-form videos take longer. You can close the tab — the progress is saved and the video waits in Projects.",
+    a: "A 30 or 60-second video is usually ready in 5–10 minutes; long-form videos take longer. You can close the tab: the progress is saved and the video waits in Projects.",
   },
   {
     q: "Can I use the videos commercially?",
@@ -312,7 +312,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                   href="/signup"
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-3.5 font-semibold transition hover:opacity-90"
                 >
-                  Start Free — 50 credits
+                  Start free with 50 credits
                   <ArrowRight size={18} />
                 </Link>
                 <a
@@ -378,7 +378,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           <SectionTitle
             eyebrow="Made with Norveko"
             title="One sentence in. A finished video out."
-            subtitle="Real renders straight from Norveko: a narrated story, an animated skit and two talking characters — one of them made from a single selfie. No manual editing. Press play."
+            subtitle="Real renders straight from Norveko: a narrated story, an animated skit and two talking characters, one of them made from a single selfie. No manual editing. Press play."
           />
         </Reveal>
         <Reveal delay={100} className="mt-8">
@@ -400,7 +400,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           <SectionTitle
             eyebrow="Beyond narration"
             title="Skits, talking characters and swaps"
-            subtitle="The formats behind today's viral Shorts — write it once, Norveko casts, voices and animates it."
+            subtitle="The formats behind today's viral Shorts. Write it once and Norveko casts, voices and animates it."
           />
         </Reveal>
         <div className="mt-8 grid gap-4 md:grid-cols-3">
@@ -408,21 +408,21 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             {
               icon: Drama,
               title: "Skits with dialogue",
-              body: "Paste a joke or a scene with its lines and say how it should look — talking cockroaches, cats, anime. Every character gets a voice, lip-synced shots, crowd shouts, subtitles and music.",
+              body: "Paste a joke or a scene with its lines and say how it should look: talking cockroaches, cats, anime. Every character gets a voice, lip-synced shots, crowd shouts, subtitles and music.",
               cost: `≈ ${CREATIVE_COSTS.skit20} credits for a 20 s skit`,
               href: "/chat?mode=skit",
             },
             {
               icon: MessageCircle,
               title: "Talking characters",
-              body: "Any character — you, a historical figure or a cartoon chick — says your line to the camera, in a Norveko voice, your cloned voice or a recording you upload.",
+              body: "Any character, whether you, a historical figure or a cartoon chick, says your line to the camera, in a Norveko voice, your cloned voice or a recording you upload.",
               cost: `≈ ${CREATIVE_COSTS.talk10} credits for 10 s`,
               href: "/chat?mode=talk",
             },
             {
               icon: Shuffle,
               title: "Character swap",
-              body: "Upload a short clip and put one of your characters in place of the person in it — same moves, expressions and original sound.",
+              body: "Upload a short clip and put one of your characters in place of the person in it, with the same moves, expressions and original sound.",
               cost: `≈ ${CREATIVE_COSTS.swap10} credits for 10 s`,
               href: "/chat?mode=swap",
             },
@@ -445,7 +445,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           <SectionTitle
             eyebrow="Pricing"
             title="Start free. Scale when you're ready."
-            subtitle={`Every account starts with ${FREE_TRIAL_CREDITS} free credits (≈ ${FREE_CREDITS_BUY})${TRIAL_VIDEO_PUBLIC ? " plus one free 30-second video" : ""}. Then pick a weekly, monthly or yearly plan — or pay as you go with packs that never expire.`}
+            subtitle={`Every account starts with ${FREE_TRIAL_CREDITS} free credits (≈ ${FREE_CREDITS_BUY})${TRIAL_VIDEO_PUBLIC ? " plus one free 30-second video" : ""}. Then pick a weekly, monthly or yearly plan, or pay as you go with packs that never expire.`}
           />
         </Reveal>
 
@@ -528,7 +528,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                   <Crown size={12} /> Why Norveko
                 </span>
                 <h2 className="mt-3 text-2xl font-black tracking-tight text-white sm:text-3xl">
-                  Built for videos people trust — and finish.
+                  Built for videos people trust and finish.
                 </h2>
                 <p className="mt-2 max-w-xl text-sm text-gray-400">
                   Most AI video generators stop at &ldquo;a script and some stock clips&rdquo;. Norveko researches, checks and edits the story before a single frame is made.
@@ -625,7 +625,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
 
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {[
-            ["1", "Describe your idea", "One sentence, a link to an article, or a joke with its lines. Pick the platform, length and language — or start from a template."],
+            ["1", "Describe your idea", "One sentence, a link to an article, or a joke with its lines. Pick the platform, length and language, or start from a template."],
             ["2", "Norveko makes the video", "It researches the topic, writes and fact-checks the script, records the narration, makes the visuals, adds music, subtitles and a thumbnail, then renders the MP4. Want a say? Review the script before anything is filmed."],
             ["3", "Publish", "Download the MP4 or post it to YouTube, TikTok or Instagram from the project page. Translate it into another language or cut Shorts from a long video with one click."],
           ].map(([num, title, desc], i) => (
@@ -706,13 +706,13 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
               Ready to make your first video?
             </h2>
             <p className="mt-3 text-lg text-gray-400">
-              One idea in. A finished video out — on your channel today.
+              One idea in. A finished video out, on your channel today.
             </p>
             <Link
               href="/signup"
               className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-3.5 text-base font-bold sm:px-8 sm:py-4 sm:text-lg transition hover:opacity-90"
             >
-              Start Free — 50 credits
+              Start free with 50 credits
               <ArrowRight size={20} />
             </Link>
             <p className="mt-3 text-xs text-gray-500">No credit card required</p>

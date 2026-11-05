@@ -34,7 +34,7 @@ export interface PlanDetail {
 const COPY: Record<CreditPackage["id"], { tagline: string; idealFor: string; featured: boolean }> = {
   starter: {
     tagline: "Try the full workflow on real videos.",
-    idealFor: "New channels testing a niche — a few Shorts a month.",
+    idealFor: "New channels testing a niche, a few Shorts a month.",
     featured: false,
   },
   pro: {
@@ -73,7 +73,7 @@ export const PAID_INCLUDES = [
   "Web research with sources + automatic fact check",
   "29 languages, Norveko narrators and native voice artists",
   "Word-timed subtitles (.srt / .vtt) and story-matched music",
-  "Pack credits never expire — failed steps are refunded automatically",
+  "Pack credits never expire, and failed steps are refunded automatically",
 ];
 
 /**
@@ -93,24 +93,24 @@ export const FREE_CREDITS_BUY = (() => {
 })();
 
 export const FREE_TRIAL_RULES = [
-  `${FREE_TRIAL_CREDITS} free credits on signup — no card needed (≈ ${FREE_CREDITS_BUY})`,
-  ...(TRIAL_VIDEO_PUBLIC ? ["One finished 30-second video, free — once per account"] : []),
+  `${FREE_TRIAL_CREDITS} free credits on signup, no card needed (≈ ${FREE_CREDITS_BUY})`,
+  ...(TRIAL_VIDEO_PUBLIC ? ["One finished 30-second video, free, once per account"] : []),
   "Every feature unlocked so you can judge the quality",
-  "One free trial per person — temporary emails aren't eligible",
+  "One free trial per person; temporary emails aren't eligible",
   "Thumbnails and videos carry a small Norveko watermark",
-  "Subscribe or buy any pack and the watermark disappears — also from what you already made",
+  "Subscribe or buy any pack and the watermark disappears, also from what you already made",
 ];
 
 /** "Why Norveko" comparison. The right column is deliberately generic. */
 export const COMPARISON: Array<{ feature: string; detail: string }> = [
   { feature: "Web research before writing", detail: "Live sources, cited in your project" },
   { feature: "Automatic fact check", detail: "Every sentence checked against the research" },
-  { feature: "Story editor pass", detail: "One connected story — no filler, no contradictions" },
+  { feature: "Story editor pass", detail: "One connected story, no filler, no contradictions" },
   { feature: "Native voice artists in 29 languages", detail: "Plus multilingual Norveko narrators" },
   { feature: "Clips animated from each scene's image", detail: "Visuals match what the narrator says" },
   { feature: "Music chosen by the story's tone", detail: "Licensed tracks, credit added for you" },
   { feature: "Word-timed, language-aware subtitles", detail: "Correct casing in every language, exportable .srt/.vtt" },
   { feature: "Skits, talking characters and character swaps", detail: "Lip-synced voices, crowd shouts and music" },
-  { feature: "Plans or pay as you go, pack credits never expire", detail: "Weekly, monthly or yearly — cancel anytime" },
+  { feature: "Plans or pay as you go, pack credits never expire", detail: "Weekly, monthly or yearly, cancel anytime" },
   { feature: "Automatic refunds on failed steps", detail: "You only pay for what was delivered" },
 ];

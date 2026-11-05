@@ -30,7 +30,7 @@ function buys(p: SubscriptionPlan): string[] {
       ? `≈ ${v60} finished 60 s video${v60 === 1 ? "" : "s"} a ${per} (or ${v30} × 30 s)`
       : `≈ ${v30} finished 30 s video${v30 === 1 ? "" : "s"} a ${per}`,
     `≈ ${Math.floor(p.credits / JOB_COSTS.package60)} narrated content packages a ${per}`,
-    "Fresh credits every period — unused plan credits don't roll over",
+    "Fresh credits every period; unused plan credits don't roll over",
     "Cancel anytime",
   ];
 }
@@ -141,7 +141,7 @@ export default function SubscriptionPlans({
                   }`}
                 >
                   {busyPriceId === plan.paddlePriceId && <Loader2 size={15} className="animate-spin" aria-hidden />}
-                  {current ? "Current plan" : !canBuy ? "Coming soon" : currentPlanId ? "You already have a plan" : `Subscribe — $${plan.priceUsd}/${PERIOD_LABEL[plan.period].per}`}
+                  {current ? "Current plan" : !canBuy ? "Coming soon" : currentPlanId ? "You already have a plan" : `Subscribe: $${plan.priceUsd}/${PERIOD_LABEL[plan.period].per}`}
                 </button>
               )}
             </div>
