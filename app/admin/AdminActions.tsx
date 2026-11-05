@@ -185,7 +185,7 @@ export function ManageUserDialog({ user, onClose, onChanged }: { user: ManagedUs
               <h3 className="text-sm font-medium text-white">Access</h3>
               <Toggle
                 label="Beta account"
-                hint={user.access.envBeta ? "Also in BETA_USER_IDS (env) — that stays on regardless." : "Generate while the launch lock is on; no watermark; API & teams."}
+                hint={user.access.envBeta ? "Also in BETA_USER_IDS (env). That stays on regardless." : "Generate while the launch lock is on; no watermark; API & teams."}
                 checked={beta}
                 disabled={busy !== null}
                 onChange={(v) => {
@@ -238,7 +238,7 @@ export function ManageUserDialog({ user, onClose, onChanged }: { user: ManagedUs
               </div>
               {suspended && (
                 <p className="flex items-center gap-1.5 text-xs text-amber-300">
-                  <AlertTriangle size={13} /> This account is suspended — sign-in is refused.
+                  <AlertTriangle size={13} /> This account is suspended. Sign-in is refused.
                 </p>
               )}
             </section>

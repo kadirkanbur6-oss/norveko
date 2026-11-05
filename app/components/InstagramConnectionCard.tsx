@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { Camera, Loader2, Unplug } from "lucide-react";
 
 const MESSAGES: Record<string, string> = {
-  connected: "Instagram connected — you can now post vertical videos as Reels from any project.",
+  connected: "Instagram connected. You can now post vertical videos as Reels from any project.",
   cancelled: "Connecting Instagram was cancelled.",
   missing_permission: "Norveko needs permission to publish content. Connect again and allow it on Instagram's screen.",
   not_professional: "Reels can only be posted to a professional (Business or Creator) Instagram account. Switch it in the Instagram app, then connect again.",

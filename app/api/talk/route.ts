@@ -64,7 +64,7 @@ async function audioInfo(db: ReturnType<typeof adminDb>, userId: string, path: u
   const ext = path.slice(path.lastIndexOf(".") + 1) as "mp3" | "wav" | "m4a";
   const seconds = audioSeconds(Buffer.from(await data.arrayBuffer()), ext);
   if (!(seconds >= 1)) throw new Error("The recording is too short.");
-  if (seconds > TALK_MAX_SECONDS + 0.5) throw new Error(`Up to ${TALK_MAX_SECONDS} seconds — shorten the line or trim the recording.`);
+  if (seconds > TALK_MAX_SECONDS + 0.5) throw new Error(`Up to ${TALK_MAX_SECONDS} seconds. Shorten the line or trim the recording.`);
   return { seconds: Math.round(seconds * 10) / 10 };
 }
 
@@ -122,7 +122,7 @@ export async function POST(req: Request) {
     if (!style && voiceId !== ownClone) return bad("Pick a voice.");
     const now = Date.now();
     const recent = (voiceCalls.get(user.id) ?? []).filter((t) => now - t < 3600_000);
-    if (recent.length >= VOICE_PREVIEWS_PER_HOUR) return bad("That's a lot of tries — wait a little and try again.", 429);
+    if (recent.length >= VOICE_PREVIEWS_PER_HOUR) return bad("That's a lot of tries. Wait a little and try again.", 429);
     voiceCalls.set(user.id, [...recent, now]);
     try {
       const { synthesizeNarration } = await import("@/lib/pipeline/tts");
@@ -204,7 +204,7 @@ export async function POST(req: Request) {
       p_reason: `Talking character (${Math.ceil(seconds)} s, ${character.name})`,
     });
     if (payErr) return bad(payErr.message, 500);
-    if (!paid) return bad(`Not enough credits — this costs ${credits}.`, 402, { code: "insufficient_credits" });
+    if (!paid) return bad(`Not enough credits. This costs ${credits}.`, 402, { code: "insufficient_credits" });
 
     const id = randomUUID();
     try {
@@ -268,7 +268,7 @@ export async function POST(req: Request) {
         : /safety|refus|blocked|policy|prohibited/i.test(msg)
           ? "the picture model refused this character or scene"
           : "something went wrong on our side";
-      return bad(`It couldn't be started — ${why}. Your credits were refunded.`, 502, { detail: msg.slice(0, 300) });
+      return bad(`It couldn't be started: ${why}. Your credits were refunded.`, 502, { detail: msg.slice(0, 300) });
     }
     return NextResponse.json({ success: true, id, credits });
   }

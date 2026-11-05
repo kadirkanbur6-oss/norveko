@@ -19,21 +19,21 @@ const DESCRIPTION =
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Norveko — AI Content Workspace for Creators",
+    default: "Norveko | AI Content Workspace for Creators",
     template: "%s · Norveko",
   },
   description: DESCRIPTION,
   openGraph: {
     type: "website",
     siteName: "Norveko",
-    title: "Norveko — AI Content Workspace for Creators",
+    title: "Norveko | AI Content Workspace for Creators",
     description: DESCRIPTION,
     url: SITE_URL,
     images: [{ url: "/brand/norveko-logo.png", width: 512, height: 512, alt: "Norveko" }],
   },
   twitter: {
     card: "summary",
-    title: "Norveko — AI Content Workspace for Creators",
+    title: "Norveko | AI Content Workspace for Creators",
     description: DESCRIPTION,
     images: ["/brand/norveko-logo.png"],
   },

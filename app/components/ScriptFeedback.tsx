@@ -50,7 +50,7 @@ export default function ScriptFeedback({ projectId, initial }: Props) {
           <ThumbsDown size={13} /> Needs work
         </button>
         <span className="text-[11px] text-gray-500" aria-live="polite">
-          {state === "saving" ? "Saving…" : state === "saved" ? "Thanks — saved" : state === "error" ? "Couldn't save" : ""}
+          {state === "saving" ? "Saving…" : state === "saved" ? "Thanks, saved" : state === "error" ? "Couldn't save" : ""}
         </span>
       </div>
       {rating === "down" && askNote && (

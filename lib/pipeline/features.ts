@@ -50,4 +50,4 @@ export function isFullVideoEnabled(userId: string | null | undefined): boolean {
 
 /** Message shown to users while the launch lock is on. */
 export const LAUNCH_LOCK_MESSAGE =
-  "Norveko is launching soon. Content generation is temporarily closed while we finish building — your credits are safe and nothing has been charged.";
+  "Norveko is launching soon. Content generation is temporarily closed while we finish building. Your credits are safe and nothing has been charged.";

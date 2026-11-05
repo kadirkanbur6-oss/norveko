@@ -118,7 +118,7 @@ export default function BillingPage() {
   // so poll the balance for a short while until it changes.
   const paddle = usePaddle((event) => {
     if (event.name !== "checkout.completed") return;
-    setPurchaseNotice("Payment received — adding credits to your balance…");
+    setPurchaseNotice("Payment received. Adding credits to your balance…");
     const before = creditsRef.current ?? 0;
     let attempts = 0;
     const timer = setInterval(async () => {
@@ -130,7 +130,7 @@ export default function BillingPage() {
         setPurchaseNotice(
           latest !== null && latest > before
             ? "Credits added. Happy creating!"
-            : "Payment received. Credits will appear shortly — refresh in a minute."
+            : "Payment received. Credits will appear shortly. Refresh in a minute."
         );
       }
     }, 2000);
@@ -231,7 +231,7 @@ export default function BillingPage() {
             action={
               <div className="flex items-center gap-2.5 rounded-2xl border border-yellow-400/20 bg-yellow-500/[0.06] px-4 py-2.5">
                 <Coins size={18} className="text-yellow-400" aria-hidden />
-                <span className="text-2xl font-semibold tabular-nums text-yellow-200">{credits ?? "—"}</span>
+                <span className="text-2xl font-semibold tabular-nums text-yellow-200">{credits ?? "…"}</span>
                 <span className="text-sm text-gray-400">credits</span>
               </div>
             }
@@ -267,7 +267,7 @@ export default function BillingPage() {
                       <p className="text-sm font-semibold text-white">You&apos;re on the free trial</p>
                       <p className="mt-0.5 text-xs text-gray-400">
                         Thumbnails and videos you make now carry a small &ldquo;Made with Norveko&rdquo; badge. Subscribe or buy any pack and it
-                        disappears — also from everything you already made.
+                        disappears, also from everything you already made.
                       </p>
                     </div>
                   </div>
@@ -324,7 +324,7 @@ export default function BillingPage() {
               {tab === "topup" && (
               <>
               <p className="mt-6 text-sm text-gray-400">
-                One-time purchases for when you need extra — with or without a plan. Pack credits never expire.
+                One-time purchases for when you need extra, with or without a plan. Pack credits never expire.
               </p>
 
               <div className="mt-6 grid gap-4 lg:grid-cols-3">

@@ -91,7 +91,7 @@ type WorkspaceMode = "video" | "skit" | "talk" | "swap";
 
 const MODES: Array<{ id: WorkspaceMode; label: string; hint: string; placeholder: string }> = [
   { id: "video", label: "Narrated video", hint: "Story, documentary or explainer with a narrator", placeholder: "e.g. The mystery of planes lost in the Bermuda Triangle…" },
-  { id: "skit", label: "Skit with dialogue", hint: "A joke or scene — characters talk to each other", placeholder: "Paste the joke with its lines, e.g.\n- Boss: In 10 years we'll land a man on the sun!\n- Reporter: But the sun is too hot?\n- Boss: We'll land at night!\nMake it like the viral cockroach videos." },
+  { id: "skit", label: "Skit with dialogue", hint: "A joke or scene: characters talk to each other", placeholder: "Paste the joke with its lines, e.g.\n- Boss: In 10 years we'll land a man on the sun!\n- Reporter: But the sun is too hot?\n- Boss: We'll land at night!\nMake it like the viral cockroach videos." },
   { id: "talk", label: "Talking character", hint: "One character says your line to the camera", placeholder: "Write what the character says, e.g. \"Ladies and gentlemen, I am the best coach in this barn!\"" },
   { id: "swap", label: "Character swap", hint: "Put a character into a clip you upload", placeholder: "Describe the clip or how the character should look (optional)" },
 ];
@@ -555,7 +555,7 @@ function ChatContent() {
 
       <main id="main-content" className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
         <div className="mx-auto max-w-4xl">
-          <PageHeader title="AI Workspace" subtitle="Write what you want to make — narrated videos, skits, talking characters or swaps" />
+          <PageHeader title="AI Workspace" subtitle="Write what you want to make: narrated videos, skits, talking characters or swaps" />
 
           <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
             <div className="flex items-center justify-between">
@@ -682,7 +682,7 @@ function ChatContent() {
                   </button>
                 </div>
                 <p className="mt-1 text-[11px] text-gray-500">
-                  The script tells what the page says (research is included). The idea above is optional — use it for your angle.
+                  The script tells what the page says (research is included). The idea above is optional. Use it for your angle.
                 </p>
               </div>
             ) : (
@@ -727,7 +727,7 @@ function ChatContent() {
               className="mt-3"
               title="Start from a template"
               icon={<LayoutTemplate size={15} />}
-              summary={templateId ? NICHE_TEMPLATES.find((t) => t.id === templateId)?.name : "Optional — ready-made settings and idea examples for popular niches"}
+              summary={templateId ? NICHE_TEMPLATES.find((t) => t.id === templateId)?.name : "Optional: ready-made settings and idea examples for popular niches"}
             >
               <div className="mt-3 flex flex-wrap gap-2">
                 {NICHE_TEMPLATES.map((t) => {
@@ -752,7 +752,7 @@ function ChatContent() {
               {templateId && (
                 <div className="mt-3 rounded-xl border border-purple-400/20 bg-purple-500/5 p-3">
                   <p className="text-xs text-purple-200">
-                    {NICHE_TEMPLATES.find((t) => t.id === templateId)?.tagline} — try one of these:
+                    {NICHE_TEMPLATES.find((t) => t.id === templateId)?.tagline}. Try one of these:
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {NICHE_TEMPLATES.find((t) => t.id === templateId)?.examples.map((ex) => (
@@ -956,7 +956,7 @@ function ChatContent() {
                     </span>
                   </span>
                   <span className="mt-0.5 block text-xs text-gray-500">
-                    Searches the web for current, sourced facts before writing — essential for news, sports and recent events
+                    Searches the web for current, sourced facts before writing, essential for news, sports and recent events
                   </span>
                 </span>
               </label>
@@ -1080,7 +1080,7 @@ function ChatContent() {
 
                   {!voicesLoading && !voicesError && voices.length > 0 && !nativeMatch && (
                     <p className="mt-2 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-gray-400">
-                      No narrators tagged for {language} yet — these voices still speak {language} fluently with the multilingual model.
+                      No narrators tagged for {language} yet. These voices still speak {language} fluently with the multilingual model.
                     </p>
                   )}
 
@@ -1287,7 +1287,7 @@ function ChatContent() {
                       </span>
                       <span className="mt-0.5 block text-xs text-gray-500">
                         {fullVideoSupported
-                          ? "Finished MP4 with narration, AI visuals and optional subtitles — ready to upload."
+                          ? "Finished MP4 with narration, AI visuals and optional subtitles, ready to upload."
                           : "Full videos are 30 or 60 seconds for now. Longer durations give you the script, voiceover and thumbnail."}
                       </span>
                     </span>
@@ -1487,7 +1487,7 @@ function ChatContent() {
                     Total{" "}
                     <span className="font-semibold text-white">
                       {isTrialVideo ? (
-                        <span className="text-emerald-300">Free — trial video</span>
+                        <span className="text-emerald-300">Free trial video</span>
                       ) : (
                         `${totalCost} credits`
                       )}
@@ -1547,7 +1547,7 @@ function ChatContent() {
 
           {jobId && jobRunning && (
             <p className="mt-4 text-sm text-gray-400">
-              You can start your next video when this one finishes. It keeps going if you leave this page — come back here or check Projects.
+              You can start your next video when this one finishes. It keeps going if you leave this page. Come back here or check Projects.
             </p>
           )}
 

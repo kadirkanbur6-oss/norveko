@@ -204,7 +204,7 @@ export default function SeriesPage() {
               });
       const data = await res.json();
       if (!data.success) throw new Error(data.error || "Something went wrong.");
-      if (action === "run") setNotice("Episode started — it takes about 10 minutes and is published as soon as it's ready.");
+      if (action === "run") setNotice("Episode started. It takes about 10 minutes and is published as soon as it's ready.");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -299,7 +299,7 @@ export default function SeriesPage() {
                       maxLength={1000}
                       value={form.topic}
                       onChange={(e) => set("topic", e.target.value)}
-                      placeholder={form.format === "skit" ? "Office life jokes, played by talking cockroaches in suits — like the viral cockroach videos." : "Real unsolved disappearances and mysteries from the 20th century — one case per episode."}
+                      placeholder={form.format === "skit" ? "Office life jokes, played by talking cockroaches in suits, like the viral cockroach videos." : "Real unsolved disappearances and mysteries from the 20th century, one case per episode."}
                       className={input}
                     />
                     <p className="mt-1 text-xs text-gray-500">
@@ -349,9 +349,9 @@ export default function SeriesPage() {
                     <div>
                       <label htmlFor="s-footage" className="mb-1 block text-xs uppercase tracking-wider text-gray-500">Footage</label>
                       <select id="s-footage" value={form.footage} onChange={(e) => set("footage", e.target.value)} className={input}>
-                        <option value="hybrid">Hybrid — AI clips + stills</option>
+                        <option value="hybrid">Hybrid: AI clips + stills</option>
                         <option value="stills">Stills with camera motion</option>
-                        <option value="cinematic">Cinematic — every scene a clip</option>
+                        <option value="cinematic">Cinematic: every scene a clip</option>
                       </select>
                     </div>
                     <label className="flex items-center gap-2 self-end pb-3 text-sm text-gray-300">
@@ -433,7 +433,7 @@ export default function SeriesPage() {
                       </div>
                     ) : (
                       <p className="text-sm text-gray-500">
-                        YouTube not connected — <Link href="/settings" className="text-blue-300">connect it in Settings</Link>.
+                        YouTube not connected. <Link href="/settings" className="text-blue-300">Connect it in Settings</Link>.
                       </p>
                     )}
                     {connections.tiktok ? (
@@ -474,7 +474,7 @@ export default function SeriesPage() {
                       </div>
                     ) : (
                       <p className="text-sm text-gray-500">
-                        TikTok not connected — <Link href="/settings" className="text-blue-300">connect it in Settings</Link>.
+                        TikTok not connected. <Link href="/settings" className="text-blue-300">Connect it in Settings</Link>.
                       </p>
                     )}
                     <p className="text-xs text-gray-500">Nothing selected? Episodes are saved to Projects for you to post yourself.</p>
@@ -563,7 +563,7 @@ export default function SeriesPage() {
                                 <p className="truncate text-gray-200">{e.idea ?? "Picking a subject…"}</p>
                                 <p className="text-xs text-gray-500">
                                   {new Date(e.scheduled_for).toLocaleString("en-US")} · <span className={st.cls}>{st.label}</span>
-                                  {e.error ? ` — ${e.error}` : ""}
+                                  {e.error ? `: ${e.error}` : ""}
                                 </p>
                               </div>
                               <div className="flex gap-3 text-xs">

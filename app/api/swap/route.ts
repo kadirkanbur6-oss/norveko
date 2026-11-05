@@ -46,7 +46,7 @@ async function sourceInfo(db: ReturnType<typeof adminDb>, userId: string, path: 
   const bytes = Buffer.from(await data.arrayBuffer());
   const info = readMp4(bytes);
   if (info.seconds < 1) throw new Error("This clip is too short.");
-  if (info.seconds > SWAP_MAX_SECONDS + 0.5) throw new Error(`Clips can be up to ${SWAP_MAX_SECONDS} seconds — trim it and upload again.`);
+  if (info.seconds > SWAP_MAX_SECONDS + 0.5) throw new Error(`Clips can be up to ${SWAP_MAX_SECONDS} seconds. Trim it and upload again.`);
   return { bytes, info, mime: path.endsWith(".mov") ? "video/quicktime" : "video/mp4" };
 }
 
@@ -121,7 +121,7 @@ export async function POST(req: Request) {
       p_reason: `Character swap (${Math.round(source.info.seconds)} s, ${character.name})`,
     });
     if (payErr) return bad(payErr.message, 500);
-    if (!paid) return bad(`Not enough credits — this swap costs ${credits}.`, 402, { code: "insufficient_credits" });
+    if (!paid) return bad(`Not enough credits. This swap costs ${credits}.`, 402, { code: "insufficient_credits" });
 
     const prompt =
       typeof body.prompt === "string" && body.prompt.trim()
@@ -153,7 +153,7 @@ export async function POST(req: Request) {
       await db.rpc("add_credits", { p_user_id: payer, p_amount: credits, p_type: "refund", p_reason: "Refund: character swap could not start" });
       const msg = err instanceof Error ? err.message : String(err);
       const why = /balance|locked|quota|402|403/i.test(msg) ? "the video provider is temporarily unavailable" : "something went wrong on our side";
-      return bad(`The swap couldn't be started — ${why}. Your credits were refunded.`, 502, { detail: msg.slice(0, 300) });
+      return bad(`The swap couldn't be started: ${why}. Your credits were refunded.`, 502, { detail: msg.slice(0, 300) });
     }
     return NextResponse.json({ success: true, id, credits });
   }

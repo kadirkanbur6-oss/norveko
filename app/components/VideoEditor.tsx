@@ -136,7 +136,7 @@ export default function VideoEditor({ projectId, vertical }: { projectId: string
       } else if (status === "failed") {
         clearInterval(timer);
         setRendering(false);
-        setError("The re-render failed. Your previous video is unchanged — please try again.");
+        setError("The re-render failed. Your previous video is unchanged. Please try again.");
         void load();
       }
     }, 6000);
@@ -291,7 +291,7 @@ export default function VideoEditor({ projectId, vertical }: { projectId: string
     try {
       const data = await post({ action: "stockSearch", query: stockQuery });
       setStock(data.clips ?? []);
-      if (!data.clips?.length) setError("No clips found — try other words (in English works best).");
+      if (!data.clips?.length) setError("No clips found. Try other words (in English works best).");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Search failed.");
     } finally {
@@ -341,7 +341,7 @@ export default function VideoEditor({ projectId, vertical }: { projectId: string
           </div>
           <div>
             <h3 className="text-sm font-semibold text-white">Edit video</h3>
-            <p className="text-xs text-gray-400">Timeline: timing, scenes, your own footage, subtitles and music — then re-render.</p>
+            <p className="text-xs text-gray-400">Timeline: timing, scenes, your own footage, subtitles and music. Then re-render.</p>
           </div>
         </div>
         {rendering ? (

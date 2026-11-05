@@ -157,7 +157,7 @@ export default function ShortsFromVideo({ projectId }: { projectId: string }) {
         );
       })()}
       {info.shorts.some((s) => s.status === "failed") && (
-        <p className="mt-3 text-xs text-gray-500">A Short that failed was refunded — you can make it again.</p>
+        <p className="mt-3 text-xs text-gray-500">A Short that failed was refunded. You can make it again.</p>
       )}
       {error && <p className="mt-3 text-sm text-red-300">{error}</p>}
     </div>

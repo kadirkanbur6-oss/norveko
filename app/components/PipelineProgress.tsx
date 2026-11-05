@@ -238,7 +238,7 @@ export default function PipelineProgress({
       {timedOut && job.status === "running" && (
         <div className="mt-4 rounded-xl border border-yellow-400/30 bg-yellow-500/10 p-4 text-sm text-yellow-200">
           This is taking longer than expected. We&apos;ve stopped checking
-          automatically — your result will appear under Projects when it
+          automatically. Your result will appear under Projects when it
           finishes, and credits are refunded automatically if it fails.
         </div>
       )}
@@ -276,7 +276,7 @@ export default function PipelineProgress({
               </p>
               {job.steps.render.hosted_by === "shotstack" && (
                 <p className="mt-1 text-xs text-yellow-300">
-                  This file is hosted temporarily — download it within 24 hours.
+                  This file is hosted temporarily. Download it within 24 hours.
                 </p>
               )}
             </div>
@@ -343,7 +343,7 @@ export default function PipelineProgress({
             <h4 className="text-sm font-semibold text-gray-300">Video clips</h4>
             {videoStep.status === "running" && (
               <span className="text-xs text-gray-500">
-                Rendering — this can take a few minutes per clip
+                Rendering. This can take a few minutes per clip
               </span>
             )}
           </div>
@@ -368,7 +368,7 @@ export default function PipelineProgress({
                 )}
                 {clip.status === "failed" && (
                   <p className="mt-2 text-xs text-red-300">
-                    {clip.error ?? "Failed"} — credits for this clip were refunded.
+                    {clip.error ?? "Failed"}. Credits for this clip were refunded.
                   </p>
                 )}
               </div>
@@ -380,7 +380,7 @@ export default function PipelineProgress({
       {/* Results */}
       {job.steps?.research?.status === "skipped" && (
         <p className="rounded-xl border border-amber-400/20 bg-amber-500/[0.06] px-4 py-3 text-xs text-amber-100">
-          Web research was skipped ({String(job.steps.research.error ?? "provider error")}) — its credits were refunded and the script was written from the model&apos;s own knowledge.
+          Web research was skipped ({String(job.steps.research.error ?? "provider error")}). Its credits were refunded and the script was written from the model&apos;s own knowledge.
         </p>
       )}
       {job.steps?.research?.status === "completed" && job.steps.research.brief && (

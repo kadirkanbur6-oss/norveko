@@ -39,7 +39,7 @@ export default async function AnalyticsDashboard() {
                   Connect your YouTube channel
                 </h3>
                 <p className="mt-1.5 max-w-md text-sm text-gray-400">
-                  Track your channel stats right here — you can always do this later in Settings.
+                  Track your channel stats right here. You can always do this later in Settings.
                 </p>
               </div>
               <Link

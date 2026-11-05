@@ -53,7 +53,7 @@ export default function SwapStudio() {
         else if (seenRunning.current.has(x.id)) {
           seenRunning.current.delete(x.id);
           if (x.status === "completed" && x.outputUrl) {
-            setFinished({ title: String(`${(x as Record<string, unknown>).characterName} — character swap`), url: x.outputUrl, projectId: x.projectId, vertical: x.vertical });
+            setFinished({ title: String(`${(x as Record<string, unknown>).characterName} (character swap)`), url: x.outputUrl, projectId: x.projectId, vertical: x.vertical });
           }
         }
       }
@@ -146,7 +146,7 @@ export default function SwapStudio() {
                         status: x.phase === "render" ? "completed" : "running",
                         startedAt: x.createdAt,
                         expected: Math.max(240, x.seconds * 110),
-                        messages: ["Tracking every move in the clip…", "Matching light and expressions…", "This is the slow part — hang tight…"],
+                        messages: ["Tracking every move in the clip…", "Matching light and expressions…", "This is the slow part, hang tight…"],
                       },
                       {
                         id: "sound",

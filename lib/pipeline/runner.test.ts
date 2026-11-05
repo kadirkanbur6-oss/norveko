@@ -835,7 +835,7 @@ test("archive photos: only PD / CC0 / CC BY, no maps; stock slots of real subjec
   const parsed = parseCommons([page("Mount Ararat from Igdir", "CC BY 4.0"), page("Ararat map", "Public domain"), page("Ark site", "CC BY-SA 3.0")]);
   assert.deepEqual(parsed.map((p) => p.title), ["Mount Ararat from Igdir"]);
   assert.equal(parsed[0].author, "Ann");
-  assert.match(archiveCredits(parsed)!, /Mount Ararat from Igdir — Ann \(CC BY 4\.0\)/);
+  assert.match(archiveCredits(parsed)!, /Mount Ararat from Igdir by Ann \(CC BY 4\.0\)/);
 });
 
 test("long-form length: wider target, sentences spliced in place", async () => {

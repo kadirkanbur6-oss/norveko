@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import LegalLayout from "@/app/components/LegalLayout";
 
 export const metadata: Metadata = {
-  title: "API — Norveko",
+  title: "API | Norveko",
   description: "Make videos with Norveko from your own tools: start a video, check its status, download the files.",
 };
 
@@ -62,14 +62,14 @@ export default function DevelopersPage() {
         <pre>{STARTED}</pre>
         <p>Fields (all optional except <code>idea</code> or <code>url</code>):</p>
         <ul>
-          <li><code>idea</code> — what the video is about.</li>
-          <li><code>url</code> — a public article or blog page to make the video from.</li>
-          <li><code>notes</code> — your angle or instructions for the writer (up to 500 characters).</li>
-          <li><code>platform</code>, <code>style</code>, <code>duration</code>, <code>language</code>, <code>footage</code>, <code>clipMode</code>, <code>visualStyle</code>, <code>captionStyle</code>, <code>voiceId</code> — see <a href="/api/v1/options">/api/v1/options</a> for the accepted values.</li>
-          <li><code>fullVideo</code> — <code>true</code> (default) for a finished MP4; <code>false</code> for the script, voice-over and thumbnail only.</li>
-          <li><code>research</code> — search the web before writing (default on).</li>
-          <li><code>characterIds</code> — up to 3 of your characters (ids from your workspace).</li>
-          <li><code>useBrandKit</code> — apply your brand kit (logo, colour, end card).</li>
+          <li><code>idea</code>: what the video is about.</li>
+          <li><code>url</code>: a public article or blog page to make the video from.</li>
+          <li><code>notes</code>: your angle or instructions for the writer (up to 500 characters).</li>
+          <li><code>platform</code>, <code>style</code>, <code>duration</code>, <code>language</code>, <code>footage</code>, <code>clipMode</code>, <code>visualStyle</code>, <code>captionStyle</code>, <code>voiceId</code>: see <a href="/api/v1/options">/api/v1/options</a> for the accepted values.</li>
+          <li><code>fullVideo</code>: <code>true</code> (default) for a finished MP4; <code>false</code> for the script, voice-over and thumbnail only.</li>
+          <li><code>research</code>: search the web before writing (default on).</li>
+          <li><code>characterIds</code>: up to 3 of your characters (ids from your workspace).</li>
+          <li><code>useBrandKit</code>: apply your brand kit (logo, colour, end card).</li>
         </ul>
         <p>
           One video runs at a time per account and at most 10 start per hour. A request that can&apos;t be served returns
@@ -80,7 +80,7 @@ export default function DevelopersPage() {
       <section>
         <h2>3. Check status and get the files</h2>
         <p>
-          <code>GET /api/v1/videos/:id</code> — poll every 15–30 seconds. <code>status</code> is <code>running</code>,{" "}
+          <code>GET /api/v1/videos/:id</code>: poll every 15–30 seconds. <code>status</code> is <code>running</code>,{" "}
           <code>completed</code> or <code>failed</code> (unused credits are refunded automatically).
         </p>
         <pre>{DONE}</pre>

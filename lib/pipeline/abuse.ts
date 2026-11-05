@@ -23,7 +23,7 @@ export const TRIAL_IP_WINDOW_DAYS = 30;
 export const DISPOSABLE_EMAIL_MESSAGE =
   "Free credits aren't available for temporary email addresses. Sign up with a permanent email, or buy any pack to start generating.";
 export const IP_LIMIT_MESSAGE =
-  "Too many free accounts have been used from this network. Buy any pack to keep generating — credits never expire.";
+  "Too many free accounts have been used from this network. Buy any pack to keep generating. Credits never expire.";
 
 let disposable: Set<string> | null = null;
 let disposableWildcard: Set<string> | null = null;

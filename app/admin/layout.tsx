@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/supabase-server";
 import { isAdmin } from "@/lib/admin";
 
 export const metadata: Metadata = {
-  title: "Admin — Norveko",
+  title: "Admin | Norveko",
   robots: { index: false, follow: false },
 };
 

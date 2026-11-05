@@ -110,7 +110,7 @@ export default function DashboardHighlights() {
           <Loader2 size={20} className="mt-3 animate-spin text-blue-300" />
         ) : projects.length === 0 ? (
           <p className="mt-2 text-sm text-gray-500">
-            No projects yet — generate your first one.
+            No projects yet. Generate your first one.
           </p>
         ) : (
           <div className="mt-3 min-w-0 space-y-2">

@@ -288,6 +288,6 @@ export function friendlyTikTokError(err: unknown): string {
   if (code === "brand_content_private")
     return "Branded content can't be private on TikTok. Choose another visibility.";
   if (code === "watermarked") return "Free-trial videos carry a Norveko badge and can't be posted to TikTok. Remove it with any credit pack, then post.";
-  if (code === "rate_limit_exceeded") return "Too many TikTok requests — wait a minute and try again.";
+  if (code === "rate_limit_exceeded") return "Too many TikTok requests. Wait a minute and try again.";
   return "Posting to TikTok failed. Please try again in a minute.";
 }

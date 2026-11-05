@@ -8,7 +8,7 @@ import {
 } from "@/app/lib/legal";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Norveko",
+  title: "Privacy Policy | Norveko",
 };
 
 export default function PrivacyPage() {
@@ -70,20 +70,20 @@ export default function PrivacyPage() {
         </p>
         <ul>
           <li>
-            <strong className="text-white">Supabase</strong> — database,
+            <strong className="text-white">Supabase</strong>: database,
             authentication, and file storage;
           </li>
           <li>
-            <strong className="text-white">Vercel</strong> — application
+            <strong className="text-white">Vercel</strong>: application
             hosting;
           </li>
           <li>
             <strong className="text-white">Google (Gemini API)</strong> and{" "}
-            <strong className="text-white">OpenAI</strong> — processing of your
+            <strong className="text-white">OpenAI</strong>: processing of your
             prompts to generate content;
           </li>
           <li>
-            <strong className="text-white">Paddle</strong> — payment processing
+            <strong className="text-white">Paddle</strong>: payment processing
             as merchant of record.
           </li>
         </ul>

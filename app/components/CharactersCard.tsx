@@ -18,7 +18,7 @@ export interface CharacterItem {
 const KINDS = [
   { id: "self", label: "Me", hint: "Upload 1–4 clear photos of your face.", icon: User },
   { id: "person", label: "Someone who agreed", hint: "A friend or family member who said yes.", icon: Users },
-  { id: "historical", label: "Real or historical person", hint: "Sultans, kings, famous people — we find their portrait.", icon: Crown },
+  { id: "historical", label: "Real or historical person", hint: "Sultans, kings, famous people. We find their portrait.", icon: Crown },
   { id: "fictional", label: "Invented", hint: "Describe a character and we draw them.", icon: Sparkles },
 ] as const;
 
@@ -204,7 +204,7 @@ export function CharacterCreator({
           className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-40"
         >
           {busy ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
-          {busy ? (usesPhotos ? "Checking pictures…" : "Creating — about 30 s…") : "Add character"}
+          {busy ? (usesPhotos ? "Checking pictures…" : "Creating, about 30 s…") : "Add character"}
         </button>
         <span className="text-xs text-gray-500">You&apos;re responsible for who you use. Children and explicit content aren&apos;t allowed.</span>
       </div>
@@ -249,7 +249,7 @@ export default function CharactersCard() {
         <h2 className="font-semibold">Characters</h2>
       </div>
       <p className="mt-2 text-sm text-gray-400">
-        People who appear in your videos with the same face in every scene — you, someone who agreed, a real or historical person or an invented character.
+        People who appear in your videos with the same face in every scene: you, someone who agreed, a real or historical person or an invented character.
       </p>
 
       {items.length > 0 && (

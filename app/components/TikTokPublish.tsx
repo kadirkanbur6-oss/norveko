@@ -221,7 +221,7 @@ export default function TikTokPublish({
         <div className="mt-4 rounded-xl border border-white/10 bg-[#0d0d16] p-4 text-sm">
           <span className="flex items-center gap-2 text-green-300">
             <CheckCircle2 size={16} aria-hidden />
-            {post.status === "PUBLISH_COMPLETE" ? "Posted to TikTok" : "Sent to TikTok — it may take a few minutes to appear on your profile"}
+            {post.status === "PUBLISH_COMPLETE" ? "Posted to TikTok" : "Sent to TikTok. It may take a few minutes to appear on your profile"}
             {" · "}
             {PRIVACY_LABEL[post.privacy] ?? post.privacy}
           </span>

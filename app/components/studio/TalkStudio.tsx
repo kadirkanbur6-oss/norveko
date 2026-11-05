@@ -310,7 +310,7 @@ export default function TalkStudio({ text: outerText, onStarted }: { text?: stri
                       <select value={voiceId} onChange={(e) => setVoiceId(e.target.value)} aria-label="Voice" className={`${field} w-auto`}>
                         {voices.map((v) => (
                           <option key={v.id} value={v.id}>
-                            {v.name} — {v.style}
+                            {v.name} · {v.style}
                           </option>
                         ))}
                       </select>

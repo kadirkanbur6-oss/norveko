@@ -82,7 +82,7 @@ export default function Sidebar() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const creditsLabel = credits === null ? "—" : credits;
+  const creditsLabel = credits === null ? "…" : credits;
 
   return (
     <>
@@ -191,7 +191,7 @@ export default function Sidebar() {
           </Link>
           <div className="mt-2 flex items-center justify-between gap-2 border-t border-white/[0.06] px-2 pt-2.5">
             <p className="min-w-0 truncate text-xs text-gray-500" title={email ?? undefined}>
-              {email ?? "—"}
+              {email ?? "…"}
             </p>
             <SignOutButton
               onDone={() => setOpen(false)}

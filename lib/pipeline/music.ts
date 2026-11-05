@@ -140,7 +140,7 @@ export function pickMusicTrack(
 
 /** Attribution line required by CC BY 4.0 — appended to the video description. */
 export function musicCredit(t: Pick<MusicTrack, "title">): string {
-  return `Music: "${t.title}" by Kevin MacLeod (incompetech.com), licensed under Creative Commons: By Attribution 4.0 — creativecommons.org/licenses/by/4.0/`;
+  return `Music: "${t.title}" by Kevin MacLeod (incompetech.com), licensed under Creative Commons: By Attribution 4.0, creativecommons.org/licenses/by/4.0/`;
 }
 
 /** Background level under narration (≈ -18 dB). */

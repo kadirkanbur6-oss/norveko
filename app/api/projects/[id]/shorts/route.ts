@@ -173,7 +173,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
     if (deductError) return NextResponse.json({ success: false, error: deductError.message }, { status: 500 });
     if (!deducted) {
-      return NextResponse.json({ success: false, code: "insufficient_credits", error: `Not enough credits — a Short costs ${total}.` }, { status: 402 });
+      return NextResponse.json({ success: false, code: "insufficient_credits", error: `Not enough credits. A Short costs ${total}.` }, { status: 402 });
     }
 
     const o = source.options ?? {};

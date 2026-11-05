@@ -226,7 +226,7 @@ export default function YouTubePublish({
               onChange={(e) => setDesc(e.target.value)}
               className="w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-sm text-white outline-none focus:border-red-400/50"
             />
-            <p className="mt-1 text-xs text-gray-500">Keep the music credit at the end — the track&apos;s license requires it.</p>
+            <p className="mt-1 text-xs text-gray-500">Keep the music credit at the end. The track&apos;s license requires it.</p>
           </div>
           <div>
             <label htmlFor="yt-tags" className="mb-1 block text-xs uppercase tracking-wider text-gray-500">Tags (comma separated)</label>

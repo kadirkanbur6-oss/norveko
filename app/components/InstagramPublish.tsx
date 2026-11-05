@@ -116,7 +116,7 @@ export default function InstagramPublish({
             className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-fuchsia-600 to-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
           >
             {busy ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <Camera size={15} aria-hidden />}
-            {busy ? "Posting — Instagram is processing the video…" : post ? "Post again" : "Post Reel"}
+            {busy ? "Posting, Instagram is processing the video…" : post ? "Post again" : "Post Reel"}
           </button>
           <p className="text-xs text-gray-500">Instagram labels AI-generated content automatically where required. Up to 25 posts a day.</p>
         </div>

@@ -117,7 +117,7 @@ const TABS: PageTab[] = [
 const usd = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: n >= 100 ? 0 : 2 });
 const int = (n: number) => n.toLocaleString("en-US");
 const date = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+  iso ? new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "-";
 
 const CARD = "rounded-2xl border border-white/[0.07] bg-white/[0.025]";
 const TH = "px-3 py-2.5 text-left text-xs font-medium text-gray-400";
@@ -291,7 +291,7 @@ export default function AdminPage() {
             <div className="space-y-4">
               {o.fal?.low && (
                 <div role="alert" className="rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-                  <strong>fal.ai balance is low: {usd(o.fal.balanceUsd)}</strong> — under 20% of a {usd(o.fal.topupUsd)} top-up. Lip-sync, swaps and
+                  <strong>fal.ai balance is low: {usd(o.fal.balanceUsd)}</strong>, under 20% of a {usd(o.fal.topupUsd)} top-up. Lip-sync, swaps and
                   image→video clips stop when it runs out (users get refunds, but videos fail).{" "}
                   <a href="https://fal.ai/dashboard/usage-billing/credits" target="_blank" rel="noreferrer" className="underline">
                     Add credits
@@ -307,7 +307,7 @@ export default function AdminPage() {
                 <Stat label="Completed (all time)" value={int(o.jobs.completed)} />
                 <Stat label="Failed (all time)" value={int(o.jobs.failed)} note={`${int(o.failedWindow)} in the ${windowLabel}`} />
                 <Stat label="Unspent credits" value={int(o.creditsOutstanding)} note="Across every account" />
-                {o.fal && <Stat label="fal.ai balance" value={usd(o.fal.balanceUsd)} note={o.fal.low ? "Low — add credits" : `Warns at ${usd(o.fal.topupUsd * 0.2)}`} />}
+                {o.fal && <Stat label="fal.ai balance" value={usd(o.fal.balanceUsd)} note={o.fal.low ? "Low, add credits" : `Warns at ${usd(o.fal.topupUsd * 0.2)}`} />}
               </div>
               <div className="grid gap-3 lg:grid-cols-3">
                 <Bars title="Sign-ups per day" total={int(o.newUsers)} data={data.daily} value={(d) => d.signups} format={int} />
@@ -373,9 +373,9 @@ export default function AdminPage() {
                           <td className={`${TD} whitespace-nowrap text-gray-300`}>{date(u.createdAt)}</td>
                           <td className={`${TD} whitespace-nowrap text-gray-300`}>{date(u.lastSignInAt)}</td>
                           <td className={`${TD} text-right tabular-nums text-white`}>{int(u.credits)}</td>
-                          <td className={`${TD} text-right tabular-nums ${u.paidUsd ? "text-emerald-300" : "text-gray-500"}`}>{u.paidUsd ? usd(u.paidUsd) : "—"}</td>
-                          <td className={`${TD} text-right tabular-nums text-gray-300`}>{u.creditsSpent ? `${int(u.creditsSpent)} cr` : "—"}</td>
-                          <td className={`${TD} text-right tabular-nums text-gray-300`}>{u.costUsd ? usd(u.costUsd) : "—"}</td>
+                          <td className={`${TD} text-right tabular-nums ${u.paidUsd ? "text-emerald-300" : "text-gray-500"}`}>{u.paidUsd ? usd(u.paidUsd) : "-"}</td>
+                          <td className={`${TD} text-right tabular-nums text-gray-300`}>{u.creditsSpent ? `${int(u.creditsSpent)} cr` : "-"}</td>
+                          <td className={`${TD} text-right tabular-nums text-gray-300`}>{u.costUsd ? usd(u.costUsd) : "-"}</td>
                           <td className={`${TD} whitespace-nowrap text-right`}>
                             <button
                               type="button"
@@ -595,7 +595,7 @@ export default function AdminPage() {
                           {a.targetEmail}
                           {a.targetId && <p className="mt-0.5 font-mono text-xs text-gray-500">{a.targetId.slice(0, 8)}</p>}
                         </td>
-                        <td className={`${TD} max-w-[320px] break-words text-gray-300`}>{a.note || "—"}</td>
+                        <td className={`${TD} max-w-[320px] break-words text-gray-300`}>{a.note || "-"}</td>
                       </tr>
                     ))}
                   </tbody>

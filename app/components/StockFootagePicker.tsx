@@ -103,7 +103,7 @@ export default function StockFootagePicker({
       {error && <p className="mt-3 text-xs text-red-300">{error}</p>}
 
       {clips && clips.length === 0 && !loading && (
-        <p className="mt-3 text-xs text-gray-500">No clips found — try a shorter, more visual query.</p>
+        <p className="mt-3 text-xs text-gray-500">No clips found. Try a shorter, more visual query.</p>
       )}
 
       {clips && clips.length > 0 && (

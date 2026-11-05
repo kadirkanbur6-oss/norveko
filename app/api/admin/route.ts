@@ -298,7 +298,7 @@ export async function GET(req: NextRequest) {
       if (res.ok && Number.isFinite(balanceUsd)) {
         const topupUsd = Number(process.env.FAL_TOPUP_USD) || 50;
         fal = { balanceUsd, topupUsd, low: balanceUsd <= topupUsd * 0.2 };
-      } else errors.push(`fal balance: HTTP ${res.status}${res.status === 403 ? " — add FAL_BILLING_KEY (a fal key with the BILLING / READONLY preset)" : ""}`);
+      } else errors.push(`fal balance: HTTP ${res.status}${res.status === 403 ? ". Add FAL_BILLING_KEY (a fal key with the BILLING / READONLY preset)" : ""}`);
     } catch (err) {
       errors.push(`fal balance: ${err instanceof Error ? err.message : String(err)}`);
     }

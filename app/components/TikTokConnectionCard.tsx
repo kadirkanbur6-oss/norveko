@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { Loader2, Music2, Unplug } from "lucide-react";
 
 const MESSAGES: Record<string, string> = {
-  connected: "TikTok connected — you can now post finished videos from any project.",
+  connected: "TikTok connected. You can now post finished videos from any project.",
   cancelled: "Connecting TikTok was cancelled.",
   missing_permission: "Norveko needs permission to post videos. Connect again and allow it on TikTok's screen.",
   not_configured: "TikTok posting isn't enabled on this site yet.",

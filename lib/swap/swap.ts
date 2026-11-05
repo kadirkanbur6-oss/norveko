@@ -229,7 +229,7 @@ async function finish(db: SupabaseClient, row: SwapRow, sourceUrl: string): Prom
     if (error) throw new Error(error.message);
     url = db.storage.from("videos").getPublicUrl(key).data.publicUrl;
   }
-  const title = talk ? `${row.character_name} talks` : `${row.character_name} — character swap`;
+  const title = talk ? `${row.character_name} talks` : `${row.character_name} (character swap)`;
   const { data: project } = await db
     .from("projects")
     .insert({

@@ -38,7 +38,7 @@ const PHASE_LABEL: Record<string, string> = {
 const SKIT_STEPS: Array<{ id: string; label: string; expected: number; messages: string[] }> = [
   { id: "cast", label: "Casting the characters", expected: 35, messages: ["Designing each character…", "Drawing their reference portraits…", "Keeping every face consistent…"] },
   { id: "shots", label: "Drawing the shots and recording the voices", expected: 60, messages: ["Setting up each shot…", "Recording every line in character…", "Adding the crowd and sound effects…"] },
-  { id: "animate", label: "Bringing the shots to life", expected: 240, messages: ["Syncing lips to every line…", "Animating the silent shots…", "This is the slow part — hang tight…", "Checking finished shots…"] },
+  { id: "animate", label: "Bringing the shots to life", expected: 240, messages: ["Syncing lips to every line…", "Animating the silent shots…", "This is the slow part, hang tight…", "Checking finished shots…"] },
   { id: "render", label: "Cutting it together", expected: 70, messages: ["Laying the shots on the timeline…", "Mixing voices, crowd and effects…", "Rendering the final MP4…"] },
 ];
 
@@ -205,7 +205,7 @@ export default function SkitStudio({ text, onStarted }: { text: string; onStarte
       {making.length === 0 && (
       <div className={card}>
         <p className="text-sm text-gray-300">
-          Write the joke or scene above with the lines each character says. Add a style if you like — e.g. <span className="text-white">“make it like the viral cockroach videos”</span>. We cast it, voice every character, sync their lips and add the crowd sounds.
+          Write the joke or scene above with the lines each character says. Add a style if you like, e.g. <span className="text-white">“make it like the viral cockroach videos”</span>. We cast it, voice every character, sync their lips and add the crowd sounds.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <button type="button" onClick={() => setVertical(true)} aria-pressed={vertical} className={chip(vertical)}>
@@ -230,7 +230,7 @@ export default function SkitStudio({ text, onStarted }: { text: string; onStarte
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <p className="text-base font-semibold">{draft.title}</p>
               <p className="text-xs text-gray-500">
-                {draft.shots.length} shots · about {draft.seconds} s{stale ? " · the text changed — plan again to update" : ""}
+                {draft.shots.length} shots · about {draft.seconds} s{stale ? " · the text changed, plan again to update" : ""}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">

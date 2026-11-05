@@ -46,7 +46,7 @@ export default function ReviewPanel({
   const words = `${hook} ${script}`.split(/\s+/).filter(Boolean).length;
   const range = wordRange(duration ?? "60 seconds", languageOption(language ?? "English").code);
   const lengthNote =
-    words < range.min ? `A bit short for ${duration} — aim for about ${range.target} words.` : words > range.max ? `A bit long for ${duration} — aim for about ${range.target} words.` : null;
+    words < range.min ? `A bit short for ${duration}. Aim for about ${range.target} words.` : words > range.max ? `A bit long for ${duration}. Aim for about ${range.target} words.` : null;
 
   async function send(action: "approve" | "cancel") {
     setBusy(action);
@@ -76,7 +76,7 @@ export default function ReviewPanel({
       <p className="text-xs font-medium text-sky-300">Your approval is needed</p>
       <h3 className="mt-1 text-lg font-semibold text-white">Review the script before the video is made</h3>
       <p className="mt-1 text-sm text-gray-400">
-        Fix anything you want — names, facts, wording, what a scene shows. Nothing else is made until you approve.
+        Fix anything you want: names, facts, wording, what a scene shows. Nothing else is made until you approve.
       </p>
 
       <label className="mt-5 block">

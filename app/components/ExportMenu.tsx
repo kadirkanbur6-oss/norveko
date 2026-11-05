@@ -149,7 +149,7 @@ export default function ExportMenu({
           <p className="px-3 pb-1.5 pt-2 text-[11px] leading-snug text-gray-500">
             {timed
               ? `Subtitles are word-timed from the voiceover (${content.captions!.length} cues).`
-              : "No voiceover: subtitle timings are estimated from reading speed — adjust in your editor."}
+              : "No voiceover: subtitle timings are estimated from reading speed. Adjust in your editor."}
           </p>
         </div>
       )}

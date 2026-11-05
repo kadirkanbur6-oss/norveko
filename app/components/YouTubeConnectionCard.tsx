@@ -12,7 +12,7 @@ interface Connection {
 }
 
 const MESSAGES: Record<string, string> = {
-  connected: "YouTube connected — you can now publish finished videos from any project.",
+  connected: "YouTube connected. You can now publish finished videos from any project.",
   cancelled: "Connecting YouTube was cancelled.",
   missing_permission: "Norveko needs permission to upload. Connect again and, on Google's screen, tick the box “Manage your YouTube videos”.",
   no_channel: "That Google account has no YouTube channel yet. Create one on youtube.com, then connect again.",
@@ -62,7 +62,7 @@ export default function YouTubeConnectionCard() {
         <h2 className="font-semibold">YouTube publishing</h2>
       </div>
       <p className="mt-2 text-sm text-gray-400">
-        Connect your channel to publish finished videos straight from a project. Norveko can only upload — it can&apos;t
+        Connect your channel to publish finished videos straight from a project. Norveko can only upload. It can&apos;t
         delete or edit your existing videos.
       </p>
 

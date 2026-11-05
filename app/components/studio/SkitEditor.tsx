@@ -104,7 +104,7 @@ export default function SkitEditor({ projectId }: { projectId: string }) {
               type="button"
               disabled={busy || skit.editsLeft < 1}
               onClick={() => post({ action: "reanimate", id: skit.id })}
-              title="Some shots are still pictures (the animation didn't finish). Try their motion and lip-sync again — free."
+              title="Some shots are still pictures (the animation didn't finish). Try their motion and lip-sync again, free."
               className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-100 hover:border-amber-300 disabled:opacity-40"
             >
               <Sparkles size={13} /> Animate still shots · free

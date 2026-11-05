@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
         const amount = Math.trunc(Number(body.amount));
         if (!userId) return bad("Pick a user.");
         if (!Number.isFinite(amount) || amount === 0 || Math.abs(amount) > MAX_CREDITS) return bad(`Amount must be between −${MAX_CREDITS} and ${MAX_CREDITS}, not 0.`);
-        if (!note) return bad("Write a short note — it appears in the user's credit history.");
+        if (!note) return bad("Write a short note. It appears in the user's credit history.");
         const target = await targetUser(db, userId);
         if (!target) return bad("User not found.", 404);
         const { error } = await db.rpc("add_credits", {

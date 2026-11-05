@@ -76,7 +76,7 @@ export default function ApiKeysCard() {
         <>
           {fresh && (
             <div className="mt-4 rounded-xl border border-amber-300/30 bg-amber-400/[0.07] p-4">
-              <p className="text-sm font-medium text-amber-100">Copy your new key now — it won&apos;t be shown again.</p>
+              <p className="text-sm font-medium text-amber-100">Copy your new key now. It won&apos;t be shown again.</p>
               <div className="mt-2 flex items-center gap-2">
                 <code className="min-w-0 flex-1 truncate rounded-lg bg-black/40 px-3 py-2 font-mono text-xs text-white">{fresh}</code>
                 <button

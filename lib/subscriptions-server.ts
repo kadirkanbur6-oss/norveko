@@ -253,7 +253,7 @@ export async function runSubscriptionGrants(db: SupabaseClient, now = new Date()
       });
       if (!error) {
         try {
-          await addCredits(db, row.user_id, plan.credits, `${plan.name} yearly plan — monthly credits`);
+          await addCredits(db, row.user_id, plan.credits, `${plan.name} yearly plan, monthly credits`);
           granted++;
           await payReferral(db, row.user_id, key, plan.credits, plan);
         } catch (err) {

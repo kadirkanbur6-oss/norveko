@@ -68,7 +68,7 @@ export default function RetryRender({ projectId }: { projectId: string }) {
         <p className="mt-0.5 text-amber-100/70">
           {state === "working"
             ? "Long videos can take 20–40 minutes. You can leave this page."
-            : message || "Your script, voice and visuals are saved. Render the video again — it's free."}
+            : message || "Your script, voice and visuals are saved. Render the video again. It's free."}
         </p>
       </div>
       {state !== "working" ? (

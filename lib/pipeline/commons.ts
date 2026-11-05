@@ -102,7 +102,7 @@ export function archiveCredits(items: Array<{ title: string; author: string; lic
   const seen = new Set<string>();
   const lines = items
     .filter((i) => !seen.has(i.pageUrl) && seen.add(i.pageUrl))
-    .map((i) => `• ${i.title} — ${i.author} (${i.license}), ${i.pageUrl}`);
+    .map((i) => `• ${i.title} by ${i.author} (${i.license}), ${i.pageUrl}`);
   return lines.length ? `Archive photos (Wikimedia Commons):\n${lines.join("\n")}` : null;
 }
 

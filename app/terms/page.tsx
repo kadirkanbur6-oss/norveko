@@ -8,7 +8,7 @@ import {
 } from "@/app/lib/legal";
 
 export const metadata: Metadata = {
-  title: "Terms & Conditions — Norveko",
+  title: "Terms & Conditions | Norveko",
 };
 
 export default function TermsPage() {
@@ -62,7 +62,7 @@ export default function TermsPage() {
           every month. You can cancel at any time from the Billing page
           (&quot;Manage plan&quot;); the cancellation takes effect at the end of
           the current billing period. Plan credits are valid for the period
-          they were added for (one week, or one month — also on yearly plans)
+          they were added for (one week, or one month, also on yearly plans)
           and are used before any pack credits; plan credits left unused at
           the end of that period expire and do not roll over. Credits from
           one-time packages do not expire.

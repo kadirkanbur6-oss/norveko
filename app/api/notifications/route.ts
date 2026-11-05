@@ -54,7 +54,7 @@ export async function GET() {
       items.push({
         id: `job-${job.id}`,
         kind: "job_failed",
-        title: "Generation failed — credits refunded",
+        title: "Generation failed. Credits refunded",
         detail: job.error ? String(job.error).slice(0, 90) : idea || null,
         href: "/chat",
         created_at: job.created_at,

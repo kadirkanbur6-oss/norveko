@@ -18,7 +18,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const at = new Date();
   at.setSeconds(0, 0);
   const r = await createEpisode(db, series as SeriesRow, at);
-  if (r.status === "exists") return NextResponse.json({ success: false, error: "An episode was just started — wait a minute." }, { status: 409 });
+  if (r.status === "exists") return NextResponse.json({ success: false, error: "An episode was just started. Wait a minute." }, { status: 409 });
   if (r.status === "skipped") return NextResponse.json({ success: false, error: r.reason ?? "Skipped." }, { status: 400 });
   return NextResponse.json({ success: true, episodeId: r.episodeId });
 }

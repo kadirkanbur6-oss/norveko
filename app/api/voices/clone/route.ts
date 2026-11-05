@@ -55,7 +55,7 @@ export async function POST(req: Request) {
   if (files.length > CLONE_MAX_FILES) return NextResponse.json({ success: false, error: `Up to ${CLONE_MAX_FILES} recordings.` }, { status: 400 });
   const total = files.reduce((n, f) => n + f.size, 0);
   if (total > CLONE_MAX_BYTES) return NextResponse.json({ success: false, error: "Recordings must be under 4 MB in total." }, { status: 400 });
-  if (total < CLONE_MIN_BYTES) return NextResponse.json({ success: false, error: "The recording is too short — aim for 30 seconds or more." }, { status: 400 });
+  if (total < CLONE_MIN_BYTES) return NextResponse.json({ success: false, error: "The recording is too short. Aim for 30 seconds or more." }, { status: 400 });
   if (files.some((f) => f.type && !/^(audio|video)\//.test(f.type))) {
     return NextResponse.json({ success: false, error: "Use audio files (MP3, WAV, M4A or a browser recording)." }, { status: 400 });
   }

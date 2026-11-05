@@ -60,11 +60,11 @@ const MESSAGES: Record<PipelineStepId, string[]> = {
     "Laying clips on the timeline…",
     "Syncing narration and subtitles…",
     "Rendering the final MP4…",
-    "Almost there — encoding…",
+    "Almost there. Encoding…",
   ],
   video: [
     "Sending scenes to the video model…",
-    "Rendering clips — this is the slow part…",
+    "Rendering clips. This is the slow part…",
     "Still rendering, hang tight…",
     "Checking finished clips…",
   ],
@@ -196,7 +196,7 @@ export default function GenerationStage({
           {children}
 
           <p className="mt-3 text-xs text-gray-500">
-            You can leave this page — the job keeps running and the result lands in{" "}
+            You can leave this page. The job keeps running and the result lands in{" "}
             <span className="text-gray-300">Projects</span>. Credits are refunded automatically if a step fails.
           </p>
         </div>

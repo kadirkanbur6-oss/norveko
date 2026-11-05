@@ -113,7 +113,7 @@ export async function POST(req: Request) {
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
       .gte("created_at", new Date(Date.now() - 3600_000).toISOString());
-    if ((recent ?? 0) >= PLANS_PER_HOUR) return bad("That's a lot of tries — wait a little and try again.", 429);
+    if ((recent ?? 0) >= PLANS_PER_HOUR) return bad("That's a lot of tries. Wait a little and try again.", 429);
     try {
       const { GEMINI_VOICES } = await import("@/lib/pipeline/gemini-tts");
       const plan = await planSkit(script, GEMINI_VOICES);
@@ -179,7 +179,7 @@ export async function POST(req: Request) {
     if (credits > 0) {
       const { data: paid, error: payErr } = await db.rpc("deduct_credits", { p_user_id: payer, p_amount: credits, p_reason: `Skit edit: ${row.plan.title}` });
       if (payErr) return bad(payErr.message, 500);
-      if (!paid) return bad(`Not enough credits — this costs ${credits}.`, 402, { code: "insufficient_credits" });
+      if (!paid) return bad(`Not enough credits. This costs ${credits}.`, 402, { code: "insufficient_credits" });
     }
     const { error } = await db
       .from("skit_jobs")
@@ -216,7 +216,7 @@ export async function POST(req: Request) {
     const payer = await payerFor(db, user.id);
     const { data: paid, error: payErr } = await db.rpc("deduct_credits", { p_user_id: payer, p_amount: credits, p_reason: `Skit: ${row.plan.title}` });
     if (payErr) return bad(payErr.message, 500);
-    if (!paid) return bad(`Not enough credits — this skit costs ${credits}.`, 402, { code: "insufficient_credits" });
+    if (!paid) return bad(`Not enough credits. This skit costs ${credits}.`, 402, { code: "insufficient_credits" });
     const { data: started } = await db
       .from("skit_jobs")
       .update({ status: "running", credits, billed_to: payer !== user.id ? payer : null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
