@@ -10,6 +10,7 @@ import HeroBackground from "./HeroBackground";
 import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
 import SignOutButton from "./SignOutButton";
 import BrandMark from "./BrandMark";
+import { SUPPORT_EMAIL } from "@/app/lib/legal";
 import { COMPARISON, FREE_CREDITS_BUY, FREE_TRIAL_CREDITS, PAID_INCLUDES, TRIAL_VIDEO_PUBLIC, planDetails } from "@/lib/plans";
 import SubscriptionPlans from "./SubscriptionPlans";
 import { CREATIVE_COSTS } from "@/lib/skit/pricing";
@@ -734,10 +735,11 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             <Link href="/terms" className="transition hover:text-gray-300">Terms</Link>
             <Link href="/privacy" className="transition hover:text-gray-300">Privacy</Link>
             <Link href="/refund" className="transition hover:text-gray-300">Refunds</Link>
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="transition hover:text-gray-300">Contact</a>
             <Link href="/login" className="transition hover:text-gray-300">Log in</Link>
           </nav>
           <p className="text-xs text-gray-500">
-            © {new Date().getFullYear()} Norveko. All rights reserved.
+            © {new Date().getFullYear()} Norveko. All rights reserved. · <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-gray-300">{SUPPORT_EMAIL}</a>
           </p>
         </div>
       </footer>
