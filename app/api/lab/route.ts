@@ -248,6 +248,31 @@ export async function POST(req: Request) {
         if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
         return NextResponse.json({ success: true, path, mb: Math.round(bytes.length / 1e5) / 10 });
       }
+      // Delete the lab's own test clips (videos/lab/**.mp4) — Kadir said yes on 5 Nov 2026.
+      // Only MP4s under lab/: the eval research cache, images and every user's files stay.
+      case "cleanup-lab-videos": {
+        const db = admin();
+        const found: Array<{ path: string; size: number }> = [];
+        const walk = async (prefix: string, depth: number) => {
+          const { data } = await db.storage.from("videos").list(prefix, { limit: 1000 });
+          for (const f of data ?? []) {
+            const path = `${prefix}/${f.name}`;
+            if (!f.id) {
+              if (depth < 3) await walk(path, depth + 1);
+            } else if (/\.mp4$/i.test(f.name)) found.push({ path, size: Number((f.metadata as { size?: number } | null)?.size ?? 0) });
+          }
+        };
+        await walk("lab", 0);
+        const mb = Math.round(found.reduce((n, f) => n + f.size, 0) / 1048576);
+        if (body.dryRun) return NextResponse.json({ success: true, files: found.length, mb, paths: found.map((f) => f.path) });
+        const removed: string[] = [];
+        for (let i = 0; i < found.length; i += 50) {
+          const batch = found.slice(i, i + 50).map((f) => f.path);
+          const { error } = await db.storage.from("videos").remove(batch);
+          if (!error) removed.push(...batch);
+        }
+        return NextResponse.json({ success: true, removed: removed.length, mb, failed: found.length - removed.length });
+      }
       // Where Supabase Storage space goes (5 Nov 2026: free plan 1 GB full). Read-only.
       case "storage-report": {
         const db = admin();
