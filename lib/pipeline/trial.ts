@@ -8,6 +8,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { hasPurchased, isForcedTrialUser, isWatermarkExempt } from "./watermark-policy";
 import { trialUsedElsewhere, type AbuseContext } from "./abuse";
 
+/**
+ * The free 30-second trial video is switched off (6 Nov 2026, Yağmur): sign-up credits went
+ * from 50 to 70 instead, which buy one narrated 30 s stock + AI video (~$0.36 to us against
+ * ~$0.85 for the trial video). Flip back to true to bring the trial video back.
+ */
+export const TRIAL_VIDEO_ENABLED = false;
+
 export async function hasUsedTrialVideo(db: SupabaseClient, userId: string): Promise<boolean> {
   const { count, error } = await db
     .from("pipeline_jobs")
@@ -26,6 +33,7 @@ export async function hasUsedTrialVideo(db: SupabaseClient, userId: string): Pro
  * no trial for throwaway inboxes, once per normalised e-mail and per IP (30 days).
  */
 export async function trialVideoAvailable(db: SupabaseClient, userId: string, ctx: AbuseContext = {}): Promise<boolean> {
+  if (!TRIAL_VIDEO_ENABLED) return false;
   if (isForcedTrialUser(userId)) return !(await hasUsedTrialVideo(db, userId));
   if (isWatermarkExempt(userId)) return false;
   if (await hasPurchased(db, userId)) return false;

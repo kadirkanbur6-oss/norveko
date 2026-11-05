@@ -7,7 +7,15 @@
 import { CREDIT_PACKAGES, type CreditPackage } from "./packages";
 import { totalPipelineCredits } from "./pipeline/steps";
 
-export const FREE_TRIAL_CREDITS = 50;
+/**
+ * Credits every new account starts with. 6 Nov 2026: 50 → 70 so a new user can make one
+ * narrated 30 s video (stock + AI) instead of getting the costlier free trial video.
+ * The grant itself happens in the database on sign-up (see supabase/README.md "Sign-up credits").
+ */
+export const FREE_TRIAL_CREDITS = 70;
+
+/** Finished videos are open to everyone (launch): the landing copy may promise one. */
+const FULL_VIDEO_PUBLIC = process.env.NEXT_PUBLIC_FULL_VIDEO_ENABLED === "true";
 
 /** Typical jobs, priced exactly like the generator prices them. */
 export const JOB_COSTS = {
@@ -18,6 +26,8 @@ export const JOB_COSTS = {
   /** Finished 30 s / 60 s MP4 (hybrid footage, image→video clips). */
   video30: totalPipelineCredits({ research: true, fullVideo: true, footage: "hybrid", duration: "30 seconds" }),
   video60: totalPipelineCredits({ research: true, fullVideo: true, footage: "hybrid", duration: "60 seconds" }),
+  /** Cheapest finished video: 30 s, stock footage + AI scenes, Norveko narrator, subtitles. */
+  video30Stock: totalPipelineCredits({ research: true, fullVideo: true, footage: "stock", subtitles: true, duration: "30 seconds" }),
   /** 8-minute long-form script package with a Norveko narrator. */
   longForm: totalPipelineCredits({ research: true, voiceover: true, subtitles: true, duration: "10 minutes" }),
 };
@@ -81,7 +91,8 @@ export const PAID_INCLUDES = [
  * once they are public (set NEXT_PUBLIC_FULL_VIDEO_ENABLED=true together with
  * FULL_VIDEO_ENABLED=true at launch).
  */
-export const TRIAL_VIDEO_PUBLIC = process.env.NEXT_PUBLIC_FULL_VIDEO_ENABLED === "true";
+// The free trial video is off (lib/pipeline/trial.ts TRIAL_VIDEO_ENABLED); its copy stays hidden.
+export const TRIAL_VIDEO_PUBLIC = false;
 
 /** What the sign-up credits buy, in words ("two researched scripts with thumbnails"). */
 export const FREE_CREDITS_BUY = (() => {
@@ -89,7 +100,10 @@ export const FREE_CREDITS_BUY = (() => {
   const narrated = Math.floor(FREE_TRIAL_CREDITS / JOB_COSTS.package60);
   const words = ["zero", "one", "two", "three", "four", "five"];
   const w = (n: number) => words[n] ?? String(n);
-  return `${w(packs)} researched script${packs === 1 ? "" : "s"} with scene plan, SEO and thumbnail, or ${w(narrated)} with narration and subtitles`;
+  const scripts = `${w(packs)} researched script${packs === 1 ? "" : "s"} with scene plan, SEO and thumbnail`;
+  // Finished videos are advertised only once they are open to everyone.
+  if (FULL_VIDEO_PUBLIC && FREE_TRIAL_CREDITS >= JOB_COSTS.video30Stock) return `one finished 30-second narrated video, or ${scripts}`;
+  return `${scripts}, or ${w(narrated)} with narration and subtitles`;
 })();
 
 export const FREE_TRIAL_RULES = [

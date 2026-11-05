@@ -566,3 +566,25 @@ alter table public.admin_actions enable row level security;
 Credit adjustments call `add_credits(..., p_type => 'admin', ...)`; if
 `credit_transactions.type` has a CHECK constraint, add `'admin'` to it.
 Suspension uses Supabase Auth's ban (`auth.users.banned_until`), nothing extra.
+
+## Sign-up credits: 50 → 70 (6 Nov 2026)
+
+New accounts start with `FREE_TRIAL_CREDITS` (lib/plans.ts, now 70) instead of the free
+trial video (switched off: lib/pipeline/trial.ts `TRIAL_VIDEO_ENABLED`). The grant itself
+happens in the database when the auth user is created. Find where the 50 lives:
+
+```sql
+-- Column default of user_credits.credits
+select column_default from information_schema.columns
+where table_schema = 'public' and table_name = 'user_credits' and column_name = 'credits';
+
+-- Functions run by triggers on auth.users (the sign-up handler)
+select p.proname, pg_get_functiondef(p.oid)
+from pg_trigger t
+join pg_proc p on p.oid = t.tgfoid
+where t.tgrelid = 'auth.users'::regclass and not t.tgisinternal;
+```
+
+Then change that 50 to 70 (the column default with
+`alter table public.user_credits alter column credits set default 70;`, or the number in the
+handler function with `create or replace function …`). Existing accounts keep their balance.

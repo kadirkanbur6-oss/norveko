@@ -309,7 +309,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                   href="/signup"
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-3.5 font-semibold transition hover:opacity-90"
                 >
-                  Start free with 50 credits
+                  Start free with {FREE_TRIAL_CREDITS} credits
                   <ArrowRight size={18} />
                 </Link>
                 <a
@@ -709,7 +709,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
               href="/signup"
               className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-3.5 text-base font-bold sm:px-8 sm:py-4 sm:text-lg transition hover:opacity-90"
             >
-              Start free with 50 credits
+              Start free with {FREE_TRIAL_CREDITS} credits
               <ArrowRight size={20} />
             </Link>
             <p className="mt-3 text-xs text-gray-500">No credit card required</p>
