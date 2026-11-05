@@ -96,8 +96,8 @@ export const TARGET_MARGIN = 0.4;
 /** Worst-case net revenue per credit (Business pack after Paddle fees). */
 export const REVENUE_PER_CREDIT_USD = (59 * 0.95 - 0.5) / 5000;
 /** Credits needed to sell `usd` of provider cost at the target margin. */
-export function creditsForCost(usd: number): number {
-  return Math.ceil(usd / ((1 - TARGET_MARGIN) * REVENUE_PER_CREDIT_USD));
+export function creditsForCost(usd: number, margin: number = TARGET_MARGIN): number {
+  return Math.ceil(usd / ((1 - margin) * REVENUE_PER_CREDIT_USD));
 }
 
 /** Seconds of narration a duration label stands for. */

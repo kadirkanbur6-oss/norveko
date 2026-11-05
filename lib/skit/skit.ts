@@ -18,7 +18,7 @@ import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AVATAR_COST_PER_SECOND, RENDER_CREDITS_PER_30S, creditsForCost } from "@/lib/pipeline/steps";
 import { wordsPerSecond } from "@/lib/pipeline/narration";
-import { SKIT_CLIP_COST, SKIT_IMAGE_COST, SKIT_TALK_VIDEO_COST_PER_SECOND, skitCreditsFor } from "./pricing";
+import { SKIT_CLIP_COST, SKIT_IMAGE_COST, SKIT_MARGIN, SKIT_TALK_VIDEO_COST_PER_SECOND, skitCreditsFor } from "./pricing";
 import { TALK_VIDEO_ENABLED, talkClipSeconds } from "@/lib/pipeline/fal-video";
 import { LANGUAGE_OPTIONS } from "@/lib/pipeline/options";
 import { applyVoiceStyle, isVoiceStyle, styleDirection, voiceFor, type VoiceGender, type VoiceStyle } from "@/lib/skit/voice-styles";
@@ -757,7 +757,7 @@ export function shotRedoCredits(plan: SkitPlan, index: number): number {
       ? clip * SKIT_TALK_VIDEO_COST_PER_SECOND
       : Math.ceil((s.audioSeconds ?? 3) * 1.1) * AVATAR_COST_PER_SECOND
     : CLIP_COST;
-  return creditsForCost(IMAGE_COST + animate) + RENDER_CREDITS_PER_30S;
+  return creditsForCost(IMAGE_COST + animate, SKIT_MARGIN) + RENDER_CREDITS_PER_30S;
 }
 
 /**
