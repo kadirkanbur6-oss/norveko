@@ -236,7 +236,9 @@ export async function POST(req: Request) {
       }
       case "stock-swap-source": {
         const url = String(body.url ?? "");
-        if (!/^https:\/\/([a-z0-9-]+\.)*(pixabay\.com|pexels\.com)\//i.test(url)) return NextResponse.json({ success: false, error: "Only Pixabay / Pexels clips." }, { status: 400 });
+        // Pixabay / Pexels clips, or a clip the lab rendered into our own bucket (5 Nov 2026: AI-made swap sources).
+        const own = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/videos/lab/`;
+        if (!/^https:\/\/([a-z0-9-]+\.)*(pixabay\.com|pexels\.com)\//i.test(url) && !url.startsWith(own)) return NextResponse.json({ success: false, error: "Only Pixabay / Pexels clips or lab renders." }, { status: 400 });
         const res = await fetch(url);
         if (!res.ok) return NextResponse.json({ success: false, error: `Download failed (${res.status}).` }, { status: 502 });
         const bytes = Buffer.from(await res.arrayBuffer());
