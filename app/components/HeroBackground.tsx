@@ -49,13 +49,12 @@ export default function HeroBackground() {
               preload="auto"
               disablePictureInPicture
               onCanPlay={(e) => e.currentTarget.parentElement?.classList.add("nv-hero-wall-ready")}
-              className="h-full w-full object-cover object-[70%_50%] lg:object-center"
+              className="h-full w-full object-cover object-[70%_50%] lg:object-[80%_50%]"
             />
           </div>
         )}
         {/* Readability: the headline sits on the left, so the scene stays bright on the right. */}
-        <div className="absolute inset-0 bg-[#0a0a12]/25" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a12]/90 via-[#0a0a12]/45 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a12]/85 via-[#0a0a12]/30 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#0a0a12] to-transparent" />
         <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[#0a0a12] to-transparent" />
       </div>
