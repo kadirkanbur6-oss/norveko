@@ -54,7 +54,9 @@ export async function userFromApiKey(req: Request): Promise<User | null> {
 /** API access: accounts that bought a pack/plan (or beta testers). */
 export async function apiAllowed(db: SupabaseClient, userId: string): Promise<boolean> {
   const beta = (process.env.BETA_USER_IDS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  if (beta.includes(userId)) return true;
+  const { hasBetaGrant, loadAccess } = await import("@/lib/access");
+  await loadAccess(db);
+  if (beta.includes(userId) || hasBetaGrant(userId)) return true;
   const { isFreeAccount } = await import("@/lib/pipeline/trial");
   return !(await isFreeAccount(db, userId));
 }

@@ -528,3 +528,41 @@ create table if not exists public.characters (
 create index if not exists characters_user_idx on public.characters(user_id);
 alter table public.characters enable row level security;
 ```
+
+## Admin panel (`user_access`, `admin_actions`, 5 Nov 2026)
+
+Owner tools on `/admin` (`app/api/admin/actions/route.ts`). Both tables are
+read and written only with the service role — no RLS policies for users.
+
+```sql
+-- Access granted from the admin panel (lib/access.ts). Same rights as the
+-- BETA_USER_IDS / FULL_VIDEO_BETA_USER_IDS env lists, which keep working too.
+create table if not exists public.user_access (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  beta boolean not null default false,
+  full_video boolean not null default false,
+  note text,
+  updated_by uuid,
+  updated_at timestamptz not null default now()
+);
+alter table public.user_access enable row level security;
+
+-- Every admin action, for the "Admin log" tab.
+create table if not exists public.admin_actions (
+  id uuid primary key default gen_random_uuid(),
+  admin_id uuid not null,
+  action text not null,
+  target_user_id uuid,
+  target_id uuid,
+  amount integer,
+  note text,
+  detail jsonb,
+  created_at timestamptz not null default now()
+);
+create index if not exists admin_actions_created_idx on public.admin_actions (created_at desc);
+alter table public.admin_actions enable row level security;
+```
+
+Credit adjustments call `add_credits(..., p_type => 'admin', ...)`; if
+`credit_transactions.type` has a CHECK constraint, add `'admin'` to it.
+Suspension uses Supabase Auth's ban (`auth.users.banned_until`), nothing extra.

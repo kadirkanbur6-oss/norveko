@@ -5,6 +5,7 @@
 // lib/pipeline/unwatermark.ts). Pure + env only, so it is safe for tests.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { hasBetaGrant, loadAccess } from "@/lib/access";
 
 /** Path of the badge served from /public (rendered once from the BrandMark). */
 export const WATERMARK_PUBLIC_PATH = "/brand/watermark.png";
@@ -28,7 +29,7 @@ export function isForcedTrialUser(userId: string): boolean {
 
 export function isWatermarkExempt(userId: string): boolean {
   if (ids(process.env.WATERMARK_FORCE_USER_IDS).includes(userId)) return false;
-  return ids(process.env.BETA_USER_IDS).includes(userId);
+  return ids(process.env.BETA_USER_IDS).includes(userId) || hasBetaGrant(userId);
 }
 
 /** True when the user has at least one completed (non-refunded) credit purchase. */
@@ -62,6 +63,7 @@ async function purchasedBy(db: SupabaseClient, userId: string): Promise<boolean>
 }
 
 export async function needsWatermark(db: SupabaseClient, userId: string): Promise<boolean> {
+  await loadAccess(db); // admin-granted beta accounts are exempt too
   if (isForcedTrialUser(userId)) return true;
   if (isWatermarkExempt(userId)) return false;
   return !(await hasPurchased(db, userId));

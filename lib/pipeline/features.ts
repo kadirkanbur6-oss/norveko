@@ -10,6 +10,7 @@
 // VIDEO_GENERATION_ENABLED=true, with VIDEO_BETA_USER_IDS as the test allowlist.
 
 import "server-only";
+import { hasBetaGrant, hasFullVideoGrant } from "@/lib/access";
 
 function parseIds(raw: string | undefined): string[] {
   return (raw ?? "")
@@ -25,7 +26,8 @@ function isAllowlisted(userId: string | null | undefined, raw: string | undefine
 /** May this user run the content pipeline at all? */
 export function isGenerationEnabled(userId: string | null | undefined): boolean {
   if (process.env.GENERATION_ENABLED !== "false") return true;
-  return isAllowlisted(userId, process.env.BETA_USER_IDS);
+  // Beta = env allowlist or a grant made from /admin (lib/access.ts).
+  return isAllowlisted(userId, process.env.BETA_USER_IDS) || hasBetaGrant(userId);
 }
 
 /** May this user add Kling video clips to a generation? */
@@ -43,7 +45,7 @@ export function isVideoGenerationEnabled(userId: string | null | undefined): boo
 export function isFullVideoEnabled(userId: string | null | undefined): boolean {
   if (!isGenerationEnabled(userId)) return false;
   if (process.env.FULL_VIDEO_ENABLED === "true") return true;
-  return isAllowlisted(userId, process.env.FULL_VIDEO_BETA_USER_IDS);
+  return isAllowlisted(userId, process.env.FULL_VIDEO_BETA_USER_IDS) || hasFullVideoGrant(userId);
 }
 
 /** Message shown to users while the launch lock is on. */

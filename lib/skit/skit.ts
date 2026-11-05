@@ -236,6 +236,14 @@ async function save(db: SupabaseClient, row: SkitRow, values: Partial<SkitRow>) 
   await db.from("skit_jobs").update({ ...values, updated_at: new Date().toISOString() }).eq("id", row.id);
 }
 
+/** Admin panel: stop a running job and refund it (lib/admin actions). */
+export async function failSkitJob(db: SupabaseClient, id: string, message: string): Promise<boolean> {
+  const { data } = await db.from("skit_jobs").select("*").eq("id", id).maybeSingle();
+  if (!data || data.status !== "running") return false;
+  await fail(db, data as SkitRow, message);
+  return true;
+}
+
 async function fail(db: SupabaseClient, row: SkitRow, message: string) {
   const { data } = await db
     .from("skit_jobs")

@@ -18,7 +18,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export async function requireUser() {
   const supabase = createServerSupabaseClient();
   // /api/v1 requests authenticated with an API key run as that key's user.
-  const { apiUser } = await import("@/lib/api-keys");
+  const { apiUser, adminDb } = await import("@/lib/api-keys");
+  // Admin-granted beta / full-video access (lib/access.ts) must be in the
+  // cache before any feature gate runs in this request. Cached for a minute.
+  await (await import("@/lib/access")).loadAccess(adminDb());
   const keyUser = apiUser();
   if (keyUser) return { supabase, user: keyUser };
   const {

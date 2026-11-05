@@ -1,7 +1,8 @@
 // app/api/admin/route.ts
 // Read-only data for the owner's admin panel (/admin): accounts, balances,
-// generations, payments and provider costs. Everything comes straight from
-// Supabase with the service role; nothing here changes data.
+// generations, payments, provider costs and the admin action log. Everything
+// comes straight from Supabase with the service role; nothing here changes
+// data — actions live in ./actions/route.ts.
 //
 // Access: lib/admin.ts (ADMIN_USER_IDS). Everyone else gets a 404.
 
@@ -11,6 +12,7 @@ import { requireUser } from "@/lib/supabase-server";
 import { isAdmin } from "@/lib/admin";
 import { adminDb } from "@/lib/api-keys";
 import { estimateCostUsd, type UsageProvider } from "@/lib/pipeline/usage";
+import { listAccess } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -55,6 +57,13 @@ const num = (v: unknown) => (typeof v === "number" ? v : Number(v) || 0);
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 const day = (iso: string) => iso.slice(0, 10);
 
+/** lib/pipeline/rerender.ts retryFailedRender: render failed after the visuals were made, ≤ 2 tries. */
+function canRetryRender(j: Row): boolean {
+  if (j.status !== "failed") return false;
+  const steps = (j.steps ?? {}) as Record<string, Record<string, unknown> | undefined>;
+  return steps.render?.status === "failed" && steps.video?.status === "completed" && (Number(steps.render?.retries) || 0) < 2;
+}
+
 function jobKind(options: unknown): string {
   const o = (options ?? {}) as Row;
   if (o.short) return "Short";
@@ -78,7 +87,7 @@ export async function GET(req: NextRequest) {
   const errors: string[] = [];
   const db = adminDb();
 
-  const [users, balances, purchases, subscriptions, jobs, skits, swaps, usage, transactions, jobCounts] = await Promise.all([
+  const [users, balances, purchases, subscriptions, jobs, skits, swaps, usage, transactions, jobCounts, access, adminLog] = await Promise.all([
     allUsers(db, errors),
     all("user_credits", (a, b) => db.from("user_credits").select("user_id, credits").range(a, b), errors),
     all("credit_purchases", (a, b) => db.from("credit_purchases").select("*").range(a, b), errors),
@@ -88,7 +97,7 @@ export async function GET(req: NextRequest) {
       (a, b) =>
         db
           .from("pipeline_jobs")
-          .select("id, user_id, idea, status, current_step, error, duration, output_language, created_at, credits_charged, credits_refunded, options")
+          .select("id, user_id, idea, status, current_step, error, duration, output_language, created_at, credits_charged, credits_refunded, options, steps")
           .order("created_at", { ascending: false })
           .range(a, Math.min(b, JOB_LIST - 1)),
       errors
@@ -110,6 +119,8 @@ export async function GET(req: NextRequest) {
         return [status, counts.reduce((t, c) => t + c, 0)] as const;
       })
     ),
+    listAccess(db),
+    all("admin_actions", (a, b) => db.from("admin_actions").select("id, admin_id, action, target_user_id, target_id, amount, note, detail, created_at").order("created_at", { ascending: false }).range(a, Math.min(b, 199)), []),
   ]);
 
   // Rows logged before a model was in the price list were stored as $0:
@@ -143,12 +154,26 @@ export async function GET(req: NextRequest) {
   const costByUser = new Map<string, number>();
   for (const u of usage) costByUser.set(str(u.user_id), (costByUser.get(str(u.user_id)) ?? 0) + num(u.estimated_cost_usd));
 
+  const envBeta = (process.env.BETA_USER_IDS ?? "").split(",").map((v) => v.trim()).filter(Boolean);
+  const envFullVideo = (process.env.FULL_VIDEO_BETA_USER_IDS ?? "").split(",").map((v) => v.trim()).filter(Boolean);
+  const grants = new Map(access.map((a) => [a.user_id, a]));
+
   const userRows = users
     .map((u) => ({
       id: u.id,
       email: u.email ?? "",
       provider: str(u.app_metadata?.provider) || "email",
       verified: Boolean(u.email_confirmed_at),
+      admin: isAdmin(u),
+      // Supabase sets banned_until far in the future for a suspended account.
+      suspended: Boolean((u as User & { banned_until?: string | null }).banned_until && Date.parse((u as User & { banned_until?: string }).banned_until as string) > now),
+      access: {
+        beta: Boolean(grants.get(u.id)?.beta),
+        fullVideo: Boolean(grants.get(u.id)?.full_video),
+        note: grants.get(u.id)?.note ?? null,
+        envBeta: envBeta.includes(u.id),
+        envFullVideo: envFullVideo.includes(u.id),
+      },
       createdAt: u.created_at,
       lastSignInAt: u.last_sign_in_at ?? null,
       credits: credits.get(u.id) ?? 0,
@@ -164,6 +189,8 @@ export async function GET(req: NextRequest) {
   const generations = [
     ...jobs.map((j) => ({
       id: str(j.id),
+      table: "pipeline" as const,
+      canRetryRender: canRetryRender(j),
       kind: jobKind(j.options),
       userId: str(j.user_id),
       title: str(j.idea).slice(0, 140),
@@ -177,6 +204,8 @@ export async function GET(req: NextRequest) {
     })),
     ...skits.map((j) => ({
       id: str(j.id),
+      table: "skit" as const,
+      canRetryRender: false,
       kind: "Skit",
       userId: str(j.user_id),
       title: str(j.script).slice(0, 140),
@@ -190,6 +219,8 @@ export async function GET(req: NextRequest) {
     })),
     ...swaps.map((j) => ({
       id: str(j.id),
+      table: "swap" as const,
+      canRetryRender: false,
       kind: j.kind === "talk" ? "Talking character" : "Character swap",
       userId: str(j.user_id),
       title: str(j.character_name).slice(0, 140),
@@ -302,5 +333,16 @@ export async function GET(req: NextRequest) {
     generations,
     payments,
     costs: Array.from(byProvider.values()).sort((a, b) => b.costUsd - a.costUsd),
+    adminLog: adminLog.map((a) => ({
+      id: str(a.id),
+      adminEmail: email.get(str(a.admin_id)) ?? str(a.admin_id).slice(0, 8),
+      action: str(a.action),
+      targetEmail: a.target_user_id ? (email.get(str(a.target_user_id)) ?? str(a.target_user_id).slice(0, 8)) : "",
+      targetId: a.target_id ? str(a.target_id) : "",
+      amount: a.amount == null ? null : num(a.amount),
+      note: a.note ? str(a.note) : "",
+      detail: (a.detail as Record<string, unknown> | null) ?? null,
+      createdAt: str(a.created_at),
+    })),
   });
 }

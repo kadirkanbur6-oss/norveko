@@ -2,12 +2,15 @@
 
 // app/admin/page.tsx
 // Owner's admin panel: who signed up, what they generated, what was paid and
-// what the providers cost. Read-only; data from GET /api/admin.
+// what the providers cost (GET /api/admin), plus the owner's tools — credits,
+// access, suspension, deletion and job controls (AdminActions.tsx →
+// POST /api/admin/actions, logged in the "Admin log" tab).
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Loader2, RefreshCw, Search, X } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import PageTabs, { PageHeader, useTabParam, type PageTab } from "../components/PageTabs";
+import { JobActions, ManageUserDialog, type ManagedUser } from "./AdminActions";
 
 interface Overview {
   users: number;
@@ -33,9 +36,7 @@ interface Daily {
   revenueUsd: number;
   costUsd: number;
 }
-interface UserRow {
-  id: string;
-  email: string;
+interface UserRow extends ManagedUser {
   provider: string;
   verified: boolean;
   createdAt: string;
@@ -49,6 +50,8 @@ interface UserRow {
 }
 interface Generation {
   id: string;
+  table: "pipeline" | "skit" | "swap";
+  canRetryRender: boolean;
   kind: string;
   userId: string;
   email: string;
@@ -78,6 +81,17 @@ interface Cost {
   failed: number;
   costUsd: number;
 }
+interface AdminLogEntry {
+  id: string;
+  adminEmail: string;
+  action: string;
+  targetEmail: string;
+  targetId: string;
+  amount: number | null;
+  note: string;
+  detail: Record<string, unknown> | null;
+  createdAt: string;
+}
 interface AdminData {
   days: number;
   generatedAt: string;
@@ -88,6 +102,7 @@ interface AdminData {
   generations: Generation[];
   payments: Payment[];
   costs: Cost[];
+  adminLog: AdminLogEntry[];
 }
 
 const TABS: PageTab[] = [
@@ -96,6 +111,7 @@ const TABS: PageTab[] = [
   { id: "generations", label: "Generations" },
   { id: "payments", label: "Payments" },
   { id: "costs", label: "Provider costs" },
+  { id: "log", label: "Admin log" },
 ];
 
 const usd = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: n >= 100 ? 0 : 2 });
@@ -170,6 +186,7 @@ export default function AdminPage() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [userFilter, setUserFilter] = useState<{ id: string; email: string } | null>(null);
+  const [managing, setManaging] = useState<UserRow | null>(null);
 
   const load = useCallback(async (window: number) => {
     setLoading(true);
@@ -347,6 +364,10 @@ export default function AdminPage() {
                               {u.provider}
                               {!u.verified && " · not verified"}
                               {u.plan && ` · ${u.plan}`}
+                              {u.admin && <span className="text-violet-300"> · admin</span>}
+                              {(u.access.beta || u.access.envBeta) && <span className="text-sky-300"> · beta</span>}
+                              {(u.access.fullVideo || u.access.envFullVideo) && <span className="text-sky-300"> · full video</span>}
+                              {u.suspended && <span className="text-amber-300"> · suspended</span>}
                             </p>
                           </td>
                           <td className={`${TD} whitespace-nowrap text-gray-300`}>{date(u.createdAt)}</td>
@@ -355,7 +376,7 @@ export default function AdminPage() {
                           <td className={`${TD} text-right tabular-nums ${u.paidUsd ? "text-emerald-300" : "text-gray-500"}`}>{u.paidUsd ? usd(u.paidUsd) : "—"}</td>
                           <td className={`${TD} text-right tabular-nums text-gray-300`}>{u.creditsSpent ? `${int(u.creditsSpent)} cr` : "—"}</td>
                           <td className={`${TD} text-right tabular-nums text-gray-300`}>{u.costUsd ? usd(u.costUsd) : "—"}</td>
-                          <td className={`${TD} text-right`}>
+                          <td className={`${TD} whitespace-nowrap text-right`}>
                             <button
                               type="button"
                               onClick={() => {
@@ -363,9 +384,16 @@ export default function AdminPage() {
                                 setStatusFilter("all");
                                 setTab("generations");
                               }}
-                              className="whitespace-nowrap text-xs text-blue-300 hover:text-blue-200"
+                              className="text-xs text-blue-300 hover:text-blue-200"
                             >
                               Generations
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setManaging(u)}
+                              className="ml-3 rounded-lg border border-white/[0.09] bg-white/[0.04] px-2.5 py-1 text-xs font-medium text-white transition hover:bg-white/[0.08]"
+                            >
+                              Manage
                             </button>
                           </td>
                         </tr>
@@ -417,6 +445,7 @@ export default function AdminPage() {
                         <th className={TH}>User</th>
                         <th className={TH}>Status</th>
                         <th className={`${TH} text-right`}>Credits</th>
+                        <th className={TH} />
                       </tr>
                     </thead>
                     <tbody>
@@ -443,6 +472,9 @@ export default function AdminPage() {
                           <td className={`${TD} whitespace-nowrap text-right tabular-nums text-gray-200`}>
                             {int(g.credits)}
                             {g.refunded > 0 && <p className="text-xs text-amber-300">−{int(g.refunded)} refunded</p>}
+                          </td>
+                          <td className={`${TD} text-right`}>
+                            <JobActions key={`${g.id}-${g.status}`} job={g} onChanged={() => load(days)} />
                           </td>
                         </tr>
                       ))}
@@ -528,8 +560,59 @@ export default function AdminPage() {
               </div>
             )
           )}
+          {data && tab === "log" && (
+            data.adminLog.length === 0 ? (
+              <Empty>No admin actions yet. Credits, access changes, suspensions, deletions and job controls are recorded here.</Empty>
+            ) : (
+              <div className={`${CARD} overflow-x-auto`}>
+                <table className="w-full min-w-[720px] border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/[0.07]">
+                      <th className={TH}>When</th>
+                      <th className={TH}>Admin</th>
+                      <th className={TH}>Action</th>
+                      <th className={TH}>Target</th>
+                      <th className={TH}>Note</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.adminLog.map((a) => (
+                      <tr key={a.id} className="border-b border-white/[0.04] last:border-0">
+                        <td className={`${TD} whitespace-nowrap text-gray-300`}>{date(a.createdAt)}</td>
+                        <td className={`${TD} text-gray-300`}>{a.adminEmail}</td>
+                        <td className={`${TD} text-white`}>
+                          {a.action}
+                          {a.amount != null && <span className={a.amount > 0 ? "text-emerald-300" : "text-amber-300"}> {a.amount > 0 ? "+" : ""}{int(a.amount)}</span>}
+                          {a.detail && Object.keys(a.detail).length > 0 && (
+                            <p className="mt-0.5 text-xs text-gray-500">
+                              {Object.entries(a.detail)
+                                .map(([k, v]) => `${k}: ${String(v)}`)
+                                .join(" · ")}
+                            </p>
+                          )}
+                        </td>
+                        <td className={`${TD} text-gray-300`}>
+                          {a.targetEmail}
+                          {a.targetId && <p className="mt-0.5 font-mono text-xs text-gray-500">{a.targetId.slice(0, 8)}</p>}
+                        </td>
+                        <td className={`${TD} max-w-[320px] break-words text-gray-300`}>{a.note || "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          )}
         </div>
       </main>
+
+      {managing && (
+        <ManageUserDialog
+          user={managing}
+          onClose={() => setManaging(null)}
+          onChanged={() => load(days)}
+        />
+      )}
     </div>
   );
 }

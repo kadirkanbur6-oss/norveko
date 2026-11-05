@@ -297,6 +297,7 @@ async function createSkitEpisode(
 
 /** Cron: create episodes for every active series' upcoming post times. */
 export async function runSeriesTick(db: SupabaseClient = adminDb(), now = new Date(), lookaheadHours = LOOKAHEAD_HOURS) {
+  await (await import("@/lib/access")).loadAccess(db); // admin-granted access for the gate checks below
   const { data: rows, error } = await db.from("series").select("*").eq("active", true).limit(500);
   if (error) throw new Error(error.message);
   const summary = { series: rows?.length ?? 0, created: 0, skipped: 0, errors: 0 };
