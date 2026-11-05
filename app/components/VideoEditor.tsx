@@ -12,6 +12,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowLeft,
+  ArrowRight,
   Captions,
   Clapperboard,
   Film,
@@ -205,6 +207,15 @@ export default function VideoEditor({ projectId, vertical }: { projectId: string
     }
   }
 
+  /** Swap this scene's picture with its neighbour (the touch-friendly twin of drag-and-drop). */
+  async function move(s: SlotView, dir: -1 | 1) {
+    const pos = slots.findIndex((x) => x.index === s.index);
+    const other = slots[pos + dir];
+    if (!other) return;
+    const ok = await edit("move", { action: "swap", a: s.index, b: other.index });
+    if (ok) setSelected(other.index);
+  }
+
   function choose(s: SlotView) {
     setSelected(s.index);
     setSelectedCue(null);
@@ -238,6 +249,7 @@ export default function VideoEditor({ projectId, vertical }: { projectId: string
     const up = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
       setDrag(null);
       if (Math.abs(time - slots[cut + 1].start) < 0.05) return;
       const cuts = slots.slice(1).map((s, i) => (i === cut ? time : s.start));
@@ -245,6 +257,7 @@ export default function VideoEditor({ projectId, vertical }: { projectId: string
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
   }
 
   // Keyboard alternative for the cut handles: ←/→ move by 0.5 s.
@@ -384,7 +397,7 @@ export default function VideoEditor({ projectId, vertical }: { projectId: string
           <div>
             <div className="mb-2 flex items-center justify-between gap-3">
               <p className="text-xs font-medium text-gray-400">
-                Timeline · drag a line between scenes to retime, drag a scene onto another to swap
+                Timeline · drag a line between scenes to retime, drag a scene onto another (or tap it and use Move) to swap
               </p>
               <div className="flex items-center gap-1">
                 <button
@@ -481,7 +494,7 @@ export default function VideoEditor({ projectId, vertical }: { projectId: string
                       aria-valuemax={Math.round(total)}
                       onPointerDown={(e) => startCut(e, i)}
                       onKeyDown={(e) => nudgeCut(e, i)}
-                      className="absolute top-0 z-20 flex h-full w-3 -translate-x-1/2 cursor-col-resize items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                      className="absolute top-0 z-20 flex h-full w-6 -translate-x-1/2 cursor-col-resize touch-none items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-blue-400 sm:w-3"
                       style={{ left: bounds[i].end * pps }}
                     >
                       <span className={`h-3/4 w-1 rounded-full ${drag?.cut === i ? "bg-yellow-300" : "bg-white/60"}`} />
@@ -558,9 +571,29 @@ export default function VideoEditor({ projectId, vertical }: { projectId: string
                 ) : null}
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-gray-400">
-                  Scene {fmt(slot.start)}–{fmt(slot.start + slot.length)} · {slot.length.toFixed(1)} s
-                </p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs text-gray-400">
+                    Scene {fmt(slot.start)}–{fmt(slot.start + slot.length)} · {slot.length.toFixed(1)} s
+                  </p>
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => void move(slot, -1)}
+                      disabled={busy !== null || slots[0]?.index === slot.index}
+                      className="flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-xs text-gray-300 transition hover:border-white/25 disabled:opacity-40"
+                    >
+                      <ArrowLeft size={12} aria-hidden /> Move earlier
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void move(slot, 1)}
+                      disabled={busy !== null || slots[slots.length - 1]?.index === slot.index}
+                      className="flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-xs text-gray-300 transition hover:border-white/25 disabled:opacity-40"
+                    >
+                      Move later <ArrowRight size={12} aria-hidden />
+                    </button>
+                  </div>
+                </div>
                 <div className="mt-2 flex gap-1 rounded-xl border border-white/10 p-1" role="tablist">
                   {(
                     [

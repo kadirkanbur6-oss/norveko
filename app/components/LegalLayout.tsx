@@ -37,7 +37,7 @@ export default function LegalLayout({ title, children }: LegalLayoutProps) {
           Last updated: {LEGAL_LAST_UPDATED}
         </p>
 
-        <div className="mt-10 space-y-8 leading-relaxed [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_p]:mt-3 [&_ul]:mt-3 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6">
+        <div className="mt-10 space-y-8 leading-relaxed [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_p]:mt-3 [&_ul]:mt-3 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6 [&_code]:break-words [&_code]:rounded [&_code]:bg-white/5 [&_code]:px-1 [&_code]:text-[0.9em] [&_code]:text-gray-200 [&_pre]:mt-3 [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:border [&_pre]:border-white/10 [&_pre]:bg-black/40 [&_pre]:p-3 [&_pre]:text-xs [&_pre]:leading-relaxed [&_a]:break-words [&_a]:text-blue-400">
           {children}
         </div>
       </main>

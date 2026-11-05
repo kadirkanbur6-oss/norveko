@@ -370,19 +370,23 @@ export default function TalkStudio({ text: outerText, onStarted }: { text?: stri
                   placeholder="e.g. at a football press conference, lots of microphones on the table"
                   className={`${field} mt-3`}
                 />
-                <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                  {looks.map((l) => (
-                    <button key={l.id} type="button" onClick={() => setLook(l.id)} aria-pressed={look === l.id} className={chip(look === l.id)}>
-                      {l.label}
-                    </button>
-                  ))}
-                  <span className="mx-2 h-4 w-px bg-white/10" aria-hidden />
+                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {looks.map((l) => (
+                      <button key={l.id} type="button" onClick={() => setLook(l.id)} aria-pressed={look === l.id} className={chip(look === l.id)}>
+                        {l.label}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="hidden h-4 w-px bg-white/10 sm:block" aria-hidden />
+                  <div className="flex flex-wrap gap-1.5">
                   <button type="button" onClick={() => setVertical(true)} aria-pressed={vertical} className={chip(vertical)}>
                     Vertical 9:16
                   </button>
                   <button type="button" onClick={() => setVertical(false)} aria-pressed={!vertical} className={chip(!vertical)}>
                     Horizontal 16:9
                   </button>
+                  </div>
                 </div>
               </section>
 

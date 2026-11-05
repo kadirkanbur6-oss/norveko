@@ -71,7 +71,7 @@ export function CaptionStylePicker({ value, onChange }: { value: string; onChang
   return (
     <div className="mt-3">
       <p className="mb-2 text-xs font-medium text-gray-400">Subtitle style</p>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Subtitle style">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4" role="radiogroup" aria-label="Subtitle style">
         {CAPTION_STYLES.map((c) => {
           const active = value === c.id;
           const words = c.uppercase ? ["THE", "SIGNAL", "STOPPED"] : ["The", "signal", "stopped"];
@@ -86,13 +86,13 @@ export function CaptionStylePicker({ value, onChange }: { value: string; onChang
                 active ? "border-blue-400/60 bg-blue-500/10" : "border-white/10 bg-white/[0.02] hover:border-white/20"
               }`}
             >
-              <span className="flex h-12 items-center justify-center gap-1 rounded-lg bg-gradient-to-b from-slate-700 to-slate-900 px-1">
+              <span className="flex h-12 items-center justify-center gap-0.5 overflow-hidden rounded-lg bg-gradient-to-b from-slate-700 to-slate-900 px-1 sm:gap-1">
                 {words.map((w, i) => {
                   const spoken = i === 1;
                   return (
                     <span
                       key={w}
-                      className={`rounded px-0.5 text-[13px] ${c.font.includes("ExtraBold") ? "font-extrabold" : "font-semibold"}`}
+                      className={`rounded px-0.5 text-[11px] min-[400px]:text-[13px] ${c.font.includes("ExtraBold") ? "font-extrabold" : "font-semibold"}`}
                       style={{
                         color: spoken ? c.preview.accent : c.preview.text,
                         background: spoken && c.preview.box ? c.preview.box : undefined,

@@ -189,7 +189,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             <span className="text-lg font-bold tracking-tight">NORVEKO</span>
           </Link>
 
-          <nav className="hidden items-center gap-8 text-sm text-gray-400 md:flex">
+          <nav className="hidden items-center gap-6 whitespace-nowrap text-sm text-gray-400 lg:flex xl:gap-8">
             <a href="#examples" className="transition hover:text-white">Examples</a>
             <a href="#pricing" className="transition hover:text-white">Pricing</a>
             <a href="#workflow" className="transition hover:text-white">How it works</a>
@@ -201,7 +201,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             {isLoggedIn ? (
               <>
                 <SignOutButton
-                  className="hidden items-center gap-2 rounded-xl px-3 py-2 text-sm text-gray-400 transition hover:text-white sm:flex"
+                  className="hidden items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm text-gray-400 transition hover:text-white sm:flex"
                 />
                 <Link
                   href="/dashboard"
@@ -214,7 +214,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
               <>
                 <Link
                   href="/login"
-                  className="hidden rounded-xl px-4 py-2 text-sm text-gray-300 transition hover:text-white sm:inline-block"
+                  className="hidden whitespace-nowrap rounded-xl px-4 py-2 text-sm text-gray-300 transition hover:text-white sm:inline-block"
                 >
                   Log in
                 </Link>
@@ -231,7 +231,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
               onClick={() => setMenuOpen((v) => !v)}
               aria-label={menuOpen ? "Close menu" : "Open menu"}
               aria-expanded={menuOpen}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-gray-300 transition hover:text-white md:hidden"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-gray-300 transition hover:text-white lg:hidden"
             >
               {menuOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
@@ -240,7 +240,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
 
         {/* Mobile nav */}
         {menuOpen && (
-          <nav className="border-t border-white/5 bg-[#0a0a12]/95 px-4 py-3 md:hidden">
+          <nav className="border-t border-white/5 bg-[#0a0a12]/95 px-4 py-3 lg:hidden">
             <div className="flex flex-col gap-1 text-sm text-gray-300">
               {[
                 ["#examples", "Examples"],
