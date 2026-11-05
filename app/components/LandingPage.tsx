@@ -101,20 +101,17 @@ function GlassCard({
 }
 
 function SectionTitle({
-  eyebrow,
   title,
   subtitle,
 }: {
-  eyebrow: string;
+  /** Kept for call sites; not shown (all-caps eyebrow labels read as templated). */
+  eyebrow?: string;
   title: string;
   subtitle?: string;
 }) {
   return (
     <div className="mx-auto max-w-2xl text-center">
-      <p className="text-xs font-semibold uppercase tracking-[3px] text-blue-300">
-        {eyebrow}
-      </p>
-      <h2 className="mt-2 text-3xl font-bold text-white sm:text-4xl">{title}</h2>
+      <h2 className="text-3xl font-bold text-white sm:text-4xl">{title}</h2>
       {subtitle && <p className="mt-3 text-gray-400">{subtitle}</p>}
     </div>
   );
@@ -357,7 +354,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             ))}
           </div>
           <div className="mx-auto mt-6 flex max-w-6xl flex-wrap items-center justify-center gap-x-8 gap-y-3 px-4 sm:px-6">
-            <span className="text-xs uppercase tracking-[3px] text-gray-500">
+            <span className="text-sm text-gray-500">
               Built for creators on
             </span>
             {["YouTube", "TikTok", "Instagram", "LinkedIn", "X"].map((p) => (

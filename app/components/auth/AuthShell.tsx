@@ -7,13 +7,13 @@ import Link from "next/link";
 import BrandMark from "../BrandMark";
 
 export default function AuthShell({
-  eyebrow,
   title,
   description,
   children,
   footer,
 }: {
-  eyebrow: string;
+  /** Not shown any more (all-caps labels looked templated). */
+  eyebrow?: string;
   title: string;
   description?: React.ReactNode;
   children: React.ReactNode;
@@ -34,7 +34,6 @@ export default function AuthShell({
 
         <main id="main-content" className="rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-[0_25px_100px_rgba(0,0,0,0.25)] backdrop-blur-xl sm:p-10">
           <div className="mb-8 space-y-3">
-            <p className="text-sm uppercase tracking-[0.24em] text-violet-300/80">{eyebrow}</p>
             <h1 className="text-4xl font-semibold">{title}</h1>
             {description ? <p className="text-sm text-gray-400">{description}</p> : null}
           </div>
