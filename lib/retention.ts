@@ -16,8 +16,8 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { HERO_LOOP_CLIPS, SHOWCASE_VIDEOS } from "@/lib/showcase";
 
-/** Off until a dry run (lab "retention") has been checked; the heartbeat then only lists. */
-export const RETENTION_LIVE = false;
+/** Live since 6 Nov 2026 (dry run checked: nothing old enough yet). false = the heartbeat only lists. */
+export const RETENTION_LIVE = true;
 
 export const WORKING_FILES_DAYS = 30;
 export const FREE_VIDEO_DAYS = 7;
