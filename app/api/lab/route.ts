@@ -273,6 +273,18 @@ export async function POST(req: Request) {
         }
         return NextResponse.json({ success: true, removed: removed.length, mb, failed: found.length - removed.length });
       }
+      // Keep a generated fal clip for the site (6 Nov 2026: landing hero loop). fal CDN URLs only,
+      // copied to R2 under site/ and served by /media/videos/r2/site/<name>.mp4.
+      case "store-url": {
+        const url = String(body.url ?? "");
+        if (!/^https:\/\/([a-z0-9-]+\.)*fal\.(media|run)\//.test(url)) return NextResponse.json({ success: false, error: "fal media urls only" }, { status: 400 });
+        const name = String(body.name ?? "").replace(/[^a-z0-9-]/gi, "").slice(0, 60);
+        if (!name) return NextResponse.json({ success: false, error: "name required" }, { status: 400 });
+        const { copyUrlToR2, r2PublicUrl } = await import("@/lib/storage/r2");
+        const key = `site/${name}.mp4`;
+        const bytes = await copyUrlToR2(url, key, "video/mp4");
+        return NextResponse.json({ success: true, key, bytes, url: r2PublicUrl(key) });
+      }
       // Can provider_usage take a skit/talk/swap row? (6 Nov 2026: none showed up.) Inserts one
       // test row for a non-pipeline job id, reports the database error if any, deletes it again.
       case "usage-probe": {
