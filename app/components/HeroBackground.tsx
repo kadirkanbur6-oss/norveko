@@ -6,11 +6,36 @@
 // shows every clip as a column, phones only the first; nothing loads for visitors who ask for
 // reduced motion or data saving. Purely decorative (aria-hidden).
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HERO_LOOP_CLIPS, heroClipUrl, heroFeatureUrl } from "@/lib/showcase";
 
 export default function HeroBackground() {
   const [count, setCount] = useState(0);
+  const featureRef = useRef<HTMLVideoElement | null>(null);
+
+  // Phones (iOS Safari above all) only autoplay a video that is muted *as an attribute* and
+  // inline; React sets `muted` as a property, so set both by hand and start it ourselves.
+  // Low Power Mode refuses autoplay: try again on the first touch or scroll.
+  useEffect(() => {
+    const v = featureRef.current;
+    if (!v) return;
+    v.muted = true;
+    v.defaultMuted = true;
+    v.setAttribute("muted", "");
+    v.setAttribute("playsinline", "");
+    v.setAttribute("webkit-playsinline", "");
+    const tryPlay = () => {
+      void v.play().catch(() => undefined);
+    };
+    tryPlay();
+    const events = ["touchstart", "scroll", "click"] as const;
+    const onUser = () => {
+      tryPlay();
+      if (!v.paused) events.forEach((e) => window.removeEventListener(e, onUser));
+    };
+    events.forEach((e) => window.addEventListener(e, onUser, { passive: true }));
+    return () => events.forEach((e) => window.removeEventListener(e, onUser));
+  }, [count]);
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -41,6 +66,7 @@ export default function HeroBackground() {
         {count > 0 && (
           <div className="nv-hero-wall absolute inset-0 opacity-0">
             <video
+              ref={featureRef}
               src={feature}
               autoPlay
               muted
@@ -49,6 +75,7 @@ export default function HeroBackground() {
               preload="auto"
               disablePictureInPicture
               onCanPlay={(e) => e.currentTarget.parentElement?.classList.add("nv-hero-wall-ready")}
+              onLoadedData={(e) => e.currentTarget.parentElement?.classList.add("nv-hero-wall-ready")}
               className="h-full w-full object-cover object-[70%_50%] lg:object-[80%_50%]"
             />
           </div>
