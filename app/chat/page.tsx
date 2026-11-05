@@ -12,6 +12,10 @@ import CastPicker from "../components/CastPicker";
 import SkitStudio from "../components/studio/SkitStudio";
 import TalkStudio from "../components/studio/TalkStudio";
 import SwapStudio from "../components/studio/SwapStudio";
+import { JOB_COSTS } from "@/lib/plans";
+
+/** Cheapest finished video (30 s, Stock + AI): what free credits are pointed at. */
+const starterVideoCredits = JOB_COSTS.video30Stock;
 import type { CharacterItem } from "../components/CharactersCard";
 
 import { DURATIONS, LANGUAGE_OPTIONS, LANGUAGES, ORIENTATIONS, PLATFORMS, STYLES, defaultOrientation, languageOption, type OrientationId } from "@/lib/pipeline/options";
@@ -139,6 +143,9 @@ function ChatContent() {
   const [videoAvailable, setVideoAvailable] = useState(false);
   const [includeFullVideo, setIncludeFullVideo] = useState(false);
   const [footagePick, setFootage] = useState<FootageMode>("hybrid");
+  // Accounts that haven't paid yet start on the cheapest finished video (Stock + AI), 6 Nov 2026.
+  const [freeAccount, setFreeAccount] = useState(false);
+  const footageFromDraft = useRef(false);
   const [clipMode, setClipMode] = useState<ClipMode>("image");
   const [visualStyle, setVisualStyle] = useState<string>(DEFAULT_VISUAL_STYLE);
   const [captionStyleId, setCaptionStyleId] = useState<string>(DEFAULT_CAPTION_STYLE);
@@ -237,7 +244,10 @@ function ChatContent() {
       if (typeof draft.includeSubtitles === "boolean") setIncludeSubtitles(draft.includeSubtitles);
       if (typeof draft.includeResearch === "boolean") setIncludeResearch(draft.includeResearch);
       if (typeof draft.includeFullVideo === "boolean") setIncludeFullVideo(draft.includeFullVideo);
-      if (draft.footage === "hybrid" || draft.footage === "cinematic" || draft.footage === "stills" || draft.footage === "stock") setFootage(draft.footage);
+      if (draft.footage === "hybrid" || draft.footage === "cinematic" || draft.footage === "stills" || draft.footage === "stock") {
+        setFootage(draft.footage);
+        footageFromDraft.current = true;
+      }
       if (draft.clipMode === "image" || draft.clipMode === "text") setClipMode(draft.clipMode);
       if (typeof draft.voiceId === "string") setVoiceId(draft.voiceId);
       if (draft.orientation === "vertical" || draft.orientation === "horizontal") {
@@ -316,7 +326,13 @@ function ChatContent() {
     fetch("/api/credits", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
-        if (active && data?.success) setBalance(Number(data.credits ?? 0));
+        if (active && data?.success) {
+          setBalance(Number(data.credits ?? 0));
+          if (data.freeTrial) {
+            setFreeAccount(true);
+            if (!footageFromDraft.current) setFootage("stock");
+          }
+        }
       })
       .catch(() => {
         // Balance stays unknown; the server still enforces it.
@@ -1313,6 +1329,29 @@ function ChatContent() {
                         className="shrink-0 rounded-lg bg-emerald-500/80 px-3 py-1.5 font-semibold text-white hover:bg-emerald-500"
                       >
                         Use my free video
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {fullVideoOn && freeAccount && !trialVideoAvailable && (
+                  <div className="mt-4 flex flex-col gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2.5 text-xs sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-emerald-100">
+                      <span className="font-semibold">Start with a 30-second Stock + AI video.</span>{" "}
+                      It costs {starterVideoCredits} credits, so your free credits cover your first finished video.
+                    </p>
+                    {!(footage === "stock" && duration === "30 seconds") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDuration("30 seconds");
+                          setFootage("stock");
+                          setIncludeFullVideo(true);
+                          setIncludeVoiceover(true);
+                        }}
+                        className="shrink-0 rounded-lg bg-emerald-500/80 px-3 py-1.5 font-semibold text-white hover:bg-emerald-500"
+                      >
+                        Use this setup
                       </button>
                     )}
                   </div>
