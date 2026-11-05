@@ -89,7 +89,7 @@ export const FREE_CREDITS_BUY = (() => {
   const narrated = Math.floor(FREE_TRIAL_CREDITS / JOB_COSTS.package60);
   const words = ["zero", "one", "two", "three", "four", "five"];
   const w = (n: number) => words[n] ?? String(n);
-  return `${w(packs)} researched script${packs === 1 ? "" : "s"} with scene plan, SEO and thumbnail — or ${w(narrated)} with narration and subtitles`;
+  return `${w(packs)} researched script${packs === 1 ? "" : "s"} with scene plan, SEO and thumbnail, or ${w(narrated)} with narration and subtitles`;
 })();
 
 export const FREE_TRIAL_RULES = [

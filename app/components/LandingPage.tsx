@@ -324,7 +324,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
               </div>
 
               <p className="mt-3 text-xs text-gray-500">
-                No credit card required · {FREE_TRIAL_CREDITS} free credits{TRIAL_VIDEO_PUBLIC ? " + a free video" : ""} on signup (≈ {FREE_CREDITS_BUY.split(" — ")[0]})
+                No credit card required · {FREE_TRIAL_CREDITS} free credits{TRIAL_VIDEO_PUBLIC ? " + a free video" : ""} on signup (≈ {FREE_CREDITS_BUY.split(", or ")[0]})
               </p>
             </div>
           </Reveal>
@@ -388,8 +388,8 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           <p className="mt-5 flex items-center justify-center gap-2 text-center text-xs text-gray-500">
             <PlayCircle size={14} className="text-blue-300" />
             {TRIAL_VIDEO_PUBLIC
-              ? `Your first 30-second video is on us — no credits needed. Then ${FREE_TRIAL_CREDITS} free credits for ${FREE_CREDITS_BUY}.`
-              : `Every account starts with ${FREE_TRIAL_CREDITS} free credits — ${FREE_CREDITS_BUY}. Finished-video rendering is being switched on account by account.`}
+              ? `Your first 30-second video is on us, no credits needed. Then ${FREE_TRIAL_CREDITS} free credits for ${FREE_CREDITS_BUY}.`
+              : `Every account starts with ${FREE_TRIAL_CREDITS} free credits: ${FREE_CREDITS_BUY}. Finished-video rendering is being switched on account by account.`}
           </p>
         </Reveal>
       </section>
