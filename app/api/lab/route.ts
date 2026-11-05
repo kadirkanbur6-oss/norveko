@@ -285,6 +285,30 @@ export async function POST(req: Request) {
         const bytes = await copyUrlToR2(url, key, "video/mp4");
         return NextResponse.json({ success: true, key, bytes, url: r2PublicUrl(key) });
       }
+      // Shrink a site clip (the 10 s hero loop came back at 40 MB): Shotstack re-encodes it muted
+      // at 1080p; then transcode-finish copies the result to R2 under site/<name>.mp4.
+      case "transcode-submit": {
+        const url = String(body.url ?? "");
+        if (!/^https:\/\/([a-z0-9-]+\.)*fal\.(media|run)\//.test(url)) return NextResponse.json({ success: false, error: "fal media urls only" }, { status: 400 });
+        const seconds = Math.min(20, Math.max(1, Number(body.seconds) || 10));
+        const { submitRender } = await import("@/lib/pipeline/shotstack");
+        const renderId = await submitRender({
+          timeline: { tracks: [{ clips: [{ asset: { type: "video", src: url, volume: 0 }, start: 0, length: seconds, fit: "cover" }] }] },
+          output: { format: "mp4", resolution: "1080", fps: 30, quality: String(body.quality ?? "medium") },
+        });
+        return NextResponse.json({ success: true, renderId });
+      }
+      case "transcode-finish": {
+        const { getRender } = await import("@/lib/pipeline/shotstack");
+        const r = await getRender(String(body.renderId ?? ""));
+        if (r.status !== "done" || !r.url) return NextResponse.json({ success: true, done: false, status: r.status, error: r.error ?? null });
+        const name = String(body.name ?? "").replace(/[^a-z0-9-]/gi, "").slice(0, 60);
+        if (!name) return NextResponse.json({ success: false, error: "name required" }, { status: 400 });
+        const { copyUrlToR2, r2PublicUrl } = await import("@/lib/storage/r2");
+        const key = `site/${name}.mp4`;
+        const bytes = await copyUrlToR2(r.url, key, "video/mp4");
+        return NextResponse.json({ success: true, done: true, key, bytes, url: r2PublicUrl(key) });
+      }
       // Can provider_usage take a skit/talk/swap row? (6 Nov 2026: none showed up.) Inserts one
       // test row for a non-pipeline job id, reports the database error if any, deletes it again.
       case "usage-probe": {
