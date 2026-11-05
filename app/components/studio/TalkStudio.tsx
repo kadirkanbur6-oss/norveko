@@ -159,6 +159,7 @@ export default function TalkStudio({ text: outerText, onStarted }: { text?: stri
         look,
         orientation: vertical ? "vertical" : "horizontal",
         script: mode === "type" ? text.trim() : "",
+        voiceId: mode === "type" ? voiceId : "",
         rights,
       });
       onStarted?.();

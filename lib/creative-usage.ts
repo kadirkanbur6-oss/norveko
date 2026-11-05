@@ -129,7 +129,14 @@ export async function logSwapUsage(db: SupabaseClient, row: SwapRow, status: "ok
     if (row.kind === "talk") {
       if (row.image_url) items.push({ provider: "gemini", model: IMAGE_MODEL(), unit: "images", quantity: 1 });
       if (row.script) items.push({ provider: "gemini", model: TTS_MODEL(), unit: "characters", quantity: row.script.length });
-      if (status === "ok") items.push({ provider: "fal", model: avatarModel(row.fal), unit: "seconds", quantity: seconds });
+      // Typed lines spoken by a Veo clip bill per clip second (4 / 6 / 8), recordings per lip-sync second.
+      const veo = row.fal?.statusUrl?.includes("/veo3");
+      if (status === "ok")
+        items.push(
+          veo
+            ? { provider: "fal", model: process.env.SKIT_TALK_MODEL || "fal-ai/veo3.1/fast/image-to-video", unit: "seconds", quantity: [4, 6, 8].find((c) => c >= seconds + 0.8) ?? 8 }
+            : { provider: "fal", model: avatarModel(row.fal), unit: "seconds", quantity: seconds }
+        );
     } else if (status === "ok" || row.swapped_url) {
       // fal bills the swap per 16 frames; the price charged was built from the clip's real
       // frame count, so take the provider cost back out of it (credits minus the render).

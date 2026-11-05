@@ -45,8 +45,12 @@ export function skitCreditsFor(p: {
   return creditsForCost(usd, SKIT_MARGIN) + RENDER_CREDITS_PER_30S * Math.max(1, Math.ceil(p.totalSeconds / 30));
 }
 
-/** Talking character: lip-sync seconds + the scene picture. */
-export function talkCreditsFor(seconds: number): number {
+/**
+ * Talking character: the scene picture + either a Veo clip that speaks the typed line
+ * itself (`clipSeconds`: 4 / 6 / 8, since 5 Nov 2026) or lip-sync seconds on a recording.
+ */
+export function talkCreditsFor(seconds: number, clipSeconds?: number | null): number {
+  if (clipSeconds) return creditsForCost(clipSeconds * SKIT_TALK_VIDEO_COST_PER_SECOND + SKIT_IMAGE_COST);
   return creditsForCost(Math.ceil(seconds) * AVATAR_COST_PER_SECOND + SKIT_IMAGE_COST);
 }
 

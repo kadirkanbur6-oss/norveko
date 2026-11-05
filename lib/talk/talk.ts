@@ -23,6 +23,7 @@ export const TALK_LOOKS = [
 ] as const;
 
 export { talkCreditsFor as talkCredits } from "@/lib/skit/pricing";
+import { TALK_VIDEO_ENABLED, talkClipSeconds } from "@/lib/pipeline/fal-video";
 
 export const AUDIO_TYPES: Record<string, "mp3" | "wav" | "m4a"> = {
   "audio/mpeg": "mp3",
@@ -99,6 +100,37 @@ export function audioSeconds(buf: Buffer, ext: "mp3" | "wav" | "m4a"): number {
 export function talkImagePrompt(name: string, description: string, scene: string): string {
   const where = scene || "in a setting that suits them";
   return `${name}${description ? ` (${description})` : ""}, ${where}. ${name} is the only main subject, centred, facing the camera from the chest up, the face large, clearly visible and evenly lit, mouth slightly open as if in the middle of speaking, natural expression. Nothing covers the face or mouth.`;
+}
+
+/**
+ * A typed line (TTS take "talk/aud-…") short enough for one clip is spoken by Veo
+ * itself; an uploaded recording ("talk/rec-…") keeps lip-sync to the creator's own voice.
+ */
+export function talkClipFor(path: unknown, seconds: number): number | null {
+  if (typeof path !== "string" || !/\/talk\/aud-/.test(path)) return null;
+  if (!TALK_VIDEO_ENABLED) return null;
+  return talkClipSeconds(seconds);
+}
+
+const STYLE_SOUND: Record<string, string> = {
+  cartoon: "a high-pitched, quick, bouncy cartoon voice",
+  comic: "a natural voice with big, over-the-top comic acting",
+  gruff: "a deep, husky, gravelly older voice at a natural pace",
+};
+
+/** Veo prompt: the picture comes alive and says the line in the chosen voice. */
+export function talkVideoPrompt(name: string, description: string, voiceId: unknown, line: string): string {
+  const [, style, gender] = typeof voiceId === "string" ? voiceId.split(":") : [];
+  const voice = STYLE_SOUND[style ?? ""] ?? "a natural, expressive voice";
+  const who = gender === "female" ? "female" : gender === "male" ? "male" : "";
+  return [
+    `${name}${description ? ` (${description})` : ""} talks straight to the camera in the language of the line, with ${voice}${who ? ` (${who})` : ""}.`,
+    `${name} says exactly: "${line.replace(/"/g, "'")}"`,
+    "Natural lip movement matching every word, lively face, head movement and small hand gestures.",
+    "Keep the character, look and framing exactly as in the picture. Light room sound only, no music, no subtitles, no text on screen.",
+  ]
+    .join(" ")
+    .slice(0, 1800);
 }
 
 export const TALK_AVATAR_PROMPT =

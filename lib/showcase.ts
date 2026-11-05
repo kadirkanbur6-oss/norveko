@@ -56,6 +56,19 @@ export const SHOWCASE_VIDEOS: ShowcaseVideo[] = [
     made: "Realistic cast · character voices · lip-sync · cinematic shots",
   },
   {
+    // First skit whose speaking shots say their lines themselves (Veo 3.1 Fast), 5 Nov 2026 — Kadir: "iyi bu".
+    id: "41afe86b-079f-4127-ae59-ec40b8f61f54",
+    mode: "Skit",
+    title: "The Whole Sofa",
+    idea: "Puppy: Grandpa! I ate the whole sofa. Am I in trouble? Cat: The sofa? The whole sofa? Puppy: Well... and the remote. Cat: Kid, I've been planning that for nine years.",
+    language: "English",
+    seconds: 22,
+    orientation: "vertical",
+    videoPath: `${OWNER}/skit/41afe86b-079f-4127-ae59-ec40b8f61f54/final.mp4`,
+    poster: { bucket: "videos", path: `${OWNER}/skit-41afe86b-079f-4127-ae59-ec40b8f61f54/still-2.jpg` },
+    made: "3D animated cast · characters speak their own lines · AI video shots",
+  },
+  {
     // Bigfoot vlog (viral AI format), 5 Nov 2026.
     id: "bb366887-daff-4a6b-be18-55847bdf8c74",
     mode: "Talking character",

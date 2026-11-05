@@ -21,8 +21,10 @@ import {
   TALK_MAX_CHARS,
   TALK_MAX_SECONDS,
   audioSeconds,
+  talkClipFor,
   talkCredits,
   talkImagePrompt,
+  talkVideoPrompt,
 } from "@/lib/talk/talk";
 
 export const runtime = "nodejs";
@@ -140,7 +142,7 @@ export async function POST(req: Request) {
         success: true,
         path,
         seconds,
-        credits: talkCredits(seconds),
+        credits: talkCredits(seconds, talkClipFor(path, seconds)),
         url: db.storage.from("videos").getPublicUrl(path).data.publicUrl,
       });
     } catch (err) {
@@ -192,7 +194,8 @@ export async function POST(req: Request) {
     const scene = typeof body.scene === "string" ? body.scene.replace(/[<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, 300) : "";
     const script = typeof body.script === "string" ? body.script.replace(/\s+/g, " ").trim().slice(0, TALK_MAX_CHARS) : "";
 
-    const credits = talkCredits(seconds);
+    const clip = script ? talkClipFor(body.path, seconds) : null;
+    const credits = talkCredits(seconds, clip);
     const { payerFor } = await import("@/lib/teams");
     const payer = await payerFor(db, user.id);
     const { data: paid, error: payErr } = await db.rpc("deduct_credits", {
@@ -217,12 +220,25 @@ export async function POST(req: Request) {
         look,
         [{ name: character.name, description: (character.description as string | null) ?? undefined, images }]
       );
-      const { submitAvatar } = await import("@/lib/pipeline/fal-video");
-      const fal = await submitAvatar({
-        imageUrl: picture.imageUrl,
-        audioUrl: db.storage.from("videos").getPublicUrl(String(body.path)).data.publicUrl,
-        prompt: TALK_AVATAR_PROMPT,
-      });
+      const fv = await import("@/lib/pipeline/fal-video");
+      const audioUrl = db.storage.from("videos").getPublicUrl(String(body.path)).data.publicUrl;
+      let fal: Awaited<ReturnType<typeof fv.submitAvatar>>;
+      if (clip) {
+        // The typed line, spoken by the clip itself (Veo); the TTS take stays as the lip-sync fallback.
+        try {
+          fal = await fv.submitTalkingVideo({
+            imageUrl: picture.imageUrl,
+            prompt: talkVideoPrompt(character.name, (character.description as string | null) ?? "", body.voiceId, script),
+            seconds: clip as 4 | 6 | 8,
+            aspectRatio: vertical ? "9:16" : "16:9",
+          });
+        } catch (err) {
+          console.warn("[talk] talking video submit failed, lip-sync instead:", err instanceof Error ? err.message : err);
+          fal = await fv.submitAvatar({ imageUrl: picture.imageUrl, audioUrl, prompt: TALK_AVATAR_PROMPT });
+        }
+      } else {
+        fal = await fv.submitAvatar({ imageUrl: picture.imageUrl, audioUrl, prompt: TALK_AVATAR_PROMPT });
+      }
       const { error } = await db.from("swap_jobs").insert({
         id,
         kind: "talk",
