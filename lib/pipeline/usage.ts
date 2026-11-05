@@ -78,6 +78,8 @@ export const PRICE_LIST: Record<string, Price> = {
   // fal lip-sync (on-camera presenter) — per second of output, 720p (3 Nov 2026).
   "fal:fal-ai/kling-video/ai-avatar/v2/standard": { perUnit: 0.0562 },
   "fal:veed/fabric-1.0": { perUnit: 0.15 },
+  // Veo 3.1 Fast with audio: speaking skit shots (5 Nov 2026) — per second.
+  "fal:fal-ai/veo3.1/fast/image-to-video": { perUnit: 0.15 },
   // Skits: ElevenLabs sound effects are logged with their own cost (lib/creative-usage.ts).
   // Shotstack — per second of rendered output (pay-as-you-go $0.20/min).
   "shotstack:render": { perUnit: 0.0034 },

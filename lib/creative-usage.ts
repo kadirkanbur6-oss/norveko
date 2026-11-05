@@ -65,6 +65,12 @@ function animation(shots: SkitShot[]): Item[] {
   const items: Item[] = [];
   const speaking = new Map<string, number>();
   for (const s of made.filter((x) => x.line)) {
+    // Talking clips with their own voice bill per clip second (4 / 6 / 8 s).
+    if (s.talkClip) {
+      const model = process.env.SKIT_TALK_MODEL || "fal-ai/veo3.1/fast/image-to-video";
+      speaking.set(model, (speaking.get(model) ?? 0) + s.talkClip);
+      continue;
+    }
     const model = avatarModel(s.fal);
     speaking.set(model, (speaking.get(model) ?? 0) + Math.ceil(s.audioSeconds ?? s.seconds ?? 3));
   }

@@ -92,6 +92,56 @@ export async function getImageToVideo(handle: FalVideoHandle): Promise<FalVideoR
 }
 
 /**
+ * Speaking shots made WITH their own voice (5 Nov 2026 lab, Kadir: Veo 3.1
+ * Fast beat TTS + lip-sync and Kling 3): the model writes the line, the lip
+ * movement and the room sound in one go. Clips are 4, 6 or 8 s; longer lines
+ * use the lip-sync path. SKIT_TALK_MODEL=avatar switches it off.
+ */
+export const TALK_VIDEO_MODEL = process.env.SKIT_TALK_MODEL || "fal-ai/veo3.1/fast/image-to-video";
+export const TALK_VIDEO_ENABLED = TALK_VIDEO_MODEL !== "avatar";
+export const TALK_VIDEO_SECONDS = [4, 6, 8] as const;
+/** Veo 3.1 Fast with audio on fal (5 Nov 2026). */
+export const TALK_VIDEO_COST_PER_SECOND = 0.15;
+
+/** Clip length for a line of about `speechSeconds`, or null when it doesn't fit in 8 s. */
+export function talkClipSeconds(speechSeconds: number): (typeof TALK_VIDEO_SECONDS)[number] | null {
+  const need = speechSeconds + 0.8; // a breath before and after
+  return TALK_VIDEO_SECONDS.find((s) => s >= need) ?? null;
+}
+
+export async function submitTalkingVideo(params: {
+  imageUrl: string;
+  prompt: string;
+  seconds: (typeof TALK_VIDEO_SECONDS)[number];
+  aspectRatio: "9:16" | "16:9";
+}): Promise<FalVideoHandle> {
+  const res = await fetch(`https://queue.fal.run/${TALK_VIDEO_MODEL}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Key ${key()}` },
+    body: JSON.stringify({
+      prompt: params.prompt.slice(0, 2000),
+      image_url: params.imageUrl,
+      aspect_ratio: params.aspectRatio,
+      duration: `${params.seconds}s`,
+      resolution: "720p",
+      generate_audio: true,
+    }),
+    cache: "no-store",
+  });
+  const raw = await res.text();
+  let data: { request_id?: string; status_url?: string; response_url?: string } = {};
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    /* surfaced below */
+  }
+  if (!res.ok || !data.request_id || !data.status_url || !data.response_url) {
+    throw new Error(`fal talking video submit failed (HTTP ${res.status}): ${raw.replace(/\s+/g, " ").slice(0, 300)}`);
+  }
+  return { requestId: data.request_id, statusUrl: data.status_url, responseUrl: data.response_url };
+}
+
+/**
  * Talking characters (presenter slots, Talk, skits): a portrait + audio →
  * lip-synced video. 3 Nov 2026 lab test: Kling AI Avatar v2 Standard
  * ($0.0562/s) moves a cartoon beak/mouth as well as VEED Fabric 1.0

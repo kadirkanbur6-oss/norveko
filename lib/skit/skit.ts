@@ -4,7 +4,8 @@
 // joke or script (+ optional "make it like …" style); an LLM turns it into a
 // cast and a shot list, then every shot gets its own picture (characters drawn
 // from generated reference portraits), speaking shots get the line in that
-// character's voice and a lip-sync (VEED Fabric), silent shots a short
+// character's voice and a lip-sync (since 5 Nov 2026: a Veo 3.1 Fast clip that
+// says the line itself; TTS + lip-sync only as the fallback), silent shots a short
 // image→video clip (Seedance), crowd reactions a sound effect (ElevenLabs),
 // and Shotstack cuts it together.
 //
@@ -17,7 +18,9 @@ import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AVATAR_COST_PER_SECOND, RENDER_CREDITS_PER_30S, creditsForCost } from "@/lib/pipeline/steps";
 import { wordsPerSecond } from "@/lib/pipeline/narration";
-import { SKIT_CLIP_COST, SKIT_IMAGE_COST, skitCreditsFor } from "./pricing";
+import { SKIT_CLIP_COST, SKIT_IMAGE_COST, SKIT_TALK_VIDEO_COST_PER_SECOND, skitCreditsFor } from "./pricing";
+import { TALK_VIDEO_ENABLED, talkClipSeconds } from "@/lib/pipeline/fal-video";
+import { LANGUAGE_OPTIONS } from "@/lib/pipeline/options";
 import { applyVoiceStyle, isVoiceStyle, styleDirection, voiceFor, type VoiceGender, type VoiceStyle } from "@/lib/skit/voice-styles";
 import { musicCredit } from "@/lib/pipeline/music";
 import { storeMedia } from "@/lib/storage/media";
@@ -69,6 +72,11 @@ export interface SkitShot {
   crowdSeconds?: number;
   fal?: { requestId: string; statusUrl: string; responseUrl: string } | null;
   clipUrl?: string | null;
+  /**
+   * Speaking shot made with its own voice (Veo 3.1 Fast, 5 Nov 2026): the clip
+   * length in seconds. Its sound is the line, so the TTS take is only a fallback.
+   */
+  talkClip?: number | null;
   /** Set by "Make this shot again" after the skit is done. */
   editedClipUrl?: string | null;
   clipFailed?: boolean;
@@ -194,26 +202,44 @@ JSON shape:
 }
 
 /** Seconds the finished skit will roughly last (speaking shots from word count). */
-export function estimateSeconds(plan: SkitPlan): { speaking: number; total: number } {
-  const wps = wordsPerSecond(plan.language);
+export function estimateSeconds(plan: SkitPlan): { speaking: number; talkClips: number; total: number } {
   let speaking = 0;
+  let talkClips = 0;
   let total = 0;
   for (const s of plan.shots) {
     if (s.line) {
-      const sec = s.line.split(/\s+/).length / wps + 0.4;
-      speaking += sec;
-      total += sec;
-    } else total += Math.max(s.seconds, s.crowd ? s.crowd.split(/\s+/).length / wps + 1 : 0);
+      const clip = plannedTalkClip(plan, s);
+      if (clip) {
+        talkClips += clip;
+        total += clip;
+      } else {
+        const sec = lineSeconds(plan, s);
+        speaking += sec;
+        total += sec;
+      }
+    } else total += Math.max(s.seconds, s.crowd ? s.crowd.split(/\s+/).length / wordsPerSecond(plan.language) + 1 : 0);
   }
-  return { speaking, total };
+  return { speaking, talkClips, total };
+}
+
+/** About how long the line takes to say. */
+function lineSeconds(plan: SkitPlan, s: SkitShot): number {
+  return s.line.split(/\s+/).length / wordsPerSecond(plan.language) + 0.4;
+}
+
+/** The talking-clip length this line will get (null = TTS + lip-sync instead). */
+function plannedTalkClip(plan: SkitPlan, s: SkitShot): number | null {
+  if (!TALK_VIDEO_ENABLED || !s.line) return null;
+  return talkClipSeconds(lineSeconds(plan, s));
 }
 
 export function skitCredits(plan: SkitPlan): number {
-  const { speaking, total } = estimateSeconds(plan);
+  const { speaking, talkClips, total } = estimateSeconds(plan);
   return skitCreditsFor({
     characters: plan.characters.length,
     shots: plan.shots.length,
     speakingSeconds: speaking,
+    talkClipSeconds: talkClips,
     silentShots: plan.shots.filter((s) => !s.line).length,
     sfx: plan.shots.filter((s) => s.sfx).length,
     crowd: plan.shots.filter((s) => s.crowd).length,
@@ -419,6 +445,31 @@ function avatarPrompt(s: SkitShot): string {
   return `Only the character in the centre speaks, with lively cartoon expressions, ${s.tone || "expressive"}, natural head and body movement; anyone else in the frame stays silent with the mouth closed. ${s.action}`.slice(0, 900);
 }
 
+const VOICE_SOUND: Record<VoiceStyle, string> = {
+  cartoon: "a high-pitched, quick, bouncy cartoon voice",
+  comic: "a natural voice with big, over-the-top comic acting",
+  gruff: "a deep, husky, gravelly older voice at a natural pace",
+};
+
+/** Veo prompt for a speaking shot: the picture comes alive and says the line itself. */
+function talkPrompt(plan: SkitPlan, s: SkitShot): string {
+  const c = plan.characters.find((x) => x.id === s.speaker);
+  const name = c?.name ?? "The character";
+  const gender = c?.gender === "female" ? "female" : "male";
+  const voice = VOICE_SOUND[c?.voiceStyle ?? "comic"];
+  const lang = LANGUAGE_OPTIONS.find((l) => l.code === plan.language)?.english ?? "English";
+  const line = s.line.replace(/"/g, "'");
+  return [
+    `${name} (${c?.look ?? "the character in the picture"}) talks straight to the camera in ${lang}, ${s.tone || "expressively"}, with ${voice} (${gender}).`,
+    `${name} says exactly: "${line}"`,
+    `${s.action} Natural lip movement matching every word, lively face and body.`,
+    `Only ${name} speaks; anyone else in the frame stays silent with the mouth closed.`,
+    "Keep the same character, look and framing as the picture. Light room sound only, no music, no subtitles, no text on screen.",
+  ]
+    .join(" ")
+    .slice(0, 1800);
+}
+
 async function stepAnimate(db: SupabaseClient, row: SkitRow): Promise<boolean> {
   const fv = await import("@/lib/pipeline/fal-video");
   const plan = row.plan;
@@ -427,6 +478,17 @@ async function stepAnimate(db: SupabaseClient, row: SkitRow): Promise<boolean> {
     plan.shots.filter((s) => !s.fal && !s.clipUrl && !s.clipFailed),
     async (s) => {
       try {
+        const clip = s.talkClip === null ? null : plannedTalkClip(plan, s);
+        if (s.line && clip) {
+          try {
+            s.fal = await fv.submitTalkingVideo({ imageUrl: s.imageUrl!, prompt: talkPrompt(plan, s), seconds: clip as 4 | 6 | 8, aspectRatio: row.vertical ? "9:16" : "16:9" });
+            s.talkClip = clip;
+            return;
+          } catch (err) {
+            console.warn(`[skit] ${row.id} ${s.id} talking video submit failed, lip-sync instead:`, err instanceof Error ? err.message : err);
+            s.talkClip = null;
+          }
+        }
         s.fal = s.line
           ? await fv.submitAvatar({
               imageUrl: s.imageUrl!,
@@ -448,8 +510,12 @@ async function stepAnimate(db: SupabaseClient, row: SkitRow): Promise<boolean> {
         const r = await fv.getImageToVideo(s.fal!);
         if (r.status === "succeed" && r.videoUrl) s.clipUrl = r.videoUrl;
         else if (r.status === "failed") {
-          // Speaking shots get one more try on the fallback lip-sync model.
-          if (s.line && !fv.isFallbackAvatar(s.fal)) {
+          // A talking clip that failed falls back to TTS + lip-sync (talkClip null = don't retry it).
+          if (s.line && s.talkClip) {
+            s.talkClip = null;
+            s.fal = await fv.submitAvatar({ imageUrl: s.imageUrl!, audioUrl: s.audioUrl!, prompt: avatarPrompt(s) });
+          } else if (s.line && !fv.isFallbackAvatar(s.fal)) {
+            // Speaking shots get one more try on the fallback lip-sync model.
             s.fal = await fv.submitAvatar({ imageUrl: s.imageUrl!, audioUrl: s.audioUrl!, prompt: avatarPrompt(s), model: fv.FAL_AVATAR_FALLBACK_MODEL });
           } else s.clipFailed = true;
         }
@@ -466,12 +532,18 @@ async function stepAnimate(db: SupabaseClient, row: SkitRow): Promise<boolean> {
   return done;
 }
 
+/** Seconds of a finished talking clip that carries its own voice (0 = it uses the TTS take). */
+function hasOwnVoice(s: SkitShot): number {
+  return s.line && s.talkClip && (s.editedClipUrl ?? s.clipUrl) ? s.talkClip : 0;
+}
+
 /** Where each shot sits on the timeline (seconds). */
 export function skitLayout(plan: SkitPlan): Array<{ start: number; length: number }> {
   let t = 0;
   return plan.shots.map((s) => {
     const silentLength = Math.max(s.seconds, s.crowdUrls?.length && s.crowdSeconds ? s.crowdSeconds + 0.6 : 0);
-    const length = Math.round((s.line ? (s.audioSeconds ?? 2) + 0.3 : silentLength) * 100) / 100;
+    const ownVoice = hasOwnVoice(s);
+    const length = Math.round((ownVoice ? ownVoice : s.line ? (s.audioSeconds ?? 2) + 0.3 : silentLength) * 100) / 100;
     const start = Math.round(t * 100) / 100;
     t += length;
     return { start, length };
@@ -489,11 +561,12 @@ export function buildSkitEdit(plan: SkitPlan, vertical: boolean, extras: { music
     const { start, length } = layout[i];
     const clipUrl = s.editedClipUrl ?? s.clipUrl;
     if (clipUrl) {
-      video.push({ asset: { type: "video", src: clipUrl, volume: 0 }, start, length, fit: "cover" });
+      // A talking clip keeps its own sound (the line); every other clip is silent.
+      video.push({ asset: { type: "video", src: clipUrl, volume: hasOwnVoice(s) ? 1 : 0 }, start, length, fit: "cover" });
     } else if (s.imageUrl) {
       video.push({ asset: { type: "image", src: s.imageUrl }, start, length, fit: "cover", effect: s.camera === "wide" ? "zoomInSlow" : "zoomIn" });
     }
-    if (s.audioUrl) voices.push({ asset: { type: "audio", src: s.audioUrl, volume: 1 }, start: start + 0.1, length: s.audioSeconds ?? length });
+    if (s.audioUrl && !hasOwnVoice(s)) voices.push({ asset: { type: "audio", src: s.audioUrl, volume: 1 }, start: start + 0.1, length: s.audioSeconds ?? length });
     // Crowd shout: each voice on its own track, a beat apart, so it sounds like many people.
     (s.crowdUrls ?? []).forEach((src, k) => {
       const at = Math.round((start + 0.2 + k * 0.17) * 100) / 100;
@@ -678,7 +751,12 @@ export const MAX_SKIT_EDITS = 12;
 export function shotRedoCredits(plan: SkitPlan, index: number): number {
   const s = plan.shots[index];
   if (!s) return 0;
-  const animate = s.line ? Math.ceil((s.audioSeconds ?? 3) * 1.1) * AVATAR_COST_PER_SECOND : CLIP_COST;
+  const clip = plannedTalkClip(plan, s);
+  const animate = s.line
+    ? clip
+      ? clip * SKIT_TALK_VIDEO_COST_PER_SECOND
+      : Math.ceil((s.audioSeconds ?? 3) * 1.1) * AVATAR_COST_PER_SECOND
+    : CLIP_COST;
   return creditsForCost(IMAGE_COST + animate) + RENDER_CREDITS_PER_30S;
 }
 
@@ -696,6 +774,7 @@ export function prepareShotRedo(row: SkitRow, index: number, note: string): Skit
   delete s.clipUrl;
   delete s.clipFailed;
   delete s.editedClipUrl;
+  delete s.talkClip;
   (plan as SkitPlan & { pendingEdit?: unknown }).pendingEdit = { kind: "redo", shot: index };
   plan.renderVersion = (plan.renderVersion ?? 0) + 1;
   (plan as SkitPlan & { edits?: number }).edits = ((plan as SkitPlan & { edits?: number }).edits ?? 0) + 1;
@@ -714,6 +793,7 @@ export function prepareReanimate(row: SkitRow): { plan: SkitRow["plan"]; shots: 
     if (s.clipUrl || s.editedClipUrl) continue;
     delete s.fal;
     delete s.clipFailed;
+    delete s.talkClip;
     retried.push(s.id);
     n++;
   }
