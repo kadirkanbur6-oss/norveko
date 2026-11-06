@@ -151,6 +151,8 @@ function ChatContent() {
   const [captionStyleId, setCaptionStyleId] = useState<string>(DEFAULT_CAPTION_STYLE);
   const [brandKit, setBrandKit] = useState<{ logoUrl: string | null; color: string | null; outroText: string | null } | null>(null);
   const [useBrandKit, setUseBrandKit] = useState(true);
+  /** Brand kit end card ("Follow for more…"): a separate choice, off by default (6 Nov 2026). */
+  const [useEndCard, setUseEndCard] = useState(false);
   useEffect(() => {
     fetch("/api/brand")
       .then((r) => r.json())
@@ -517,6 +519,7 @@ function ChatContent() {
           visualStyle,
           captionStyle: captionStyleId,
           useBrandKit: Boolean(brandKit) && useBrandKit,
+          endCard: Boolean(brandKit?.outroText) && useBrandKit && useEndCard,
           characterIds: castIds.filter((id) => characters.some((c) => c.id === id)),
           presenter: costOptions.presenter,
           presenterId: costOptions.presenter ? presenterId : undefined,
@@ -918,12 +921,21 @@ function ChatContent() {
                 <span className="text-sm">
                   <span className="font-semibold text-white">Apply my brand kit</span>
                   <span className="block text-xs text-gray-400">
-                    Logo, brand colour and end card from{" "}
+                    Logo and brand colour from{" "}
                     <Link href="/settings" className="text-purple-300 hover:text-white">
                       Settings
                     </Link>
                     . Free.
                   </span>
+                </span>
+              </label>
+            )}
+            {brandKit?.outroText && useBrandKit && (
+              <label className="mt-2 flex cursor-pointer items-center gap-3 rounded-2xl border border-white/10 bg-[#0d0d16] p-4">
+                <input type="checkbox" checked={useEndCard} onChange={(e) => setUseEndCard(e.target.checked)} className="h-4 w-4 accent-purple-500" />
+                <span className="text-sm">
+                  <span className="font-semibold text-white">Add an end card</span>
+                  <span className="block text-xs text-gray-400">Shows &ldquo;{brandKit.outroText}&rdquo; for the last 2.5 seconds. Free.</span>
                 </span>
               </label>
             )}

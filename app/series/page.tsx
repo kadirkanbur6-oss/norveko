@@ -68,6 +68,7 @@ function emptyForm() {
     visualStyle: "cinematic",
     captionStyle: "bold",
     subtitles: true,
+    endCard: false,
     voiceId: "gemini:Charon",
     footage: "hybrid",
     format: "narrated" as "narrated" | "skit",
@@ -153,6 +154,7 @@ export default function SeriesPage() {
             visualStyle: form.visualStyle,
             captionStyle: form.captionStyle,
             subtitles: form.subtitles,
+            endCard: form.endCard,
             voiceId: form.voiceId,
             footage: form.footage,
             research: form.research,
@@ -364,6 +366,12 @@ export default function SeriesPage() {
                     <label className="flex items-center gap-2 text-sm text-gray-300">
                       <input type="checkbox" checked={form.subtitles} onChange={(e) => set("subtitles", e.target.checked)} className="h-4 w-4 accent-blue-500" />
                       Burn subtitles into every episode
+                    </label>
+                  )}
+                  {form.format !== "skit" && (
+                    <label className="flex items-center gap-2 text-sm text-gray-300">
+                      <input type="checkbox" checked={form.endCard} onChange={(e) => set("endCard", e.target.checked)} className="h-4 w-4 accent-blue-500" />
+                      Add my brand kit end card to every episode
                     </label>
                   )}
                   {form.format !== "skit" && form.subtitles && <CaptionStylePicker value={form.captionStyle} onChange={(v) => set("captionStyle", v)} />}

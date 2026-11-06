@@ -368,6 +368,11 @@ export async function POST(req: NextRequest) {
     if (body.useBrandKit !== false) {
       const { data: kitRow } = await supabaseAdmin.from("brand_kits").select("*").eq("user_id", user.id).maybeSingle();
       brand = brandSnapshot(rowToKit(kitRow as Record<string, unknown> | null));
+      // The end card ("Follow for more…") is its own choice, off unless asked for (6 Nov 2026).
+      if (brand && body.endCard !== true) {
+        delete brand.outroText;
+        if (!Object.keys(brand).length) brand = null;
+      }
     }
 
     // Recurring characters: the chosen ones (the user's own, ≤ 3) are copied onto the job.

@@ -79,6 +79,7 @@ export function validateSeries(body: Record<string, unknown>): { ok: true; value
         visualStyle: isVisualStyle(s.visualStyle) ? s.visualStyle : "cinematic",
         captionStyle: isCaptionStyle(s.captionStyle) ? s.captionStyle : "bold",
         subtitles: s.subtitles !== false,
+        endCard: s.endCard === true,
         voiceId,
         footage,
         research: s.research !== false,

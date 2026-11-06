@@ -40,6 +40,8 @@ export interface SeriesSettings {
   captionStyle: string;
   /** Burned-in subtitles (4 Nov 2026: optional; older series have none set = on). */
   subtitles?: boolean;
+  /** Brand kit end card at the end of each episode (6 Nov 2026: optional, off by default). */
+  endCard?: boolean;
   voiceId: string;
   footage: FootageMode;
   research: boolean;
@@ -199,7 +201,12 @@ export async function createEpisode(db: SupabaseClient, series: SeriesRow, sched
   steps.voiceover = { ...steps.voiceover, voice_id: series.settings.voiceId };
 
   const { data: kitRow } = await db.from("brand_kits").select("*").eq("user_id", series.user_id).maybeSingle();
-  const brand = brandSnapshot(rowToKit(kitRow as Record<string, unknown> | null));
+  let brand = brandSnapshot(rowToKit(kitRow as Record<string, unknown> | null));
+  // End card only when the series asks for it (6 Nov 2026).
+  if (brand && series.settings.endCard !== true) {
+    delete brand.outroText;
+    if (!Object.keys(brand).length) brand = null;
+  }
 
   const { data: job, error: jobError } = await db
     .from("pipeline_jobs")
