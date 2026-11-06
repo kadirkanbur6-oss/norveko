@@ -178,9 +178,11 @@ export default function PipelineProgress({
   });
   const isRunning = job.status === "running" || job.status === "queued";
 
-  return (
-    <div className="mt-6 space-y-4">
-      {awaitingReview(job) ? (
+  // Waiting for the creator: the review is the only thing on screen, so nobody thinks the video
+  // is already being made (6 Nov 2026, Yağmur).
+  if (awaitingReview(job)) {
+    return (
+      <div className="mt-6">
         <ReviewPanel
           jobId={job.id}
           hook={String((scriptStep as { hook?: unknown } | undefined)?.hook ?? "")}
@@ -190,7 +192,13 @@ export default function PipelineProgress({
           language={job.output_language}
           onDone={() => setJob((j) => (j ? { ...j, steps: { ...j.steps, script: { ...j.steps.script, approved_at: new Date().toISOString() } as StepInfo } } : j))}
         />
-      ) : isRunning && !timedOut ? (
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 space-y-4">
+      {isRunning && !timedOut ? (
         <GenerationStage steps={stageSteps} createdAt={job.created_at} />
       ) : null}
 

@@ -573,7 +573,8 @@ function ChatContent() {
         <div className="mx-auto max-w-4xl">
           <PageHeader title="AI Workspace" subtitle="Write what you want to make: narrated videos, skits, talking characters or swaps" />
 
-          <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+          {/* While a narrated video is being made or waits for approval, only its progress shows. */}
+          <div className={`mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6 ${mode === "video" && jobRunning ? "hidden" : ""}`}>
             <div className="flex items-center justify-between">
               <label htmlFor="workspace-idea" className="text-sm text-gray-400">
                 What do you want to make?
@@ -635,7 +636,7 @@ function ChatContent() {
 
           {mode === "video" && (<>
 
-          {jobId && !formOpen && (
+          {jobId && !formOpen && !jobRunning && (
             <button
               type="button"
               onClick={() => setFormOpen(true)}
@@ -658,7 +659,7 @@ function ChatContent() {
             </button>
           )}
 
-          <div className={`mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6 ${jobId && !formOpen ? "hidden" : ""}`}>
+          <div className={`mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6 ${(jobId && !formOpen) || jobRunning ? "hidden" : ""}`}>
             {jobId && (
               <div className="-mt-1 mb-4 flex justify-end">
                 <button
