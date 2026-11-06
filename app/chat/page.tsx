@@ -1582,7 +1582,15 @@ function ChatContent() {
           </div>
 
           <div ref={progressRef} className="scroll-mt-20">
-            {jobId && <PipelineProgress jobId={jobId} onStatus={setJobStatus} />}
+            {jobId && <PipelineProgress
+                jobId={jobId}
+                onStatus={(st) => {
+                  setJobStatus(st);
+                  // Done or failed: bring the form and its Generate button back so the next video can
+                  // start right here; the finished result stays below (6 Nov 2026, Yağmur).
+                  if (st && st !== "running" && st !== "queued") setFormOpen(true);
+                }}
+              />}
           </div>
 
           {jobId && jobRunning && (
