@@ -1558,7 +1558,6 @@ function ChatContent() {
                     starting ||
                     !generationAvailable ||
                     (balance !== null && balance < totalCost) ||
-                    (jobId !== null && !error) ||
                     jobRunning ||
                     (includeVoiceover && (!effectiveVoiceId || voicesLoading))
                   }
