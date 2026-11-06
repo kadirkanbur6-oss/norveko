@@ -191,7 +191,11 @@ function ChatContent() {
   const [jobId, setJobId] = useState<string | null>(null);
   // Status of the shown job (from PipelineProgress); a running job locks "new video".
   const [jobStatus, setJobStatus] = useState<string | null>(null);
-  const jobRunning = jobId !== null && (jobStatus === null || jobStatus === "running" || jobStatus === "queued");
+  // A job we just started (or know is running) counts as running before its first status arrives;
+  // one restored from ?job= after a reload stays quiet until we know (no flash of the stage).
+  const [jobKnownRunning, setJobKnownRunning] = useState(false);
+  const jobRunning =
+    jobId !== null && (jobStatus === "running" || jobStatus === "queued" || (jobStatus === null && jobKnownRunning));
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const [voiceQuery, setVoiceQuery] = useState("");
   const [voiceListOpen, setVoiceListOpen] = useState(false);
@@ -267,8 +271,8 @@ function ChatContent() {
         setOrientation(defaultOrientation(fromUrl.platform));
       }
       if (job && /^[0-9a-f-]{36}$/i.test(job)) {
+        setJobKnownRunning(false);
         setJobId(job);
-        setFormOpen(false);
       } else {
         // Came back from another page while something is still being made: open
         // that studio and show its progress again (narrated video, skit, talking
@@ -279,6 +283,7 @@ function ChatContent() {
           .then((d) => {
             const active = d?.active as { mode: string; id: string } | null | undefined;
             if (active?.mode === "video" && typeof active.id === "string") {
+              setJobKnownRunning(true);
               setJobId(active.id);
               setFormOpen(false);
               setModeState("video");
@@ -525,6 +530,7 @@ function ChatContent() {
         // Another video is still running: bring its progress back instead.
         if (data.code === "job_in_progress" && typeof data.jobId === "string") {
           setJobStatus(null);
+          setJobKnownRunning(true);
           setJobId(data.jobId);
           setFormOpen(false);
           router.replace(`${pathname}?job=${data.jobId}`, { scroll: false });
@@ -533,6 +539,7 @@ function ChatContent() {
       }
 
       setJobStatus(null);
+      setJobKnownRunning(true);
       setJobId(data.jobId);
       setFormOpen(false);
       router.replace(`${pathname}?job=${data.jobId}`, { scroll: false });
@@ -1583,6 +1590,7 @@ function ChatContent() {
           <div ref={progressRef} className="scroll-mt-20">
             {jobId && <PipelineProgress
                 jobId={jobId}
+                quietUntilLoaded={!jobKnownRunning}
                 onStatus={(st) => {
                   setJobStatus(st);
                   // Done or failed: bring the form and its Generate button back so the next video can

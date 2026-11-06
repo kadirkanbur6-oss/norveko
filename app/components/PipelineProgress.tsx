@@ -93,10 +93,13 @@ const POLL_TIMEOUT_MS = 15 * 60 * 1000;
 export default function PipelineProgress({
   jobId,
   onStatus,
+  quietUntilLoaded = false,
 }: {
   jobId: string;
   /** Reports the job status on every poll (the workspace locks "new video" while running). */
   onStatus?: (status: string) => void;
+  /** Restored after a reload: show nothing until the job's status is known. */
+  quietUntilLoaded?: boolean;
 }) {
   const onStatusRef = useRef(onStatus);
   useEffect(() => {
@@ -155,6 +158,7 @@ export default function PipelineProgress({
   }
 
   if (!job) {
+    if (quietUntilLoaded) return null;
     return (
       <div className="mt-6">
         <GenerationStage steps={[{ id: "script", label: "Content Package", status: "pending" }]} />
