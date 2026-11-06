@@ -16,6 +16,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ key:
   const key = parts.map((p) => decodeURIComponent(p)).join("/");
   if (!/\.(mp4|mov|webm|jpe?g|png|webp|wav|mp3|m4a|srt)$/i.test(key)) return new NextResponse("Not found", { status: 404 });
   const download = req.nextUrl.searchParams.get("download");
+  // Landing-page media (site/…) is public: sign it with the start of the UTC day so the URL stays
+  // the same all day and the browser and CDN can cache the file and this redirect.
+  if (key.startsWith("site/") && !download) {
+    const day = new Date();
+    day.setUTCHours(0, 0, 0, 0);
+    const url = await signedR2Url(key, null, 2 * 86400, day);
+    return NextResponse.redirect(url, {
+      status: 302,
+      headers: { "Cache-Control": "public, max-age=3600, s-maxage=3600" },
+    });
+  }
   const url = await signedR2Url(key, download);
   return NextResponse.redirect(url, {
     status: 302,

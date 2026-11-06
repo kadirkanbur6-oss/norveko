@@ -298,6 +298,20 @@ export async function POST(req: Request) {
         });
         return NextResponse.json({ success: true, renderId });
       }
+      // Still frame of a site clip as a poster image: { key: "site/x.mp4", at: seconds }.
+      // Finish with transcode-finish { renderId, name, ext: "jpg" }.
+      case "poster-submit": {
+        const key = String(body.key ?? "");
+        if (!/^site\/[a-z0-9-]+\.mp4$/i.test(key)) return NextResponse.json({ success: false, error: "site/<name>.mp4 only" }, { status: 400 });
+        const { signedR2Url } = await import("@/lib/storage/r2");
+        const src = await signedR2Url(key);
+        const { submitRender } = await import("@/lib/pipeline/shotstack");
+        const renderId = await submitRender({
+          timeline: { tracks: [{ clips: [{ asset: { type: "video", src, volume: 0, trim: Math.max(0, Number(body.at) || 0) }, start: 0, length: 1, fit: "cover" }] }] },
+          output: { format: "jpg", resolution: "1080", quality: "high" },
+        });
+        return NextResponse.json({ success: true, renderId });
+      }
       case "transcode-finish": {
         const { getRender } = await import("@/lib/pipeline/shotstack");
         const r = await getRender(String(body.renderId ?? ""));
@@ -305,8 +319,9 @@ export async function POST(req: Request) {
         const name = String(body.name ?? "").replace(/[^a-z0-9-]/gi, "").slice(0, 60);
         if (!name) return NextResponse.json({ success: false, error: "name required" }, { status: 400 });
         const { copyUrlToR2, r2PublicUrl } = await import("@/lib/storage/r2");
-        const key = `site/${name}.mp4`;
-        const bytes = await copyUrlToR2(r.url, key, "video/mp4");
+        const jpg = body.ext === "jpg";
+        const key = `site/${name}.${jpg ? "jpg" : "mp4"}`;
+        const bytes = await copyUrlToR2(r.url, key, jpg ? "image/jpeg" : "video/mp4");
         return NextResponse.json({ success: true, done: true, key, bytes, url: r2PublicUrl(key) });
       }
       // Media retention (lib/retention.ts): { dryRun: true } lists what would be removed.

@@ -76,7 +76,13 @@ export async function copyUrlToR2(sourceUrl: string, key: string, contentType: s
 }
 
 /** Short-lived signed GET URL; `downloadName` makes the browser save it as that file. */
-export async function signedR2Url(key: string, downloadName?: string | null, expiresIn = 3600): Promise<string> {
+export async function signedR2Url(
+  key: string,
+  downloadName?: string | null,
+  expiresIn = 3600,
+  /** Fixed signing time: the same URL comes back until it changes, so browsers can cache the file. */
+  signingDate?: Date
+): Promise<string> {
   const safe = downloadName ? downloadName.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 80) : null;
   return getSignedUrl(
     r2(),
@@ -85,7 +91,7 @@ export async function signedR2Url(key: string, downloadName?: string | null, exp
       Key: key,
       ...(safe ? { ResponseContentDisposition: `attachment; filename="${safe}"` } : {}),
     }),
-    { expiresIn }
+    { expiresIn, ...(signingDate ? { signingDate } : {}) }
   );
 }
 

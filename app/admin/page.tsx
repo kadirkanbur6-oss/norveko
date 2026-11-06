@@ -123,6 +123,8 @@ const date = (iso: string | null) =>
 const CARD = "rounded-2xl border border-white/[0.07] bg-white/[0.025]";
 const TH = "px-3 py-2.5 text-left text-xs font-medium text-gray-400";
 const TD = "px-3 py-2.5 align-top text-sm";
+/** Row actions stay on screen when a wide table scrolls sideways (narrow laptops, tablets). */
+const STICKY = "sticky right-0 z-[1] bg-[#101017] shadow-[-12px_0_12px_-8px_rgba(0,0,0,0.6)]";
 
 function Stat({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
@@ -360,7 +362,7 @@ export default function AdminPage() {
                         <th className={`${TH} text-right`}>Paid</th>
                         <th className={`${TH} text-right`}>Spent ({days} d)</th>
                         <th className={`${TH} text-right`}>Our cost ({days} d)</th>
-                        <th className={TH} />
+                        <th className={`${TH} ${STICKY}`} />
                       </tr>
                     </thead>
                     <tbody>
@@ -384,7 +386,7 @@ export default function AdminPage() {
                           <td className={`${TD} text-right tabular-nums ${u.paidUsd ? "text-emerald-300" : "text-gray-500"}`}>{u.paidUsd ? usd(u.paidUsd) : "-"}</td>
                           <td className={`${TD} text-right tabular-nums text-gray-300`}>{u.creditsSpent ? `${int(u.creditsSpent)} cr` : "-"}</td>
                           <td className={`${TD} text-right tabular-nums text-gray-300`}>{u.costUsd ? usd(u.costUsd) : "-"}</td>
-                          <td className={`${TD} whitespace-nowrap text-right`}>
+                          <td className={`${TD} ${STICKY} whitespace-nowrap text-right`}>
                             <button
                               type="button"
                               onClick={() => {
@@ -453,7 +455,7 @@ export default function AdminPage() {
                         <th className={TH}>User</th>
                         <th className={TH}>Status</th>
                         <th className={`${TH} text-right`}>Credits</th>
-                        <th className={TH} />
+                        <th className={`${TH} ${STICKY}`} />
                       </tr>
                     </thead>
                     <tbody>
@@ -481,7 +483,7 @@ export default function AdminPage() {
                             {int(g.credits)}
                             {g.refunded > 0 && <p className="text-xs text-amber-300">−{int(g.refunded)} refunded</p>}
                           </td>
-                          <td className={`${TD} text-right`}>
+                          <td className={`${TD} ${STICKY} text-right`}>
                             <JobActions key={`${g.id}-${g.status}`} job={g} onChanged={() => load(days)} />
                           </td>
                         </tr>

@@ -7,10 +7,15 @@
 // reduced motion or data saving. Purely decorative (aria-hidden).
 
 import { useEffect, useRef, useState } from "react";
-import { HERO_LOOP_CLIPS, heroClipUrl, heroFeatureUrl } from "@/lib/showcase";
+import { preload } from "react-dom";
+import { HERO_LOOP_CLIPS, heroClipUrl, heroFeaturePosterUrl, heroFeatureUrl } from "@/lib/showcase";
 
 export default function HeroBackground() {
   const [count, setCount] = useState(0);
+  const feature = heroFeatureUrl();
+  const poster = heroFeaturePosterUrl();
+  // The poster is in the first HTML response, so the scene is there before the video arrives.
+  if (feature && poster) preload(poster, { as: "image", fetchPriority: "high" });
   const featureRef = useRef<HTMLVideoElement | null>(null);
 
   // Phones (iOS Safari above all) only autoplay a video that is muted *as an attribute* and
@@ -19,6 +24,12 @@ export default function HeroBackground() {
   useEffect(() => {
     const v = featureRef.current;
     if (!v) return;
+    const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
+    if (saveData) {
+      v.removeAttribute("src");
+      v.load();
+      return;
+    }
     v.muted = true;
     v.defaultMuted = true;
     v.setAttribute("muted", "");
@@ -35,12 +46,12 @@ export default function HeroBackground() {
     };
     events.forEach((e) => window.addEventListener(e, onUser, { passive: true }));
     return () => events.forEach((e) => window.removeEventListener(e, onUser));
-  }, [count]);
+  }, []);
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
-    if (reduce || saveData) return;
+    if (reduce || saveData || heroFeatureUrl()) return;
     const wide = window.matchMedia("(min-width: 1024px)");
     const apply = () => setCount(wide.matches ? HERO_LOOP_CLIPS.length : 1);
     // Defer so the hero text paints first.
@@ -59,27 +70,25 @@ export default function HeroBackground() {
     .map(heroClipUrl)
     .filter((u): u is string => Boolean(u));
 
-  const feature = heroFeatureUrl();
   if (feature) {
     return (
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-        {count > 0 && (
-          <div className="nv-hero-wall absolute inset-0 opacity-0">
-            <video
-              ref={featureRef}
-              src={feature}
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="auto"
-              disablePictureInPicture
-              onCanPlay={(e) => e.currentTarget.parentElement?.classList.add("nv-hero-wall-ready")}
-              onLoadedData={(e) => e.currentTarget.parentElement?.classList.add("nv-hero-wall-ready")}
-              className="h-full w-full object-cover object-[70%_50%] lg:object-[80%_50%]"
-            />
-          </div>
-        )}
+        {/* Rendered with the page (not after hydration) so the download starts at once; the poster
+            covers the wait. Reduced motion hides it in CSS. */}
+        <div className="nv-hero-wall nv-hero-feature absolute inset-0">
+          <video
+            ref={featureRef}
+            src={feature}
+            poster={poster ?? undefined}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            disablePictureInPicture
+            className="h-full w-full object-cover object-[70%_50%] lg:object-[80%_50%]"
+          />
+        </div>
         {/* Readability: the headline sits on the left, so the scene stays bright on the right. */}
         <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a12]/85 via-[#0a0a12]/30 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#0a0a12] to-transparent" />

@@ -122,6 +122,13 @@ export const HERO_LOOP_CLIPS: string[] = [
  */
 export const HERO_FEATURE_CLIP: string | null = "site/hero-rooftop-jump.mp4";
 
+/** First frame of the hero clip, shown at once while the video loads (lab poster-submit). */
+export const HERO_FEATURE_POSTER: string | null = "site/hero-rooftop-jump.jpg";
+
+export function heroFeaturePosterUrl(): string | null {
+  return HERO_FEATURE_POSTER ? `/media/videos/r2/${HERO_FEATURE_POSTER}` : null;
+}
+
 export function heroFeatureUrl(): string | null {
   return HERO_FEATURE_CLIP ? `/media/videos/r2/${HERO_FEATURE_CLIP}` : null;
 }
