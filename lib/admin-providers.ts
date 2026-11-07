@@ -186,8 +186,8 @@ export async function loadProviders(db: SupabaseClient, now = Date.now()): Promi
     // Failed jobs of the last 24 h: their error text names the provider that ran dry.
     Promise.all(
       ["pipeline_jobs", "skit_jobs", "swap_jobs"].map(async (t) => {
-        const { data } = await db.from(t).select("error").eq("status", "failed").gte("created_at", dayAgo).limit(200);
-        return ((data as Row[] | null) ?? []).map((r) => str(r.error));
+        const { data } = await db.from(t).select("error, created_at").eq("status", "failed").gte("created_at", dayAgo).limit(200);
+        return ((data as Row[] | null) ?? []).map((r) => ({ at: str(r.created_at), text: str(r.error) }));
       })
     ),
   ]);
@@ -214,9 +214,11 @@ export async function loadProviders(db: SupabaseClient, now = Date.now()): Promi
       balanceUsd = t.balance - cost(mine.filter((u) => str(u.created_at) >= (t.asOf || weekAgo)));
     }
 
+    // Typing in a balance after a top-up acknowledges older out-of-credit errors.
+    const since = t?.asOf && t.asOf > dayAgo ? t.asOf : dayAgo;
     const ranDry =
-      mine.some((u) => str(u.status) === "failed" && str(u.created_at) >= dayAgo && meta.pattern.test(str(u.error))) ||
-      (id !== "r2" && jobErrors.some((e) => meta.pattern.test(e)));
+      mine.some((u) => str(u.status) === "failed" && str(u.created_at) >= since && meta.pattern.test(str(u.error))) ||
+      (id !== "r2" && jobErrors.some((e) => e.at >= since && meta.pattern.test(e.text)));
 
     let level: Level = "unknown";
     let reason = "";
