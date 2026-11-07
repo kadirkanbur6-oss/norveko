@@ -132,7 +132,7 @@ export const SHORTS_DEMO = {
     id: "4ff09d16-537c-42c2-9aba-930abb919933",
     title: "Why Did Ten People Leave the Mary Celeste?",
     seconds: 197,
-    videoPath: `${OWNER}/4ff09d16-537c-42c2-9aba-930abb919933/final.mp4`,
+    videoPath: `${OWNER}/4ff09d16-537c-42c2-9aba-930abb919933/final-v1.mp4`,
     poster: { bucket: "thumbnails", path: "4ff09d16-537c-42c2-9aba-930abb919933.jpg" },
   },
   picks: [
