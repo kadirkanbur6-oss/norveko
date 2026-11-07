@@ -69,6 +69,94 @@ export async function submitImageToVideo(params: {
   return { requestId: data.request_id, statusUrl: data.status_url, responseUrl: data.response_url };
 }
 
+/**
+ * Text→video clips (clipMode "text") on fal.ai's Kling 3.0 Standard — same
+ * model and price as Kling's own API ($0.084 / s with audio off), but billed
+ * on the single fal balance, so no separate Kling account is needed.
+ * `generate_audio` MUST stay false: audio on is $0.126 / s.
+ *
+ * The runner stores a task id string, so the fal queue handle is packed into
+ * one ("fal:<base64url json>") and unpacked when polling.
+ */
+export const FAL_TEXT_VIDEO_MODEL = process.env.FAL_TEXT_VIDEO_MODEL || "fal-ai/kling-video/v3/standard/text-to-video";
+
+const FAL_TASK_PREFIX = "fal:";
+
+export function isFalTaskId(id: string | undefined | null): boolean {
+  return typeof id === "string" && id.startsWith(FAL_TASK_PREFIX);
+}
+
+function packTaskId(handle: FalVideoHandle, seconds: number): string {
+  const json = JSON.stringify({ r: handle.requestId, s: handle.statusUrl, u: handle.responseUrl, d: seconds });
+  return FAL_TASK_PREFIX + Buffer.from(json).toString("base64url");
+}
+
+function unpackTaskId(id: string): { handle: FalVideoHandle; seconds: number } {
+  const o = JSON.parse(Buffer.from(id.slice(FAL_TASK_PREFIX.length), "base64url").toString("utf8")) as {
+    r: string;
+    s: string;
+    u: string;
+    d: number;
+  };
+  return { handle: { requestId: o.r, statusUrl: o.s, responseUrl: o.u }, seconds: o.d };
+}
+
+export async function submitTextToVideoFal(params: {
+  prompt: string;
+  negativePrompt?: string;
+  duration: "5" | "10";
+  aspectRatio: "16:9" | "9:16" | "1:1";
+}): Promise<string> {
+  const prompt = [sanitizeClipPrompt(params.prompt), CAMERA_RULE, params.negativePrompt ? `Avoid: ${params.negativePrompt}` : ""]
+    .filter(Boolean)
+    .join(" ")
+    .slice(0, 2500);
+  const res = await fetch(`https://queue.fal.run/${FAL_TEXT_VIDEO_MODEL}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Key ${key()}` },
+    body: JSON.stringify({
+      prompt,
+      duration: params.duration,
+      aspect_ratio: params.aspectRatio,
+      generate_audio: false,
+    }),
+    cache: "no-store",
+  });
+  const raw = await res.text();
+  let data: { request_id?: string; status_url?: string; response_url?: string } = {};
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    /* surfaced below */
+  }
+  if (!res.ok || !data.request_id || !data.status_url || !data.response_url) {
+    throw new Error(`fal text-to-video submit failed (HTTP ${res.status}): ${raw.replace(/\s+/g, " ").slice(0, 300)}`);
+  }
+  return packTaskId(
+    { requestId: data.request_id, statusUrl: data.status_url, responseUrl: data.response_url },
+    Number(params.duration),
+  );
+}
+
+/** Poll a task id produced by submitTextToVideoFal (same result shape the runner expects from Kling). */
+export async function getFalTextToVideoTask(taskId: string): Promise<{
+  taskId: string;
+  status: "processing" | "succeed" | "failed";
+  videoUrl?: string;
+  durationSeconds?: number;
+  statusMessage?: string;
+}> {
+  const { handle, seconds } = unpackTaskId(taskId);
+  const r = await getImageToVideo(handle);
+  return {
+    taskId,
+    status: r.status,
+    videoUrl: r.videoUrl,
+    durationSeconds: r.status === "succeed" ? seconds : undefined,
+    statusMessage: r.statusMessage,
+  };
+}
+
 export async function getImageToVideo(handle: FalVideoHandle): Promise<FalVideoResult> {
   const auth = { Authorization: `Key ${key()}` };
   const st = await fetch(handle.statusUrl, { headers: auth, cache: "no-store" });

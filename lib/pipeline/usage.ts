@@ -71,6 +71,8 @@ export const PRICE_LIST: Record<string, Price> = {
   "gemini:gemini-nano-banana-2.1": { perUnit: 0.0336 },
   // Kling 3.0 — per second, 720p, no audio: 0.6 units × $0.14 list.
   "kling:kling-3.0": { perUnit: 0.084 },
+  // fal-hosted Kling 3.0 Standard text→video, audio off — same $0.084 / s as Kling's own API.
+  "fal:fal-ai/kling-video/v3/standard/text-to-video": { perUnit: 0.084 },
   // Legacy model id (kept for old provider_usage rows).
   "kling:kling-v2-1": { perUnit: 0.056 },
   // fal Seedance 1.5 Pro image→video, silent 720p — per second (~$0.13 / 5 s).

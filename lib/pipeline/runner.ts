@@ -934,7 +934,11 @@ export function createPipelineRunner(deps: RunnerDeps) {
       if (result.status !== "succeed" && result.status !== "failed" && clipAge > KLING_CLIP_TIMEOUT_MS) {
         result = { ...result, status: "failed", statusMessage: `Clip took longer than ${Math.round(KLING_CLIP_TIMEOUT_MS / 60000)} minutes` };
       }
-      const clipUsageKey = slot.fal ? `fal:${process.env.FAL_VIDEO_MODEL || "fal-ai/bytedance/seedance/v1.5/pro/image-to-video"}` : undefined;
+      const clipUsageKey = slot.fal
+        ? `fal:${process.env.FAL_VIDEO_MODEL || "fal-ai/bytedance/seedance/v1.5/pro/image-to-video"}`
+        : slot.taskId?.startsWith("fal:")
+          ? `fal:${process.env.FAL_TEXT_VIDEO_MODEL || "fal-ai/kling-video/v3/standard/text-to-video"}`
+          : undefined;
       if (result.status === "failed") {
         slot.status = "failed";
         slot.error = result.statusMessage ?? "Provider reported failure";
@@ -2322,10 +2326,15 @@ function getRunner() {
           (await import("@/lib/pipeline/tts")).synthesizeNarration(...args),
         generateThumbnail: async (...args) =>
           (await import("@/lib/pipeline/gemini-image")).generateThumbnail(...args),
+        // Text→video clips run on fal.ai's Kling (one balance, no Kling account).
+        // Task ids from before that change (no "fal:" prefix) still poll Kling's own API.
         submitTextToVideo: async (...args) =>
-          (await import("@/lib/pipeline/kling")).submitTextToVideo(...args),
-        getTextToVideoTask: async (...args) =>
-          (await import("@/lib/pipeline/kling")).getTextToVideoTask(...args),
+          (await import("@/lib/pipeline/fal-video")).submitTextToVideoFal(...args),
+        getTextToVideoTask: async (taskId) => {
+          const fv = await import("@/lib/pipeline/fal-video");
+          if (fv.isFalTaskId(taskId)) return (await fv.getFalTextToVideoTask(taskId)) as KlingTaskResult;
+          return (await import("@/lib/pipeline/kling")).getTextToVideoTask(taskId);
+        },
         submitImageToVideo: async (...args) =>
           (await import("@/lib/pipeline/fal-video")).submitImageToVideo(...args),
         getImageToVideo: async (...args) =>
