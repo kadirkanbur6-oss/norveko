@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import HeroDemo from "./HeroDemo";
 import ShowcaseGallery from "./ShowcaseGallery";
+import ShortsDemo from "./ShortsDemo";
 import HeroBackground from "./HeroBackground";
 import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
 import ThemeToggle from "./ThemeToggle";
@@ -429,6 +430,20 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
               ? `Your first 30-second video is on us, no credits needed. Then ${FREE_TRIAL_CREDITS} free credits for ${FREE_CREDITS_BUY}.`
               : `Every account starts with ${FREE_TRIAL_CREDITS} free credits: ${FREE_CREDITS_BUY}. Finished-video rendering is being switched on account by account.`}
           </p>
+        </Reveal>
+      </section>
+
+      {/* 2b''. LONG VIDEO TO SHORTS — a real 3-minute video and the Short cut from it (7 Nov 2026) */}
+      <section id="shorts" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6">
+        <Reveal>
+          <SectionTitle
+            eyebrow="One video, many Shorts"
+            title="Cut your long video into Shorts in one click"
+            subtitle="Norveko reads the timed narration, picks the moments that stand on their own, writes a hook for each and renders them as vertical Shorts. This is a real run."
+          />
+        </Reveal>
+        <Reveal delay={100} className="mt-8">
+          <ShortsDemo />
         </Reveal>
       </section>
 

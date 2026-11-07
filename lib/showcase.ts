@@ -122,6 +122,35 @@ export const SHOWCASE_VIDEOS: ShowcaseVideo[] = [
   },
 ];
 
+/**
+ * "Long video to Shorts" demo (7 Nov 2026): one real 3-minute video, the moments the
+ * picker suggested for it (verbatim output of POST /shorts {action:"suggest"}) and the
+ * Short that was rendered from one of them.
+ */
+export const SHORTS_DEMO = {
+  long: {
+    id: "4ff09d16-537c-42c2-9aba-930abb919933",
+    title: "Why Did Ten People Leave the Mary Celeste?",
+    seconds: 197,
+    videoPath: `${OWNER}/4ff09d16-537c-42c2-9aba-930abb919933/final.mp4`,
+    poster: { bucket: "thumbnails", path: "4ff09d16-537c-42c2-9aba-930abb919933.jpg" },
+  },
+  picks: [
+    { from: 0.11, to: 36.62, title: "The Voyage of the Mary Celeste", hook: "A ship sailed without its people" },
+    { from: 56.75, to: 88.74, title: "The Mary Celeste Was Found Empty at Sea", hook: "The ship sailed without a crew" },
+    { from: 88.39, to: 133.02, title: "What Investigators Found Aboard the Mary Celeste", hook: "Had the crew feared sinking?" },
+    { from: 133.01, to: 169.5, title: "The Missing Lifeboat and a Possible Explanation", hook: "Did they fear the ship was sinking?" },
+  ],
+  /** Index in `picks` that was rendered. */
+  chosen: 1,
+  short: {
+    id: "397bfbad-93e5-4e8b-88cc-b66ba4d9d382",
+    seconds: 32,
+    videoPath: `${OWNER}/397bfbad-93e5-4e8b-88cc-b66ba4d9d382/final.mp4`,
+    poster: { bucket: "thumbnails", path: "397bfbad-93e5-4e8b-88cc-b66ba4d9d382.jpg" },
+  },
+} as const;
+
 // Character swap: no showcase entry yet (5 Nov 2026 — the Office Cat swap came back as the
 // original man; Wan Animate "replace" keeps a human when the target is an animal. A human→human
 // swap works (Timur test on 4 Nov); pick a globally recognisable human character before adding one).
