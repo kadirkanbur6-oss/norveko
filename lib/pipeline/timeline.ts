@@ -251,6 +251,17 @@ export function stillScenes(slots: TimelineSlot[]): number[] {
 
 const KEN_BURNS = ["zoomIn", "zoomOut", "slideLeft", "slideRight", "zoomIn", "slideUp"] as const;
 
+/**
+ * Ken Burns effect for slot `i`. The slide effects move the picture at a fixed speed, so over a
+ * long slot (10 s slots of long videos and Shorts cut from them) the image slides out of frame
+ * and the slot ends black (7 Nov 2026): long slots only zoom, slowly.
+ */
+function kenBurns(i: number, length: number): string {
+  const e = KEN_BURNS[i % KEN_BURNS.length];
+  if (length <= 6) return e;
+  return e === "zoomOut" || e === "slideRight" ? "zoomOutSlow" : "zoomInSlow";
+}
+
 export interface EditInput {
   slots: TimelineSlot[];
   voiceoverUrl: string;
@@ -331,7 +342,7 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
     };
     if (!v) {
       if (input.fallbackImageUrl) {
-        clips.push({ ...base, asset: { type: "image", src: input.fallbackImageUrl }, effect: KEN_BURNS[i % KEN_BURNS.length] });
+        clips.push({ ...base, asset: { type: "image", src: input.fallbackImageUrl }, effect: kenBurns(i, slot.length) });
       }
       return;
     }
@@ -364,13 +375,13 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
           length: Math.round((slot.length - maxPlay) * 100) / 100,
           transition: { out: "fade" },
           asset: { type: "image", src: v.imageUrl },
-          effect: KEN_BURNS[i % KEN_BURNS.length],
+          effect: kenBurns(i, slot.length),
         });
       } else {
         clips.push({ ...base, asset: { type: "video", src: v.url, volume: 0, speed, transcode: true } });
       }
     } else {
-      clips.push({ ...base, asset: { type: "image", src: v.url }, effect: KEN_BURNS[i % KEN_BURNS.length] });
+      clips.push({ ...base, asset: { type: "image", src: v.url }, effect: kenBurns(i, slot.length) });
     }
   });
 
