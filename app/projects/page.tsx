@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "../components/PageTabs";
 import Link from "next/link";
-import { ArrowUpDown, FolderOpen, Loader2, Search, Trash2, Wand2, X } from "lucide-react";
+import { ArrowUpDown, FileText, Film, FolderOpen, Loader2, Play, Search, Trash2, Wand2, X } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import ConfirmDialog from "../components/ConfirmDialog";
 
@@ -16,6 +16,9 @@ interface Project {
   idea: string | null;
   status: string;
   created_at: string;
+  /** Cover picture (thumbnail, or a skit's first shot); null for text-only packages. */
+  thumbnail: string | null;
+  video: string | null;
 }
 
 const PAGE_SIZE = 24;
@@ -215,7 +218,8 @@ export default function ProjectsPage() {
               </p>
               <ul className="divide-y divide-white/[0.06] overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.02]">
               {shown.map((project) => (
-                <li key={project.id} className="group relative flex items-center gap-4 px-4 py-3.5 transition hover:bg-white/[0.04] focus-within:bg-white/[0.04] sm:px-5">
+                <li key={project.id} className="group relative flex items-center gap-4 px-4 py-3 transition hover:bg-white/[0.04] focus-within:bg-white/[0.04] sm:px-5">
+                  <ProjectThumb src={project.thumbnail} hasVideo={Boolean(project.video)} />
                   <Link
                     href={`/projects/${project.id}`}
                     className="min-w-0 flex-1 outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-blue-400/60"
@@ -263,6 +267,28 @@ export default function ProjectsPage() {
         onConfirm={() => pendingDelete && handleDelete(pendingDelete.id)}
         onCancel={() => setPendingDelete(null)}
       />
+    </div>
+  );
+}
+
+/** Small 16:9 cover so a project is recognisable at a glance, not only by its title. */
+function ProjectThumb({ src, hasVideo }: { src: string | null; hasVideo: boolean }) {
+  const [broken, setBroken] = useState(false);
+  return (
+    <div className="relative h-12 w-20 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04] sm:h-14 sm:w-24">
+      {src && !broken ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" loading="lazy" decoding="async" onError={() => setBroken(true)} className="h-full w-full object-cover" />
+      ) : (
+        <span className="flex h-full w-full items-center justify-center text-gray-500">
+          {hasVideo ? <Film size={18} aria-hidden /> : <FileText size={18} aria-hidden />}
+        </span>
+      )}
+      {src && !broken && hasVideo && (
+        <span aria-hidden className="absolute bottom-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/70 text-white">
+          <Play size={9} className="ml-px fill-current" />
+        </span>
+      )}
     </div>
   );
 }
