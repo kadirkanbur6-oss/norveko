@@ -29,13 +29,11 @@ export const metadata: Metadata = {
     title: "Norveko | AI Content Workspace for Creators",
     description: DESCRIPTION,
     url: SITE_URL,
-    images: [{ url: "/brand/norveko-logo.png", width: 512, height: 512, alt: "Norveko" }],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Norveko | AI Content Workspace for Creators",
     description: DESCRIPTION,
-    images: ["/brand/norveko-logo.png"],
   },
 };
 

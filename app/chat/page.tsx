@@ -9,6 +9,7 @@ import { PageHeader } from "../components/PageTabs";
 import Sidebar from "../components/Sidebar";
 import PipelineProgress from "../components/PipelineProgress";
 import CastPicker from "../components/CastPicker";
+import ModeGuide from "../components/ModeGuide";
 import SkitStudio from "../components/studio/SkitStudio";
 import TalkStudio from "../components/studio/TalkStudio";
 import SwapStudio from "../components/studio/SwapStudio";
@@ -618,7 +619,7 @@ function ChatContent() {
                   >
                     <Icon size={16} className={on ? "text-blue-300" : "text-gray-400"} aria-hidden />
                     <span className="mt-1.5 block text-sm font-semibold text-white">{m.label}</span>
-                    <span className="mt-0.5 block text-[11px] leading-snug text-gray-500">{m.hint}</span>
+                    <span className="mt-0.5 block text-[11px] leading-snug text-gray-400">{m.hint}</span>
                     {suggested === m.id && !on && (
                       <span className="absolute right-2 top-2 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300">Suggested</span>
                     )}
@@ -626,6 +627,7 @@ function ChatContent() {
                 );
               })}
             </div>
+            <ModeGuide mode={mode} onSelectMode={setMode} />
           </div>
 
           {mode === "skit" && (

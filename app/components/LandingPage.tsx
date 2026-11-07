@@ -63,7 +63,7 @@ function Reveal({
           observer.disconnect();
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.05, rootMargin: "0px 0px 12% 0px" }
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -73,8 +73,8 @@ function Reveal({
     <div
       ref={ref}
       style={{ transitionDelay: `${delay}ms` }}
-      className={`min-w-0 transition-all duration-700 ease-out ${
-        visible ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
+      className={`min-w-0 transition-all duration-500 ease-out motion-reduce:transition-none ${
+        visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 motion-reduce:translate-y-0 motion-reduce:opacity-100"
       } ${className}`}
     >
       {children}
@@ -181,6 +181,33 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#0a0a12] text-white antialiased">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([
+            {
+              "@context": "https://schema.org",
+              "@type": "SoftwareApplication",
+              name: "Norveko",
+              url: "https://norveko.app",
+              applicationCategory: "MultimediaApplication",
+              operatingSystem: "Web",
+              description:
+                "AI content workspace for creators: turn one idea into a researched, narrated video, an animated skit or a talking character, then publish to YouTube, TikTok and Instagram.",
+              offers: { "@type": "AggregateOffer", priceCurrency: "USD", lowPrice: "9", highPrice: "49" },
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              mainEntity: FAQS.map((f) => ({
+                "@type": "Question",
+                name: f.q,
+                acceptedAnswer: { "@type": "Answer", text: f.a },
+              })),
+            },
+          ]).replace(/</g, "\\u003c"),
+        }}
+      />
       {/* NAVBAR */}
       <header className="sticky top-0 z-50 border-b border-white/5 bg-[#0a0a12]/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
@@ -320,7 +347,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                 </a>
               </div>
 
-              <p className="mt-3 text-xs text-gray-500">
+              <p className="mt-3 text-xs text-gray-400">
                 No credit card required · {FREE_TRIAL_CREDITS} free credits{TRIAL_VIDEO_PUBLIC ? " + a free video" : ""} on signup (≈ {FREE_CREDITS_BUY.split(", or ")[0]})
               </p>
             </div>
@@ -354,13 +381,13 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             ))}
           </div>
           <div className="mx-auto mt-6 flex max-w-6xl flex-wrap items-center justify-center gap-x-8 gap-y-3 px-4 sm:px-6">
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-gray-400">
               Built for creators on
             </span>
             {["YouTube", "TikTok", "Instagram", "LinkedIn", "X"].map((p) => (
               <span
                 key={p}
-                className="text-base font-semibold text-gray-500 transition hover:text-gray-300"
+                className="text-base font-semibold text-gray-400 transition hover:text-gray-300"
               >
                 {p}
               </span>
@@ -382,7 +409,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           <ShowcaseGallery />
         </Reveal>
         <Reveal delay={200}>
-          <p className="mt-5 flex items-center justify-center gap-2 text-center text-xs text-gray-500">
+          <p className="mt-5 flex items-center justify-center gap-2 text-center text-xs text-gray-400">
             <PlayCircle size={14} className="text-blue-300" />
             {TRIAL_VIDEO_PUBLIC
               ? `Your first 30-second video is on us, no credits needed. Then ${FREE_TRIAL_CREDITS} free credits for ${FREE_CREDITS_BUY}.`
@@ -429,7 +456,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                 <c.icon size={22} className="text-blue-300" aria-hidden />
                 <h3 className="mt-4 text-lg font-semibold text-white">{c.title}</h3>
                 <p className="mt-2 flex-1 text-sm leading-relaxed text-gray-400">{c.body}</p>
-                <p className="mt-4 text-xs text-gray-500">{c.cost}</p>
+                <p className="mt-4 text-xs text-gray-400">{c.cost}</p>
               </Link>
             </Reveal>
           ))}
@@ -481,7 +508,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                   <span className="text-3xl font-black tracking-tight text-white">
                     ${plan.priceUsd}
                   </span>
-                  <span className="pb-1 text-sm text-gray-500">one-time</span>
+                  <span className="pb-1 text-sm text-gray-400">one-time</span>
                 </div>
 
                 <p className="mt-2 text-sm font-medium text-gray-300">
@@ -550,7 +577,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                 >
                   <span className="min-w-0">
                     <span className="block text-sm font-medium text-white">{row.feature}</span>
-                    <span className="block text-xs text-gray-500">{row.detail}</span>
+                    <span className="block text-xs text-gray-400">{row.detail}</span>
                   </span>
                   <span className="flex w-16 justify-center sm:w-24">
                     <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/15 ring-1 ring-emerald-400/40">
@@ -572,7 +599,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                 </p>
               ))}
             </div>
-            <p className="relative mt-4 text-[11px] text-gray-500">
+            <p className="relative mt-4 text-[11px] text-gray-400">
               &ldquo;Typical AI tool&rdquo; reflects what is commonly offered by script-to-video generators; individual tools vary.
             </p>
           </div>
@@ -602,10 +629,10 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-gray-400">{t.tagline}</p>
-                <p className="mt-3 text-xs text-gray-500">
+                <p className="mt-3 text-xs text-gray-400">
                   {t.platform} · {t.style}
                 </p>
-                <p className="mt-3 line-clamp-2 text-xs italic text-gray-500">e.g. “{t.examples[0]}”</p>
+                <p className="mt-3 line-clamp-2 text-xs italic text-gray-400">e.g. “{t.examples[0]}”</p>
               </Link>
             </Reveal>
           ))}
@@ -678,7 +705,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                   <span className="font-semibold">{faq.q}</span>
                   <ChevronDown
                     size={18}
-                    className={`shrink-0 text-gray-500 transition-transform ${
+                    className={`shrink-0 text-gray-400 transition-transform ${
                       openFaq === i ? "rotate-180" : ""
                     }`}
                   />
@@ -712,7 +739,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
               Start free with {FREE_TRIAL_CREDITS} credits
               <ArrowRight size={20} />
             </Link>
-            <p className="mt-3 text-xs text-gray-500">No credit card required</p>
+            <p className="mt-3 text-xs text-gray-400">No credit card required</p>
           </div>
         </Reveal>
       </section>
@@ -724,7 +751,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             <BrandMark size={32} />
             <span className="font-bold">NORVEKO</span>
           </Link>
-          <nav className="flex flex-wrap justify-center gap-6 gap-y-2 text-sm text-gray-500">
+          <nav className="flex flex-wrap justify-center gap-6 gap-y-2 text-sm text-gray-400">
             <a href="#examples" className="transition hover:text-gray-300">Examples</a>
             <a href="#workflow" className="transition hover:text-gray-300">How it works</a>
             <a href="#pricing" className="transition hover:text-gray-300">Pricing</a>
@@ -735,7 +762,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             <a href={`mailto:${SUPPORT_EMAIL}`} className="transition hover:text-gray-300">Contact</a>
             <Link href="/login" className="transition hover:text-gray-300">Log in</Link>
           </nav>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-400">
             © {new Date().getFullYear()} Norveko. All rights reserved. · <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-gray-300">{SUPPORT_EMAIL}</a>
           </p>
         </div>
