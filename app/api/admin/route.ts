@@ -303,6 +303,26 @@ export async function GET(req: NextRequest) {
       errors.push(`fal balance: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
+  // Gemini (scene images, thumbnails, narration, vision checks) runs on prepaid credit. Google has
+  // no API for that balance, so we watch for its "out of credit" errors in the last 24 h instead:
+  // any job (or step inside one) that hit 402 / prepayment / RESOURCE_EXHAUSTED (7 Nov 2026, Yağmur).
+  const dayAgo = new Date(now - 86400_000).toISOString();
+  const OUT_OF_CREDIT = /prepayment credits are depleted|prepay|Gemini[^"]{0,40}\(402\)|RESOURCE_EXHAUSTED/i;
+  let geminiHits = 0;
+  let geminiLastAt = "";
+  for (const row of [...jobs, ...skits, ...swaps]) {
+    const at = str(row.created_at);
+    if (at < dayAgo) continue;
+    const text = `${str(row.error)} ${JSON.stringify((row as Record<string, unknown>).steps ?? "")}`;
+    if (!OUT_OF_CREDIT.test(text)) continue;
+    geminiHits++;
+    if (at > geminiLastAt) geminiLastAt = at;
+  }
+  const gemini = geminiHits ? { outOfCredit: true, jobs: geminiHits, lastAt: geminiLastAt } : { outOfCredit: false, jobs: 0, lastAt: null };
+  const geminiSpend24h = usage
+    .filter((u) => str(u.provider) === "gemini" && str(u.created_at) >= dayAgo)
+    .reduce((t, u) => t + num(u.estimated_cost_usd), 0);
+
   const weekAgo = new Date(now - 7 * 86400_000).toISOString();
 
   // Stock slots that found nothing and became AI stills at our cost (priced for ≤ 20 %,
@@ -338,6 +358,7 @@ export async function GET(req: NextRequest) {
       jobs: { running: counts.running ?? 0, completed: counts.completed ?? 0, failed: counts.failed ?? 0 },
       failedWindow: generations.filter((g) => g.status === "failed" && g.createdAt >= since).length,
       fal,
+      gemini: { ...gemini, spend24hUsd: geminiSpend24h },
       stock: { slots: stockSlots, fallbacks: stockFallbacks, share: stockSlots ? stockFallbacks / stockSlots : 0 },
       generationOpen: process.env.GENERATION_ENABLED !== "false",
       fullVideoOpen: process.env.FULL_VIDEO_ENABLED === "true",

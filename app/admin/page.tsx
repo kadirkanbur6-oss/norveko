@@ -29,6 +29,7 @@ interface Overview {
   generationOpen: boolean;
   fullVideoOpen: boolean;
   fal: { balanceUsd: number; topupUsd: number; low: boolean } | null;
+  gemini?: { outOfCredit: boolean; jobs: number; lastAt: string | null; spend24hUsd: number };
   stock?: { slots: number; fallbacks: number; share: number };
 }
 interface Daily {
@@ -292,6 +293,17 @@ export default function AdminPage() {
 
           {data && o && tab === "overview" && (
             <div className="space-y-4">
+              {o.gemini?.outOfCredit && (
+                <div role="alert" className="rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                  <strong>Gemini credit ran out</strong>: {int(o.gemini.jobs)} generation{o.gemini.jobs === 1 ? "" : "s"} in the last 24 hours hit
+                  &ldquo;prepayment credits are depleted&rdquo;
+                  {o.gemini.lastAt ? `, last at ${new Date(o.gemini.lastAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}` : ""}. Scene
+                  images, thumbnails and narration fail until it is topped up. If you already added credit, this clears once a day passes.{" "}
+                  <a href="https://aistudio.google.com/" target="_blank" rel="noreferrer" className="underline">
+                    Open AI Studio billing
+                  </a>
+                </div>
+              )}
               {o.fal?.low && (
                 <div role="alert" className="rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-100">
                   <strong>fal.ai balance is low: {usd(o.fal.balanceUsd)}</strong>, under 20% of a {usd(o.fal.topupUsd)} top-up. Lip-sync, swaps and
@@ -310,6 +322,13 @@ export default function AdminPage() {
                 <Stat label="Completed (all time)" value={int(o.jobs.completed)} />
                 <Stat label="Failed (all time)" value={int(o.jobs.failed)} note={`${int(o.failedWindow)} in the ${windowLabel}`} />
                 <Stat label="Unspent credits" value={int(o.creditsOutstanding)} note="Across every account" />
+                {o.gemini && (
+                  <Stat
+                    label="Gemini spend, 24 h"
+                    value={usd(o.gemini.spend24hUsd)}
+                    note={o.gemini.outOfCredit ? "Out of credit, top up in AI Studio" : "Prepaid; Google shows no balance via API"}
+                  />
+                )}
                 {o.fal && <Stat label="fal.ai balance" value={usd(o.fal.balanceUsd)} note={o.fal.low ? "Low, add credits" : `Warns at ${usd(o.fal.topupUsd * 0.2)}`} />}
                 {o.stock && o.stock.slots > 0 && (
                   <Stat
