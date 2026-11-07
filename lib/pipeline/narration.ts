@@ -47,6 +47,18 @@ export function wordsPerSecond(languageCode?: string | null): number {
   return WORDS_PER_SECOND_BY_LANGUAGE[(languageCode ?? "").toLowerCase()] ?? WORDS_PER_SECOND;
 }
 
+/**
+ * Narration plays this much faster than the measured rates above: Gemini audio
+ * is time-stretched (lib/pipeline/tempo.ts) and ElevenLabs gets speed 1.2.
+ * 7 Nov 2026, Yağmur: "1.25'e alınca ideal oluyor". Scripts get longer to match.
+ */
+export const NARRATION_TEMPO = 1.25;
+
+/** Words per second of the finished narration (measured rate × NARRATION_TEMPO). */
+export function narrationWordsPerSecond(languageCode?: string | null): number {
+  return Math.round(wordsPerSecond(languageCode) * NARRATION_TEMPO * 100) / 100;
+}
+
 export function wordRange(
   duration: string | null | undefined,
   languageCode?: string | null
@@ -57,7 +69,7 @@ export function wordRange(
   // Long-form: the Norveko narrators read ~6 % faster than our per-language
   // rates (10-min Turkish test: 962 words → 8:11), and long drafts tend to
   // come in short, so aim a little higher.
-  const target = Math.round(seconds * wordsPerSecond(languageCode) * (seconds > 60 ? 1.06 : 1));
+  const target = Math.round(seconds * narrationWordsPerSecond(languageCode) * (seconds > 60 ? 1.06 : 1));
   return { min: Math.round(target * 0.92), target, max: Math.round(target * 1.08), seconds };
 }
 

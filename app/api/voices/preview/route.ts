@@ -7,7 +7,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireUser } from "@/lib/supabase-server";
-import { GEMINI_VOICES, generateGeminiSpeech } from "@/lib/pipeline/gemini-tts";
+import { GEMINI_VOICES, generateGeminiSpeech, pcmToWav } from "@/lib/pipeline/gemini-tts";
+import { NARRATION_TEMPO } from "@/lib/pipeline/narration";
+import { stretchPcm16 } from "@/lib/pipeline/tempo";
 import { LANGUAGES, isOneOf, languageCode } from "@/lib/pipeline/options";
 
 export const runtime = "nodejs";
@@ -38,7 +40,8 @@ export async function GET(req: NextRequest) {
   const sampleCode = SAMPLES[code] ? code : "en";
 
   const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-  const file = `${voice}-${sampleCode}.wav`;
+  // "-t125": previews at the narration tempo (older, slower files are left unused).
+  const file = `${voice}-${sampleCode}-t${Math.round(NARRATION_TEMPO * 100)}.wav`;
   const path = `previews/gemini/${file}`;
   const publicUrl = db.storage.from("videos").getPublicUrl(path).data.publicUrl;
 
@@ -46,7 +49,8 @@ export async function GET(req: NextRequest) {
   if (!existing?.some((f) => f.name === file)) {
     try {
       const speech = await generateGeminiSpeech(SAMPLES[sampleCode], voice);
-      const { error } = await db.storage.from("videos").upload(path, speech.audio, { contentType: "audio/wav", upsert: true });
+      const audio = pcmToWav(stretchPcm16(speech.pcm, speech.sampleRate, NARRATION_TEMPO), speech.sampleRate);
+      const { error } = await db.storage.from("videos").upload(path, audio, { contentType: "audio/wav", upsert: true });
       if (error) throw new Error(error.message);
     } catch (err) {
       return NextResponse.json({ success: false, error: err instanceof Error ? err.message : "Preview failed." }, { status: 502 });

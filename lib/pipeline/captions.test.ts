@@ -166,12 +166,12 @@ test("timeline: planSlots spreads Kling slots evenly and maps scenes in order", 
   assert.equal(edit.output.range.length, 58.2);
 });
 
-test("narration: word range tracks the selected duration at ~2.1 words/s", async () => {
+test("narration: word range tracks the selected duration at the sped-up narration rate", async () => {
   const { wordRange, narrationWordCount } = await import("./narration");
   const r30 = wordRange("30 seconds");
-  assert.deepEqual(r30, { min: 63, target: 69, max: 75, seconds: 30 });
+  assert.deepEqual(r30, { min: 79, target: 86, max: 93, seconds: 30 }); // 2.3 w/s × 1.25 tempo
   const r60 = wordRange("60 seconds");
-  assert.equal(r60.target, 138);
+  assert.equal(r60.target, 173);
   assert.equal(wordRange("3 minutes").seconds, 180);
   assert.equal(narrationWordCount("Bir iki.", "üç  dört\nbeş"), 5);
 });
@@ -201,9 +201,9 @@ test("cuesToSrt can uppercase with Turkish rules for burned-in captions", () => 
 
 test("word budget is language-aware and the measured-ratio range shrinks a long script", async () => {
   const { wordRange, rangeForMeasuredRatio } = await import("./narration");
-  assert.equal(wordRange("60 seconds", "en").target, 144);
-  assert.equal(wordRange("60 seconds", "tr").target, 111);
-  assert.equal(wordRange("30 seconds").target, 69); // default rate
+  assert.equal(wordRange("60 seconds", "en").target, 180);
+  assert.equal(wordRange("60 seconds", "tr").target, 139);
+  assert.equal(wordRange("30 seconds").target, 86); // default rate × tempo
   // 144 words came out at 81 s for a 60 s target → ~107 words would fit.
   const r = rangeForMeasuredRatio(144, 81 / 60, 60);
   assert.equal(r.target, 107);

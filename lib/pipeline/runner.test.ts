@@ -839,10 +839,10 @@ test("archive photos: only PD / CC0 / CC BY, no maps; stock slots of real subjec
 });
 
 test("long-form length: wider target, sentences spliced in place", async () => {
-  const { wordRange } = await import("./narration");
+  const { wordRange, narrationWordsPerSecond } = await import("./narration");
   const { insertAdditions } = await import("./narration");
-  assert.equal(wordRange("60 seconds", "tr").target, Math.round(60 * 1.85));
-  assert.equal(wordRange("10 minutes", "tr").target, Math.round(600 * 1.85 * 1.06));
+  assert.equal(wordRange("60 seconds", "tr").target, Math.round(60 * narrationWordsPerSecond("tr")));
+  assert.equal(wordRange("10 minutes", "tr").target, Math.round(600 * narrationWordsPerSecond("tr") * 1.06));
   const s = "The ark was said to rest high on the mountain. Climbers went looking in 1955. Nothing was proven.";
   const out = insertAdditions(s, [
     { after: "Climbers went looking in 1955.", text: "They found old wood in the ice." },
