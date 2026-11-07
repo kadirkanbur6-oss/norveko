@@ -75,7 +75,7 @@ export default function HeroBackground() {
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         {/* Rendered with the page (not after hydration) so the download starts at once; the poster
             covers the wait. Reduced motion hides it in CSS. */}
-        <div className="nv-hero-wall nv-hero-feature absolute inset-0">
+        <div className="nv-hero-wall nv-hero-feature absolute inset-x-0 top-0 h-[440px] sm:h-[520px] lg:inset-0 lg:h-auto">
           <video
             ref={featureRef}
             src={feature}
@@ -86,12 +86,13 @@ export default function HeroBackground() {
             playsInline
             preload="auto"
             disablePictureInPicture
-            className="h-full w-full object-cover object-[70%_50%] lg:object-[80%_50%]"
+            className="h-full w-full object-cover object-[68%_50%] lg:object-[80%_50%]"
           />
         </div>
         {/* Readability: the headline sits on the left, so the scene stays bright on the right. */}
         <div className="absolute inset-0 bg-gradient-to-r from-[var(--nv-bg)]/85 via-[var(--nv-bg)]/30 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[var(--nv-page)] to-transparent" />
+        <div className="absolute inset-x-0 top-[300px] h-[140px] bg-gradient-to-t from-[var(--nv-page)] to-transparent sm:top-[380px] lg:hidden" />
+        <div className="absolute inset-x-0 bottom-0 hidden h-40 bg-gradient-to-t from-[var(--nv-page)] to-transparent lg:block" />
         <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[var(--nv-page)] to-transparent" />
       </div>
     );
