@@ -62,7 +62,7 @@ export default function ModeGuide({
         <span className="inline-flex items-center gap-2">
           <PlayCircle size={16} className="text-blue-300" aria-hidden />
           How the modes work
-          <span className="text-xs text-gray-400">50 s video</span>
+          <span className="text-xs text-gray-400">52 s video</span>
         </span>
         {open ? <ChevronUp size={16} aria-hidden /> : <ChevronDown size={16} aria-hidden />}
       </button>
