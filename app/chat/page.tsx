@@ -2,7 +2,7 @@
 
 import { Fragment, Suspense, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Captions, CheckCircle2, Film, Globe, ChevronDown, ChevronUp, Clapperboard, Coins, LayoutTemplate, Palette, Loader2, Mic, Play, Search, Sparkles, Square, MessageCircle, Shuffle, Drama } from "lucide-react";
+import { Captions, CheckCircle2, Film, Globe, ChevronDown, ChevronUp, Clapperboard, Coins, LayoutTemplate, Palette, Loader2, Mic, Play, Search, Sparkles, Square, MessageCircle, Shuffle, Drama, Lock } from "lucide-react";
 import Link from "next/link";
 import Disclosure from "../components/Disclosure";
 import { PageHeader } from "../components/PageTabs";
@@ -13,7 +13,7 @@ import ModeGuide from "../components/ModeGuide";
 import SkitStudio from "../components/studio/SkitStudio";
 import TalkStudio from "../components/studio/TalkStudio";
 import SwapStudio from "../components/studio/SwapStudio";
-import { JOB_COSTS } from "@/lib/plans";
+import { FREE_PLAN, FREE_PLAN_UPGRADE_MESSAGE, JOB_COSTS } from "@/lib/plans";
 
 /** Cheapest finished video (30 s, Stock + AI): what free credits are pointed at. */
 const starterVideoCredits = JOB_COSTS.video30Stock;
@@ -132,7 +132,7 @@ function ChatContent() {
   const [sourceOpen, setSourceOpen] = useState(false);
   const [platform, setPlatform] = useState<string>(PLATFORMS[0]);
   const [style, setStyle] = useState<string>(STYLES[0]);
-  const [duration, setDuration] = useState<string>(DURATIONS[1]);
+  const [durationPick, setDuration] = useState<string>(DURATIONS[1]);
   const [language, setLanguage] = useState<string>(LANGUAGES[0]);
   const [orientationPick, setOrientation] = useState<OrientationId>(defaultOrientation(PLATFORMS[0]));
   const [orientationTouched, setOrientationTouched] = useState(false);
@@ -146,6 +146,13 @@ function ChatContent() {
   const [footagePick, setFootage] = useState<FootageMode>("hybrid");
   // Accounts that haven't paid yet start on the cheapest finished video (Stock + AI), 6 Nov 2026.
   const [freeAccount, setFreeAccount] = useState(false);
+  /** Shown after a free account taps a locked option. */
+  const [upgradeHint, setUpgradeHint] = useState(false);
+  const upgradeRef = useRef<HTMLDivElement>(null);
+  function askUpgrade() {
+    setUpgradeHint(true);
+    setTimeout(() => upgradeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+  }
   const footageFromDraft = useRef(false);
   const [clipMode, setClipMode] = useState<ClipMode>("image");
   const [visualStyle, setVisualStyle] = useState<string>(DEFAULT_VISUAL_STYLE);
@@ -206,9 +213,12 @@ function ChatContent() {
   const progressRef = useRef<HTMLDivElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Free plan (never paid): one fixed setup, everything else leads to buying (lib/plans.ts FREE_PLAN).
+  const freeDurations: readonly string[] = fullVideoAvailable ? [FREE_PLAN.videoDuration] : FREE_PLAN.packageDurations;
+  const duration = freeAccount && !freeDurations.includes(durationPick) ? freeDurations[0] : durationPick;
   // Long-form (> 60 s) offers stock / hybrid / stills only and renders 16:9.
   const footageModes = footageModesFor(duration);
-  const footage: FootageMode = footageModes.includes(footagePick) ? footagePick : "stock";
+  const footage: FootageMode = freeAccount ? "stock" : footageModes.includes(footagePick) ? footagePick : "stock";
   const fullVideoOn = includeFullVideo && fullVideoAvailable && Boolean(fullVideoPlan(duration, footage));
   const longFullVideo = fullVideoOn && (FULL_VIDEO_DURATIONS[duration] ?? 0) > SHORT_FORM_MAX_SECONDS;
   const orientation: OrientationId = longFullVideo ? "horizontal" : orientationPick;
@@ -431,7 +441,9 @@ function ChatContent() {
   }, [includeVoiceover, language]);
 
   // Fall back to the first voice whenever none is selected.
-  const effectiveVoiceId = voiceId || voices[0]?.voice_id || "";
+  const firstGemini = voices.find((v) => v.voice_id.startsWith("gemini:"))?.voice_id;
+  const effectiveVoiceId =
+    freeAccount && !(voiceId || "").startsWith("gemini:") ? firstGemini || "" : voiceId || voices[0]?.voice_id || "";
   const selectedVoice = voices.find((v) => v.voice_id === effectiveVoiceId) ?? null;
   const voiceNeedle = voiceQuery.trim().toLowerCase();
   const filteredVoices = voiceNeedle
@@ -443,6 +455,10 @@ function ChatContent() {
     : voices;
 
   function chooseVoice(id: string) {
+    if (freeAccount && !id.startsWith("gemini:")) {
+      askUpgrade();
+      return;
+    }
     setVoiceId(id);
     setVoiceListOpen(false);
   }
@@ -539,6 +555,7 @@ function ChatContent() {
           setFormOpen(false);
           router.replace(`${pathname}?job=${data.jobId}`, { scroll: false });
         }
+        if (data.code === "upgrade_required") askUpgrade();
         throw new Error(data.error || "Pipeline could not start.");
       }
 
@@ -620,7 +637,12 @@ function ChatContent() {
                     <Icon size={16} className={on ? "text-blue-300" : "text-gray-400"} aria-hidden />
                     <span className="mt-1.5 block text-sm font-semibold text-white">{m.label}</span>
                     <span className="mt-0.5 block text-[11px] leading-snug text-gray-400">{m.hint}</span>
-                    {suggested === m.id && !on && (
+                    {freeAccount && m.id !== "video" && (
+                      <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full border border-white/10 px-1.5 py-0.5 text-[10px] text-gray-300">
+                        <Lock size={10} aria-hidden /> Paid
+                      </span>
+                    )}
+                    {suggested === m.id && !on && !(freeAccount && m.id !== "video") && (
                       <span className="absolute right-2 top-2 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300">Suggested</span>
                     )}
                   </button>
@@ -632,17 +654,23 @@ function ChatContent() {
 
           {mode === "skit" && (
             <div className="mt-5">
-              <SkitStudio text={idea} onStarted={() => setIdea("")} />
+              {freeAccount ? <UpgradeCard /> : <SkitStudio text={idea} onStarted={() => setIdea("")} />}
             </div>
           )}
           {mode === "talk" && (
             <div className="mt-5">
-              <TalkStudio text={idea} onStarted={() => setIdea("")} />
+              {freeAccount ? <UpgradeCard /> : <TalkStudio text={idea} onStarted={() => setIdea("")} />}
             </div>
           )}
           {mode === "swap" && (
             <div className="mt-5">
-              <SwapStudio />
+              {freeAccount ? <UpgradeCard /> : <SwapStudio />}
+            </div>
+          )}
+
+          {mode === "video" && upgradeHint && freeAccount && (
+            <div ref={upgradeRef} className="mt-5">
+              <UpgradeCard onClose={() => setUpgradeHint(false)} />
             </div>
           )}
 
@@ -834,12 +862,22 @@ function ChatContent() {
                 <label className="text-sm text-gray-400">Duration</label>
                 <select
                   value={duration}
-                  onChange={(e) => setDuration(e.target.value)}
+                  onChange={(e) => {
+                    if (freeAccount && !freeDurations.includes(e.target.value)) {
+                      askUpgrade();
+                      return;
+                    }
+                    setDuration(e.target.value);
+                  }}
                   className={selectClass}
                 >
                   {DURATIONS.map((d) => (
                     <option key={d} value={d}>
-                      {fullVideoAvailable && !FULL_VIDEO_DURATIONS[d] ? `${d} · script & voice only` : d}
+                      {freeAccount && !freeDurations.includes(d)
+                        ? `${d} · 🔒 paid plans`
+                        : fullVideoAvailable && !FULL_VIDEO_DURATIONS[d]
+                          ? `${d} · script & voice only`
+                          : d}
                     </option>
                   ))}
                 </select>
@@ -1159,6 +1197,7 @@ function ChatContent() {
                                 : nativeMatch
                                 ? `Native ${language} voice artists`
                                 : "More voices · multilingual"}
+                              {freeAccount && group !== "gemini" && " · paid plans"}
                             </p>
                           ) : null;
                         const isSelected = effectiveVoiceId === voice.voice_id;
@@ -1357,25 +1396,9 @@ function ChatContent() {
                 )}
 
                 {fullVideoOn && freeAccount && !trialVideoAvailable && (
-                  <div className="mt-4 flex flex-col gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2.5 text-xs sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-emerald-100">
-                      <span className="font-semibold">Start with a 30-second Stock + AI video.</span>{" "}
-                      It costs {starterVideoCredits} credits, so your free credits cover your first finished video.
-                    </p>
-                    {!(footage === "stock" && duration === "30 seconds") && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDuration("30 seconds");
-                          setFootage("stock");
-                          setIncludeFullVideo(true);
-                          setIncludeVoiceover(true);
-                        }}
-                        className="shrink-0 rounded-lg bg-emerald-500/80 px-3 py-1.5 font-semibold text-white hover:bg-emerald-500"
-                      >
-                        Use this setup
-                      </button>
-                    )}
+                  <div className="mt-4 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2.5 text-xs text-emerald-100">
+                    <span className="font-semibold">Your free video: 30 seconds, Stock + AI, a Norveko narrator.</span>{" "}
+                    It costs {starterVideoCredits} credits, so your free credits cover it. Other lengths, footage styles and voices unlock with any pack or plan.
                   </div>
                 )}
 
@@ -1395,15 +1418,20 @@ function ChatContent() {
                         <button
                           key={m.id}
                           type="button"
-                          onClick={() => setFootage(m.id)}
+                          onClick={() => (freeAccount && m.id !== "stock" ? askUpgrade() : setFootage(m.id))}
                           aria-pressed={active}
+                          aria-disabled={freeAccount && m.id !== "stock"}
                           className={`rounded-xl border p-3 text-left transition ${
                             active ? "border-purple-400/60 bg-purple-500/10" : "border-white/10 bg-white/[0.02] hover:border-white/20"
-                          }`}
+                          } ${freeAccount && m.id !== "stock" ? "opacity-60" : ""}`}
                         >
                           <span className="flex items-center justify-between gap-2">
                             <span className="text-sm font-semibold text-white">{m.name}</span>
-                            {plan && (
+                            {freeAccount && m.id !== "stock" ? (
+                              <span className="flex items-center gap-1 rounded-full border border-white/10 px-2 py-0.5 text-[11px] text-gray-300">
+                                <Lock size={11} aria-hidden /> Paid plans
+                              </span>
+                            ) : plan && (
                               <span className="rounded-full border border-yellow-400/20 bg-yellow-500/5 px-2 py-0.5 text-[11px] font-medium text-yellow-300">
                                 +{plan.credits.total}
                               </span>
@@ -1609,7 +1637,10 @@ function ChatContent() {
                   setJobStatus(st);
                   // Done or failed: bring the form and its Generate button back so the next video can
                   // start right here; the finished result stays below (6 Nov 2026, Yağmur).
-                  if (st && st !== "running" && st !== "queued") setFormOpen(true);
+                  // A failure stays on top instead: the form stays folded and the error scrolls into view.
+                  if (st === "failed") {
+                    setTimeout(() => progressRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+                  } else if (st && st !== "running" && st !== "queued") setFormOpen(true);
                 }}
               />}
           </div>
@@ -1671,5 +1702,33 @@ export default function ChatPage() {
     >
       <ChatContent />
     </Suspense>
+  );
+}
+
+/** Free accounts: one fixed setup; everything else points to a pack or a plan. */
+function UpgradeCard({ onClose }: { onClose?: () => void }) {
+  return (
+    <div className="rounded-2xl border border-purple-400/30 bg-purple-500/10 p-5">
+      <div className="flex items-start gap-3">
+        <Lock size={18} className="mt-0.5 shrink-0 text-purple-300" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-white">This is part of the paid plans</p>
+          <p className="mt-1 text-sm text-gray-300">{FREE_PLAN_UPGRADE_MESSAGE}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Link
+              href="/billing"
+              className="rounded-lg bg-purple-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-400"
+            >
+              See plans and packs
+            </Link>
+            {onClose && (
+              <button type="button" onClick={onClose} className="text-sm text-gray-400 transition hover:text-white">
+                Keep the free setup
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

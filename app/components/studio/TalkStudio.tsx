@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorLine } from "@/lib/user-error";
 
 // Talking character studio (used on /talk and in the AI Workspace): pick a character, give them a line (typed or your own
 // recording), say where they are — get a lip-synced video. Like Hedra-style
@@ -439,7 +440,7 @@ export default function TalkStudio({ text: outerText, onStarted }: { text?: stri
                           Open video
                         </Link>
                       ) : (
-                        <span className="text-xs text-red-300">{s.error ?? "Failed"} · refunded</span>
+                        <span className="text-xs text-red-300">{friendlyErrorLine(s.error)} · refunded</span>
                       )}
                     </span>
                   </li>

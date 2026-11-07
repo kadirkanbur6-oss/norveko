@@ -194,6 +194,14 @@ export async function POST(req: Request) {
     const scene = typeof body.scene === "string" ? body.scene.replace(/[<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, 300) : "";
     const script = typeof body.script === "string" ? body.script.replace(/\s+/g, " ").trim().slice(0, TALK_MAX_CHARS) : "";
 
+    {
+      // Free plan: studios need a purchase (lib/plans.ts FREE_PLAN).
+      const { isFreeAccount } = await import("@/lib/pipeline/trial");
+      if (await isFreeAccount(db, user.id)) {
+        const { FREE_PLAN_UPGRADE_MESSAGE } = await import("@/lib/plans");
+        return NextResponse.json({ success: false, error: FREE_PLAN_UPGRADE_MESSAGE, code: "upgrade_required" }, { status: 403 });
+      }
+    }
     const clip = script ? talkClipFor(body.path, seconds) : null;
     const credits = talkCredits(seconds, clip);
     const { payerFor } = await import("@/lib/teams");

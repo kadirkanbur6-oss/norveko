@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { friendlyError, friendlyErrorLine } from "@/lib/user-error";
 import { CheckCircle2, Circle, Clapperboard, Download, Loader2, XCircle, Copy } from "lucide-react";
 import { PIPELINE_STEP_ORDER, type PipelineStepId } from "@/lib/pipeline/steps";
 import AudioPlayer from "./AudioPlayer";
@@ -206,6 +207,34 @@ export default function PipelineProgress({
         <GenerationStage steps={stageSteps} createdAt={job.created_at} />
       ) : null}
 
+      {/* Error state: first thing on screen, plain words (raw error stays in the admin panel). */}
+      {job.status === "failed" && (() => {
+        const fe = friendlyError(job.error);
+        return (
+          <div role="alert" className="rounded-2xl border border-red-400/30 bg-red-500/10 p-5 text-sm text-red-200">
+            <p className="flex items-center gap-2 text-base font-semibold text-red-50">
+              <XCircle size={18} className="shrink-0 text-red-400" aria-hidden />
+              {fe.title}
+            </p>
+            <p className="mt-1.5">{fe.detail}</p>
+            <p className="mt-1 text-red-200/80">
+              {typeof job.credits_refunded === "number" && job.credits_refunded > 0
+                ? `${job.credits_refunded} credits for the unfinished steps were refunded.`
+                : "Credits for any unfinished steps are refunded automatically."}
+              {projectId ? " What was already made is saved as a project." : ""}
+            </p>
+            {projectId && (
+              <Link
+                href={`/projects/${projectId}`}
+                className="mt-3 inline-block rounded-lg bg-red-500/20 px-3 py-1.5 font-semibold text-red-50 transition hover:bg-red-500/30"
+              >
+                Open the partial project →
+              </Link>
+            )}
+          </div>
+        );
+      })()}
+
       {job.status === "completed" && projectId && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-green-400/20 bg-green-500/10 p-4 text-sm text-green-200">
           <span className="flex items-center gap-2">
@@ -252,27 +281,6 @@ export default function PipelineProgress({
           This is taking longer than expected. We&apos;ve stopped checking
           automatically. Your result will appear under Projects when it
           finishes, and credits are refunded automatically if it fails.
-        </div>
-      )}
-
-      {/* Error state */}
-      {job.status === "failed" && (
-        <div className="mt-4 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-300">
-          <p>Something went wrong: {job.error ?? "Unknown error"}.</p>
-          <p className="mt-1 text-red-200/80">
-            {typeof job.credits_refunded === "number" && job.credits_refunded > 0
-              ? `${job.credits_refunded} credits for the unfinished steps were refunded.`
-              : "Credits for any unfinished steps are refunded automatically."}
-            {projectId ? " What was already produced is saved as a project." : ""}
-          </p>
-          {projectId && (
-            <Link
-              href={`/projects/${projectId}`}
-              className="mt-3 inline-block rounded-lg bg-red-500/20 px-3 py-1.5 font-semibold text-red-50 transition hover:bg-red-500/30"
-            >
-              Open the partial project →
-            </Link>
-          )}
         </div>
       )}
 
@@ -380,7 +388,7 @@ export default function PipelineProgress({
                 )}
                 {clip.status === "failed" && (
                   <p className="mt-2 text-xs text-red-300">
-                    {clip.error ?? "Failed"}. Credits for this clip were refunded.
+                    {friendlyErrorLine(clip.error)}. Credits for this clip were refunded.
                   </p>
                 )}
               </div>
@@ -392,7 +400,7 @@ export default function PipelineProgress({
       {/* Results */}
       {job.steps?.research?.status === "skipped" && (
         <p className="rounded-xl border border-amber-400/20 bg-amber-500/[0.06] px-4 py-3 text-xs text-amber-100">
-          Web research was skipped ({String(job.steps.research.error ?? "provider error")}). Its credits were refunded and the script was written from the model&apos;s own knowledge.
+          Web research was skipped. Its credits were refunded and the script was written from the model&apos;s own knowledge.
         </p>
       )}
       {job.steps?.research?.status === "completed" && job.steps.research.brief && (

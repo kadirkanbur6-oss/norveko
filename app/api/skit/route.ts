@@ -216,6 +216,14 @@ export async function POST(req: Request) {
     if (!row) return bad("Plan the skit first.");
     const { count } = await db.from("skit_jobs").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "running");
     if ((count ?? 0) >= MAX_RUNNING) return bad(`Up to ${MAX_RUNNING} skits are made at a time. Try again when one finishes.`, 429);
+    {
+      // Free plan: studios need a purchase (lib/plans.ts FREE_PLAN).
+      const { isFreeAccount } = await import("@/lib/pipeline/trial");
+      if (await isFreeAccount(db, user.id)) {
+        const { FREE_PLAN_UPGRADE_MESSAGE } = await import("@/lib/plans");
+        return NextResponse.json({ success: false, error: FREE_PLAN_UPGRADE_MESSAGE, code: "upgrade_required" }, { status: 403 });
+      }
+    }
     const credits = skitCredits(row.plan);
     const { payerFor } = await import("@/lib/teams");
     const payer = await payerFor(db, user.id);

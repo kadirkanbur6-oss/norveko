@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorLine } from "@/lib/user-error";
 
 // Character swap: upload a short clip, pick one of your characters, and they
 // take the place of the person in it — same moves, expressions and sound.
@@ -314,7 +315,7 @@ export default function SwapStudio() {
                           Open video
                         </Link>
                       ) : (
-                        <span className="text-xs text-red-300">{s.error ?? "Failed"} · refunded</span>
+                        <span className="text-xs text-red-300">{friendlyErrorLine(s.error)} · refunded</span>
                       )}
                     </span>
                   </li>

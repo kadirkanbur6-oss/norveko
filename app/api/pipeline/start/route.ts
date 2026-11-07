@@ -327,6 +327,20 @@ export async function POST(req: NextRequest) {
       if (blocked) {
         return NextResponse.json({ success: false, error: blocked, code: "free_tier_blocked" }, { status: 403 });
       }
+      // Free plan: one fixed setup; everything else needs a purchase (lib/plans.ts).
+      const { freePlanViolation } = await import("@/lib/plans");
+      const locked = freePlanViolation({
+        fullVideo: resolved.fullVideo,
+        duration,
+        footage: resolved.fullVideo ? footage : undefined,
+        voiceEngine: resolved.voiceover ? options.voiceEngine : undefined,
+        video: options.video,
+        presenter: options.presenter,
+        characters: Array.isArray(body.characterIds) ? body.characterIds.length : 0,
+      });
+      if (locked) {
+        return NextResponse.json({ success: false, error: locked, code: "upgrade_required" }, { status: 403 });
+      }
       freeMarkers = freeJobMarkers(abuseCtx);
       // Free-trial video: one 30 s video per person before any purchase.
       if (resolved.fullVideo && isTrialVideoShape(options) && (await trialVideoAvailable(supabaseAdmin, user.id, abuseCtx))) {

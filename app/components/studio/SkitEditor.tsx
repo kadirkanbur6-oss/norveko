@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorLine } from "@/lib/user-error";
 
 // Project page → Video: edit a finished skit. Make any single shot again (with
 // an optional note), or re-cut it with the music on or off. The new
@@ -173,7 +174,7 @@ export default function SkitEditor({ projectId }: { projectId: string }) {
           <p className="mt-2 text-xs text-gray-500">The voice stays the same; the picture and its movement are made again, then the skit is re-cut.</p>
         </div>
       )}
-      {skit.status === "failed" && skit.error && <p className="mt-3 text-xs text-red-300">Last edit failed: {skit.error} · refunded</p>}
+      {skit.status === "failed" && skit.error && <p className="mt-3 text-xs text-red-300">Last edit failed: {friendlyErrorLine(skit.error)} · refunded</p>}
       {error && <p className="mt-3 text-sm text-red-300">{error}</p>}
     </div>
   );

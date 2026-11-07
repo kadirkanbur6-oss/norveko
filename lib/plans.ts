@@ -150,3 +150,40 @@ export const WHY_NORVEKO: Array<{ title: string; items: Array<{ feature: string;
     ],
   },
 ];
+
+/**
+ * What an account that never paid may make with its sign-up credits (7 Nov 2026, Yağmur:
+ * "settings stay locked, everything else leads to buying"). Checked in /api/pipeline/start
+ * and mirrored in /chat; skits, talking characters and swaps need a purchase.
+ */
+export const FREE_PLAN = {
+  /** Finished video: one fixed setup (≈ 67 credits). */
+  videoDuration: "30 seconds",
+  videoFootage: "stock",
+  /** Script / narration packages (before full video is public). */
+  packageDurations: ["30 seconds", "60 seconds"] as readonly string[],
+};
+
+export const FREE_PLAN_UPGRADE_MESSAGE =
+  "Free credits make a 30-second Stock + AI video with a Norveko narrator. Buy a pack or a plan to unlock every length, footage style, voice and studio.";
+
+/** Why a free account may not start this, or null when it may. */
+export function freePlanViolation(o: {
+  fullVideo: boolean;
+  duration: string;
+  footage?: string;
+  voiceEngine?: string;
+  video?: boolean;
+  presenter?: boolean;
+  characters?: number;
+}): string | null {
+  if (o.video) return FREE_PLAN_UPGRADE_MESSAGE;
+  if (o.voiceEngine === "elevenlabs") return FREE_PLAN_UPGRADE_MESSAGE;
+  if (o.presenter || (o.characters ?? 0) > 0) return FREE_PLAN_UPGRADE_MESSAGE;
+  if (o.fullVideo) {
+    if (o.duration !== FREE_PLAN.videoDuration || o.footage !== FREE_PLAN.videoFootage) return FREE_PLAN_UPGRADE_MESSAGE;
+    return null;
+  }
+  return FREE_PLAN.packageDurations.includes(o.duration) ? null : FREE_PLAN_UPGRADE_MESSAGE;
+}
+

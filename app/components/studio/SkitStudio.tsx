@@ -1,4 +1,5 @@
 "use client";
+import { friendlyErrorLine } from "@/lib/user-error";
 
 // Skit studio (AI Workspace): the joke or scene with its lines → a planned cast
 // and shot list with a price → a finished short with voices, lip-sync and
@@ -331,7 +332,7 @@ export default function SkitStudio({ text, onStarted }: { text: string; onStarte
                         Open video
                       </Link>
                     ) : (
-                      <span className="text-xs text-red-300">{s.error ?? "Failed"} · refunded</span>
+                      <span className="text-xs text-red-300">{friendlyErrorLine(s.error)} · refunded</span>
                     )}
                   </span>
                 </div>
