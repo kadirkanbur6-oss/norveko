@@ -64,7 +64,7 @@ export default function SubscriptionPlans({
             aria-selected={period === p}
             onClick={() => setPeriod(p)}
             className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-              period === p ? "bg-white text-black" : "text-gray-300 hover:text-white"
+              period === p ? "bg-white text-[var(--nv-page)]" : "text-gray-300 hover:text-white"
             }`}
           >
             {PERIOD_LABEL[p].toggle}

@@ -80,7 +80,7 @@ export default function ReviewPanel({
     }
   }
 
-  const field = "w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-sm text-white outline-none focus:border-sky-400/50";
+  const field = "w-full rounded-xl border border-white/10 bg-[var(--nv-field)] p-3 text-sm text-white outline-none focus:border-sky-400/50";
 
   const approveButton = (big: boolean) => (
     <button
@@ -165,7 +165,7 @@ export default function ReviewPanel({
           {scenes.map((s, i) => {
             const open = openScene === s.sceneNumber;
             return (
-              <li key={s.sceneNumber} className="rounded-xl border border-white/10 bg-[#0d0d16]">
+              <li key={s.sceneNumber} className="rounded-xl border border-white/10 bg-[var(--nv-panel)]">
                 <button
                   type="button"
                   onClick={() => setOpenScene(open ? null : s.sceneNumber)}
@@ -210,7 +210,7 @@ export default function ReviewPanel({
       </div>
 
       {/* Always in reach while reading a long script. */}
-      <div className="sticky bottom-0 z-10 flex flex-wrap items-center gap-3 rounded-b-2xl border-t border-sky-400/20 bg-[#0b1220]/95 px-5 py-3 backdrop-blur sm:px-6">
+      <div className="sticky bottom-0 z-10 flex flex-wrap items-center gap-3 rounded-b-2xl border-t border-sky-400/20 bg-[var(--nv-panel)]/95 px-5 py-3 backdrop-blur sm:px-6">
         {approveButton(false)}
         <button
           type="button"

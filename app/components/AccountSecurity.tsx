@@ -72,7 +72,7 @@ export default function AccountSecurity() {
   }
 
   const inputClass =
-    "w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-sm text-white outline-none focus:border-blue-400/50";
+    "w-full rounded-xl border border-white/10 bg-[var(--nv-field)] p-3 text-sm text-white outline-none focus:border-blue-400/50";
 
   return (
     <>

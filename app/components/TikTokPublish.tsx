@@ -218,7 +218,7 @@ export default function TikTokPublish({
       {notice && <p className="mt-3 rounded-xl border border-green-400/30 bg-green-500/10 p-3 text-sm text-green-300">{notice}</p>}
 
       {post && !open && (
-        <div className="mt-4 rounded-xl border border-white/10 bg-[#0d0d16] p-4 text-sm">
+        <div className="mt-4 rounded-xl border border-white/10 bg-[var(--nv-panel)] p-4 text-sm">
           <span className="flex items-center gap-2 text-green-300">
             <CheckCircle2 size={16} aria-hidden />
             {post.status === "PUBLISH_COMPLETE" ? "Posted to TikTok" : "Sent to TikTok. It may take a few minutes to appear on your profile"}
@@ -243,7 +243,7 @@ export default function TikTokPublish({
           )}
           {creator && (
             <>
-              <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0d0d16] p-3">
+              <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[var(--nv-panel)] p-3">
                 {creator.creator_avatar_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={creator.creator_avatar_url} alt="" className="h-9 w-9 rounded-full" />
@@ -277,7 +277,7 @@ export default function TikTokPublish({
                   maxLength={2200}
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-sm text-white outline-none focus:border-pink-400/50"
+                  className="w-full rounded-xl border border-white/10 bg-[var(--nv-field)] p-3 text-sm text-white outline-none focus:border-pink-400/50"
                 />
               </div>
               <div>
@@ -286,7 +286,7 @@ export default function TikTokPublish({
                   id="tt-privacy"
                   value={privacy}
                   onChange={(e) => setPrivacy(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-sm text-white outline-none focus:border-pink-400/50"
+                  className="w-full rounded-xl border border-white/10 bg-[var(--nv-field)] p-3 text-sm text-white outline-none focus:border-pink-400/50"
                 >
                   <option value="" disabled>
                     Choose…
@@ -309,7 +309,7 @@ export default function TikTokPublish({
                 {toggle("Allow Duet", allowDuet, setAllowDuet, creator.duet_disabled)}
                 {toggle("Allow Stitch", allowStitch, setAllowStitch, creator.stitch_disabled)}
               </div>
-              <div className="rounded-xl border border-white/10 bg-[#0d0d16] p-3">
+              <div className="rounded-xl border border-white/10 bg-[var(--nv-panel)] p-3">
                 <label className="flex items-center justify-between gap-3 text-sm text-gray-200">
                   <span>
                     Disclose video content

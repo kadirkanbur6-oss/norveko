@@ -120,7 +120,7 @@ export default function ProjectsPage() {
   }
 
   const selectClass =
-    "rounded-xl border border-white/10 bg-[#0d0d16] px-3 py-2 text-sm text-gray-200 outline-none focus:border-blue-400/50";
+    "rounded-xl border border-white/10 bg-[var(--nv-panel)] px-3 py-2 text-sm text-gray-200 outline-none focus:border-blue-400/50";
 
   function formatDate(dateStr: string) {
     return new Date(dateStr).toLocaleDateString("en-US", {
@@ -131,7 +131,7 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="flex min-h-screen overflow-x-hidden bg-[#0a0a12] text-white">
+    <div className="flex min-h-screen overflow-x-hidden bg-[var(--nv-bg)] text-white">
       <Sidebar />
 
       <main id="main-content" className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
@@ -141,7 +141,7 @@ export default function ProjectsPage() {
 
           {!loading && projects.length > 0 && (
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-              <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-white/10 bg-[#0d0d16] px-3 py-2 focus-within:border-blue-400/50">
+              <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-white/10 bg-[var(--nv-panel)] px-3 py-2 focus-within:border-blue-400/50">
                 <Search size={16} className="shrink-0 text-gray-500" />
                 <input
                   value={query}

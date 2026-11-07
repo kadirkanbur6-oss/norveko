@@ -18,7 +18,7 @@ export default function Error({
   }, [error]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-[#0a0a12] px-6 text-center text-white">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-[var(--nv-bg)] px-6 text-center text-white">
       <BrandMark size={64} />
       <h1 className="mt-8 text-3xl font-bold">Something went wrong</h1>
       <p className="mt-3 max-w-md text-gray-400">

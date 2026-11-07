@@ -21,7 +21,7 @@ export default function AuthShell({
   footer?: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col bg-[#090b16] px-4 py-10 text-white sm:py-12">
+    <div className="flex min-h-screen flex-col bg-[var(--nv-bg)] px-4 py-10 text-white sm:py-12">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col">
         <Link
           href="/"

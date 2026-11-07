@@ -8,6 +8,7 @@ import HeroDemo from "./HeroDemo";
 import ShowcaseGallery from "./ShowcaseGallery";
 import HeroBackground from "./HeroBackground";
 import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
+import ThemeToggle from "./ThemeToggle";
 import SignOutButton from "./SignOutButton";
 import BrandMark from "./BrandMark";
 import { SUPPORT_EMAIL } from "@/app/lib/legal";
@@ -178,7 +179,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#0a0a12] text-white antialiased">
+    <div className="min-h-screen overflow-x-hidden bg-[var(--nv-bg)] text-white antialiased">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -207,7 +208,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
         }}
       />
       {/* NAVBAR */}
-      <header className="sticky top-0 z-50 border-b border-white/5 bg-[#0a0a12]/80 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-white/5 bg-[var(--nv-bg)]/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
           <Link href="/" aria-label="Norveko home" className="flex items-center gap-2.5">
             <BrandMark size={36} />
@@ -223,6 +224,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
             {isLoggedIn ? (
               <>
                 <SignOutButton
@@ -265,7 +267,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
 
         {/* Mobile nav */}
         {menuOpen && (
-          <nav className="border-t border-white/5 bg-[#0a0a12]/95 px-4 py-3 lg:hidden">
+          <nav className="border-t border-white/5 bg-[var(--nv-bg)]/95 px-4 py-3 lg:hidden">
             <div className="flex flex-col gap-1 text-sm text-gray-300">
               {[
                 ["#examples", "Examples"],
@@ -303,7 +305,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
       </header>
 
       {/* 1. HERO */}
-      <section id="main-content" className="relative overflow-hidden">
+      <section id="main-content" className="nv-dark relative overflow-hidden">
         <HeroBackground />
         <div className="pointer-events-none absolute -top-40 left-1/2 h-[500px] w-[min(800px,120vw)] -translate-x-1/2 rounded-full bg-gradient-to-r from-blue-600/20 to-purple-600/20 blur-3xl" />
 
@@ -540,7 +542,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
       {/* 2d. WHY NORVEKO: only what we ship, no claims about other tools */}
       <section id="compare" className="mx-auto max-w-6xl scroll-mt-20 px-4 pb-12 sm:px-6">
         <Reveal>
-          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[#14142a] via-[#0e0e1c] to-[#0a0a12] p-5 shadow-[0_30px_80px_-30px_rgba(99,102,241,0.45)] sm:p-8">
+          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[var(--nv-panel)] via-[var(--nv-panel)] to-[var(--nv-bg)] p-5 shadow-[0_30px_80px_-30px_rgba(99,102,241,0.45)] sm:p-8">
             <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-purple-600/20 blur-3xl" />
             <div aria-hidden className="pointer-events-none absolute -bottom-28 -left-20 h-72 w-72 rounded-full bg-blue-600/15 blur-3xl" />
 

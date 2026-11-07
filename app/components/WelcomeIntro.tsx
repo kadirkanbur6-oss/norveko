@@ -70,7 +70,7 @@ export default function WelcomeIntro() {
   return (
     <div
       aria-hidden="true"
-      className={`nv-intro fixed inset-0 z-[100] flex items-center justify-center bg-[#0a0a12] ${
+      className={`nv-intro fixed inset-0 z-[100] flex items-center justify-center bg-[var(--nv-bg)] ${
         reduced ? "nv-intro--reduced" : ""
       }`}
     >

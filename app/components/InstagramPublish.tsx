@@ -102,7 +102,7 @@ export default function InstagramPublish({
               maxLength={2200}
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-sm text-white outline-none focus:border-fuchsia-400/50"
+              className="w-full rounded-xl border border-white/10 bg-[var(--nv-field)] p-3 text-sm text-white outline-none focus:border-fuchsia-400/50"
             />
           </label>
           <label className="flex items-center gap-2 text-sm text-gray-300">

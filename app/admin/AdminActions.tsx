@@ -117,7 +117,7 @@ export function ManageUserDialog({ user, onClose, onChanged }: { user: ManagedUs
         role="dialog"
         aria-modal="true"
         aria-labelledby="manage-user-title"
-        className="nv-no-scrollbar max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-white/10 bg-[#0f1020] p-5 shadow-2xl sm:rounded-3xl sm:p-6"
+        className="nv-no-scrollbar max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-white/10 bg-[var(--nv-panel)] p-5 shadow-2xl sm:rounded-3xl sm:p-6"
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="min-w-0">

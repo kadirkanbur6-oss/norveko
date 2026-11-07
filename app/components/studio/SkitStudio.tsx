@@ -235,7 +235,7 @@ export default function SkitStudio({ text, onStarted }: { text: string; onStarte
             </div>
             <div className="flex flex-wrap gap-2">
               {draft.characters.map((c) => (
-                <div key={c.id} className="max-w-xs rounded-xl border border-white/10 bg-[#0d0d16] px-3 py-2">
+                <div key={c.id} className="max-w-xs rounded-xl border border-white/10 bg-[var(--nv-panel)] px-3 py-2">
                   <p className="text-sm font-medium">{c.name}</p>
                   <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">{c.look}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-1" role="group" aria-label={`${c.name}'s voice`}>
@@ -268,7 +268,7 @@ export default function SkitStudio({ text, onStarted }: { text: string; onStarte
             </div>
             <ol className="space-y-1.5">
               {draft.shots.map((s, i) => (
-                <li key={s.id} className="flex gap-3 rounded-lg bg-[#0d0d16] px-3 py-2 text-sm">
+                <li key={s.id} className="flex gap-3 rounded-lg bg-[var(--nv-panel)] px-3 py-2 text-sm">
                   <span className="w-5 shrink-0 text-xs text-gray-500">{i + 1}</span>
                   <span className="min-w-0">
                     {s.speaker ? (
@@ -317,7 +317,7 @@ export default function SkitStudio({ text, onStarted }: { text: string; onStarte
           <p className="text-sm font-semibold">Your skits</p>
           <ul className="mt-3 space-y-3">
             {skits.map((s) => (
-              <li key={s.id} className="rounded-xl border border-white/10 bg-[#0d0d16] px-4 py-3">
+              <li key={s.id} className="rounded-xl border border-white/10 bg-[var(--nv-panel)] px-4 py-3">
                 <div className="flex flex-wrap items-center gap-3 text-sm">
                   <span className="font-medium">{s.title}</span>
                   <span className="text-xs text-gray-500">{new Date(s.createdAt).toLocaleString("en-US")}</span>

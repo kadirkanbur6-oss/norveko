@@ -253,7 +253,7 @@ export default function SwapStudio() {
                       onChange={(e) => setPrompt(e.target.value)}
                       maxLength={500}
                       placeholder="e.g. as a cartoon cat in a puffer jacket"
-                      className="w-full rounded-xl border border-white/10 bg-[#12121c] px-3 py-2 text-sm text-white outline-none placeholder:text-gray-600 focus:border-sky-400/50"
+                      className="w-full rounded-xl border border-white/10 bg-[var(--nv-field)] px-3 py-2 text-sm text-white outline-none placeholder:text-gray-600 focus:border-sky-400/50"
                     />
                   </label>
                 </div>
@@ -298,7 +298,7 @@ export default function SwapStudio() {
               <p className="text-sm font-semibold">Your swaps</p>
               <ul className="mt-3 space-y-2">
                 {swaps.map((s) => (
-                  <li key={s.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-[#0d0d16] px-4 py-3 text-sm">
+                  <li key={s.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-[var(--nv-panel)] px-4 py-3 text-sm">
                     <Film size={15} className="text-gray-500" />
                     <span className="font-medium">{s.characterName}</span>
                     <span className="text-xs text-gray-500">

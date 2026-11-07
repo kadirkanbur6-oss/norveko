@@ -29,7 +29,7 @@ function Join() {
   }
 
   return (
-    <main id="main-content" className="flex min-h-screen items-center justify-center bg-[#07070c] px-4 text-white">
+    <main id="main-content" className="flex min-h-screen items-center justify-center bg-[var(--nv-bg)] px-4 text-white">
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center">
         <Users size={28} className="mx-auto text-sky-300" aria-hidden />
         <h1 className="mt-4 text-xl font-semibold">Join a team on Norveko</h1>

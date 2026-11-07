@@ -213,7 +213,7 @@ export default function VideoPlayer({
       onMouseMove={poke}
       onTouchStart={poke}
       onMouseLeave={() => playing && setControlsVisible(false)}
-      className={`nv-video group relative mx-auto @container overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_20px_60px_rgba(0,0,0,0.45)] outline-none ${fullscreen ? "flex h-full w-full items-center justify-center rounded-none border-0" : aspectClass} ${className}`}
+      className={`nv-video nv-dark group relative mx-auto @container overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_20px_60px_rgba(0,0,0,0.45)] outline-none ${fullscreen ? "flex h-full w-full items-center justify-center rounded-none border-0" : aspectClass} ${className}`}
     >
       <video
         ref={videoRef}

@@ -144,7 +144,7 @@ export default function SkitEditor({ projectId }: { projectId: string }) {
       </div>
 
       {open !== null && skit.shots[open] && (
-        <div className="mt-4 rounded-xl border border-white/10 bg-[#0d0d16] p-4">
+        <div className="mt-4 rounded-xl border border-white/10 bg-[var(--nv-panel)] p-4">
           <p className="text-sm text-gray-200">
             {skit.shots[open].speaker ? (
               <>
@@ -159,7 +159,7 @@ export default function SkitEditor({ projectId }: { projectId: string }) {
             onChange={(e) => setNote(e.target.value)}
             maxLength={200}
             placeholder="What should change? e.g. closer on his face, he looks angrier, put him on the left"
-            className="mt-3 w-full rounded-xl border border-white/10 bg-[#12121c] px-3 py-2 text-sm text-white outline-none placeholder:text-gray-600 focus:border-sky-400/50"
+            className="mt-3 w-full rounded-xl border border-white/10 bg-[var(--nv-field)] px-3 py-2 text-sm text-white outline-none placeholder:text-gray-600 focus:border-sky-400/50"
           />
           <button
             type="button"

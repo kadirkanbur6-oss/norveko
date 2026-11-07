@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import SignOutButton from "./SignOutButton";
 import BrandMark from "./BrandMark";
 import { supabase } from "../lib/supabase";
+import { ThemeSwitch } from "./ThemeToggle";
 import {
   BarChart3,
   Coins,
@@ -87,7 +88,7 @@ export default function Sidebar() {
   return (
     <>
       {/* Mobile / tablet top bar */}
-      <div className="fixed inset-x-0 top-0 z-40 flex h-16 items-center justify-between border-b border-white/10 bg-[#0a0a12]/90 px-4 backdrop-blur-xl lg:hidden">
+      <div className="fixed inset-x-0 top-0 z-40 flex h-16 items-center justify-between border-b border-white/10 bg-[var(--nv-bg)]/90 px-4 backdrop-blur-xl lg:hidden">
         <Link href="/" aria-label="Norveko home" className="flex items-center gap-2.5">
           <BrandMark size={36} />
           <span className="text-lg font-bold tracking-wide text-white">
@@ -128,7 +129,7 @@ export default function Sidebar() {
           Compact on purpose: the whole menu fits any laptop height without an
           inner scrollbar. */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 max-w-[85vw] flex-col border-r border-white/[0.06] bg-[#0a0a12] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5 transition-transform duration-300 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:max-w-none lg:translate-x-0 lg:shrink-0 lg:bg-[#0c0c15] ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 max-w-[85vw] flex-col border-r border-white/[0.06] bg-[var(--nv-bg)] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5 transition-transform duration-300 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:max-w-none lg:translate-x-0 lg:shrink-0 lg:bg-[var(--nv-bg)] ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -198,6 +199,7 @@ export default function Sidebar() {
               className="flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-gray-400 transition hover:bg-red-500/10 hover:text-red-200 disabled:opacity-60"
             />
           </div>
+          <ThemeSwitch className="mt-2" />
         </div>
       </aside>
     </>

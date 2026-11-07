@@ -168,7 +168,7 @@ export default function YouTubePublish({
       {notice && <p className="mt-3 rounded-xl border border-green-400/30 bg-green-500/10 p-3 text-sm text-green-300">{notice}</p>}
 
       {upload && !open && (
-        <div className="mt-4 rounded-xl border border-white/10 bg-[#0d0d16] p-4 text-sm">
+        <div className="mt-4 rounded-xl border border-white/10 bg-[var(--nv-panel)] p-4 text-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="flex items-center gap-2 text-green-300">
               <CheckCircle2 size={16} aria-hidden />
@@ -200,7 +200,7 @@ export default function YouTubePublish({
               value={title}
               maxLength={100}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-sm text-white outline-none focus:border-red-400/50"
+              className="w-full rounded-xl border border-white/10 bg-[var(--nv-field)] p-3 text-sm text-white outline-none focus:border-red-400/50"
             />
             {titles.length > 1 && (
               <div className="mt-2 flex flex-wrap gap-2">
@@ -224,7 +224,7 @@ export default function YouTubePublish({
               rows={5}
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-sm text-white outline-none focus:border-red-400/50"
+              className="w-full rounded-xl border border-white/10 bg-[var(--nv-field)] p-3 text-sm text-white outline-none focus:border-red-400/50"
             />
             <p className="mt-1 text-xs text-gray-500">Keep the music credit at the end. The track&apos;s license requires it.</p>
           </div>
@@ -234,7 +234,7 @@ export default function YouTubePublish({
               id="yt-tags"
               value={tagText}
               onChange={(e) => setTagText(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-sm text-white outline-none focus:border-red-400/50"
+              className="w-full rounded-xl border border-white/10 bg-[var(--nv-field)] p-3 text-sm text-white outline-none focus:border-red-400/50"
             />
           </div>
           <fieldset>
@@ -266,7 +266,7 @@ export default function YouTubePublish({
                   value={publishAt}
                   onChange={(e) => setPublishAt(e.target.value)}
                   aria-label="Publish time"
-                  className="rounded-lg border border-white/10 bg-[#12121c] px-2 py-1 text-sm text-white [color-scheme:dark]"
+                  className="rounded-lg border border-white/10 bg-[var(--nv-field)] px-2 py-1 text-sm text-white [color-scheme:dark]"
                 />
               )}
             </label>

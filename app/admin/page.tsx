@@ -124,7 +124,7 @@ const CARD = "rounded-2xl border border-white/[0.07] bg-white/[0.025]";
 const TH = "px-3 py-2.5 text-left text-xs font-medium text-gray-400";
 const TD = "px-3 py-2.5 align-top text-sm";
 /** Row actions stay on screen when a wide table scrolls sideways (narrow laptops, tablets). */
-const STICKY = "sticky right-0 z-[1] bg-[#101017] shadow-[-12px_0_12px_-8px_rgba(0,0,0,0.6)]";
+const STICKY = "sticky right-0 z-[1] bg-[var(--nv-raised)] shadow-[-12px_0_12px_-8px_rgba(0,0,0,0.6)]";
 
 function Stat({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
@@ -228,7 +228,7 @@ export default function AdminPage() {
   const windowLabel = `last ${days} days`;
 
   return (
-    <div className="flex min-h-screen overflow-x-hidden bg-[#0a0a12] text-white">
+    <div className="flex min-h-screen overflow-x-hidden bg-[var(--nv-bg)] text-white">
       <Sidebar />
       <main id="main-content" className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
         <div className="mx-auto max-w-6xl space-y-6">

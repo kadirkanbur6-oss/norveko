@@ -135,7 +135,7 @@ export default function GenerationStage({
 
   return (
     <div
-      className="relative overflow-hidden rounded-2xl border border-blue-400/20 bg-[#0b0d1c] p-5 sm:p-6"
+      className="relative overflow-hidden rounded-2xl border border-blue-400/20 bg-[var(--nv-bg)] p-5 sm:p-6"
       role="status"
       aria-live="polite"
     >

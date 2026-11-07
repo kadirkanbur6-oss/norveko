@@ -127,7 +127,7 @@ export default function VoiceCloneCard() {
       </p>
 
       {clone && (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#0d0d16] p-4">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-[var(--nv-panel)] p-4">
           <div>
             <p className="text-sm font-semibold">{clone.name}</p>
             <p className="text-xs text-gray-500">Created {new Date(clone.createdAt).toLocaleDateString("en-US")}</p>
@@ -149,7 +149,7 @@ export default function VoiceCloneCard() {
           {clone && <p className="text-xs text-gray-500">Creating a new one replaces your current voice.</p>}
           <div>
             <p className="mb-2 text-xs uppercase tracking-wider text-gray-500">Read this aloud</p>
-            <p className="rounded-xl border border-white/10 bg-[#0d0d16] p-4 text-sm leading-relaxed text-gray-200">{script}</p>
+            <p className="rounded-xl border border-white/10 bg-[var(--nv-panel)] p-4 text-sm leading-relaxed text-gray-200">{script}</p>
             <p className="mt-1 text-xs text-gray-500">Any language works. Quiet room, normal narration pace, no music.</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -196,7 +196,7 @@ export default function VoiceCloneCard() {
           {files.length > 0 && (
             <ul className="space-y-2">
               {files.map((f, i) => (
-                <li key={`${f.name}-${i}`} className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-[#0d0d16] p-2 text-xs text-gray-300">
+                <li key={`${f.name}-${i}`} className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-[var(--nv-panel)] p-2 text-xs text-gray-300">
                   <audio src={URL.createObjectURL(f)} controls className="h-8 max-w-[220px]" />
                   <span className="truncate">{f.name}</span>
                   <span className="text-gray-500">{(f.size / 1024 / 1024).toFixed(1)} MB</span>
@@ -222,7 +222,7 @@ export default function VoiceCloneCard() {
                 value={name}
                 maxLength={40}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-[#12121c] p-2.5 text-sm text-white outline-none focus:border-emerald-400/50"
+                className="w-full rounded-xl border border-white/10 bg-[var(--nv-field)] p-2.5 text-sm text-white outline-none focus:border-emerald-400/50"
               />
             </div>
             <label className="flex items-start gap-2 pt-5 text-xs text-gray-300">

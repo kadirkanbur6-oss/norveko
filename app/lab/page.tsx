@@ -216,7 +216,7 @@ export default function LabPage() {
   );
 
   return (
-    <main id="main-content" className="min-h-screen bg-[#0a0a12] px-4 py-8 text-white sm:px-8">
+    <main id="main-content" className="min-h-screen bg-[var(--nv-bg)] px-4 py-8 text-white sm:px-8">
       <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white">
         <ArrowLeft size={14} /> Dashboard
       </Link>

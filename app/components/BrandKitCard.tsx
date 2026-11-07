@@ -206,7 +206,7 @@ export default function BrandKitCard() {
                 maxLength={OUTRO_MAX}
                 onChange={(e) => setOutro(e.target.value)}
                 placeholder="Follow @yourchannel for more"
-                className="w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-sm text-white outline-none focus:border-purple-400/50"
+                className="w-full rounded-xl border border-white/10 bg-[var(--nv-field)] p-3 text-sm text-white outline-none focus:border-purple-400/50"
               />
               <p className="mt-1 text-xs text-gray-500">Shown over the last 2.5 seconds of a video when you tick Shown over the last 2.5 seconds. Leave empty for none. {outro.length}/{OUTRO_MAX}ldquo;Add an end cardShown over the last 2.5 seconds. Leave empty for none. {outro.length}/{OUTRO_MAX}rdquo; before generating. {outro.length}/{OUTRO_MAX}</p>
             </div>

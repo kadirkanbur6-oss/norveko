@@ -54,7 +54,7 @@ export function VisualStylePicker({ value, onChange }: { value: string; onChange
               title={s.hint}
               onClick={() => onChange(s.id)}
               className={`rounded-xl border p-1.5 text-left transition ${
-                active ? "border-blue-400/70 bg-blue-500/10 ring-1 ring-blue-400/40" : "border-white/10 bg-[#12121c] hover:border-white/25"
+                active ? "border-blue-400/70 bg-blue-500/10 ring-1 ring-blue-400/40" : "border-white/10 bg-[var(--nv-field)] hover:border-white/25"
               }`}
             >
               <Preview id={s.id} />

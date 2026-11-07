@@ -95,7 +95,7 @@ export default function ApiKeysCard() {
           {state.keys.length > 0 && (
             <ul className="mt-4 space-y-2">
               {state.keys.map((k) => (
-                <li key={k.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-[#0d0d16] px-4 py-3 text-sm">
+                <li key={k.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-[var(--nv-panel)] px-4 py-3 text-sm">
                   <span className="font-medium text-white">{k.name}</span>
                   <code className="font-mono text-xs text-gray-400">{k.prefix}…</code>
                   <span className="text-xs text-gray-500">
@@ -121,7 +121,7 @@ export default function ApiKeysCard() {
                 onChange={(e) => setName(e.target.value)}
                 maxLength={40}
                 placeholder="Key name, e.g. Zapier"
-                className="w-full rounded-xl border border-white/10 bg-[#12121c] px-3 py-2 text-sm text-white outline-none placeholder:text-gray-600 focus:border-sky-400/50"
+                className="w-full rounded-xl border border-white/10 bg-[var(--nv-field)] px-3 py-2 text-sm text-white outline-none placeholder:text-gray-600 focus:border-sky-400/50"
               />
               <button
                 type="button"

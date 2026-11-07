@@ -38,7 +38,7 @@ export default function ReferralCard() {
   }
 
   const stat = (label: string, value: number) => (
-    <div className="rounded-xl border border-white/10 bg-[#0d0d16] p-3 text-center">
+    <div className="rounded-xl border border-white/10 bg-[var(--nv-panel)] p-3 text-center">
       <p className="text-lg font-bold text-white">{value.toLocaleString("en-US")}</p>
       <p className="text-xs text-gray-500">{label}</p>
     </div>
@@ -59,7 +59,7 @@ export default function ReferralCard() {
           value={data.link}
           onFocus={(e) => e.currentTarget.select()}
           aria-label="Your invite link"
-          className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#12121c] p-2.5 text-sm text-white outline-none"
+          className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[var(--nv-field)] p-2.5 text-sm text-white outline-none"
         />
         <button
           type="button"

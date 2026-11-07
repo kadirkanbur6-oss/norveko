@@ -12,7 +12,7 @@ export default async function AnalyticsDashboard() {
   const { channelId } = await getUserChannelContext();
 
   return (
-    <main className="flex min-h-screen overflow-x-hidden bg-[#0a0a12] text-white">
+    <main className="flex min-h-screen overflow-x-hidden bg-[var(--nv-bg)] text-white">
       <Sidebar />
 
       <section id="main-content" className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">

@@ -90,9 +90,9 @@ export default function HeroBackground() {
           />
         </div>
         {/* Readability: the headline sits on the left, so the scene stays bright on the right. */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a12]/85 via-[#0a0a12]/30 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#0a0a12] to-transparent" />
-        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[#0a0a12] to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[var(--nv-bg)]/85 via-[var(--nv-bg)]/30 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[var(--nv-page)] to-transparent" />
+        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[var(--nv-page)] to-transparent" />
       </div>
     );
   }
@@ -120,10 +120,10 @@ export default function HeroBackground() {
         </div>
       )}
       {/* Readability: darken, tint and blend into the page */}
-      <div className="absolute inset-0 bg-[#0a0a12]/45" />
-      <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a12]/95 via-[#0a0a12]/55 to-[#0a0a12]/20" />
-      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#0a0a12] to-transparent" />
-      <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[#0a0a12] to-transparent" />
+      <div className="absolute inset-0 bg-[var(--nv-bg)]/45" />
+      <div className="absolute inset-0 bg-gradient-to-r from-[var(--nv-bg)]/95 via-[var(--nv-bg)]/55 to-[var(--nv-bg)]/20" />
+      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[var(--nv-page)] to-transparent" />
+      <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[var(--nv-page)] to-transparent" />
     </div>
   );
 }

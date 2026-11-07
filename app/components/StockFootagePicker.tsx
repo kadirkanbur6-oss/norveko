@@ -69,7 +69,7 @@ export default function StockFootagePicker({
   return (
     <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.02] p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <label className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/10 bg-[#0d0d16] px-2.5 py-1.5">
+        <label className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/10 bg-[var(--nv-panel)] px-2.5 py-1.5">
           <Search size={13} className="shrink-0 text-gray-500" />
           <input
             value={query}

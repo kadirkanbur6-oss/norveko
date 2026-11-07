@@ -29,7 +29,7 @@ type Voice = { id: string; name: string; style: string };
 type Audio = { path: string; url: string; seconds: number; credits: number; forText?: string; forVoice?: string };
 
 const field =
-  "w-full rounded-xl border border-white/10 bg-[#12121c] px-3 py-2 text-sm text-white outline-none placeholder:text-gray-600 focus:border-sky-400/50";
+  "w-full rounded-xl border border-white/10 bg-[var(--nv-field)] px-3 py-2 text-sm text-white outline-none placeholder:text-gray-600 focus:border-sky-400/50";
 const chip = (on: boolean) =>
   `rounded-full border px-3 py-1 text-xs transition ${on ? "border-sky-400/60 bg-sky-500/15 text-white" : "border-white/10 text-gray-300 hover:border-white/25"}`;
 
@@ -295,7 +295,7 @@ export default function TalkStudio({ text: outerText, onStarted }: { text?: stri
                 {mode === "type" ? (
                   <div className="mt-3 space-y-3">
                     {embedded ? (
-                      <p className="rounded-xl border border-white/10 bg-[#12121c] px-3 py-2 text-sm text-gray-300">{text.trim() || "Write the line in the box above."}</p>
+                      <p className="rounded-xl border border-white/10 bg-[var(--nv-field)] px-3 py-2 text-sm text-gray-300">{text.trim() || "Write the line in the box above."}</p>
                     ) : (
                     <textarea
                       value={text}
@@ -418,7 +418,7 @@ export default function TalkStudio({ text: outerText, onStarted }: { text?: stri
               <p className="text-sm font-semibold">Your talking videos</p>
               <ul className="mt-3 space-y-2">
                 {talks.map((s) => (
-                  <li key={s.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0d0d16] px-3 py-2.5 text-sm">
+                  <li key={s.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-[var(--nv-panel)] px-3 py-2.5 text-sm">
                     {s.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={s.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />

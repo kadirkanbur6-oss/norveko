@@ -343,7 +343,7 @@ export default function VideoEditor({ projectId, vertical }: { projectId: string
   }
 
   const label = "mb-2 flex items-center gap-2 text-xs font-medium text-gray-400";
-  const field = "w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-sm text-white outline-none focus:border-blue-400/50";
+  const field = "w-full rounded-xl border border-white/10 bg-[var(--nv-field)] p-3 text-sm text-white outline-none focus:border-blue-400/50";
 
   return (
     <div className="mt-4 rounded-2xl border border-blue-400/25 bg-gradient-to-br from-blue-500/[0.07] to-transparent p-4 sm:p-6">
@@ -420,7 +420,7 @@ export default function VideoEditor({ projectId, vertical }: { projectId: string
                 </button>
               </div>
             </div>
-            <div className="overflow-x-auto rounded-xl border border-white/10 bg-[#0a0a12] p-2">
+            <div className="overflow-x-auto rounded-xl border border-white/10 bg-[var(--nv-bg)] p-2">
               <div ref={trackRef} className="relative select-none" style={{ width }}>
                 {/* Ruler */}
                 <div className="relative h-5 border-b border-white/10">
@@ -535,7 +535,7 @@ export default function VideoEditor({ projectId, vertical }: { projectId: string
 
           {/* Subtitle fix */}
           {selectedCue !== null && state.cues?.[selectedCue] && (
-            <div className="rounded-xl border border-white/10 bg-[#0d0d16] p-4">
+            <div className="rounded-xl border border-white/10 bg-[var(--nv-panel)] p-4">
               <label htmlFor="cue-text" className={label}>
                 <Captions size={13} aria-hidden /> Subtitle at {fmt(state.cues[selectedCue].start)} · fix the words (timing stays)
               </label>
@@ -561,7 +561,7 @@ export default function VideoEditor({ projectId, vertical }: { projectId: string
 
           {/* Scene panel */}
           {slot && (
-            <div className="grid gap-4 rounded-xl border border-white/10 bg-[#0d0d16] p-4 sm:grid-cols-[auto_1fr]">
+            <div className="grid gap-4 rounded-xl border border-white/10 bg-[var(--nv-panel)] p-4 sm:grid-cols-[auto_1fr]">
               <div className={`overflow-hidden rounded-lg bg-white/5 ${vertical ? "h-56 w-32" : "h-32 w-56"}`}>
                 {slot.clipUrl ? (
                   <video src={slot.clipUrl} poster={slot.imageUrl ?? undefined} muted loop autoPlay playsInline className="h-full w-full object-cover" />
@@ -757,7 +757,7 @@ export default function VideoEditor({ projectId, vertical }: { projectId: string
               </p>
               <ul className="space-y-2">
                 {state.versions!.map((v) => (
-                  <li key={v.url} className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-[#0d0d16] px-3 py-2 text-sm">
+                  <li key={v.url} className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-[var(--nv-panel)] px-3 py-2 text-sm">
                     <span className="font-semibold text-white">{v.version === 0 ? "First render" : `Version ${v.version}`}</span>
                     <span className="text-xs text-gray-500">replaced {new Date(v.at).toLocaleString("en-US")}</span>
                     <a href={v.url} target="_blank" rel="noreferrer" className="ml-auto text-xs text-blue-300 hover:text-white">

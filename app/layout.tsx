@@ -46,8 +46,15 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <head>
+        {/* Light / dark theme before the first paint (choice saved by ThemeToggle). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("nv_theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;}catch(e){}})();`,
+          }}
+        />
         {/* Browser page translation (e.g. Chrome → Turkish) swaps React's text nodes for its own, and the next
             update then crashes with "insertBefore/removeChild: not a child of this node" (4 Nov 2026: /chat skit
             plan). Make those two calls forgiving so translated pages keep working (facebook/react#11538). */}

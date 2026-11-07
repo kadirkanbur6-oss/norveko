@@ -151,7 +151,7 @@ export default function SignupPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-[#090b16]">
+        <div className="flex min-h-screen items-center justify-center bg-[var(--nv-bg)]">
           <div className="text-gray-400">Loading...</div>
         </div>
       }

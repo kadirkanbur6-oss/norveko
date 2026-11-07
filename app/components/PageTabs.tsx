@@ -81,8 +81,8 @@ export default function PageTabs({ tabs, active, onChange }: { tabs: PageTab[]; 
           );
         })}
       </div>
-      {edges.left && <div aria-hidden className="pointer-events-none absolute inset-y-0 -left-1 w-8 bg-gradient-to-r from-[#0a0a12] to-transparent" />}
-      {edges.right && <div aria-hidden className="pointer-events-none absolute inset-y-0 -right-1 w-10 bg-gradient-to-l from-[#0a0a12] to-transparent" />}
+      {edges.left && <div aria-hidden className="pointer-events-none absolute inset-y-0 -left-1 w-8 bg-gradient-to-r from-[var(--nv-bg)] to-transparent" />}
+      {edges.right && <div aria-hidden className="pointer-events-none absolute inset-y-0 -right-1 w-10 bg-gradient-to-l from-[var(--nv-bg)] to-transparent" />}
     </div>
   );
 }

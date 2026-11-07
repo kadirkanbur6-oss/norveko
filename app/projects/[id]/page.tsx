@@ -366,7 +366,7 @@ export default function ProjectDetailPage() {
   }
 
   const inputClass =
-    "w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-sm text-white outline-none focus:border-blue-400/50";
+    "w-full rounded-xl border border-white/10 bg-[var(--nv-field)] p-3 text-sm text-white outline-none focus:border-blue-400/50";
   const labelClass = "mb-1 block text-xs uppercase tracking-wider text-gray-500";
 
   const normalizedProjectContent = project?.content
@@ -438,7 +438,7 @@ export default function ProjectDetailPage() {
             {editContent.scenes.map((scene, index) => (
               <div
                 key={index}
-                className="rounded-xl border border-white/10 bg-[#0d0d16] p-4"
+                className="rounded-xl border border-white/10 bg-[var(--nv-panel)] p-4"
               >
                 <p className="mb-2 text-xs font-semibold text-blue-300">
                   Scene {scene.sceneNumber}
@@ -569,7 +569,7 @@ export default function ProjectDetailPage() {
   }
 
   return (
-    <div className="flex min-h-screen overflow-x-hidden bg-[#0a0a12] text-white">
+    <div className="flex min-h-screen overflow-x-hidden bg-[var(--nv-bg)] text-white">
       <Sidebar />
 
       <main id="main-content" className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
@@ -816,7 +816,7 @@ export default function ProjectDetailPage() {
                       {normalizedProjectContent.scenes.map((scene) => (
                         <div
                           key={scene.sceneNumber}
-                          className="rounded-xl border border-white/10 bg-[#0d0d16] p-4"
+                          className="rounded-xl border border-white/10 bg-[var(--nv-panel)] p-4"
                         >
                           <p className="text-xs font-semibold uppercase tracking-wide text-blue-300">
                             Scene {scene.sceneNumber}
@@ -844,13 +844,13 @@ export default function ProjectDetailPage() {
                       )}
                     </div>
                   ) : (
-                    <div className="mt-4 whitespace-pre-wrap break-words rounded-xl border border-white/10 bg-[#0d0d16] p-4 text-sm leading-relaxed text-gray-200 sm:p-6">
+                    <div className="mt-4 whitespace-pre-wrap break-words rounded-xl border border-white/10 bg-[var(--nv-panel)] p-4 text-sm leading-relaxed text-gray-200 sm:p-6">
                       {getTabText(activeTab)}
                     </div>
                   )}
 
                   {activeTab === "thumbnail" && thumbnailUrl && (
-                    <div className="mt-4 rounded-xl border border-white/10 bg-[#0d0d16] p-4">
+                    <div className="mt-4 rounded-xl border border-white/10 bg-[var(--nv-panel)] p-4">
                       <div className="flex items-center justify-between gap-3">
                         <h4 className="text-sm font-semibold text-gray-300">Generated thumbnail</h4>
                         <a
@@ -871,7 +871,7 @@ export default function ProjectDetailPage() {
                   )}
 
                   {sceneClips.length > 0 && (activeTab === "scenes" || activeTab === "prompts") && (
-                    <div className="mt-4 rounded-xl border border-white/10 bg-[#0d0d16] p-4">
+                    <div className="mt-4 rounded-xl border border-white/10 bg-[var(--nv-panel)] p-4">
                       <h4 className="text-sm font-semibold text-gray-300">Video clips</h4>
                       <div className="mt-3 grid gap-4 sm:grid-cols-2">
                         {sceneClips.map((scene) => (

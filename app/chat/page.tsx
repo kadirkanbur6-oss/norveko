@@ -574,10 +574,10 @@ function ChatContent() {
   const modeInfo = MODES.find((m) => m.id === mode)!;
 
   const selectClass =
-    "mt-2 w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-white outline-none focus:border-blue-400/50";
+    "mt-2 w-full rounded-xl border border-white/10 bg-[var(--nv-field)] p-3 text-white outline-none focus:border-blue-400/50";
 
   return (
-    <div className="flex min-h-screen overflow-x-hidden bg-[#0a0a12] text-white">
+    <div className="flex min-h-screen overflow-x-hidden bg-[var(--nv-bg)] text-white">
       <Sidebar />
 
       <main id="main-content" className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
@@ -789,7 +789,7 @@ function ChatContent() {
                         key={ex}
                         type="button"
                         onClick={() => setIdea(ex)}
-                        className="rounded-lg border border-white/10 bg-[#0d0d16] px-2.5 py-1.5 text-left text-xs text-gray-200 transition hover:border-purple-400/40"
+                        className="rounded-lg border border-white/10 bg-[var(--nv-panel)] px-2.5 py-1.5 text-left text-xs text-gray-200 transition hover:border-purple-400/40"
                       >
                         {ex}
                       </button>
@@ -891,7 +891,7 @@ function ChatContent() {
                       className={`flex items-center gap-3 rounded-xl border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-40 ${
                         active
                           ? "border-blue-400/50 bg-blue-500/10"
-                          : "border-white/10 bg-[#12121c] hover:border-white/20"
+                          : "border-white/10 bg-[var(--nv-field)] hover:border-white/20"
                       }`}
                     >
                       <span
@@ -912,7 +912,7 @@ function ChatContent() {
             <VisualStylePicker value={visualStyle} onChange={setVisualStyle} />
 
             {brandKit && (
-              <label className="mt-4 flex cursor-pointer items-center gap-3 rounded-2xl border border-white/10 bg-[#0d0d16] p-4">
+              <label className="mt-4 flex cursor-pointer items-center gap-3 rounded-2xl border border-white/10 bg-[var(--nv-panel)] p-4">
                 <input type="checkbox" checked={useBrandKit} onChange={(e) => setUseBrandKit(e.target.checked)} className="h-4 w-4 accent-purple-500" />
                 {brandKit.logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -933,7 +933,7 @@ function ChatContent() {
               </label>
             )}
             {brandKit?.outroText && useBrandKit && (
-              <label className="mt-2 flex cursor-pointer items-center gap-3 rounded-2xl border border-white/10 bg-[#0d0d16] p-4">
+              <label className="mt-2 flex cursor-pointer items-center gap-3 rounded-2xl border border-white/10 bg-[var(--nv-panel)] p-4">
                 <input type="checkbox" checked={useEndCard} onChange={(e) => setUseEndCard(e.target.checked)} className="h-4 w-4 accent-purple-500" />
                 <span className="text-sm">
                   <span className="font-semibold text-white">Add an end card</span>
@@ -971,7 +971,7 @@ function ChatContent() {
             {/* Web research before the script */}
             <div
               className={`mt-4 rounded-2xl border p-4 transition ${
-                includeResearch ? "border-blue-400/30 bg-[#0d0d16]" : "border-white/10 bg-[#0d0d16]"
+                includeResearch ? "border-blue-400/30 bg-[var(--nv-panel)]" : "border-white/10 bg-[var(--nv-panel)]"
               }`}
             >
               <label className="flex cursor-pointer items-center gap-3">
@@ -1003,7 +1003,7 @@ function ChatContent() {
             {/* Voiceover */}
             <div
               className={`mt-4 rounded-2xl border p-4 transition ${
-                includeVoiceover ? "border-blue-400/30 bg-[#0d0d16]" : "border-white/10 bg-[#0d0d16]"
+                includeVoiceover ? "border-blue-400/30 bg-[var(--nv-panel)]" : "border-white/10 bg-[var(--nv-panel)]"
               }`}
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1103,7 +1103,7 @@ function ChatContent() {
                   {(voiceListOpen || !selectedVoice) && voices.length > 6 && !voicesLoading && (
                     <div className="mt-3 flex items-center justify-between gap-2">
                       <p className="text-xs text-gray-500">{voices.length} narrators for {language}</p>
-                      <label className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#12121c] px-2.5 py-1.5">
+                      <label className="flex items-center gap-2 rounded-lg border border-white/10 bg-[var(--nv-field)] px-2.5 py-1.5">
                         <Search size={13} className="text-gray-500" />
                         <input
                           value={voiceQuery}
@@ -1260,7 +1260,7 @@ function ChatContent() {
             {(includeVoiceover || fullVideoOn) && (
               <div
                 className={`mt-4 rounded-2xl border p-4 transition ${
-                  includeSubtitles ? "border-blue-400/30 bg-[#0d0d16]" : "border-white/10 bg-[#0d0d16]"
+                  includeSubtitles ? "border-blue-400/30 bg-[var(--nv-panel)]" : "border-white/10 bg-[var(--nv-panel)]"
                 }`}
               >
                 <label className="flex cursor-pointer items-center gap-3">
@@ -1296,7 +1296,7 @@ function ChatContent() {
             {fullVideoAvailable && (
               <div
                 className={`mt-4 rounded-2xl border p-4 transition ${
-                  fullVideoOn ? "border-purple-400/40 bg-gradient-to-br from-purple-500/10 to-blue-500/5" : "border-white/10 bg-[#0d0d16]"
+                  fullVideoOn ? "border-purple-400/40 bg-gradient-to-br from-purple-500/10 to-blue-500/5" : "border-white/10 bg-[var(--nv-panel)]"
                 }`}
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1423,7 +1423,7 @@ function ChatContent() {
                 )}
 
                 {fullVideoOn && (
-                  <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-[#0d0d16] p-3">
+                  <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-[var(--nv-panel)] p-3">
                     <input type="checkbox" checked={reviewFirst} onChange={(e) => setReviewFirst(e.target.checked)} className="mt-0.5 h-4 w-4 accent-sky-500" />
                     <span className="text-sm">
                       <span className="font-semibold text-white">Let me review the script first</span>
@@ -1498,7 +1498,7 @@ function ChatContent() {
             <div
               className={`mt-4 rounded-2xl border p-4 ${
                 videoAvailable
-                  ? "border-white/10 bg-[#0d0d16]"
+                  ? "border-white/10 bg-[var(--nv-panel)]"
                   : "border-white/5 bg-white/[0.02] opacity-70"
               }`}
             >
@@ -1541,7 +1541,7 @@ function ChatContent() {
             )}
 
             {/* Sticky action bar: cost + Generate always within reach */}
-            <div className="sticky bottom-0 z-10 -mx-6 -mb-6 mt-6 rounded-b-2xl border-t border-white/10 bg-[#0a0a12]/90 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
+            <div className="sticky bottom-0 z-10 -mx-6 -mb-6 mt-6 rounded-b-2xl border-t border-white/10 bg-[var(--nv-bg)]/90 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   <span className="text-gray-400">
@@ -1664,7 +1664,7 @@ export default function ChatPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-[#0a0a12]">
+        <div className="flex min-h-screen items-center justify-center bg-[var(--nv-bg)]">
           <Loader2 size={24} className="animate-spin text-blue-300" />
         </div>
       }

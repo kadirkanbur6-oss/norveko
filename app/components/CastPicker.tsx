@@ -154,7 +154,7 @@ export default function CastPicker({
           </div>
         )}
         {presenter && chosen.length > 0 && presenter.scenes > 0 && (
-          <div className="mt-4 rounded-xl border border-white/10 bg-[#0d0d16] p-3">
+          <div className="mt-4 rounded-xl border border-white/10 bg-[var(--nv-panel)] p-3">
             <p className="text-sm font-medium text-white">On-camera presenter</p>
             <p className="mt-0.5 text-xs text-gray-500">
               One character talks to the camera, lip-synced to the narration, in {presenter.scenes} scenes (+{presenter.credits} credits).

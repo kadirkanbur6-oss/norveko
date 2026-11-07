@@ -26,7 +26,7 @@ export default function FinishedVideo({
   }, []);
   const download = `${url}${url.includes("?") ? "&" : "?"}download=${encodeURIComponent(`${title}.mp4`)}`;
   return (
-    <div ref={ref} className="scroll-mt-20 rounded-2xl border border-emerald-400/25 bg-[#0b1412] p-5 sm:p-6">
+    <div ref={ref} className="scroll-mt-20 rounded-2xl border border-emerald-400/25 bg-[var(--nv-panel)] p-5 sm:p-6">
       <div className="flex items-start gap-3">
         <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-emerald-300" aria-hidden />
         <div className="min-w-0 flex-1">

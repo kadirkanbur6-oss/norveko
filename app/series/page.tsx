@@ -215,10 +215,10 @@ export default function SeriesPage() {
     }
   }
 
-  const input = "w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-sm text-white outline-none focus:border-blue-400/50";
+  const input = "w-full rounded-xl border border-white/10 bg-[var(--nv-field)] p-3 text-sm text-white outline-none focus:border-blue-400/50";
 
   return (
-    <div className="flex min-h-screen overflow-x-hidden bg-[#0a0a12] text-white">
+    <div className="flex min-h-screen overflow-x-hidden bg-[var(--nv-bg)] text-white">
       <Sidebar />
       <main id="main-content" className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
         <div className="mx-auto max-w-4xl">
@@ -377,7 +377,7 @@ export default function SeriesPage() {
                   {form.format !== "skit" && form.subtitles && <CaptionStylePicker value={form.captionStyle} onChange={(v) => set("captionStyle", v)} />}
 
                   {/* Schedule */}
-                  <div className="rounded-xl border border-white/10 bg-[#0d0d16] p-4">
+                  <div className="rounded-xl border border-white/10 bg-[var(--nv-panel)] p-4">
                     <p className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wider text-gray-500">
                       <CalendarClock size={13} aria-hidden /> Schedule
                     </p>
@@ -416,14 +416,14 @@ export default function SeriesPage() {
                         value={form.time}
                         onChange={(e) => set("time", e.target.value)}
                         aria-label="Posting time"
-                        className="rounded-lg border border-white/10 bg-[#12121c] px-2 py-1 text-white [color-scheme:dark]"
+                        className="rounded-lg border border-white/10 bg-[var(--nv-field)] px-2 py-1 text-white [color-scheme:dark]"
                       />
                       <span className="text-xs text-gray-500">{timezone}</span>
                     </div>
                   </div>
 
                   {/* Publishing */}
-                  <div className="rounded-xl border border-white/10 bg-[#0d0d16] p-4 space-y-3">
+                  <div className="rounded-xl border border-white/10 bg-[var(--nv-panel)] p-4 space-y-3">
                     <p className="text-xs uppercase tracking-wider text-gray-500">Publish to</p>
                     {connections.youtube ? (
                       <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -432,7 +432,7 @@ export default function SeriesPage() {
                           YouTube (scheduled for the posting time)
                         </label>
                         {form.youtube && (
-                          <select value={form.ytPrivacy} onChange={(e) => set("ytPrivacy", e.target.value as Privacy)} aria-label="YouTube visibility" className="rounded-lg border border-white/10 bg-[#12121c] px-2 py-1 text-white">
+                          <select value={form.ytPrivacy} onChange={(e) => set("ytPrivacy", e.target.value as Privacy)} aria-label="YouTube visibility" className="rounded-lg border border-white/10 bg-[var(--nv-field)] px-2 py-1 text-white">
                             <option value="public">Public</option>
                             <option value="unlisted">Unlisted</option>
                             <option value="private">Private</option>
@@ -452,7 +452,7 @@ export default function SeriesPage() {
                         </label>
                         {form.tiktok && (
                           <div className="ml-6 space-y-2">
-                            <select value={form.ttPrivacy} onChange={(e) => set("ttPrivacy", e.target.value)} aria-label="Who can view the TikTok posts" className="rounded-lg border border-white/10 bg-[#12121c] px-2 py-1 text-white">
+                            <select value={form.ttPrivacy} onChange={(e) => set("ttPrivacy", e.target.value)} aria-label="Who can view the TikTok posts" className="rounded-lg border border-white/10 bg-[var(--nv-field)] px-2 py-1 text-white">
                               <option value="" disabled>
                                 Who can view…
                               </option>
@@ -562,7 +562,7 @@ export default function SeriesPage() {
                       </div>
                     </div>
                     {s.episodes.length > 0 && (
-                      <ul className="mt-4 divide-y divide-white/5 rounded-xl border border-white/10 bg-[#0d0d16] text-sm">
+                      <ul className="mt-4 divide-y divide-white/5 rounded-xl border border-white/10 bg-[var(--nv-panel)] text-sm">
                         {s.episodes.map((e) => {
                           const st = STATUS[e.status] ?? { label: e.status, cls: "text-gray-300" };
                           return (

@@ -121,7 +121,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex min-h-screen overflow-x-hidden bg-[#0a0a12] text-white">
+    <div className="flex min-h-screen overflow-x-hidden bg-[var(--nv-bg)] text-white">
       <Sidebar />
 
       <main id="main-content" className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
@@ -151,11 +151,11 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="mt-4 space-y-3 text-sm">
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#0d0d16] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-[var(--nv-panel)] p-4">
                     <span className="text-gray-400">Email</span>
                     <span>{settings.email}</span>
                   </div>
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#0d0d16] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-[var(--nv-panel)] p-4">
                     <span className="text-gray-400">Member since</span>
                     <span>{formatDate(settings.createdAt)}</span>
                   </div>
@@ -195,7 +195,7 @@ export default function SettingsPage() {
                       setChannelMessage("");
                     }}
                     placeholder="UCxxxxxxxxxxxxxxxxxxxxxx"
-                    className="w-full rounded-xl border border-white/10 bg-[#12121c] p-3 text-sm text-white outline-none focus:border-blue-400/50"
+                    className="w-full rounded-xl border border-white/10 bg-[var(--nv-field)] p-3 text-sm text-white outline-none focus:border-blue-400/50"
                   />
                 </div>
 

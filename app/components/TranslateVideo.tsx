@@ -89,7 +89,7 @@ export default function TranslateVideo({ projectId }: { projectId: string }) {
     }
   }
 
-  const field = "rounded-xl border border-white/10 bg-[#12121c] px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50";
+  const field = "rounded-xl border border-white/10 bg-[var(--nv-field)] px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50";
 
   return (
     <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
@@ -104,7 +104,7 @@ export default function TranslateVideo({ projectId }: { projectId: string }) {
       {info.translations.length > 0 && (
         <ul className="mt-4 space-y-2">
           {info.translations.map((t) => (
-            <li key={t.jobId} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#0d0d16] px-3 py-2 text-sm">
+            <li key={t.jobId} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-[var(--nv-panel)] px-3 py-2 text-sm">
               <span className="text-gray-200">{label(t.language)}</span>
               {t.status === "running" ? (
                 <span className="inline-flex items-center gap-1.5 text-xs text-sky-300">

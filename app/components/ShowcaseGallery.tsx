@@ -42,7 +42,7 @@ function ShowcaseCard({
   if (!src) return null;
 
   return (
-    <figure className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+    <figure className="nv-dark group relative overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
       <div className="relative aspect-[9/16] w-full">
         <video
           ref={ref}

@@ -363,7 +363,7 @@ export default function PipelineProgress({
             {videoStep.clips.map((clip) => (
               <div
                 key={clip.sceneNumber}
-                className="min-w-0 rounded-lg border border-white/10 bg-[#0d0d16] p-3"
+                className="min-w-0 rounded-lg border border-white/10 bg-[var(--nv-panel)] p-3"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-blue-300">
@@ -466,7 +466,7 @@ export default function PipelineProgress({
                 {scriptStep.scenes.map((scene) => (
                   <div
                     key={`${scene.sceneNumber}-${scene.description.slice(0, 12)}`}
-                    className="rounded-lg border border-white/10 bg-[#0d0d16] p-3"
+                    className="rounded-lg border border-white/10 bg-[var(--nv-panel)] p-3"
                   >
                     <p className="text-xs font-semibold uppercase tracking-wide text-blue-300">
                       Scene {scene.sceneNumber}

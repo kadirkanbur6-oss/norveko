@@ -35,7 +35,7 @@ export default function HeroDemo() {
   const pct = Math.round((Math.min(step, tasks.length) / tasks.length) * 100);
 
   return (
-    <div className="relative min-h-[480px] w-full min-w-0 max-w-[560px] overflow-hidden rounded-3xl border border-white/15 bg-[#181527]/55 p-4 shadow-2xl backdrop-blur-md sm:h-[560px] sm:p-6">
+    <div className="relative min-h-[480px] w-full min-w-0 max-w-[560px] overflow-hidden rounded-3xl border border-white/15 bg-[var(--nv-raised)]/55 p-4 shadow-2xl backdrop-blur-md sm:h-[560px] sm:p-6">
       <div className="mb-6 flex items-center gap-2">
         <div className="h-3 w-3 rounded-full bg-red-400" />
         <div className="h-3 w-3 rounded-full bg-yellow-400" />

@@ -94,7 +94,7 @@ export default function ShortsFromVideo({ projectId }: { projectId: string }) {
           {info.picks.map((p, i) => {
             const made = shortFor(p);
             return (
-              <li key={`${p.from}-${p.to}`} className="flex flex-col gap-2 rounded-xl border border-white/10 bg-[#0d0d16] p-3 sm:flex-row sm:items-center">
+              <li key={`${p.from}-${p.to}`} className="flex flex-col gap-2 rounded-xl border border-white/10 bg-[var(--nv-panel)] p-3 sm:flex-row sm:items-center">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-white">{p.title || `Moment ${i + 1}`}</p>
                   <p className="mt-0.5 text-xs text-gray-500">

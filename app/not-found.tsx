@@ -3,7 +3,7 @@ import BrandMark from "./components/BrandMark";
 
 export default function NotFound() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-[#0a0a12] px-6 text-center text-white">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-[var(--nv-bg)] px-6 text-center text-white">
       <BrandMark size={64} />
       <p className="mt-8 text-sm uppercase tracking-[0.3em] text-violet-300/80">404</p>
       <h1 className="mt-2 text-3xl font-bold">This page doesn&apos;t exist</h1>

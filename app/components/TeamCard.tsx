@@ -70,7 +70,7 @@ export default function TeamCard() {
               onChange={(e) => setName(e.target.value)}
               maxLength={50}
               placeholder="Team name, e.g. Tarih Kanalı"
-              className="w-full rounded-xl border border-white/10 bg-[#12121c] px-3 py-2 text-sm text-white outline-none placeholder:text-gray-600 focus:border-sky-400/50"
+              className="w-full rounded-xl border border-white/10 bg-[var(--nv-field)] px-3 py-2 text-sm text-white outline-none placeholder:text-gray-600 focus:border-sky-400/50"
             />
             <button
               type="button"
@@ -97,10 +97,10 @@ export default function TeamCard() {
           </p>
           <ul className="space-y-2">
             {t.role === "member" && (
-              <li className="rounded-xl border border-white/10 bg-[#0d0d16] px-4 py-2.5 text-sm text-gray-300">Owner pays for everyone&apos;s videos</li>
+              <li className="rounded-xl border border-white/10 bg-[var(--nv-panel)] px-4 py-2.5 text-sm text-gray-300">Owner pays for everyone&apos;s videos</li>
             )}
             {t.members.map((m) => (
-              <li key={m.userId} className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0d0d16] px-4 py-2.5 text-sm">
+              <li key={m.userId} className="flex items-center gap-3 rounded-xl border border-white/10 bg-[var(--nv-panel)] px-4 py-2.5 text-sm">
                 <span className="min-w-0 flex-1 truncate text-gray-200">
                   {m.email ?? "Member"} {m.you && <span className="text-xs text-gray-500">(you)</span>}
                 </span>

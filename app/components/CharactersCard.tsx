@@ -103,7 +103,7 @@ export function CharacterCreator({
   }
 
   return (
-    <div ref={rootRef} className={`rounded-xl border border-white/10 bg-[#0d0d16] p-4 ${className}`}>
+    <div ref={rootRef} className={`rounded-xl border border-white/10 bg-[var(--nv-panel)] p-4 ${className}`}>
       <p className="text-sm font-medium text-white">Add a character</p>
       <div className="mt-3 grid gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Character type">
         {KINDS.map((k) => {
@@ -137,7 +137,7 @@ export function CharacterCreator({
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={40}
-            className="w-full rounded-xl border border-white/10 bg-[#12121c] px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50"
+            className="w-full rounded-xl border border-white/10 bg-[var(--nv-field)] px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50"
           />
         </label>
         <label className="block">
@@ -149,7 +149,7 @@ export function CharacterCreator({
             onChange={(e) => setDescription(e.target.value)}
             maxLength={300}
             placeholder={kind === "fictional" ? "A weathered sea captain in his 50s, grey beard, navy coat" : ""}
-            className="w-full rounded-xl border border-white/10 bg-[#12121c] px-3 py-2 text-sm text-white outline-none placeholder:text-gray-600 focus:border-sky-400/50"
+            className="w-full rounded-xl border border-white/10 bg-[var(--nv-field)] px-3 py-2 text-sm text-white outline-none placeholder:text-gray-600 focus:border-sky-400/50"
           />
         </label>
       </div>
@@ -255,7 +255,7 @@ export default function CharactersCard() {
       {items.length > 0 && (
         <ul className="mt-4 grid gap-3 sm:grid-cols-2">
           {items.map((c) => (
-            <li key={c.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0d0d16] p-3">
+            <li key={c.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-[var(--nv-panel)] p-3">
               {c.previews[0] ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={c.previews[0]} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" />

@@ -67,7 +67,7 @@ export default function YouTubeConnectionCard() {
       </p>
 
       {connection ? (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#0d0d16] p-4">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-[var(--nv-panel)] p-4">
           <div className="flex items-center gap-3">
             {connection.channelThumbnail ? (
               // eslint-disable-next-line @next/next/no-img-element

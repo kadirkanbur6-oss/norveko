@@ -33,7 +33,7 @@ export default function GoogleButton({
           <div className="w-full border-t border-white/10"></div>
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="bg-[#090b16]/50 px-2 text-gray-500">Or continue with email</span>
+          <span className="bg-[var(--nv-bg)]/50 px-2 text-gray-500">Or continue with email</span>
         </div>
       </div>
     </>
