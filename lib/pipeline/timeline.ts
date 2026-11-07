@@ -135,13 +135,22 @@ export function narrationSeconds(cues: CaptionCue[] | undefined, fallback: numbe
  */
 export function cutSlots(slots: TimelineSlot[], from: number, to: number): TimelineSlot[] {
   const round = (n: number) => Math.round(n * 100) / 100;
-  return slots
+  const cut = slots
     .filter((s) => s.start + s.length > from + 0.05 && s.start < to - 0.05)
     .map((s, i) => {
       const start = Math.max(s.start, from);
       const end = Math.min(s.start + s.length, to);
       return { ...s, index: i, start: round(start - from), length: round(end - start) };
     });
+  // A sliver left at the end by the window (under 1.5 s) rendered as a black frame in the last
+  // Short (7 Nov 2026): hand its time to the previous slot instead.
+  const MIN_TAIL = 1.5;
+  if (cut.length > 1 && cut[cut.length - 1].length < MIN_TAIL) {
+    const last = cut.pop()!;
+    const prev = cut[cut.length - 1];
+    prev.length = round(last.start + last.length - prev.start);
+  }
+  return cut;
 }
 
 /** Caption cues between `from` and `to`, shifted to start at 0. */
