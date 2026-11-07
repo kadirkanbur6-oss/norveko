@@ -13,6 +13,7 @@ import { isAdmin } from "@/lib/admin";
 import { adminDb } from "@/lib/api-keys";
 import { estimateCostUsd, type UsageProvider } from "@/lib/pipeline/usage";
 import { listAccess } from "@/lib/access";
+import { loadProviders, FIXED_COSTS } from "@/lib/admin-providers";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -265,6 +266,21 @@ export async function GET(req: NextRequest) {
     costByDay.set(d, (costByDay.get(d) ?? 0) + num(u.estimated_cost_usd));
   }
 
+  // Where the money went: provider × step (voiceover, thumbnail, video, skit …).
+  const byStep = new Map<string, { provider: string; step: string; calls: number; costUsd: number }>();
+  for (const u of usage) {
+    const key = `${str(u.provider)}|${str(u.step)}`;
+    const row = byStep.get(key) ?? { provider: str(u.provider), step: str(u.step) || "other", calls: 0, costUsd: 0 };
+    row.calls += 1;
+    row.costUsd += num(u.estimated_cost_usd);
+    byStep.set(key, row);
+  }
+  const providerStatus = await loadProviders(db, now).catch((err) => {
+    errors.push(`providers: ${err instanceof Error ? err.message : String(err)}`);
+    return { providers: [], balancesTableMissing: false, errors: [] as string[] };
+  });
+  errors.push(...providerStatus.errors);
+
   // ---- daily series for the window ---------------------------------------
   const signupsByDay = new Map<string, number>();
   for (const u of users) if (u.created_at >= since) signupsByDay.set(day(u.created_at), (signupsByDay.get(day(u.created_at)) ?? 0) + 1);
@@ -368,6 +384,10 @@ export async function GET(req: NextRequest) {
     generations,
     payments,
     costs: Array.from(byProvider.values()).sort((a, b) => b.costUsd - a.costUsd),
+    costSteps: Array.from(byStep.values()).sort((a, b) => b.costUsd - a.costUsd),
+    providers: providerStatus.providers,
+    balancesTableMissing: providerStatus.balancesTableMissing,
+    fixedCosts: FIXED_COSTS,
     adminLog: adminLog.map((a) => ({
       id: str(a.id),
       adminEmail: email.get(str(a.admin_id)) ?? str(a.admin_id).slice(0, 8),

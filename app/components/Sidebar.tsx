@@ -34,7 +34,29 @@ export default function Sidebar() {
   const [credits, setCredits] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const [admin, setAdmin] = useState(false);
+  const [providerAlerts, setProviderAlerts] = useState<Array<{ label: string; level: string; reason: string }>>([]);
   const [email, setEmail] = useState<string | null>(null);
+
+  // Red dot next to "Admin" when a provider is low or out of credit (owner only).
+  useEffect(() => {
+    if (!admin) return;
+    let cancelled = false;
+    const check = async () => {
+      try {
+        const res = await fetch("/api/admin/alerts", { cache: "no-store" });
+        const json = await res.json();
+        if (!cancelled && json.success) setProviderAlerts(json.alerts ?? []);
+      } catch {
+        /* keep the last answer */
+      }
+    };
+    check();
+    const timer = setInterval(check, 5 * 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [admin]);
 
   useEffect(() => {
     let active = true;
@@ -172,6 +194,17 @@ export default function Sidebar() {
                 {isActive && <span aria-hidden className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-gradient-to-b from-blue-400 to-purple-500" />}
                 <Icon size={17} className={isActive ? "text-blue-300" : "text-gray-500 transition group-hover:text-gray-300"} />
                 {item.label}
+                {item.href === "/admin" && providerAlerts.length > 0 && (
+                  <span
+                    role="status"
+                    title={providerAlerts.map((a) => `${a.label}: ${a.reason}`).join("\n")}
+                    className="ml-auto inline-flex items-center gap-1 rounded-full bg-red-500/90 px-2 py-0.5 text-[11px] font-semibold leading-none text-white"
+                  >
+                    <span aria-hidden className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                    {providerAlerts.length} low
+                    <span className="sr-only">: {providerAlerts.map((a) => a.label).join(", ")} need credit</span>
+                  </span>
+                )}
               </Link>
             );
           })}

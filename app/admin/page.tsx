@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Loader2, RefreshCw, Search, X } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import PageTabs, { PageHeader, useTabParam, type PageTab } from "../components/PageTabs";
+import ProviderCosts, { type ProviderRow, type StepRow, type FixedRow } from "./ProviderCosts";
 import { JobActions, ManageUserDialog, type ManagedUser } from "./AdminActions";
 
 interface Overview {
@@ -104,6 +105,10 @@ interface AdminData {
   generations: Generation[];
   payments: Payment[];
   costs: Cost[];
+  costSteps: StepRow[];
+  providers: ProviderRow[];
+  balancesTableMissing: boolean;
+  fixedCosts: FixedRow[];
   adminLog: AdminLogEntry[];
 }
 
@@ -555,39 +560,15 @@ export default function AdminPage() {
           )}
 
           {data && tab === "costs" && (
-            data.costs.length === 0 ? (
-              <Empty>{`No provider calls were logged in the ${windowLabel}.`}</Empty>
-            ) : (
-              <div className="space-y-3">
-                <div className={`${CARD} overflow-x-auto`}>
-                  <table className="w-full min-w-[620px] border-collapse">
-                    <thead>
-                      <tr className="border-b border-white/[0.07]">
-                        <th className={TH}>Provider</th>
-                        <th className={TH}>Model</th>
-                        <th className={`${TH} text-right`}>Calls</th>
-                        <th className={`${TH} text-right`}>Failed</th>
-                        <th className={`${TH} text-right`}>Estimated cost</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.costs.map((c) => (
-                        <tr key={`${c.provider}-${c.model}`} className="border-b border-white/[0.04] last:border-0">
-                          <td className={`${TD} capitalize text-white`}>{c.provider}</td>
-                          <td className={`${TD} text-gray-300`}>{c.model}</td>
-                          <td className={`${TD} text-right tabular-nums text-gray-200`}>{int(c.calls)}</td>
-                          <td className={`${TD} text-right tabular-nums ${c.failed ? "text-red-300" : "text-gray-500"}`}>{int(c.failed)}</td>
-                          <td className={`${TD} text-right tabular-nums text-white`}>{usd(c.costUsd)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <p className="text-xs text-gray-400">
-                  Estimates from the usage log for the {windowLabel}: units used × list prices. Skits, talking characters and swaps are logged from 5 Nov 2026 on; earlier ones are missing, and the providers&apos; own invoices are the final word.
-                </p>
-              </div>
-            )
+            <ProviderCosts
+              providers={data.providers ?? []}
+              costs={data.costs}
+              steps={data.costSteps ?? []}
+              fixed={data.fixedCosts ?? []}
+              tableMissing={data.balancesTableMissing === true}
+              windowLabel={windowLabel}
+              onChanged={() => load(days)}
+            />
           )}
           {data && tab === "log" && (
             data.adminLog.length === 0 ? (

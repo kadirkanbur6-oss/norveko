@@ -121,6 +121,24 @@ group by 1, 2 order by 1 desc, 2;
 Prices live in `PRICE_LIST` (`lib/pipeline/usage.ts`); override without a
 deploy via the `PROVIDER_PRICE_OVERRIDES` env var (JSON, same keys).
 
+## Provider balances — `provider_balances` (admin panel, 7 Nov 2026)
+
+OpenAI, Gemini and Shotstack have no balance API. The owner types the balance in
+**/admin → Provider costs → Set balance** after each top-up; the panel subtracts the
+usage logged in `provider_usage` since then and turns the "Admin" sidebar label red
+when it gets low. Until this runs, saving a balance answers with an error and the rest
+of the panel keeps working. Service role only.
+
+```sql
+create table if not exists public.provider_balances (
+  provider    text primary key,            -- openai | gemini | shotstack
+  balance_usd numeric(12,4) not null,
+  low_usd     numeric(12,4),               -- warn under this; null = built-in default
+  as_of       timestamptz not null default now()
+);
+alter table public.provider_balances enable row level security;
+```
+
 ## One-off repair — jobs stuck in "running" with a failed step (2026-10-25)
 
 Before commit `fix refund guard`, `failJob()` filtered on `credits_refunded IS NULL`
