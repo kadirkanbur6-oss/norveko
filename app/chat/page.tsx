@@ -681,9 +681,7 @@ function ChatContent() {
                 quietUntilLoaded={!jobKnownRunning}
                 onStatus={(st) => {
                   setJobStatus(st);
-                  // Done or failed: bring the form and its Generate button back so the next video can
-                  // start right here; the finished result stays below (6 Nov 2026, Yağmur).
-                  //                   // Finished or failed: the result stays first on the page (7 Nov 2026, Yağmur: "en üstte
+                  // Finished or failed: the result stays first on the page (7 Nov 2026, Yağmur: "en üstte
                   // gözüksün"); the form stays folded under it and the buttons below start the next one.
                   if (st && st !== "running" && st !== "queued") {
                     setFormOpen(false);
