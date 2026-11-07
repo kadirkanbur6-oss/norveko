@@ -148,11 +148,12 @@ function ChatContent() {
   // Accounts that haven't paid yet start on the cheapest finished video (Stock + AI), 6 Nov 2026.
   const [freeAccount, setFreeAccount] = useState(false);
   /** Shown after a free account taps a locked option. */
-  const [upgradeHint, setUpgradeHint] = useState(false);
+  // Where the "paid plans" card shows: right next to the locked control that was tapped.
+  const [upgradeHint, setUpgradeHint] = useState<null | "top" | "duration" | "footage" | "voice">(null);
   const upgradeRef = useRef<HTMLDivElement>(null);
-  function askUpgrade() {
-    setUpgradeHint(true);
-    setTimeout(() => upgradeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+  function askUpgrade(spot: "top" | "duration" | "footage" | "voice" = "top") {
+    setUpgradeHint(spot);
+    setTimeout(() => upgradeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
   }
   const footageFromDraft = useRef(false);
   const [clipMode, setClipMode] = useState<ClipMode>("image");
@@ -452,7 +453,7 @@ function ChatContent() {
 
   function chooseVoice(id: string) {
     if (freeAccount && !id.startsWith("gemini:")) {
-      askUpgrade();
+      askUpgrade("voice");
       return;
     }
     setVoiceId(id);
@@ -664,9 +665,9 @@ function ChatContent() {
             </div>
           )}
 
-          {mode === "video" && upgradeHint && freeAccount && (
+          {mode === "video" && upgradeHint === "top" && freeAccount && (
             <div ref={upgradeRef} className="mt-5">
-              <UpgradeCard onClose={() => setUpgradeHint(false)} />
+              <UpgradeCard onClose={() => setUpgradeHint(null)} />
             </div>
           )}
 
@@ -915,7 +916,7 @@ function ChatContent() {
                   value={duration}
                   onChange={(e) => {
                     if (freeAccount && !freeDurations.includes(e.target.value)) {
-                      askUpgrade();
+                      askUpgrade("duration");
                       return;
                     }
                     setDuration(e.target.value);
@@ -949,6 +950,12 @@ function ChatContent() {
                 </select>
               </div>
             </div>
+
+            {upgradeHint === "duration" && freeAccount && (
+              <div ref={upgradeRef} className="mt-4">
+                <UpgradeCard onClose={() => setUpgradeHint(null)} />
+              </div>
+            )}
 
             {/* Look: format, visual style, brand kit */}
             <Disclosure
@@ -1219,6 +1226,11 @@ function ChatContent() {
                     </div>
                   )}
                   {voicesError && <p className="mt-2 text-xs text-red-300">{voicesError}</p>}
+                  {upgradeHint === "voice" && freeAccount && (
+                    <div ref={upgradeRef} className="mt-3">
+                      <UpgradeCard onClose={() => setUpgradeHint(null)} />
+                    </div>
+                  )}
 
                   {!voicesLoading && voices.length > 0 && (voiceListOpen || !selectedVoice) && (
                     <div
@@ -1469,7 +1481,7 @@ function ChatContent() {
                         <button
                           key={m.id}
                           type="button"
-                          onClick={() => (freeAccount && m.id !== "stock" ? askUpgrade() : setFootage(m.id))}
+                          onClick={() => (freeAccount && m.id !== "stock" ? askUpgrade("footage") : setFootage(m.id))}
                           aria-pressed={active}
                           aria-disabled={freeAccount && m.id !== "stock"}
                           className={`rounded-xl border p-3 text-left transition ${
@@ -1500,6 +1512,12 @@ function ChatContent() {
                     })}
                   </div>
                 )}
+
+                {upgradeHint === "footage" && freeAccount && (
+              <div ref={upgradeRef} className="mt-4">
+                <UpgradeCard onClose={() => setUpgradeHint(null)} />
+              </div>
+            )}
 
                 {fullVideoOn && (
                   <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-[var(--nv-panel)] p-3">
