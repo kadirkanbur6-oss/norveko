@@ -1,7 +1,7 @@
 # CLAUDE.md — Norveko Project Context
 
 > Bu dosya, yeni bir Claude oturumu başladığında proje bağlamını geri yüklemek içindir.
-> Her büyük milestone sonrası güncellenmelidir. Son güncelleme: 2026-11-05
+> Her büyük milestone sonrası güncellenmelidir. Son güncelleme: 2026-11-07
 
 ## 1. Proje Nedir?
 
@@ -126,9 +126,9 @@ klip $0.17 → **39** · Kling klip $0.42 → **95** · render $0.10/30 sn → *
 hybrid-Kling 473. Her adımın ödenen kredisi `initialStepsState` ile adıma yazılır
 (`credits`, `voiceover.subtitles_credits`, `plan.stillCredits/clipCredits`) → iadeler
 satın alma anındaki fiyatla yapılır. Test: "every item keeps ≥ 60% margin".
-Sabit aylık giderler (lansmanda): Vercel Pro $20, Supabase Pro $25, ElevenLabs
-Starter $5, alan adı ~$1 → ~$51/ay ≈ ayda ~7.700 kredi (≈1,5 Business paketi)
-satışla başa baş. Paket fiyatları (Paddle) değişmedi: Starter 500/$9, Pro 2000/$29,
+Sabit aylık giderler (7 Kasım güncel): Vercel Pro $20, Supabase Pro $25, ElevenLabs
+**Creator $22** (Starter değil; 121k kredi, 30 özel ses yuvası), alan adı ~$1, Sentry Free $0 →
+**~$68/ay ≈ ayda ~10.200 kredi** (≈2 Business paketi) satışla başa baş. Paket fiyatları (Paddle) değişmedi: Starter 500/$9, Pro 2000/$29,
 Business 5000/$59.
 - **Planlar & ücretsiz deneme filigranı (31 Ekim)**: `lib/plans.ts` her paketin ne
   aldırdığını `steps.ts` fiyatlarından hesaplar (`planDetails`, `JOB_COSTS`,
@@ -323,6 +323,17 @@ Business 5000/$59.
 - **E-posta + depolama (5 Kasım)**: support@norveko.app artık çalışıyor — ImprovMX (ücretsiz, hesap kadirkanbur6@gmail.com) `*@norveko.app` → kadirkanbur6@gmail.com; Vercel DNS'e ImprovMX şablonu (MX mx1/mx2.improvmx.com + SPF `v=spf1 include:spf.improvmx.com ~all`), test maili geldi ✅. Yalnız GELEN posta; support@ adresinden göndermek ImprovMX ücretli plan ister. Ana sayfa altbilgisinde "Contact" + adres (Paddle doğrulaması ister). Supabase Free depolama önceki dönemde 1 GB'ı aştı (finaller R2'ye taşınmadan önce) → 4 Aralık'a kadar ek süre; lab `storage-report` (salt okuma, kova/klasör/tür) ve `cleanup-lab-videos` (yalnız `videos/lab/**.mp4`) eklendi, 67 MB lab klibi silindi → ~556 MB. Supabase SQL (provider_usage fkey + `user_access` + `admin_actions`) ✅ çalıştırıldı; `credit_transactions`'ta tür CHECK'i yok. **Paddle live:** hesap açık, doğrulama "Not started" — Kadir şirket kurulunca yapacak (LEGAL_NAME gerçek unvan olmalı); o zamana kadar lansman kilidi açılmaz.
 - Form seçenekleri UI+API ortak: `lib/pipeline/options.ts`.
 - Bitince sonuç `projects.content` JSONB'ye yazılır; başlık = AI'nin ilk title'ı.
+
+- **Sağlayıcı billing denetimi (7 Kasım, Yağmur)**: hepsi ön ödemeli/PAYG, otomatik yükleme açık: **fal** (PAYG, bakiye ~$125,
+  auto top-up $10 eşik → +$20, $10'da e-posta uyarısı; fal aylık planları API'de indirim vermez → PAYG doğru), **Gemini** (ön ödeme,
+  eşik 250 TRY → +1.000 TRY, aylık limit 5.000 TRY), **OpenAI** (eşik $5 → $25'a tamamla, aylık $100 limit; ilk yükleme API
+  kullanımında tetiklenecek — 8 Kasım'da bakiyenin yenilendiği kontrol edilecek), **Shotstack** (PAYG $0,20/dk; auto top-up
+  <20 dk → +150 dk = $30; hesapta harcama tavanı ayarı YOK → tavanı bankadaki Visa limiti/bildirimi koyar; abonelik ayda ~200 dk
+  render'dan sonra mantıklı: Starter $39/250 dk), **Cloudflare R2** (10 GB ücretsiz, ~2,7 GB), **Sentry** Free. Dikkat: Shotstack
+  5 GB barındırma kotası render'ları saklar → `deleteRenderAssets()` (shotstack.ts, Serve API) render R2/Supabase'e alınınca
+  Shotstack kopyasını siler (`steps.render.provider_deleted`); eski render'lar için lab `shotstack-cleanup` {dryRun, limit}.
+  Text klip modu (Kling 3.0 Standard) artık fal üzerinden (`FAL_TEXT_VIDEO_MODEL`, $0,084/sn sessiz); canlıda test edildi
+  (30 sn hybrid, 2 klip ✅) ama `OFFERED_CLIP_MODES` hâlâ yalnız `["image"]` → arayüzde/API'de text modu kapalı.
 
 ## 4. Feature gate'ler (env)
 

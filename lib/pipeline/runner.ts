@@ -171,6 +171,8 @@ export interface RunnerDeps {
     submitRender: typeof import("@/lib/pipeline/shotstack").submitRender;
     getRender: typeof import("@/lib/pipeline/shotstack").getRender;
     downloadRender: typeof import("@/lib/pipeline/shotstack").downloadRender;
+    /** Remove the renderer's hosted copy once ours is safe (optional; best effort, never throws). */
+    deleteRenderAssets?: typeof import("@/lib/pipeline/shotstack").deleteRenderAssets;
     /** Free-trial watermark (optional so tests can leave it out → never watermark). */
     needsWatermark?: (userId: string) => Promise<boolean>;
     watermarkThumbnail?: typeof import("@/lib/pipeline/watermark").watermarkStoredThumbnail;
@@ -1401,6 +1403,16 @@ export function createPipelineRunner(deps: RunnerDeps) {
     });
   }
 
+  /** Delete Shotstack's hosted copy after ours is stored (frees their 5 GB allowance). */
+  async function purgeProviderCopy(renderId: string): Promise<boolean> {
+    if (!providers.deleteRenderAssets) return false;
+    try {
+      return (await providers.deleteRenderAssets(renderId)) > 0;
+    } catch {
+      return false;
+    }
+  }
+
   async function pollRenderJob(job: JobRow): Promise<boolean> {
     const renderId = job.steps?.render?.render_id;
     if (typeof renderId !== "string" || !renderId) throw new Error("Render id is missing.");
@@ -1439,6 +1451,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
         await captureError(err, { jobId: job.id, step: "render", area: "pipeline.render.r2" });
       }
       if (stored) {
+        const purged = await purgeProviderCopy(renderId);
         await logUsage(job, "render", {
           unit: "seconds",
           quantity: result.duration ?? Number(job.steps?.render?.total_seconds) ?? 0,
@@ -1453,6 +1466,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
           provider_url: result.url,
           hosted_by: "r2",
           bytes: stored.bytes,
+          provider_deleted: purged,
         });
         return true;
       }
@@ -1480,6 +1494,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
     } else {
       finalUrl = db.storage.from("videos").getPublicUrl(storagePath).data.publicUrl;
     }
+    const purgedSupabase = hostedBy === "supabase" ? await purgeProviderCopy(renderId) : false;
     await logUsage(job, "render", {
       unit: "seconds",
       quantity: result.duration ?? Number(job.steps?.render?.total_seconds) ?? 0,
@@ -1489,6 +1504,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
     await patchStep(job, "render", {
       ...patch,
       status: "completed",
+      provider_deleted: purgedSupabase,
       video_url: finalUrl,
       storage_path: hostedBy === "supabase" ? storagePath : undefined,
       provider_url: result.url,
@@ -2349,6 +2365,8 @@ function getRunner() {
           (await import("@/lib/pipeline/shotstack")).getRender(...args),
         downloadRender: async (...args) =>
           (await import("@/lib/pipeline/shotstack")).downloadRender(...args),
+        deleteRenderAssets: async (...args) =>
+          (await import("@/lib/pipeline/shotstack")).deleteRenderAssets(...args),
         needsWatermark: async (userId) =>
           (await import("@/lib/pipeline/watermark-policy")).needsWatermark(productionDb(), userId),
         watermarkThumbnail: async (...args) =>

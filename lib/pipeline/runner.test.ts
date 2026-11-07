@@ -263,6 +263,10 @@ function makeRunner(
         return { id, status, url: status === "done" ? "https://shotstack/final.mp4" : undefined, duration: 60 };
       },
       downloadRender: async () => Buffer.from("mp4-final"),
+      deleteRenderAssets: async (id) => {
+        calls.push(`render:purge:${id}`);
+        return 2;
+      },
       translateScript: async ({ source, outputLanguage }) => {
         calls.push(`translate:${outputLanguage}`);
         return {
@@ -618,6 +622,9 @@ test("full video (hybrid, 60 s): 12 slots, 3 Kling + stills, render to final MP4
   assert.equal(job.steps.render.status, "completed");
   assert.equal(job.steps.render.storage_path, "u1/" + id + "/final.mp4");
   assert.ok(typeof job.steps.render.video_url === "string" && job.steps.render.video_url.startsWith("https://cdn/"));
+  // Our copy is stored → the renderer's hosted copy is deleted (frees its 5 GB allowance).
+  assert.equal(job.steps.render.provider_deleted, true);
+  assert.ok(calls.includes("render:purge:render_1"));
   // CC BY attribution for the background track lands in the saved description.
   assert.match(String(projects.at(-1)?.content?.description), /Music: ".+" by Kevin MacLeod/);
 });

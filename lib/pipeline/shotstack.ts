@@ -90,6 +90,39 @@ export async function downloadRender(url: string): Promise<Buffer> {
   return Buffer.from(await res.arrayBuffer());
 }
 
+const SERVE_BASE = `https://api.shotstack.io/serve/${ENV}`;
+
+/**
+ * Delete the files Shotstack hosts for a render (video, thumbnail, poster).
+ * Shotstack keeps hosted files in a 5 GB storage allowance and charges beyond
+ * it, so once our own copy is safe we remove theirs. Best effort: never throws.
+ * Returns how many assets were deleted.
+ */
+export async function deleteRenderAssets(renderId: string): Promise<number> {
+  try {
+    const res = await fetch(`${SERVE_BASE}/assets/render/${encodeURIComponent(renderId)}`, {
+      headers: headers(),
+      cache: "no-store",
+    });
+    if (!res.ok) return 0;
+    const body = (await res.json().catch(() => ({}))) as { data?: Array<{ attributes?: { id?: string } }> };
+    let deleted = 0;
+    for (const item of body.data ?? []) {
+      const id = item.attributes?.id;
+      if (!id) continue;
+      const del = await fetch(`${SERVE_BASE}/assets/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: headers(),
+        cache: "no-store",
+      });
+      if (del.status === 204 || del.ok) deleted++;
+    }
+    return deleted;
+  } catch {
+    return 0;
+  }
+}
+
 /** Whether a Shotstack status is terminal. */
 export function isTerminal(status: ShotstackStatus): boolean {
   return status === "done" || status === "failed";

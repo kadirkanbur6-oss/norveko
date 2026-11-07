@@ -429,6 +429,35 @@ export async function POST(req: Request) {
         });
         return NextResponse.json({ success: true, url, renderId });
       }
+      // Free Shotstack's 5 GB hosting allowance: delete the renderer's copy of every finished
+      // render whose file already lives in our own storage (R2 / Supabase). {dryRun, limit}
+      case "shotstack-cleanup": {
+        const db = admin();
+        const { deleteRenderAssets } = await import("@/lib/pipeline/shotstack");
+        const { data: rows } = await db
+          .from("pipeline_jobs")
+          .select("id, steps")
+          .not("steps->render->>render_id", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(1000);
+        const todo = (rows ?? []).filter((r) => {
+          const rs = (r.steps as { render?: { status?: string; hosted_by?: string; provider_deleted?: boolean } } | null)?.render;
+          return rs?.status === "completed" && (rs.hosted_by === "r2" || rs.hosted_by === "supabase") && !rs.provider_deleted;
+        });
+        const limit = Math.min(Number(body.limit) || 100, 200);
+        if (body.dryRun) return NextResponse.json({ success: true, pending: todo.length });
+        let done = 0;
+        let assets = 0;
+        for (const r of todo.slice(0, limit)) {
+          const steps = r.steps as { render: Record<string, unknown> };
+          const n = await deleteRenderAssets(String(steps.render.render_id));
+          assets += n;
+          // Mark even when nothing was found (already gone) so we do not retry forever.
+          await db.from("pipeline_jobs").update({ steps: { ...steps, render: { ...steps.render, provider_deleted: true } } }).eq("id", r.id);
+          done++;
+        }
+        return NextResponse.json({ success: true, processed: done, assetsDeleted: assets, remaining: todo.length - done });
+      }
       case "shotstack-status": {
         const { getRender } = await import("@/lib/pipeline/shotstack");
         return NextResponse.json({ success: true, render: await getRender(String(body.id ?? "")) });
