@@ -142,12 +142,12 @@ export const SHORTS_DEMO = {
     { from: 133.01, to: 169.34, title: "Could a Faulty Pump Explain the Mary Celeste Mystery?", hook: "Did the crew fear sinking?" },
   ],
   /** Index in `picks` that was rendered. */
-  chosen: 1,
+  chosen: 2,
   short: {
-    id: "ecf78371-b3c0-4bc0-8a98-004ae4da13ea",
-    seconds: 52,
-    videoPath: `${OWNER}/ecf78371-b3c0-4bc0-8a98-004ae4da13ea/final.mp4`,
-    poster: { bucket: "thumbnails", path: "ecf78371-b3c0-4bc0-8a98-004ae4da13ea.jpg" },
+    id: "a3a69a3d-b950-4e5f-b82a-7e9227de4be9",
+    seconds: 44,
+    videoPath: `${OWNER}/a3a69a3d-b950-4e5f-b82a-7e9227de4be9/final-v4.mp4`,
+    poster: { bucket: "thumbnails", path: "a3a69a3d-b950-4e5f-b82a-7e9227de4be9.jpg" },
   },
 } as const;
 
