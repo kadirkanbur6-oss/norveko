@@ -11,7 +11,7 @@ import { castSnapshot } from "@/lib/characters/characters";
 import {
   buildPipelineSteps,
   FOOTAGE_MODES,
-  CLIP_MODES,
+  OFFERED_CLIP_MODES,
   type ClipMode,
   fullVideoPlan,
   resolvePipelineOptions,
@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
     const footage: FootageMode = FOOTAGE_MODES.includes(body.footage as FootageMode)
       ? (body.footage as FootageMode)
       : "hybrid";
-    const clipMode: ClipMode = CLIP_MODES.includes(body.clipMode as ClipMode) ? (body.clipMode as ClipMode) : "image";
+    const clipMode: ClipMode = OFFERED_CLIP_MODES.includes(body.clipMode as ClipMode) ? (body.clipMode as ClipMode) : "image";
     const videoRequested = !fullVideoRequested && body.includeVideo === true;
     const subtitlesRequested = (voiceoverEnabled || fullVideoRequested) && body.includeSubtitles === true;
 

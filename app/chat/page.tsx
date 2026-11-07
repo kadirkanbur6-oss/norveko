@@ -34,6 +34,7 @@ import {
   TRIAL_VIDEO,
   voiceoverCredits,
   totalPipelineCredits,
+  OFFERED_CLIP_MODES,
   type FootageMode,
   type ClipMode,
   VIDEO_CLIP_CREDITS,
@@ -260,7 +261,7 @@ function ChatContent() {
         setFootage(draft.footage);
         footageFromDraft.current = true;
       }
-      if (draft.clipMode === "image" || draft.clipMode === "text") setClipMode(draft.clipMode);
+      // Only image → video is offered now (Kling text → video hidden, 7 Nov 2026).
       if (typeof draft.voiceId === "string") setVoiceId(draft.voiceId);
       if (draft.orientation === "vertical" || draft.orientation === "horizontal") {
         setOrientation(draft.orientation);
@@ -1518,7 +1519,7 @@ function ChatContent() {
                   title="Clips & subtitles"
                   summary={`${footage === "stills" ? "No AI clips" : footage === "stock" ? "Stock clips" : clipMode === "text" ? "Text → video clips" : "Image → video clips"} · ${includeSubtitles ? `${CAPTION_STYLES.find((c) => c.id === captionStyleId)?.label ?? "Bold pop"} subtitles` : "No subtitles"}`}
                 >
-                {footage !== "stills" && footage !== "stock" && (
+                {OFFERED_CLIP_MODES.length > 1 && footage !== "stills" && footage !== "stock" && (
                   <div className="mt-3">
                     <p className="mb-2 text-xs font-medium text-gray-400">How AI clips are made</p>
                     <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Clip type">
