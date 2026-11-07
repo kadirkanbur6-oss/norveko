@@ -5,7 +5,7 @@
 // app/layout.tsx applies it before the first paint so the page never flashes the wrong theme.
 // Dark is the default (the brand look); "Light" flips the palette in app/globals.css.
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Moon, Sun } from "lucide-react";
 
 export type Theme = "dark" | "light";
@@ -26,15 +26,13 @@ export function setTheme(theme: Theme) {
   window.dispatchEvent(new CustomEvent("nv-theme", { detail: theme }));
 }
 
+function subscribe(onChange: () => void) {
+  window.addEventListener("nv-theme", onChange);
+  return () => window.removeEventListener("nv-theme", onChange);
+}
+
 export function useTheme(): Theme {
-  const [theme, setState] = useState<Theme>("dark");
-  useEffect(() => {
-    setState(current());
-    const on = () => setState(current());
-    window.addEventListener("nv-theme", on);
-    return () => window.removeEventListener("nv-theme", on);
-  }, []);
-  return theme;
+  return useSyncExternalStore(subscribe, current, () => "dark");
 }
 
 /** Compact icon button (navbars). */
