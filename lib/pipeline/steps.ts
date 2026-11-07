@@ -41,7 +41,7 @@ export const CLIP_MODES: ClipMode[] = ["image", "text"];
  * Clip types new videos may pick. "text" (Kling) is hidden: its trial pack ends in late Nov 2026
  * and we chose not to buy one (7 Nov 2026, Yağmur). Old jobs keep their recorded mode.
  */
-export const OFFERED_CLIP_MODES: ClipMode[] = ["image", "text"];
+export const OFFERED_CLIP_MODES: ClipMode[] = ["image"];
 
 /** Options that decide which optional steps a job includes. */
 export interface PipelineOptions {
