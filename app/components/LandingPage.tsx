@@ -224,7 +224,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <ThemeToggle />
+            <ThemeToggle labelClass="hidden sm:inline" />
             {isLoggedIn ? (
               <>
                 <SignOutButton
@@ -285,6 +285,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                   {label}
                 </a>
               ))}
+              <ThemeToggle className="justify-start rounded-lg px-3 py-2.5 text-gray-300" />
               {!isLoggedIn && (
                 <Link
                   href="/login"

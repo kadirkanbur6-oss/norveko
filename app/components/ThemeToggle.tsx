@@ -35,19 +35,22 @@ export function useTheme(): Theme {
   return useSyncExternalStore(subscribe, current, () => "dark");
 }
 
-/** Compact icon button (navbars). */
-export default function ThemeToggle({ className = "" }: { className?: string }) {
+/** Navbar button: icon plus the mode it switches to, so nobody has to hunt for it.
+ *  `labelClass` controls when the words show (e.g. "hidden sm:inline"). */
+export default function ThemeToggle({ className = "", labelClass = "" }: { className?: string; labelClass?: string }) {
   const theme = useTheme();
   const next: Theme = theme === "light" ? "dark" : "light";
+  const label = next === "light" ? "Light mode" : "Dark mode";
   return (
     <button
       type="button"
       onClick={() => setTheme(next)}
       aria-label={`Switch to ${next} mode`}
       title={`Switch to ${next} mode`}
-      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-gray-400 transition hover:bg-white/[0.06] hover:text-white ${className}`}
+      className={`flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-2.5 text-sm text-gray-400 transition hover:bg-white/[0.06] hover:text-white ${className}`}
     >
-      {theme === "light" ? <Moon size={17} aria-hidden /> : <Sun size={17} aria-hidden />}
+      {next === "dark" ? <Moon size={16} aria-hidden /> : <Sun size={16} aria-hidden />}
+      <span className={labelClass}>{label}</span>
     </button>
   );
 }
