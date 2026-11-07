@@ -598,8 +598,8 @@ test("subscriptions: plan margins and monthly grant dates", async () => {
     const net = p.priceUsd * 0.95 - 0.5;
     const credits = p.period === "year" ? p.credits * 12 : p.credits;
     const margin = 1 - (credits * REVENUE_PER_CREDIT_USD * 0.6) / net; // cost share = 60% of baseline revenue
-    // Yearly ("2 months free") is the one deliberate discount; everything else keeps 40%.
-    const floor = p.period === "year" ? 0.3 : 0.4;
+    // Yearly ("1 month free") is the one deliberate discount; everything else keeps 40%.
+    const floor = p.period === "year" ? 0.35 : 0.4;
     assert.ok(margin >= floor, `${p.id}: ${(margin * 100).toFixed(1)}%`);
     // …and the inviter's referral reward never pushes it below that.
     const grants = p.period === "year" ? 12 : 1;

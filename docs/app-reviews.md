@@ -184,8 +184,8 @@ yükleme için bu form şart.
 - [ ] **Live API anahtarı** (`PADDLE_API_KEY`): Paddle API anahtarlarının süresi doluyor (sandbox'taki 1 Kasım'da
       doldu, "Manage plan" çalışmadı). Live anahtarda izinler: Customer portal sessions W, Customers W,
       Subscriptions W, Transactions W, Adjustments R, Prices R, Products R; bitiş tarihini takvime yaz.
-- [ ] Live'da abonelik ürünleri: "Norveko Creator plan" ($6/hafta, $19/ay, $190/yıl) ve "Norveko Pro plan"
-      ($15/hafta, $49/ay, $490/yıl), max adet 1 → id'leri Vercel `NEXT_PUBLIC_PADDLE_PRICE_{CREATOR,PRO}_{WEEK,MONTH,YEAR}`.
+- [ ] Live'da abonelik ürünleri: "Norveko Creator plan" ($6/hafta, $19/ay, $209/yıl) ve "Norveko Pro plan"
+      ($15/hafta, $49/ay, $539/yıl), max adet 1 → id'leri Vercel `NEXT_PUBLIC_PADDLE_PRICE_{CREATOR,PRO}_{WEEK,MONTH,YEAR}`.
 - [ ] Bildirim hedefine `subscription.*` (created/updated/activated/canceled/paused/resumed/past_due) da eklenecek.
 - [ ] Gerçek kartla $9'lık Starter al → kredi eklendi mi, filigran kalktı mı → Paddle'dan iade et →
       kredi geri düştü mü.

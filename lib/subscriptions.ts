@@ -13,7 +13,7 @@
 // Margin (Business-pack baseline $0.0111/credit at 40%): weekly and monthly plans
 // keep ≥ 40% even when all their credits are spent. Yearly plans are the one
 // deliberate exception (5 Nov 2026, Yağmur: "yearly can flex, it must be
-// attractive"): "2 months free" ≈ 31–33%. Referral rewards never push a plan
+// attractive"): "1 month free" (11 × monthly) ≈ 37–39%. Referral rewards never push a plan
 // below its own margin (rewardFor caps them). Tests in captions.test.ts.
 
 export type SubTier = "creator" | "pro";
@@ -75,10 +75,10 @@ const plan = (
 export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   plan("creator", "week", 6, 380),
   plan("creator", "month", 19, 1500),
-  plan("creator", "year", 190, 1500),
+  plan("creator", "year", 209, 1500),
   plan("pro", "week", 15, 1000),
   plan("pro", "month", 49, 4000),
-  plan("pro", "year", 490, 4000),
+  plan("pro", "year", 539, 4000),
 ];
 
 export const TIER_COPY: Record<SubTier, { tagline: string; idealFor: string; featured: boolean }> = {
@@ -97,7 +97,7 @@ export const TIER_COPY: Record<SubTier, { tagline: string; idealFor: string; fea
 export const PERIOD_LABEL: Record<SubPeriod, { toggle: string; per: string; note?: string }> = {
   week: { toggle: "Weekly", per: "week" },
   month: { toggle: "Monthly", per: "month" },
-  year: { toggle: "Yearly", per: "year", note: "2 months free" },
+  year: { toggle: "Yearly", per: "year", note: "1 month free" },
 };
 
 /** Plans that can be bought (a price ID is configured). */
