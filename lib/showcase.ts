@@ -31,6 +31,32 @@ const OWNER = "92779a9c-cb1c-47a8-bcc8-e07f4de6dc56";
 // 4 Nov 2026 (Kadir: "one English video per mode, labelled, global"): the four studios.
 export const SHOWCASE_VIDEOS: ShowcaseVideo[] = [
   {
+    // 7 Nov 2026: ad-quality 60 s narrated short (hybrid, image to video, brand kit).
+    id: "93ad4e8c-9e77-4f4b-8fad-b548186f0198",
+    mode: "Narrated video",
+    title: "The Wow! Signal: What Did Big Ear Hear?",
+    idea: "The Wow! Signal: in 1977 a radio telescope caught a 72-second burst from deep space that has never been heard again.",
+    language: "English",
+    seconds: 62,
+    orientation: "vertical",
+    videoPath: `${OWNER}/93ad4e8c-9e77-4f4b-8fad-b548186f0198/final.mp4`,
+    poster: { bucket: "thumbnails", path: "93ad4e8c-9e77-4f4b-8fad-b548186f0198.jpg" },
+    made: "Researched script · AI narrator · cinematic visuals + AI clips · music · subtitles",
+  },
+  {
+    // 7 Nov 2026: ad-quality 60 s narrated short (hybrid, image to video, brand kit).
+    id: "285a652e-bff8-4329-bda4-011ad509a21d",
+    mode: "Narrated video",
+    title: "The Book Yale Still Cannot Read",
+    idea: "The Voynich Manuscript: a 600-year-old book written in a language nobody has ever been able to read, filled with plants that do not exist.",
+    language: "English",
+    seconds: 62,
+    orientation: "vertical",
+    videoPath: `${OWNER}/285a652e-bff8-4329-bda4-011ad509a21d/final.mp4`,
+    poster: { bucket: "thumbnails", path: "285a652e-bff8-4329-bda4-011ad509a21d.jpg" },
+    made: "Researched script · AI narrator · cinematic visuals + AI clips · music · subtitles",
+  },
+  {
     id: "fd43ddfc-4b45-486d-8b0f-b9b1dfe43f91",
     mode: "Narrated video",
     title: "The Three Lighthouse Keepers Who Vanished",
