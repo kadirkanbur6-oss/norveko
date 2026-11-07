@@ -617,14 +617,14 @@ test("subscriptions: plan margins and monthly grant dates", async () => {
   assert.equal(addOneMonth(new Date("2026-12-20T00:00:00Z")).toISOString(), "2027-01-20T00:00:00.000Z");
 });
 
-test("pricing: skits keep ≥ 30% margin, talk and swap ≥ 40% (5 Nov 2026)", async () => {
+test("pricing: skits keep ≥ 35% margin, talk and swap ≥ 40% (7 Nov 2026)", async () => {
   const s = await import("./steps");
   const p = await import("../skit/pricing");
   const margin = (credits: number, usd: number) => 1 - usd / (credits * s.REVENUE_PER_CREDIT_USD);
   // 4 speaking shots as 6 s Veo clips, 2 silent, 3 characters, 2 sfx, 1 crowd (render credits excluded).
   const usd = p.SKIT_PLAN_COST + p.SKIT_IMAGE_COST * 9 + 24 * p.SKIT_TALK_VIDEO_COST_PER_SECOND + 2 * p.SKIT_CLIP_COST + 2 * p.SKIT_SFX_COST + p.SKIT_CROWD_COST;
   const skit = p.skitCreditsFor({ characters: 3, shots: 6, speakingSeconds: 0, talkClipSeconds: 24, silentShots: 2, sfx: 2, crowd: 1, totalSeconds: 30 }) - s.RENDER_CREDITS_PER_30S;
-  assert.ok(margin(skit, usd) >= 0.3 - 1e-9, `skit margin ${margin(skit, usd)}`);
+  assert.ok(margin(skit, usd) >= 0.35 - 1e-9, `skit margin ${margin(skit, usd)}`);
   assert.ok(margin(skit, usd) < 0.4, "skits are priced below the usual 40 %");
   assert.ok(margin(p.talkCreditsFor(10), 10 * s.AVATAR_COST_PER_SECOND + p.SKIT_IMAGE_COST) >= 0.4 - 1e-9);
   assert.ok(margin(p.swapCreditsFor(300, 10) - s.RENDER_CREDITS_PER_30S, (300 / 16) * p.SWAP_COST_PER_16_FRAMES) >= 0.4 - 1e-9);

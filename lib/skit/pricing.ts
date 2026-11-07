@@ -13,11 +13,12 @@ export const SKIT_PLAN_COST = 0.03;
 export const SKIT_CROWD_COST = 0.02;
 
 /**
- * Skits sell at a 30 % gross margin instead of the usual 40 % (5 Nov 2026, Kadir):
- * talking shots moved to Veo 3.1 Fast, which doubled their cost, and a skit should
- * still fit in a Starter pack. Talk and swap keep the 40 %.
+ * Skits sell at a 35 % gross margin instead of the usual 40 %. They started at 30 %
+ * (5 Nov 2026, Kadir: talking shots moved to Veo 3.1 Fast, which doubled their cost,
+ * and a skit should still fit in a Starter pack); raised to 35 % on 7 Nov 2026
+ * (Yağmur: margins were too thin to cover the fixed costs). Talk and swap keep 40 %.
  */
-export const SKIT_MARGIN = 0.3;
+export const SKIT_MARGIN = 0.35;
 
 /** Speaking shots made with Veo 3.1 Fast (video + voice together), per second of clip. */
 export const SKIT_TALK_VIDEO_COST_PER_SECOND = 0.15;
