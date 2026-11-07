@@ -102,6 +102,10 @@ export async function queueRerender(
     status: "pending",
     render_id: null,
     provider_status: null,
+    // The previous render's timestamps would make the heartbeat poll this one before it is
+    // submitted ("Render id is missing", 7 Nov 2026).
+    submitted_at: null,
+    last_polled_at: null,
     error: null,
     ...(changes.musicId ? { music_id: changes.musicId } : {}),
     version,
@@ -169,6 +173,8 @@ export async function retryFailedRender(
     status: "pending",
     render_id: null,
     provider_status: null,
+    submitted_at: null,
+    last_polled_at: null,
     error: null,
     retries: retries + 1,
     // Refunded by failJob if this try fails too.
