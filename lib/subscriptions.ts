@@ -15,6 +15,11 @@
 // deliberate exception (5 Nov 2026, Yağmur: "yearly can flex, it must be
 // attractive"): "1 month free" (11 × monthly) ≈ 37–39%. Referral rewards never push a plan
 // below its own margin (rewardFor caps them). Tests in captions.test.ts.
+//
+// 7 Nov 2026 (Yağmur: "between mid and high vs competitors"): prices raised ~50%
+// (Creator $29/mo, Pro $69/mo, yearly = 11× monthly) while credits stay the same,
+// so real margins are well above the 40% baseline. REVENUE_PER_CREDIT_USD in
+// steps.ts is intentionally NOT changed (it only converts provider cost to credits).
 
 export type SubTier = "creator" | "pro";
 export type SubPeriod = "week" | "month" | "year";
@@ -73,12 +78,12 @@ const plan = (
 };
 
 export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
-  plan("creator", "week", 6, 380),
-  plan("creator", "month", 19, 1500),
-  plan("creator", "year", 209, 1500),
-  plan("pro", "week", 15, 1000),
-  plan("pro", "month", 49, 4000),
-  plan("pro", "year", 539, 4000),
+  plan("creator", "week", 9, 380),
+  plan("creator", "month", 29, 1500),
+  plan("creator", "year", 319, 1500),
+  plan("pro", "week", 21, 1000),
+  plan("pro", "month", 69, 4000),
+  plan("pro", "year", 759, 4000),
 ];
 
 export const TIER_COPY: Record<SubTier, { tagline: string; idealFor: string; featured: boolean }> = {

@@ -176,7 +176,7 @@ yükleme için bu form şart.
 ## 4. Paddle — canlıya geçiş
 
 - [ ] Paddle **Live** hesabında doğrulama (kimlik + web sitesi) onaylı.
-- [ ] Live'da 3 ürün/fiyat: Starter 500 kredi $9 · Pro 2000 kredi $29 · Business 5000 kredi $59 (sandbox'takiyle aynı).
+- [ ] Live'da 3 ürün/fiyat: Starter 500 kredi $12 · Growth (id pro) 2000 kredi $39 · Business 5000 kredi $89 (sandbox'takiyle aynı).
 - [ ] Vercel env (Production): `NEXT_PUBLIC_PADDLE_ENV=production`, `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN` (live), `NEXT_PUBLIC_PADDLE_PRICE_STARTER/PRO/BUSINESS` (live), `PADDLE_API_KEY` (live),
       `PADDLE_WEBHOOK_SECRET` (live). Değişken adları `.env.example`'da.
 - [ ] Live **Notification destination:** `https://norveko.app/api/webhooks/paddle`, olaylar
@@ -184,10 +184,10 @@ yükleme için bu form şart.
 - [ ] **Live API anahtarı** (`PADDLE_API_KEY`): Paddle API anahtarlarının süresi doluyor (sandbox'taki 1 Kasım'da
       doldu, "Manage plan" çalışmadı). Live anahtarda izinler: Customer portal sessions W, Customers W,
       Subscriptions W, Transactions W, Adjustments R, Prices R, Products R; bitiş tarihini takvime yaz.
-- [ ] Live'da abonelik ürünleri: "Norveko Creator plan" ($6/hafta, $19/ay, $209/yıl) ve "Norveko Pro plan"
-      ($15/hafta, $49/ay, $539/yıl), max adet 1 → id'leri Vercel `NEXT_PUBLIC_PADDLE_PRICE_{CREATOR,PRO}_{WEEK,MONTH,YEAR}`.
+- [ ] Live'da abonelik ürünleri: "Norveko Creator plan" ($9/hafta, $29/ay, $319/yıl) ve "Norveko Pro plan"
+      ($21/hafta, $69/ay, $759/yıl), max adet 1 → id'leri Vercel `NEXT_PUBLIC_PADDLE_PRICE_{CREATOR,PRO}_{WEEK,MONTH,YEAR}`.
 - [ ] Bildirim hedefine `subscription.*` (created/updated/activated/canceled/paused/resumed/past_due) da eklenecek.
-- [ ] Gerçek kartla $9'lık Starter al → kredi eklendi mi, filigran kalktı mı → Paddle'dan iade et →
+- [ ] Gerçek kartla $12'lik Starter al → kredi eklendi mi, filigran kalktı mı → Paddle'dan iade et →
       kredi geri düştü mü.
 
 > Env değerlerini sen gir; ben ekranı açıp hangi alana ne gireceğini gösteririm.

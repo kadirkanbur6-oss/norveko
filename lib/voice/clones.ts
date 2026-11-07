@@ -46,3 +46,30 @@ export const READING_SCRIPT =
   "What happened to them? Some say a giant wave. Others tell stranger stories. " +
   "Today, I'm going to walk you through what we actually know, step by step, " +
   "and let you decide for yourself. Stay with me until the end, because the last clue changes everything.";
+
+/**
+ * Who may CREATE a clone (7 Nov 2026, Yağmur): an active Pro subscription or a
+ * Business pack purchase (each clone takes one of the shared ElevenLabs voice
+ * slots). Beta/internal accounts are handled by the caller. Existing clones keep
+ * working for everyone. Read errors fail closed (no new clone).
+ */
+export async function cloneEntitled(db: SupabaseClient, userId: string): Promise<boolean> {
+  try {
+    const { data: subs } = await db
+      .from("subscriptions")
+      .select("plan_id,status")
+      .eq("user_id", userId)
+      .in("status", ["active", "trialing", "past_due"]);
+    if ((subs ?? []).some((r: { plan_id: string }) => String(r.plan_id).startsWith("pro-"))) return true;
+    const { data: packs } = await db
+      .from("credit_purchases")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("status", "completed")
+      .eq("package_id", "business")
+      .limit(1);
+    return (packs?.length ?? 0) > 0;
+  } catch {
+    return false;
+  }
+}

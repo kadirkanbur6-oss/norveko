@@ -28,7 +28,7 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     id: "starter",
     name: "Starter",
     credits: 500,
-    priceUsd: 9,
+    priceUsd: 12,
     paddlePriceId:
       process.env.NEXT_PUBLIC_PADDLE_PRICE_STARTER ?? SANDBOX_PRICE_IDS.starter,
   },
@@ -38,7 +38,7 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     // one-time pack is not confused with the "Pro" subscription plan.
     name: "Growth",
     credits: 2000,
-    priceUsd: 29,
+    priceUsd: 39,
     paddlePriceId:
       process.env.NEXT_PUBLIC_PADDLE_PRICE_PRO ?? SANDBOX_PRICE_IDS.pro,
   },
@@ -46,7 +46,7 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     id: "business",
     name: "Business",
     credits: 5000,
-    priceUsd: 59,
+    priceUsd: 89,
     paddlePriceId:
       process.env.NEXT_PUBLIC_PADDLE_PRICE_BUSINESS ?? SANDBOX_PRICE_IDS.business,
   },

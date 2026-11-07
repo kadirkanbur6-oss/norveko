@@ -135,7 +135,7 @@ export const WHY_NORVEKO: Array<{ title: string; items: Array<{ feature: string;
   {
     title: "A video that sounds and looks right",
     items: [
-      { feature: "Narrators and native voices in 29 languages", detail: "Or your own cloned voice" },
+      { feature: "Narrators and native voices in 29 languages", detail: "Or your own cloned voice (Pro plan or Business pack)" },
       { feature: "Visuals made from each scene", detail: "AI clips, stills, stock and archive photos" },
       { feature: "Music chosen by the story's tone", detail: "Licensed tracks, credit added for you" },
       { feature: "Word-timed subtitles", detail: "Correct casing in every language, .srt and .vtt" },

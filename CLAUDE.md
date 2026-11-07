@@ -128,8 +128,8 @@ hybrid-Kling 473. Her adımın ödenen kredisi `initialStepsState` ile adıma ya
 satın alma anındaki fiyatla yapılır. Test: "every item keeps ≥ 60% margin".
 Sabit aylık giderler (7 Kasım güncel): Vercel Pro $20, Supabase Pro $25, ElevenLabs
 **Creator $22** (Starter değil; 121k kredi, 30 özel ses yuvası), alan adı ~$1, Sentry Free $0 →
-**~$68/ay ≈ ayda ~10.200 kredi** (≈2 Business paketi) satışla başa baş. Paket fiyatları (Paddle) değişmedi: Starter 500/$9, Pro 2000/$29,
-Business 5000/$59.
+**~$68/ay ≈ ayda ~10.200 kredi** (≈2 Business paketi) satışla başa baş. Paket fiyatları (7 Kasım 2026, Yağmur "rakiplere göre orta-yüksek"): Starter 500/**$12**, Growth 2000/**$39**,
+Business 5000/**$89** (kod güncel; **Paddle ürün fiyatları elle güncellenmeli**). Abonelikler: Creator $9 hf / $29 ay / $319 yıl, Pro $21 hf / $69 ay / $759 yıl (yıllık = 11× aylık); krediler aynı kaldı → gerçek marj %40 tabanının üstünde. `REVENUE_PER_CREDIT_USD` bilerek $59/5000 bazında bırakıldı (yalnız maliyet→kredi çevirisi). **Ses klonu oluşturma** yalnız aktif Pro abonelik veya Business paket alanlara (+beta/iç hesaplar; `cloneEntitled`, lib/voice/clones.ts); mevcut klonlar çalışmaya devam eder.
 - **Planlar & ücretsiz deneme filigranı (31 Ekim)**: `lib/plans.ts` her paketin ne
   aldırdığını `steps.ts` fiyatlarından hesaplar (`planDetails`, `JOB_COSTS`,
   `PAID_INCLUDES`, `FREE_TRIAL_RULES`, `COMPARISON`) → `/billing` ayrıntılı paket
@@ -259,7 +259,7 @@ Business 5000/$59.
   `/chat` `?job=` yoksa açılışta bunu sorar ve ilerlemeyi geri getirir (başka sayfaya gidip dönünce render ekranı
   kaybolmuyor). `PipelineProgress onStatus` → iş sürerken Generate / "Run again" / "Start a new generation" gizli/pasif.
 - **Abonelikler (1 Kasım, sandbox'ta ✅ — Pro yıllık test satın alma: +4.000 kredi, sonraki aylık kredi 1 Aralık, "Manage plan" portalı açılıyor)**: `lib/subscriptions.ts` (Creator/Pro × haftalık/aylık/
-  yıllık: $6/380 hf, $19/1.500 ay, $209/1.500 her ay; Pro $15/1.000 hf, $49/4.000 ay, $539/4.000 her ay; yıllık
+  yıllık (7 Kasım'dan itibaren güncel fiyatlar yukarıda: Creator $9/$29/$319, Pro $21/$69/$759): $6/380 hf, $19/1.500 ay, $209/1.500 her ay; Pro $15/1.000 hf, $49/4.000 ay, $539/4.000 her ay; yıllık
   "1 ay bedava" (11× aylık, 7 Kasım'da $190/$490'dan) ≈ %37–39 kâr, diğerleri ≥ %40). Paddle price id: env `NEXT_PUBLIC_PADDLE_PRICE_{CREATOR,PRO}_{WEEK,MONTH,YEAR}`,
   sandbox yedekleri `SANDBOX` (Paddle sandbox ürünleri "Norveko Creator plan"/"Norveko Pro plan", max adet 1). `lib/subscriptions-server.ts`: webhook
   `transaction.completed` + `subscriptionId` → `grantForTransaction` (credit_purchases satırı = idempotent; iade/filigran/

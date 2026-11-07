@@ -6,8 +6,8 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/supabase-server";
 import { adminDb } from "@/lib/youtube/oauth";
-import { isWatermarkExempt, hasPurchased } from "@/lib/pipeline/watermark-policy";
-import { cleanVoiceName, CLONE_MAX_BYTES, CLONE_MAX_FILES, CLONE_MIN_BYTES, READING_SCRIPT, userClone } from "@/lib/voice/clones";
+import { isWatermarkExempt } from "@/lib/pipeline/watermark-policy";
+import { cloneEntitled, cleanVoiceName, CLONE_MAX_BYTES, CLONE_MAX_FILES, CLONE_MIN_BYTES, READING_SCRIPT, userClone } from "@/lib/voice/clones";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ const unauthorized = () => NextResponse.json({ success: false, error: "Not authe
 
 async function allowed(db: ReturnType<typeof adminDb>, userId: string): Promise<boolean> {
   if (!process.env.ELEVENLABS_API_KEY) return false;
-  return isWatermarkExempt(userId) || (await hasPurchased(db, userId));
+  return isWatermarkExempt(userId) || (await cloneEntitled(db, userId));
 }
 
 export async function GET() {
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
   if (!user) return unauthorized();
   const db = adminDb();
   if (!(await allowed(db, user.id))) {
-    return NextResponse.json({ success: false, error: "Your own voice is available after your first credit pack." }, { status: 403 });
+    return NextResponse.json({ success: false, error: "Cloning your own voice is available on the Pro plan or with a Business pack." }, { status: 403 });
   }
   const form = await req.formData().catch(() => null);
   if (!form) return NextResponse.json({ success: false, error: "Upload failed. Please try again." }, { status: 400 });

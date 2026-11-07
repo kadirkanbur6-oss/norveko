@@ -161,7 +161,7 @@ const FAQS = [
   },
   {
     q: "Which languages and voices?",
-    a: `Scripts and narration in ${LANGUAGE_OPTIONS.length} languages. Norveko narrators speak all of them; native voice artists are available per language, and you can clone your own voice on any paid plan.`,
+    a: `Scripts and narration in ${LANGUAGE_OPTIONS.length} languages. Norveko narrators speak all of them; native voice artists are available per language, and you can clone your own voice on the Pro plan or a Business pack.`,
   },
   {
     q: "Which AI models does Norveko use?",
@@ -194,7 +194,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
               operatingSystem: "Web",
               description:
                 "AI content workspace for creators: turn one idea into a researched, narrated video, an animated skit or a talking character, then publish to YouTube, TikTok and Instagram.",
-              offers: { "@type": "AggregateOffer", priceCurrency: "USD", lowPrice: "9", highPrice: "49" },
+              offers: { "@type": "AggregateOffer", priceCurrency: "USD", lowPrice: "12", highPrice: "89" },
             },
             {
               "@context": "https://schema.org",
