@@ -117,16 +117,36 @@ export const FREE_TRIAL_RULES = [
   "Subscribe or buy any pack and the watermark disappears, also from what you already made",
 ];
 
-/** "Why Norveko" comparison. The right column is deliberately generic. */
-export const COMPARISON: Array<{ feature: string; detail: string }> = [
-  { feature: "Web research before writing", detail: "Live sources, cited in your project" },
-  { feature: "Automatic fact check", detail: "Every sentence checked against the research" },
-  { feature: "Story editor pass", detail: "One connected story, no filler, no contradictions" },
-  { feature: "Native voice artists in 29 languages", detail: "Plus multilingual Norveko narrators" },
-  { feature: "Clips animated from each scene's image", detail: "Visuals match what the narrator says" },
-  { feature: "Music chosen by the story's tone", detail: "Licensed tracks, credit added for you" },
-  { feature: "Word-timed, language-aware subtitles", detail: "Correct casing in every language, exportable .srt/.vtt" },
-  { feature: "Skits, talking characters and character swaps", detail: "Lip-synced voices, crowd shouts and music" },
-  { feature: "Plans or pay as you go, pack credits never expire", detail: "Weekly, monthly or yearly, cancel anytime" },
-  { feature: "Automatic refunds on failed steps", detail: "You only pay for what was delivered" },
+/**
+ * "Why Norveko": what Norveko itself does, grouped by what it is for. 7 Nov 2026: the old
+ * table claimed a "Typical AI tool" lacked each feature; that claim could not be checked,
+ * so the page now only states what we ship.
+ */
+export const WHY_NORVEKO: Array<{ title: string; items: Array<{ feature: string; detail: string }> }> = [
+  {
+    title: "A story you can trust",
+    items: [
+      { feature: "Web research before writing", detail: "Live sources, cited in your project" },
+      { feature: "Automatic fact check", detail: "Every sentence checked against the research" },
+      { feature: "Story editor pass", detail: "One connected story, no filler, no contradictions" },
+      { feature: "You approve the script first", detail: "Fix names, facts and scenes before anything is made" },
+    ],
+  },
+  {
+    title: "A video that sounds and looks right",
+    items: [
+      { feature: "Narrators and native voices in 29 languages", detail: "Or your own cloned voice" },
+      { feature: "Visuals made from each scene", detail: "AI clips, stills, stock and archive photos" },
+      { feature: "Music chosen by the story's tone", detail: "Licensed tracks, credit added for you" },
+      { feature: "Word-timed subtitles", detail: "Correct casing in every language, .srt and .vtt" },
+    ],
+  },
+  {
+    title: "Fair to use",
+    items: [
+      { feature: "Everything is yours to download", detail: "MP4, thumbnail, voice-over and subtitle files" },
+      { feature: "Automatic refunds on failed steps", detail: "You only pay for what was delivered" },
+      { feature: "Pack credits never expire", detail: "Or a weekly, monthly or yearly plan, cancel anytime" },
+    ],
+  },
 ];

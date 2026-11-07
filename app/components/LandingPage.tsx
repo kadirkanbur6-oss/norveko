@@ -11,7 +11,7 @@ import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
 import SignOutButton from "./SignOutButton";
 import BrandMark from "./BrandMark";
 import { SUPPORT_EMAIL } from "@/app/lib/legal";
-import { COMPARISON, FREE_CREDITS_BUY, FREE_TRIAL_CREDITS, PAID_INCLUDES, TRIAL_VIDEO_PUBLIC, planDetails } from "@/lib/plans";
+import { FREE_CREDITS_BUY, FREE_TRIAL_CREDITS, TRIAL_VIDEO_PUBLIC, WHY_NORVEKO, planDetails } from "@/lib/plans";
 import SubscriptionPlans from "./SubscriptionPlans";
 import { CREATIVE_COSTS } from "@/lib/skit/pricing";
 import {
@@ -29,8 +29,6 @@ import {
   Shuffle,
   Check,
   CheckCircle2,
-  Crown,
-  Minus,
   ChevronDown,
   Globe,
   Menu,
@@ -539,69 +537,38 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
         </div>
       </section>
 
-      {/* 2d. WHY NORVEKO — premium comparison (ticks only for what we actually ship) */}
+      {/* 2d. WHY NORVEKO: only what we ship, no claims about other tools */}
       <section id="compare" className="mx-auto max-w-6xl scroll-mt-20 px-4 pb-12 sm:px-6">
         <Reveal>
           <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[#14142a] via-[#0e0e1c] to-[#0a0a12] p-5 shadow-[0_30px_80px_-30px_rgba(99,102,241,0.45)] sm:p-8">
             <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-purple-600/20 blur-3xl" />
             <div aria-hidden className="pointer-events-none absolute -bottom-28 -left-20 h-72 w-72 rounded-full bg-blue-600/15 blur-3xl" />
 
-            <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-yellow-400/30 bg-yellow-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-yellow-200">
-                  <Crown size={12} /> Why Norveko
-                </span>
-                <h2 className="mt-3 text-2xl font-black tracking-tight text-white sm:text-3xl">
-                  Built for videos people trust and finish.
-                </h2>
-                <p className="mt-2 max-w-xl text-sm text-gray-400">
-                  Most AI video generators stop at &ldquo;a script and some stock clips&rdquo;. Norveko researches, checks and edits the story before a single frame is made.
-                </p>
-              </div>
+            <div className="relative">
+              <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">Why Norveko</h2>
+              <p className="mt-2 max-w-xl text-sm text-gray-400">
+                Norveko researches, checks and edits the story before a single frame is made, and you approve it first.
+              </p>
             </div>
 
-            <div className="relative mt-6 overflow-hidden rounded-2xl border border-white/10">
-              <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 border-b border-white/10 bg-white/[0.04] px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400 sm:gap-x-6 sm:px-6">
-                <span>Feature</span>
-                <span className="flex w-16 items-center justify-center gap-1 text-white sm:w-24">
-                  <BrandMark size={16} /> Norveko
-                </span>
-                <span className="w-16 text-center sm:w-28">Typical AI tool</span>
-              </div>
-              {COMPARISON.map((row, i) => (
-                <div
-                  key={row.feature}
-                  className={`grid grid-cols-[1fr_auto_auto] items-center gap-x-3 px-4 py-3 sm:gap-x-6 sm:px-6 ${
-                    i % 2 ? "bg-white/[0.015]" : ""
-                  }`}
-                >
-                  <span className="min-w-0">
-                    <span className="block text-sm font-medium text-white">{row.feature}</span>
-                    <span className="block text-xs text-gray-400">{row.detail}</span>
-                  </span>
-                  <span className="flex w-16 justify-center sm:w-24">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/15 ring-1 ring-emerald-400/40">
-                      <CheckCircle2 size={18} className="text-emerald-400" aria-label="Included in Norveko" />
-                    </span>
-                  </span>
-                  <span className="flex w-16 justify-center sm:w-28">
-                    <Minus size={16} className="text-gray-600" aria-label="Usually not included" />
-                  </span>
+            <div className="relative mt-6 grid gap-4 lg:grid-cols-3">
+              {WHY_NORVEKO.map((group) => (
+                <div key={group.title} className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+                  <h3 className="text-sm font-semibold text-white">{group.title}</h3>
+                  <ul className="mt-3 space-y-3">
+                    {group.items.map((row) => (
+                      <li key={row.feature} className="flex gap-2.5">
+                        <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-400" aria-hidden />
+                        <span className="min-w-0">
+                          <span className="block text-sm text-gray-100">{row.feature}</span>
+                          <span className="block text-xs text-gray-400">{row.detail}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               ))}
             </div>
-
-            <div className="relative mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {PAID_INCLUDES.slice(0, 3).map((line) => (
-                <p key={line} className="flex gap-2 text-xs text-gray-300">
-                  <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-emerald-400" />
-                  {line}
-                </p>
-              ))}
-            </div>
-            <p className="relative mt-4 text-[11px] text-gray-400">
-              &ldquo;Typical AI tool&rdquo; reflects what is commonly offered by script-to-video generators; individual tools vary.
-            </p>
           </div>
         </Reveal>
       </section>
