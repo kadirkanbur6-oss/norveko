@@ -1123,3 +1123,18 @@ test("character swap: MP4 length, frames and rotation without ffmpeg; priced per
   assert.equal(info.vertical, true);
   assert.throws(() => readMp4(Buffer.from("not a video at all")));
 });
+
+test("buildEdit: a clip slot longer than the clip can fill (0.5× floor) shows the scene still for the rest, not black", () => {
+  const edit = buildEdit({
+    slots: [{ index: 0, sceneNumber: 1, kind: "kling", start: 0, length: 11.84, prompt: "p", status: "succeed", url: "https://cdn/clip.mp4", sourceSeconds: 5, imageUrl: "https://cdn/still.png" }] as any,
+    orientation: "vertical",
+    totalSeconds: 11.84,
+    voiceoverUrl: "https://cdn/v.mp3",
+  } as any) as any;
+  const clips = edit.timeline.tracks.flatMap((t: any) => t.clips).filter((c: any) => c.asset.type === "video" || c.asset.type === "image");
+  const video = clips.find((c: any) => c.asset.type === "video");
+  const still = clips.find((c: any) => c.asset.src === "https://cdn/still.png");
+  assert.equal(video.length, 10);
+  assert.equal(still.start, 10);
+  assert.equal(still.length, 1.84);
+});

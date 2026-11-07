@@ -352,7 +352,23 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
       // transcode: Kling stores portrait clips with a rotation tag that the
       // renderer otherwise ignores (clips came out sideways); pre-processing
       // bakes the rotation in.
-      clips.push({ ...base, asset: { type: "video", src: v.url, volume: 0, speed, transcode: true } });
+      // A clip can only be slowed to 0.5×: in a longer slot (10 s slots of long videos, the end of a
+      // Short cut from one) it runs out and the rest of the slot rendered black. Show the scene
+      // still for the remainder instead (image→video clips keep their still in `imageUrl`).
+      const maxPlay = Math.round(src * 2 * 100) / 100;
+      if (v.imageUrl && slot.length > maxPlay + 0.3) {
+        clips.push({ ...base, length: maxPlay, transition: { in: "fade" }, asset: { type: "video", src: v.url, volume: 0, speed, transcode: true } });
+        clips.push({
+          ...base,
+          start: Math.round((slot.start + maxPlay) * 100) / 100,
+          length: Math.round((slot.length - maxPlay) * 100) / 100,
+          transition: { out: "fade" },
+          asset: { type: "image", src: v.imageUrl },
+          effect: KEN_BURNS[i % KEN_BURNS.length],
+        });
+      } else {
+        clips.push({ ...base, asset: { type: "video", src: v.url, volume: 0, speed, transcode: true } });
+      }
     } else {
       clips.push({ ...base, asset: { type: "image", src: v.url }, effect: KEN_BURNS[i % KEN_BURNS.length] });
     }

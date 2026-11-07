@@ -136,18 +136,18 @@ export const SHORTS_DEMO = {
     poster: { bucket: "thumbnails", path: "4ff09d16-537c-42c2-9aba-930abb919933.jpg" },
   },
   picks: [
-    { from: 0.11, to: 36.62, title: "The Voyage of the Mary Celeste", hook: "A ship sailed without its people" },
-    { from: 56.75, to: 88.74, title: "The Mary Celeste Was Found Empty at Sea", hook: "The ship sailed without a crew" },
-    { from: 88.39, to: 133.02, title: "What Investigators Found Aboard the Mary Celeste", hook: "Had the crew feared sinking?" },
-    { from: 133.01, to: 169.5, title: "The Missing Lifeboat and a Possible Explanation", hook: "Did they fear the ship was sinking?" },
+    { from: 0.13, to: 36.31, title: "The Mary Celeste Set Sail With 10 People Aboard", hook: "The ship returned without its people" },
+    { from: 36.35, to: 88.39, title: "The Mary Celeste Was Found Sailing Without a Crew", hook: "A ship sailed with nobody aboard" },
+    { from: 88.39, to: 132.84, title: "What Investigators Found Aboard the Mary Celeste", hook: "The ship wasn't in perfect order" },
+    { from: 133.01, to: 169.34, title: "Could a Faulty Pump Explain the Mary Celeste Mystery?", hook: "Did the crew fear sinking?" },
   ],
   /** Index in `picks` that was rendered. */
   chosen: 1,
   short: {
-    id: "397bfbad-93e5-4e8b-88cc-b66ba4d9d382",
-    seconds: 32,
-    videoPath: `${OWNER}/397bfbad-93e5-4e8b-88cc-b66ba4d9d382/final.mp4`,
-    poster: { bucket: "thumbnails", path: "397bfbad-93e5-4e8b-88cc-b66ba4d9d382.jpg" },
+    id: "ecf78371-b3c0-4bc0-8a98-004ae4da13ea",
+    seconds: 52,
+    videoPath: `${OWNER}/ecf78371-b3c0-4bc0-8a98-004ae4da13ea/final.mp4`,
+    poster: { bucket: "thumbnails", path: "ecf78371-b3c0-4bc0-8a98-004ae4da13ea.jpg" },
   },
 } as const;
 
