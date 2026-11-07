@@ -54,17 +54,37 @@ export default function ModeGuide({
     <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.02]">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          setOpen((v) => !v);
+          // Opening from the closed card starts the video straight away.
+          if (!open) window.setTimeout(() => void ref.current?.play().catch(() => {}), 50);
+        }}
         aria-expanded={open}
         aria-controls="mode-guide-panel"
-        className="flex min-h-11 w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm text-gray-300 transition hover:text-white"
+        className="group flex w-full items-center gap-3 p-2.5 text-left transition hover:bg-white/[0.03]"
       >
-        <span className="inline-flex items-center gap-2">
-          <PlayCircle size={16} className="text-blue-300" aria-hidden />
-          How the modes work
-          <span className="text-xs text-gray-400">52 s video</span>
+        {!open && (
+          <span className="nv-dark relative aspect-video w-24 shrink-0 overflow-hidden rounded-lg bg-black sm:w-28">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/tutorial/norveko-modes-poster.jpg" alt="" className="h-full w-full object-cover opacity-90 transition group-hover:opacity-100" />
+            <span className="absolute inset-0 flex items-center justify-center">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-black shadow">
+                <PlayCircle size={18} aria-hidden />
+              </span>
+            </span>
+          </span>
+        )}
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2 text-sm font-medium text-gray-100">
+            {open && <PlayCircle size={16} className="text-blue-300" aria-hidden />}
+            How the modes work
+            <span className="text-xs font-normal text-gray-400">52 s video</span>
+          </span>
+          {!open && (
+            <span className="mt-0.5 block text-xs text-gray-400">New here? Watch which mode makes what, then pick one above.</span>
+          )}
         </span>
-        {open ? <ChevronUp size={16} aria-hidden /> : <ChevronDown size={16} aria-hidden />}
+        <span className="shrink-0 text-gray-400">{open ? <ChevronUp size={16} aria-hidden /> : <ChevronDown size={16} aria-hidden />}</span>
       </button>
       {open && (
         <div id="mode-guide-panel" className="border-t border-white/10 p-3">

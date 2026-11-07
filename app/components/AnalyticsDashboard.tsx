@@ -6,6 +6,7 @@ import StatsCards from "./StatsCards";
 import AiInsights from "./AiInsights";
 import RecentVideos from "./RecentVideos";
 import DashboardHighlights from "./DashboardHighlights";
+import TutorialButton from "./TutorialButton";
 import { getUserChannelContext } from "../../lib/supabase-server";
 
 export default async function AnalyticsDashboard() {
@@ -21,6 +22,9 @@ export default async function AnalyticsDashboard() {
 
         {/* Creator Studio overview: quick action, credits, recent projects */}
         <DashboardHighlights />
+
+        {/* Short walkthrough of what each AI Workspace mode makes. */}
+        <TutorialButton variant="card" label="How Norveko works" className="mt-6" />
 
         {/* YouTube analytics — only shown if channel is connected */}
         {channelId ? (

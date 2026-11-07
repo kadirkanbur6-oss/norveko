@@ -9,6 +9,7 @@ import ShowcaseGallery from "./ShowcaseGallery";
 import HeroBackground from "./HeroBackground";
 import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
 import ThemeToggle from "./ThemeToggle";
+import TutorialButton from "./TutorialButton";
 import SignOutButton from "./SignOutButton";
 import BrandMark from "./BrandMark";
 import { SUPPORT_EMAIL } from "@/app/lib/legal";
@@ -340,12 +341,10 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                   Start free with {FREE_TRIAL_CREDITS} credits
                   <ArrowRight size={18} />
                 </Link>
-                <a
-                  href="#workflow"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-6 py-3.5 font-semibold text-gray-300 transition hover:border-white/20 hover:text-white"
-                >
-                  See how it works
-                </a>
+                <TutorialButton
+                  label="See how it works"
+                  className="justify-center rounded-xl border border-white/10 bg-white/[0.03] px-6 py-3.5 font-semibold text-gray-300 hover:border-white/20"
+                />
               </div>
 
               <p className="mt-3 text-xs text-gray-400">
@@ -636,6 +635,10 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             </Reveal>
           ))}
         </div>
+
+        <Reveal>
+          <TutorialButton variant="card" label="Watch the 52-second tour" className="mx-auto mt-8 max-w-xl" />
+        </Reveal>
       </section>
 
       {/* 8. LANGUAGES (compact strip) */}
