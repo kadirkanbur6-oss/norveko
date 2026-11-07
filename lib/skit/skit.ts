@@ -824,7 +824,7 @@ export function prepareReanimate(row: SkitRow): { plan: SkitRow["plan"]; shots: 
 
 /** Re-cut with music switched on or off (free). */
 /** Music-only re-cuts included with a skit; later ones cost the render price (5 Nov 2026). */
-export const FREE_SKIT_RECUTS = 3;
+export const FREE_SKIT_RECUTS = 1;
 
 /** Credits the NEXT re-cut costs (0 while free ones are left). */
 export function recutCredits(plan: SkitPlan): number {

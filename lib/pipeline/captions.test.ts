@@ -655,8 +655,9 @@ test("cost fixes (6 Nov 2026): long videos get one free re-render, retries re-ch
   const { STOCK_SLOT_CREDITS, RENDER_CREDITS_PER_30S } = await import("./steps");
   const short = { video: { total_seconds: 60 }, render: { version: 2 } };
   const long = { video: { total_seconds: 600 }, render: { version: 1 } };
-  assert.equal(freeRerendersFor(short), 3);
-  assert.equal(rerenderCredits(short), 0, "third re-render of a Short is still free");
+  assert.equal(freeRerendersFor(short), 1);
+  assert.equal(rerenderCredits(short), RENDER_CREDITS_PER_30S * 2, "third re-render of a Short is charged (one free, 7 Nov)");
+  assert.equal(rerenderCredits({ video: { total_seconds: 60 }, render: { version: 0 } }), 0, "first re-render is free");
   assert.equal(freeRerendersFor(long), 1);
   assert.equal(rerenderCredits(long), RENDER_CREDITS_PER_30S * 20, "second re-render of a 10-minute video is charged");
   assert.equal(retryRenderCredits({ render: { credits: 320 } }), 320);

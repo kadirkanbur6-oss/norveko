@@ -2,7 +2,7 @@
 // "Edit video" for finished full videos:
 //   GET  → the timeline (one entry per ~5 s slot), current music + subtitle style
 //   POST {action:"regenerate", index, prompt?} → new AI image for one slot (charged like a still)
-//   POST {action:"rerender", musicId?, captionStyle?} → render again with the edits (first 3 free, then the render price; capped)
+//   POST {action:"rerender", musicId?, captionStyle?} → render again with the edits (first one free, then the render price; capped)
 //   POST {action:"restoreScene", index, url} → put back an earlier picture of a slot (free)
 //   POST {action:"useVersion", url} → make an earlier render the project's video again (free)
 

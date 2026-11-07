@@ -11,8 +11,8 @@ import { isCaptionStyle } from "./visual-styles";
 import { RENDER_CREDITS_PER_30S } from "./steps";
 
 export const MAX_RERENDERS = 10;
-/** Re-renders included with a Short (≤ 60 s); later ones are charged (rerenderCredits). */
-export const FREE_RERENDERS = 3;
+/** Re-renders included with every video (7 Nov 2026, Yağmur: one free, then the render price via rerenderCredits). */
+export const FREE_RERENDERS = 1;
 /**
  * Long videos (> 60 s) include one free re-render (6 Nov 2026): a 10-minute render
  * costs us ≈ $2.04, so three free ones cost more than the whole video earns.
