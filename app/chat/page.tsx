@@ -602,7 +602,7 @@ function ChatContent() {
           <PageHeader title="AI Workspace" subtitle="Write what you want to make: narrated videos, skits, talking characters or swaps" />
 
           {/* While a narrated video is being made or waits for approval, only its progress shows. */}
-          <div className={`mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6 ${mode === "video" && jobRunning ? "hidden" : ""}`}>
+          <div className={`mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6 ${mode === "video" && jobId && (jobRunning || !formOpen) ? "hidden" : ""}`}>
             <div className="flex items-center justify-between">
               <label htmlFor="workspace-idea" className="text-sm text-gray-400">
                 What do you want to make?
@@ -675,6 +675,63 @@ function ChatContent() {
           )}
 
           {mode === "video" && (<>
+          <div ref={progressRef} className="scroll-mt-20">
+            {jobId && <PipelineProgress
+                jobId={jobId}
+                quietUntilLoaded={!jobKnownRunning}
+                onStatus={(st) => {
+                  setJobStatus(st);
+                  // Done or failed: bring the form and its Generate button back so the next video can
+                  // start right here; the finished result stays below (6 Nov 2026, Yağmur).
+                  //                   // Finished or failed: the result stays first on the page (7 Nov 2026, Yağmur: "en üstte
+                  // gözüksün"); the form stays folded under it and the buttons below start the next one.
+                  if (st && st !== "running" && st !== "queued") {
+                    setFormOpen(false);
+                    setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
+                  }
+                }}
+              />}
+          </div>
+
+          {jobId && jobRunning && (
+            <p className="mt-4 text-sm text-gray-400">
+              You can start your next video when this one finishes. It keeps going if you leave this page. Come back here or check Projects.
+            </p>
+          )}
+
+          {jobId && !jobRunning && (
+            <div className="mt-4 flex flex-wrap gap-4">
+              <button
+                onClick={() => {
+                  setJobId(null);
+                  setJobStatus(null);
+                  setError("");
+                  setFormOpen(true);
+                  router.replace(pathname, { scroll: false });
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/30"
+              >
+                Run again with the same idea &amp; settings
+              </button>
+              <button
+                onClick={() => {
+                  setJobId(null);
+                  setJobStatus(null);
+                  setIdea("");
+                  setNotes("");
+                  setNotesOpen(false);
+                  setError("");
+                  setFormOpen(true);
+                  router.replace(pathname, { scroll: false });
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+              >
+                Make a new video
+              </button>
+            </div>
+          )}
 
           {jobId && !formOpen && !jobRunning && (
             <button
@@ -1629,61 +1686,6 @@ function ChatContent() {
 
           </div>
 
-          <div ref={progressRef} className="scroll-mt-20">
-            {jobId && <PipelineProgress
-                jobId={jobId}
-                quietUntilLoaded={!jobKnownRunning}
-                onStatus={(st) => {
-                  setJobStatus(st);
-                  // Done or failed: bring the form and its Generate button back so the next video can
-                  // start right here; the finished result stays below (6 Nov 2026, Yağmur).
-                  // A failure stays on top instead: the form stays folded and the error scrolls into view.
-                  if (st === "failed") {
-                    setTimeout(() => progressRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-                  } else if (st && st !== "running" && st !== "queued") setFormOpen(true);
-                }}
-              />}
-          </div>
-
-          {jobId && jobRunning && (
-            <p className="mt-4 text-sm text-gray-400">
-              You can start your next video when this one finishes. It keeps going if you leave this page. Come back here or check Projects.
-            </p>
-          )}
-
-          {jobId && !jobRunning && (
-            <div className="mt-4 flex flex-wrap gap-4">
-              <button
-                onClick={() => {
-                  setJobId(null);
-                  setJobStatus(null);
-                  setError("");
-                  setFormOpen(true);
-                  router.replace(pathname, { scroll: false });
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-                className="text-sm text-blue-300 transition hover:text-blue-200"
-              >
-                Run again with the same idea &amp; settings
-              </button>
-              <button
-                onClick={() => {
-                  setJobId(null);
-                  setJobStatus(null);
-                  setIdea("");
-                  setNotes("");
-                  setNotesOpen(false);
-                  setError("");
-                  setFormOpen(true);
-                  router.replace(pathname, { scroll: false });
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-                className="text-sm text-gray-500 transition hover:text-white"
-              >
-                Start a new generation
-              </button>
-            </div>
-          )}
           </>)}
         </div>
       </main>
