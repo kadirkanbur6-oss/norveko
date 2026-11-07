@@ -31,8 +31,14 @@ import {
   Shuffle,
   Check,
   CheckCircle2,
+  CalendarClock,
   ChevronDown,
+  Film,
   Globe,
+  Languages,
+  Scissors,
+  SlidersHorizontal,
+  UserRound,
   Menu,
   PlayCircle,
   X,
@@ -333,6 +339,14 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                 publish to YouTube, TikTok or Instagram from the same place.
               </p>
 
+              <ul className="mt-5 flex max-w-lg flex-wrap gap-2 text-xs text-gray-300" aria-label="What Norveko can make">
+                {["Narrated videos up to 10 min", "Animated skits", "Talking characters", "You as a character", "29 languages"].map((t) => (
+                  <li key={t} className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">
+                    {t}
+                  </li>
+                ))}
+              </ul>
+
               <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
                 <Link
                   href="/signup"
@@ -458,6 +472,59 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                 <p className="mt-2 flex-1 text-sm leading-relaxed text-gray-400">{c.body}</p>
                 <p className="mt-4 text-xs text-gray-400">{c.cost}</p>
               </Link>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* 2b'. MADE FOR PUBLISHING — what Norveko does beyond one video (7 Nov 2026) */}
+      <section id="features" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6">
+        <Reveal>
+          <SectionTitle
+            eyebrow="Built for publishing"
+            title="Everything after the first video, too"
+            subtitle="Put yourself in the story, make it in other languages, cut Shorts, publish on a schedule. All in the same place."
+          />
+        </Reveal>
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[
+            {
+              icon: UserRound,
+              title: "You in the video",
+              body: "Upload photos of yourself or add a historical figure or a cartoon character. They appear in the scenes, on screen as a presenter, or in a skit.",
+            },
+            {
+              icon: Film,
+              title: "Documentaries up to 10 minutes",
+              body: "Long stories with cited research, real archive photos from Wikimedia Commons (public domain and CC BY only), stock footage and animated maps.",
+            },
+            {
+              icon: Languages,
+              title: "One click into another language",
+              body: `Translate a finished video: new script, voice and subtitles in any of ${LANGUAGE_OPTIONS.length} languages, with the visuals reused so it costs a fraction of a new video.`,
+            },
+            {
+              icon: Scissors,
+              title: "Long video to Shorts",
+              body: "Norveko picks the strongest 25–58 second moments of a long video and turns each into a vertical Short with its own hook and cover.",
+            },
+            {
+              icon: CalendarClock,
+              title: "Series on autopilot",
+              body: "Set a topic and a schedule. Norveko writes each new episode, makes it and publishes it for you: scheduled on YouTube, straight away on TikTok. Available on paid plans.",
+            },
+            {
+              icon: SlidersHorizontal,
+              title: "Edit after it renders",
+              body: "A timeline lets you re-time scenes, swap a picture, upload your own clip or fix a subtitle without starting over, and your brand kit keeps logo and colors consistent.",
+            },
+          ].map((f, i) => (
+            <Reveal key={f.title} delay={80 + (i % 3) * 80}>
+              <div className="h-full rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+                <f.icon size={22} className="text-purple-300" aria-hidden />
+                <h3 className="mt-4 text-lg font-semibold text-white">{f.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-gray-400">{f.body}</p>
+              </div>
             </Reveal>
           ))}
         </div>
