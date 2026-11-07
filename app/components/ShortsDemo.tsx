@@ -65,7 +65,7 @@ export default function ShortsDemo() {
 
       <div className="rounded-2xl border border-white/10 bg-[var(--nv-panel)] p-4">
         <p className="mb-3 flex items-center gap-2 text-sm font-semibold">
-          <Scissors size={16} className="text-blue-300" /> The AI picks moments that work on their own
+          <Scissors size={16} className="shrink-0 text-blue-300" /> AI picks standalone moments
         </p>
         <ol className="space-y-2">
           {picks.map((p, i) => (
