@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 import sharp from "sharp";
 import { requireUser } from "@/lib/supabase-server";
 import { adminDb } from "@/lib/youtube/oauth";
-import { cleanOutro, isHexColor, LOGO_MAX_BYTES, LOGO_MAX_PX, rowToKit } from "@/lib/brand/kit";
+import { cleanName, cleanOutro, isHexColor, LOGO_MAX_BYTES, LOGO_MAX_PX, rowToKit } from "@/lib/brand/kit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,14 +40,21 @@ export async function PUT(req: Request) {
     return NextResponse.json({ success: false, error: "Pick a colour like #7C3AED." }, { status: 400 });
   }
   const db = adminDb();
-  const { error } = await db.from("brand_kits").upsert({
+  const row: Record<string, unknown> = {
     user_id: user.id,
     color: isHexColor(body.color) ? body.color.toUpperCase() : null,
     outro_text: cleanOutro(body.outroText),
+    brand_name: cleanName(body.name),
     logo_on_video: body.logoOnVideo !== false,
     logo_on_thumbnail: body.logoOnThumbnail !== false,
     updated_at: new Date().toISOString(),
-  });
+  };
+  let { error } = await db.from("brand_kits").upsert(row);
+  // Before the brand_name column exists (supabase/README.md), save everything else.
+  if (error && /brand_name/.test(error.message)) {
+    delete row.brand_name;
+    ({ error } = await db.from("brand_kits").upsert(row));
+  }
   if (error) return NextResponse.json({ success: false, error: "Couldn't save your brand kit." }, { status: 500 });
   return NextResponse.json({ success: true, kit: rowToKit(await load(db, user.id)) });
 }
@@ -83,6 +90,7 @@ export async function POST(req: Request) {
     logo_path: path,
     color: previous?.color ?? null,
     outro_text: previous?.outro_text ?? null,
+    ...(previous && "brand_name" in previous ? { brand_name: previous.brand_name ?? null } : {}),
     logo_on_video: previous?.logo_on_video ?? true,
     logo_on_thumbnail: previous?.logo_on_thumbnail ?? true,
     updated_at: new Date().toISOString(),

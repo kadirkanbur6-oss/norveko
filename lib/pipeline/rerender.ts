@@ -74,6 +74,18 @@ export async function queueRerender(
     if (!isCaptionStyle(changes.captionStyle)) throw new Error("Unknown subtitle style.");
     options.captionStyle = changes.captionStyle;
   }
+  // The name under the logo follows the current brand kit, so videos made before it was set
+  // pick it up on their next render. Logo, colour and end card stay as the video was made.
+  const snap = options.brand as Record<string, unknown> | undefined;
+  if (snap && typeof snap === "object" && snap.videoLogo === true) {
+    const { data: kitRow } = await db.from("brand_kits").select("*").eq("user_id", userId).maybeSingle();
+    const { cleanName } = await import("@/lib/brand/kit");
+    const name = cleanName((kitRow as Record<string, unknown> | null)?.brand_name);
+    const next = { ...snap };
+    if (name) next.name = name;
+    else delete next.name;
+    options.brand = next;
+  }
 
   // Keep earlier renders (each version has its own file) so the creator can go back.
   const history = (Array.isArray(steps.render.history) ? (steps.render.history as RenderVersion[]) : []).filter((h) => h.url !== steps.render.video_url);

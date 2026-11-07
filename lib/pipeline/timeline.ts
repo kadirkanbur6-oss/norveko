@@ -502,6 +502,39 @@ export function buildEdit(input: EditInput): Record<string, unknown> {
         },
       ],
     });
+    // Brand name in small spaced capitals, centred under the logo (7 Nov 2026, Yağmur).
+    // Logo box: vertical 184 px at (43, 96), horizontal 130 px at (77, 43).
+    const name = input.brand.name?.trim();
+    if (name) {
+      const vertical = orientation === "vertical";
+      const logoPx = vertical ? 0.17 * size.width : 0.12 * size.height;
+      const logoLeft = 0.04 * size.width;
+      const logoBottom = (vertical ? 0.05 : 0.04) * size.height + logoPx;
+      const boxWidth = Math.round(logoPx + (vertical ? 140 : 120));
+      const boxHeight = vertical ? 54 : 42;
+      const left = logoLeft + logoPx / 2 - boxWidth / 2;
+      tracks.unshift({
+        clips: [
+          {
+            asset: {
+              type: "rich-text",
+              text: name.toUpperCase(),
+              font: { family: "Montserrat SemiBold", size: vertical ? 30 : 22, color: "#FFFFFF", weight: 600 },
+              style: { letterSpacing: vertical ? 7 : 5, lineHeight: 1 },
+              shadow: { offsetX: 0, offsetY: 2, blur: 8, color: "#000000", opacity: 0.75 },
+              align: { horizontal: "center", vertical: "top" },
+            },
+            start: 0,
+            length: totalSeconds,
+            width: boxWidth,
+            height: boxHeight,
+            position: "topLeft",
+            offset: { x: left / size.width, y: -(logoBottom + (vertical ? 10 : 8)) / size.height },
+            opacity: 0.92,
+          },
+        ],
+      });
+    }
   }
 
   // Topmost layer (Shotstack draws track 0 on top), inside the safe area:

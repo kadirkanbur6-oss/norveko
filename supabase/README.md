@@ -348,6 +348,12 @@ create table if not exists public.brand_kits (
 alter table public.brand_kits enable row level security;
 ```
 
+7 Nov 2026: name written under the video logo.
+
+```sql
+alter table public.brand_kits add column if not exists brand_name text;
+```
+
 ## Cloned voices (`voice_clones`, 31 Oct 2026)
 
 One per user, written only by `/api/voices/clone` (service role). The voice itself lives in the

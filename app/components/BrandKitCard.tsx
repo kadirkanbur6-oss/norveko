@@ -11,6 +11,7 @@ interface Kit {
   logoUrl: string | null;
   color: string | null;
   outroText: string | null;
+  name?: string | null;
   logoOnVideo: boolean;
   logoOnThumbnail: boolean;
 }
@@ -23,6 +24,7 @@ export default function BrandKitCard() {
   const [loaded, setLoaded] = useState(false);
   const [color, setColor] = useState<string>("");
   const [outro, setOutro] = useState("");
+  const [name, setName] = useState("");
   const [logoOnVideo, setLogoOnVideo] = useState(true);
   const [logoOnThumbnail, setLogoOnThumbnail] = useState(true);
   const [busy, setBusy] = useState<"" | "save" | "logo" | "remove">("");
@@ -33,6 +35,7 @@ export default function BrandKitCard() {
     setKit(k);
     setColor(k?.color ?? "");
     setOutro(k?.outroText ?? "");
+    setName(k?.name ?? "");
     setLogoOnVideo(k?.logoOnVideo ?? true);
     setLogoOnThumbnail(k?.logoOnThumbnail ?? true);
   }
@@ -52,7 +55,7 @@ export default function BrandKitCard() {
       const res = await fetch("/api/brand", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ color: color || null, outroText: outro, logoOnVideo, logoOnThumbnail }),
+        body: JSON.stringify({ color: color || null, outroText: outro, name, logoOnVideo, logoOnThumbnail }),
       });
       const d = await res.json();
       if (!d.success) throw new Error(d.error || "Couldn't save.");
@@ -162,6 +165,22 @@ export default function BrandKitCard() {
                   </label>
                 </div>
               )}
+              {kit?.logoUrl && logoOnVideo && (
+                <div className="mt-4">
+                  <label htmlFor="brand-name" className="mb-2 block text-xs text-gray-400">
+                    Name under the logo (optional)
+                  </label>
+                  <input
+                    id="brand-name"
+                    value={name}
+                    maxLength={24}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Your channel or brand"
+                    className="w-full max-w-xs rounded-xl border border-white/10 bg-[var(--nv-field)] p-3 text-sm text-white outline-none focus:border-purple-400/50"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Written in small spaced capitals under the logo in your videos.</p>
+                </div>
+              )}
             </div>
 
             {/* Colour */}
@@ -208,7 +227,7 @@ export default function BrandKitCard() {
                 placeholder="Follow @yourchannel for more"
                 className="w-full rounded-xl border border-white/10 bg-[var(--nv-field)] p-3 text-sm text-white outline-none focus:border-purple-400/50"
               />
-              <p className="mt-1 text-xs text-gray-500">Shown over the last 2.5 seconds of a video when you tick Shown over the last 2.5 seconds. Leave empty for none. {outro.length}/{OUTRO_MAX}ldquo;Add an end cardShown over the last 2.5 seconds. Leave empty for none. {outro.length}/{OUTRO_MAX}rdquo; before generating. {outro.length}/{OUTRO_MAX}</p>
+              <p className="mt-1 text-xs text-gray-500">Shown over the last 2.5 seconds of a video when you tick &ldquo;Add an end card&rdquo; before generating. {outro.length}/{OUTRO_MAX}</p>
             </div>
 
             <button
@@ -226,7 +245,12 @@ export default function BrandKitCard() {
           <div aria-hidden className="relative mx-auto h-[320px] w-[180px] overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-slate-700 via-slate-800 to-slate-950">
             {kit?.logoUrl && logoOnVideo && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={kit.logoUrl} alt="" className="absolute left-2 top-3 max-h-8 max-w-[52px] object-contain" />
+              <img src={kit.logoUrl} alt="" className="absolute left-2 top-3 h-8 w-8 object-contain" />
+            )}
+            {kit?.logoUrl && logoOnVideo && name.trim() && (
+              <span className="absolute left-0 top-[46px] w-12 text-center text-[5px] font-semibold uppercase tracking-[0.3em] text-white/90 [text-shadow:0_1px_2px_#000]">
+                {name.trim()}
+              </span>
             )}
             <div
               className="absolute inset-x-3 top-[30%] rounded-lg px-2 py-1.5 text-center text-[11px] font-extrabold uppercase leading-tight"
