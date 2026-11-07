@@ -58,7 +58,7 @@ function ShowcaseCard({
             setPlaying(false);
             onActivate(null);
           }}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-contain"
         />
         {!playing && (
           <button

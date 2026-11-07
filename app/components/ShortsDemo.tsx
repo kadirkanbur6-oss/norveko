@@ -30,7 +30,7 @@ function Player({ src, posterUrl, label, aspect }: { src: string; posterUrl?: st
         playsInline
         controls={on}
         onPlay={() => setOn(true)}
-        className="h-full w-full object-cover"
+        className="h-full w-full object-contain"
       />
       {!on && (
         <button
