@@ -242,17 +242,12 @@ function ChatContent() {
   const fullVideoSupported = Boolean(FULL_VIDEO_DURATIONS[duration]);
   const videoCost = VIDEO_CLIP_CREDITS * VIDEO_MAX_CLIPS;
 
-  // Restore an in-progress job from the URL and the unsent draft from
-  // sessionStorage, so a reload never loses the user's work.
+  // Restore an in-progress job from the URL and the last settings from sessionStorage.
   useEffect(() => {
     const job = searchParams.get("job");
     const draft = readDraft();
     const id = setTimeout(() => {
-      if (typeof draft.idea === "string") setIdea(draft.idea);
-      if (typeof draft.notes === "string" && draft.notes) {
-        setNotes(draft.notes);
-        setNotesOpen(true);
-      }
+      // The idea box starts empty on every load; only the settings come back (7 Nov 2026, Yağmur).
       if (typeof draft.platform === "string") setPlatform(draft.platform);
       if (typeof draft.style === "string") setStyle(draft.style);
       if (typeof draft.duration === "string") setDuration(draft.duration);
@@ -315,12 +310,12 @@ function ChatContent() {
 
   useEffect(() => {
     try {
-      const draft: Draft = { idea, notes, platform, style, duration, language, includeVoiceover, includeResearch, includeSubtitles, includeFullVideo, footage: footagePick, clipMode, voiceId, orientation: orientationPick, template: templateId, visualStyle, captionStyle: captionStyleId };
+      const draft: Draft = { idea: "", notes: "", platform, style, duration, language, includeVoiceover, includeResearch, includeSubtitles, includeFullVideo, footage: footagePick, clipMode, voiceId, orientation: orientationPick, template: templateId, visualStyle, captionStyle: captionStyleId };
       sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     } catch {
       // storage unavailable
     }
-  }, [idea, notes, platform, style, duration, language, includeVoiceover, includeResearch, includeSubtitles, includeFullVideo, footagePick, clipMode, voiceId, orientationPick, templateId, visualStyle, captionStyleId]);
+  }, [platform, style, duration, language, includeVoiceover, includeResearch, includeSubtitles, includeFullVideo, footagePick, clipMode, voiceId, orientationPick, templateId, visualStyle, captionStyleId]);
 
   // Keep orientation in step with the platform until the user picks one explicitly.
   function choosePlatform(next: string) {
