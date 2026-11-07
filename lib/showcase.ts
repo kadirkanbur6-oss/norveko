@@ -31,6 +31,19 @@ const OWNER = "92779a9c-cb1c-47a8-bcc8-e07f4de6dc56";
 // 4 Nov 2026 (Kadir: "one English video per mode, labelled, global"): the four studios.
 export const SHOWCASE_VIDEOS: ShowcaseVideo[] = [
   {
+    // 7 Nov 2026: the Voynich video translated to Spanish with one click (new narration, subtitles and cover).
+    id: "109f14d7-c2b8-4f6f-b7b3-b13afaef73a0",
+    mode: "Narrated video",
+    title: "El libro que Yale aún no puede leer",
+    idea: "One click translation of the Voynich video: new Spanish script, narration, subtitles and cover",
+    language: "Español",
+    seconds: 61,
+    orientation: "vertical",
+    videoPath: `${OWNER}/109f14d7-c2b8-4f6f-b7b3-b13afaef73a0/final.mp4`,
+    poster: { bucket: "thumbnails", path: "109f14d7-c2b8-4f6f-b7b3-b13afaef73a0.jpg" },
+    made: "One-click translation · new narration, subtitles and cover · same visuals",
+  },
+  {
     // 7 Nov 2026: ad-quality 60 s narrated short (hybrid, image to video, brand kit).
     id: "93ad4e8c-9e77-4f4b-8fad-b548186f0198",
     mode: "Narrated video",
