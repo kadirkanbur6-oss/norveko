@@ -130,8 +130,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Cut on the narration's own pauses: a little air before the first word, after the last.
     const total = Number(source.steps.video?.total_seconds) || cues[cues.length - 1].end;
     const next: Pick[] = picks.map((p) => {
-      const from = Math.max(0, Math.round((cues[p.firstCue].start - 0.15) * 100) / 100);
-      const to = Math.min(total, Math.round((cues[p.lastCue].end + 0.5) * 100) / 100, from + SHORT_MAX_SECONDS);
+      // Air must never reach into a neighbouring cue: with a gap under 0.5 s the cut used to land
+      // inside the next line and end the Short mid-sentence (7 Nov 2026, Mary Celeste Short).
+      const prevEnd = p.firstCue > 0 ? cues[p.firstCue - 1].end : 0;
+      const nextStart = p.lastCue + 1 < cues.length ? cues[p.lastCue + 1].start : Infinity;
+      const lead = Math.max(0, Math.min(0.15, (cues[p.firstCue].start - prevEnd) / 2));
+      const tail = Math.max(0, Math.min(0.5, (nextStart - cues[p.lastCue].end) / 2));
+      const from = Math.max(0, Math.round((cues[p.firstCue].start - lead) * 100) / 100);
+      const to = Math.min(total, Math.round((cues[p.lastCue].end + tail) * 100) / 100, from + SHORT_MAX_SECONDS);
       return { from, to, title: p.title, hook: p.hook };
     });
     const { error } = await db
