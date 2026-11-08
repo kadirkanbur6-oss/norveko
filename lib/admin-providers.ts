@@ -269,6 +269,17 @@ export async function loadProviders(db: SupabaseClient, now = Date.now()): Promi
   return { providers, balancesTableMissing, errors };
 }
 
-export function alertsOf(providers: ProviderStatus[]) {
-  return providers.filter((p) => p.level === "warn" || p.level === "out").map((p) => ({ id: p.id, label: p.label, level: p.level, reason: p.reason }));
+/** A typed-in balance older than this is only a guess (usage is subtracted from it). */
+export const STALE_BALANCE_DAYS = 7;
+
+export function alertsOf(providers: ProviderStatus[], now = Date.now()) {
+  const low = providers
+    .filter((p) => p.level === "warn" || p.level === "out")
+    .map((p) => ({ id: p.id, label: p.label, level: p.level as string, reason: p.reason }));
+  // Providers whose balance is typed by hand (OpenAI, Gemini, Shotstack): ask for a fresh number
+  // once the last one is a week old (8 Nov 2026).
+  const stale = providers
+    .filter((p) => p.asOf && now - Date.parse(p.asOf) > STALE_BALANCE_DAYS * 86_400_000)
+    .map((p) => ({ id: p.id, label: p.label, level: "stale" as string, reason: `Balance last typed ${Math.floor((now - Date.parse(p.asOf as string)) / 86_400_000)} days ago, update it` }));
+  return [...low, ...stale];
 }
