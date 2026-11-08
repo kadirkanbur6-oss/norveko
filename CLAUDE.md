@@ -515,6 +515,14 @@ Business 5000/**$89** (kod güncel; **Paddle ürün fiyatları elle güncellenme
 
 ## 7. Bekleyen İşler (öncelik sırasıyla)
 
+**LANSMAN KONTROL LİSTESİ (8 Kasım denetimi, Yağmur "yarın lansman"):**
+1. **Paddle canlıda SANDBOX** (`NEXT_PUBLIC_PADDLE_ENV`, `Paddle.Environment.get()` = sandbox; Kadir'in hesabında sahte "Pro yearly" abonelik var). Gerçek ödeme için Paddle live doğrulaması (şirket/LEGAL_NAME) + canlı ürün/fiyatlar + Vercel'de `NEXT_PUBLIC_PADDLE_ENV=production`, `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`, `PADDLE_API_KEY`, `PADDLE_WEBHOOK_SECRET` (canlı) ve **`NEXT_PUBLIC_PADDLE_PRICE_*` 9 fiyat id'si** (yoksa kod sandbox id'lerine düşer → canlı checkout açılmaz) + webhook URL. Olmadan: kayıt + 70 ücretsiz kredi çalışır, satın alma çalışmaz.
+2. **Supabase e-posta limiti 2/saat** (yerleşik SMTP; Auth → Emails → SMTP Settings kapalı). 3. kayıttan itibaren doğrulama maili gitmez. Çözüm: Resend (ücretsiz 3k/ay) → Vercel DNS'e Resend DKIM/SPF (ImprovMX SPF'i ile birleştir: `v=spf1 include:spf.improvmx.com include:amazonses.com ~all`), Supabase Custom SMTP aç, Rate Limits → emails/h 100+.
+3. **Supabase Auth Site URL `http://localhost:3000`** → `https://norveko.app`; Redirect URLs'e `https://norveko.app/**` ekle (`?next=` taşıyan callback'ler için). (Claude değiştiremedi: paylaşılan kaynak izni.)
+4. **Feature gate'ler**: Vercel'de `GENERATION_ENABLED` (lansman kilidi) kaldır/`true`; `FULL_VIDEO_ENABLED=true` + `NEXT_PUBLIC_FULL_VIDEO_ENABLED=true` (yoksa landing MP4 vaat eder ama halk yalnız içerik paketi alır; /chat "Private beta" rozeti de bu env ile gizlenir) → redeploy.
+5. Vercel'den artık gereksiz env'ler: `GOOGLE_OAUTH_CLIENT_ID/SECRET`, `TIKTOK_CLIENT_KEY/SECRET`, `YOUTUBE_TOKEN_KEY` (yoksa zaten yok).
+6. ✅ Kontrol edildi: kayıt kredisi trigger'ı 70; pg_cron heartbeat (dakikalık) ve series-tick (saatlik) son çalışma başarılı; tsc/lint/66 test temiz; Google GIS girişi canlı; 3 bağlantı tablosu silindi.
+
 **Lansmandan önce:** ~~YouTube/TikTok/Instagram "yayınla" metinleri~~ (8 Kasım: özellik kaldırıldı, metinler "hazır MP4" oldu). "Why Norveko" artık yalnız bizde olanı listeler (`WHY_NORVEKO` plans.ts; eski "Typical AI tool" sütunu kaldırıldı). Rakip isimli karşılaştırma yalnız ayrı "vs" sayfalarında, rakibin kendi fiyat sayfası + kaynak + kontrol tarihiyle.
 
 Kod dışı (Kadir): ~~TikTok demo videosu / Google doğrulaması / YouTube API audit~~ (8 Kasım: yayın özelliği kaldırıldı, gerek kalmadı; Supabase tabloları + Vercel env + Google/TikTok uygulamaları kapatılacak). Paddle live, Vercel/Supabase Pro.
