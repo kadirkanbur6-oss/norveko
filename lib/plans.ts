@@ -110,7 +110,7 @@ export const FREE_CREDITS_BUY = (() => {
 export const FREE_TRIAL_RULES = [
   `${FREE_TRIAL_CREDITS} free credits on signup, no card needed (≈ ${FREE_CREDITS_BUY})`,
   ...(TRIAL_VIDEO_PUBLIC ? ["One finished 30-second video, free, once per account"] : []),
-  "Every feature unlocked so you can judge the quality",
+  "Free credits make one fixed setup (30-second Stock + AI video, Norveko narrator); any pack or plan unlocks every length, style, voice and studio",
   "One free trial per person; temporary emails aren't eligible",
   "Thumbnails and videos carry a small Norveko watermark",
   "Finished videos are kept for 7 days, so download what you want to keep",

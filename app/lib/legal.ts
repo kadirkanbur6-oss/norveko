@@ -6,4 +6,4 @@ export const LEGAL_NAME = "Norveko";
 export const BRAND_NAME = "Norveko";
 export const SUPPORT_EMAIL = "support@norveko.app";
 export const WEBSITE_URL = "https://norveko.app";
-export const LEGAL_LAST_UPDATED = "October 29, 2026";
+export const LEGAL_LAST_UPDATED = "November 8, 2026";

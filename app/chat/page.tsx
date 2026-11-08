@@ -1421,14 +1421,16 @@ function ChatContent() {
                       <span className="flex items-center gap-2 text-sm font-semibold text-white">
                         <Film size={15} className="text-purple-300" />
                         Render the full video
-                        <span className="rounded-full border border-purple-400/30 bg-purple-500/10 px-2 py-0.5 text-[11px] font-medium text-purple-200">
-                          Private beta
-                        </span>
+                        {process.env.NEXT_PUBLIC_FULL_VIDEO_ENABLED !== "true" && (
+                          <span className="rounded-full border border-purple-400/30 bg-purple-500/10 px-2 py-0.5 text-[11px] font-medium text-purple-200">
+                            Private beta
+                          </span>
+                        )}
                       </span>
                       <span className="mt-0.5 block text-xs text-gray-500">
                         {fullVideoSupported
                           ? "Finished MP4 with narration, AI visuals and optional subtitles, ready to upload."
-                          : "Full videos are 30 or 60 seconds for now. Longer durations give you the script, voiceover and thumbnail."}
+                          : "This length gives you the script, voiceover and thumbnail; pick 30 s, 60 s, 3 min or 10 min for a finished MP4."}
                       </span>
                     </span>
                   </label>

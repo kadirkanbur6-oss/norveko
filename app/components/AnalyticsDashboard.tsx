@@ -40,10 +40,10 @@ export default async function AnalyticsDashboard() {
             <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
               <div>
                 <h3 className="text-lg font-semibold text-white">
-                  Connect your YouTube channel
+                  Add your YouTube channel
                 </h3>
                 <p className="mt-1.5 max-w-md text-sm text-gray-400">
-                  Track your channel stats right here. You can always do this later in Settings.
+                  Paste your channel ID in Settings to track its stats right here. You can always do this later.
                 </p>
               </div>
               <Link
