@@ -10,6 +10,8 @@ import { createClient } from "@supabase/supabase-js";
 const BUCKETS = ["thumbnails", "voiceovers", "videos"] as const;
 // Deleted in this order so FK-style dependencies (if any) resolve.
 const USER_TABLES = [
+  // youtube/tiktok/instagram_connections: left over from direct publishing (removed 8 Nov 2026);
+  // the rows are still wiped here until the tables are dropped (supabase/README.md).
   "youtube_connections",
   "tiktok_connections",
   "instagram_connections",
@@ -146,23 +148,6 @@ export async function deleteAccount(userId: string): Promise<void> {
   const legacy = (jobs ?? []).flatMap((j) => [`${j.id}.png`, `${j.id}.jpg`]);
   if (legacy.length) {
     await client.storage.from("thumbnails").remove(legacy);
-  }
-
-  // Revoke the YouTube upload grant at Google before the row disappears.
-  try {
-    const { getConnection, decryptToken, revokeToken } = await import("@/lib/youtube/oauth");
-    const yt = await getConnection(client, user.id);
-    if (yt) await revokeToken(decryptToken(yt.refresh_token_enc));
-  } catch {
-    // table missing or already revoked
-  }
-
-  try {
-    const { tiktokAccessToken, revokeTikTok } = await import("@/lib/tiktok/client");
-    const tt = await tiktokAccessToken(client, user.id);
-    if (tt) await revokeTikTok(tt.token);
-  } catch {
-    // table missing or already revoked
   }
 
   for (const table of USER_TABLES) {

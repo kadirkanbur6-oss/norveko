@@ -23,7 +23,7 @@ export async function GET() {
   const { data: episodes } = ids.length
     ? await db
         .from("series_episodes")
-        .select("id, series_id, scheduled_for, idea, status, error, job_id, project_id, publish")
+        .select("id, series_id, scheduled_for, idea, status, error, job_id, project_id")
         .in("series_id", ids)
         .order("scheduled_for", { ascending: false })
         .limit(200)

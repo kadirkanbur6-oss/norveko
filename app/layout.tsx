@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://norveko.app";
 const DESCRIPTION =
-  "Turn one idea into a finished video: research, script, voice, visuals, music and thumbnail, plus animated skits and talking characters. Publish to YouTube, TikTok and Instagram.";
+  "Turn one idea into a finished video: research, script, voice, visuals, music and thumbnail, plus animated skits and talking characters. A finished MP4 ready for YouTube, TikTok and Instagram.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

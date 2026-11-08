@@ -1,11 +1,11 @@
 // lib/series/run.ts
-// Series autopilot (31 Oct 2026): a series = topic + look + voice + schedule
-// + where to publish. The tick (cron) turns upcoming post times into episodes:
-// the next idea is picked by the writer model (never repeating earlier
-// episodes), credits are charged like a normal generation and a full-video
-// job starts. When the job completes (runner afterComplete) the episode is
-// published: YouTube scheduled for the post time, TikTok as soon as ready
-// (TikTok's API cannot schedule).
+// Series autopilot (31 Oct 2026): a series = topic + look + voice + schedule.
+// The tick (cron) turns upcoming post times into episodes: the next idea is
+// picked by the writer model (never repeating earlier episodes), credits are
+// charged like a normal generation and a full-video job starts. When the job
+// completes (runner afterComplete) the episode is marked "ready" and the video
+// waits in Projects for the user to download and post. (Direct publishing to
+// YouTube/TikTok was removed on 8 Nov 2026.)
 
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -21,8 +21,6 @@ import { kickJob } from "@/lib/pipeline/runner";
 import { isFullVideoEnabled, isGenerationEnabled } from "@/lib/pipeline/features";
 import { hasPurchased, isWatermarkExempt } from "@/lib/pipeline/watermark-policy";
 import { chatJSON, SCRIPT_MODEL } from "@/lib/pipeline/llm";
-import { validPublishAt, type YouTubePrivacy } from "@/lib/youtube/metadata";
-import type { TikTokPrivacy } from "@/lib/tiktok/client";
 import { upcomingSlots } from "./schedule";
 import { brandSnapshot, rowToKit } from "@/lib/brand/kit";
 import { CREATIVE_COSTS } from "@/lib/skit/pricing";
@@ -50,11 +48,6 @@ export interface SeriesSettings {
   format?: "narrated" | "skit";
 }
 
-export interface SeriesPublish {
-  youtube?: { enabled: boolean; privacy: YouTubePrivacy };
-  tiktok?: { enabled: boolean; privacy: TikTokPrivacy; allowComment: boolean; allowDuet: boolean; allowStitch: boolean };
-}
-
 export interface SeriesRow {
   id: string;
   user_id: string;
@@ -64,7 +57,6 @@ export interface SeriesRow {
   days: number[];
   post_time: string;
   timezone: string;
-  publish: SeriesPublish;
   active: boolean;
 }
 
@@ -297,7 +289,7 @@ async function createSkitEpisode(
     await db.rpc("add_credits", { p_user_id: payer, p_amount: cost, p_type: "refund", p_reason: "Refund: series skit could not start" });
     return skip("The skit could not be started.");
   }
-  // The minute heartbeat makes it; publishing happens when it finishes (onSkitCompleted).
+  // The minute heartbeat makes it; the episode is marked ready when it finishes (onSkitCompleted).
   await db.from("series_episodes").update({ job_id: id, status: "generating" }).eq("id", episodeId);
   return { status: "created", episodeId };
 }
@@ -324,7 +316,7 @@ export async function runSeriesTick(db: SupabaseClient = adminDb(), now = new Da
   return summary;
 }
 
-/** Runner hook: publish a finished episode (only the first completion — not re-renders). */
+/** Runner hook: mark a finished episode ready (only the first completion — not re-renders). */
 export async function onJobCompleted(jobId: string): Promise<void> {
   const db = adminDb();
   const { data: job } = await db.from("pipeline_jobs").select("id, user_id, options, steps").eq("id", jobId).maybeSingle();
@@ -334,7 +326,7 @@ export async function onJobCompleted(jobId: string): Promise<void> {
   await publishEpisode(db, job.user_id, ref.id, ref.episodeId, projectId);
 }
 
-/** Skit hook: publish a finished skit episode. */
+/** Skit hook: mark a finished skit episode ready. */
 export async function onSkitCompleted(db: SupabaseClient, skit: { user_id: string; project_id: string | null; plan: unknown }): Promise<void> {
   const ref = (skit.plan as { series?: { id?: string; episodeId?: string } } | null)?.series;
   if (!ref?.id || !ref.episodeId) return;
@@ -342,58 +334,15 @@ export async function onSkitCompleted(db: SupabaseClient, skit: { user_id: strin
 }
 
 async function publishEpisode(db: SupabaseClient, userId: string, seriesId: string, episodeId: string, projectId: string | null): Promise<void> {
-  const { data: episode } = await db.from("series_episodes").select("*").eq("id", episodeId).maybeSingle();
+  void userId;
+  void seriesId;
+  const { data: episode } = await db.from("series_episodes").select("id, status").eq("id", episodeId).maybeSingle();
   if (!episode || episode.status !== "generating") return;
-  const { data: series } = await db.from("series").select("*").eq("id", seriesId).maybeSingle();
-  // Claim it first so a concurrent completion can't publish twice.
-  const { data: claimed } = await db
-    .from("series_episodes")
-    .update({ status: "publishing", project_id: projectId })
-    .eq("id", episode.id)
-    .eq("status", "generating")
-    .select("id")
-    .maybeSingle();
-  if (!claimed) return;
-  if (!projectId || !series) {
-    await db.from("series_episodes").update({ status: "ready" }).eq("id", episode.id);
-    return;
-  }
-
-  const publish = (series as SeriesRow).publish ?? {};
-  const results: Record<string, unknown> = {};
-  const errors: string[] = [];
-  if (publish.youtube?.enabled) {
-    const { publishProjectToYouTube } = await import("@/lib/youtube/publish");
-    // Scheduled for the series' post time when it is still ahead, otherwise now.
-    const publishAt = validPublishAt(episode.scheduled_for);
-    const r = await publishProjectToYouTube(db, userId, projectId, { privacy: publish.youtube.privacy, publishAt });
-    if (r.ok) results.youtube = r.youtube;
-    else errors.push(`YouTube: ${r.error}`);
-  }
-  if (publish.tiktok?.enabled) {
-    const { publishProjectToTikTok } = await import("@/lib/tiktok/publish");
-    const { data: project } = await db.from("projects").select("title, content").eq("id", projectId).maybeSingle();
-    const content = (project?.content ?? {}) as { titles?: string[]; tags?: string[] };
-    const caption = [content.titles?.[0] ?? project?.title ?? "", (content.tags ?? []).slice(0, 5).map((t) => `#${t.replace(/[^\p{L}\p{N}_]/gu, "")}`).join(" ")]
-      .filter(Boolean)
-      .join("\n\n");
-    const r = await publishProjectToTikTok(db, userId, projectId, {
-      caption,
-      privacy: publish.tiktok.privacy,
-      allowComment: publish.tiktok.allowComment,
-      allowDuet: publish.tiktok.allowDuet,
-      allowStitch: publish.tiktok.allowStitch,
-    });
-    if (r.ok) results.tiktok = r.tiktok;
-    else errors.push(`TikTok: ${r.error}`);
-  }
-  const anyTarget = Boolean(publish.youtube?.enabled || publish.tiktok?.enabled);
+  // Claim it so a concurrent completion can't finish it twice. The video stays
+  // in Projects for the user to download and post.
   await db
     .from("series_episodes")
-    .update({
-      status: !anyTarget ? "ready" : errors.length ? "publish_failed" : "published",
-      publish: results,
-      error: errors.length ? errors.join(" · ").slice(0, 500) : null,
-    })
-    .eq("id", episode.id);
+    .update({ status: "ready", project_id: projectId, error: null })
+    .eq("id", episode.id)
+    .eq("status", "generating");
 }

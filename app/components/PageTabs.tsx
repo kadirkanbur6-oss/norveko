@@ -32,7 +32,7 @@ export function useTabParam(tabs: PageTab[], fallback: string): [string, (id: st
 
 export default function PageTabs({ tabs, active, onChange }: { tabs: PageTab[]; active: string; onChange: (id: string) => void }) {
   // On phones the tab row scrolls sideways: fade the edge that hides more tabs and keep
-  // the active tab in view, so "Connected channels" or "Invite & earn" aren't lost off-screen.
+  // the active tab in view, so "Characters" or "Invite & earn" aren't lost off-screen.
   const rowRef = useRef<HTMLDivElement | null>(null);
   const [edges, setEdges] = useState({ left: false, right: false });
   useEffect(() => {

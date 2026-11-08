@@ -7,7 +7,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import sharp from "sharp";
 import { requireUser } from "@/lib/supabase-server";
-import { adminDb } from "@/lib/youtube/oauth";
+import { adminDb } from "@/lib/supabase-admin";
 import { hasPurchased, isWatermarkExempt } from "@/lib/pipeline/watermark-policy";
 import {
   CHARACTER_BUCKET,

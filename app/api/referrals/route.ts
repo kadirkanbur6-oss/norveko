@@ -2,7 +2,7 @@
 
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/supabase-server";
-import { adminDb, siteUrl } from "@/lib/youtube/oauth";
+import { adminDb, siteUrl } from "@/lib/supabase-admin";
 import { codeFor, referralStats, REFERRAL_MONTHS, REFERRAL_SHARE } from "@/lib/referrals/referrals";
 
 export const runtime = "nodejs";

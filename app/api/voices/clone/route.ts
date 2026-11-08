@@ -5,7 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/supabase-server";
-import { adminDb } from "@/lib/youtube/oauth";
+import { adminDb } from "@/lib/supabase-admin";
 import { isWatermarkExempt } from "@/lib/pipeline/watermark-policy";
 import { cloneEntitled, cleanVoiceName, CLONE_MAX_BYTES, CLONE_MAX_FILES, CLONE_MIN_BYTES, READING_SCRIPT, userClone } from "@/lib/voice/clones";
 

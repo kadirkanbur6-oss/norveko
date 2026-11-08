@@ -5,7 +5,7 @@
 import { NextResponse } from "next/server";
 import { Environment, Paddle } from "@paddle/paddle-node-sdk";
 import { requireUser } from "@/lib/supabase-server";
-import { adminDb } from "@/lib/youtube/oauth";
+import { adminDb } from "@/lib/supabase-admin";
 import { getPaddleEnvironment } from "@/lib/paddle-env";
 import { subscriptionForUser } from "@/lib/subscriptions-server";
 

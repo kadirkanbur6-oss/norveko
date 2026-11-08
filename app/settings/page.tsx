@@ -11,9 +11,6 @@ import {
 import Sidebar from "../components/Sidebar";
 import SignOutButton from "../components/SignOutButton";
 import AccountSecurity from "../components/AccountSecurity";
-import YouTubeConnectionCard from "../components/YouTubeConnectionCard";
-import TikTokConnectionCard from "../components/TikTokConnectionCard";
-import InstagramConnectionCard from "../components/InstagramConnectionCard";
 import ApiKeysCard from "../components/ApiKeysCard";
 import TeamCard from "../components/TeamCard";
 import BrandKitCard from "../components/BrandKitCard";
@@ -25,7 +22,6 @@ const SETTINGS_TABS: PageTab[] = [
   { id: "account", label: "Account" },
   { id: "brand", label: "Brand & voice" },
   { id: "characters", label: "Characters" },
-  { id: "connections", label: "Connected channels" },
   { id: "team", label: "Team" },
   { id: "api", label: "API" },
 ];
@@ -38,14 +34,6 @@ interface UserSettings {
 
 export default function SettingsPage() {
   const [tab, setTab] = useTabParam(SETTINGS_TABS, "account");
-  // Coming back from connecting YouTube/TikTok: show the connections tab.
-  useEffect(() => {
-    const q = new URLSearchParams(window.location.search);
-    if (q.has("youtube") || q.has("tiktok")) {
-      const t = setTimeout(() => setTab("connections"), 0);
-      return () => clearTimeout(t);
-    }
-  }, [setTab]);
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -126,7 +114,7 @@ export default function SettingsPage() {
 
       <main id="main-content" className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
         <div className="mx-auto max-w-3xl">
-          <PageHeader title="Settings" subtitle="Your account, brand, voice and connected channels." />
+          <PageHeader title="Settings" subtitle="Your account, brand, voice, characters and team." />
           <div className="mt-6">
             <PageTabs tabs={SETTINGS_TABS} active={tab} onChange={setTab} />
           </div>
@@ -177,9 +165,8 @@ export default function SettingsPage() {
                 </div>
 
                 <p className="mt-2 text-sm text-gray-400">
-                  Dashboard stats come from this channel. Connecting YouTube under{" "}
-                  <button type="button" onClick={() => setTab("connections")} className="text-sky-300 hover:text-sky-200">Connected channels</button> fills it in for you.
-                  To track a different channel, paste its ID (starts with &quot;UC&quot;, YouTube Studio → Settings → Channel → Advanced settings).
+                  Dashboard stats come from this channel. Paste its ID (starts with &quot;UC&quot;,
+                  YouTube Studio → Settings → Channel → Advanced settings).
                 </p>
 
                 <div className="mt-4">
@@ -246,14 +233,6 @@ export default function SettingsPage() {
               )}
 
               {tab === "characters" && <CharactersCard />}
-
-              {tab === "connections" && (
-                <>
-                  <YouTubeConnectionCard />
-                  <TikTokConnectionCard />
-                  <InstagramConnectionCard />
-                </>
-              )}
 
 
               {tab === "team" && <TeamCard />}

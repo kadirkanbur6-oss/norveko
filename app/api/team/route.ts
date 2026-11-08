@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/supabase-server";
 import { adminDb, apiAllowed } from "@/lib/api-keys";
 import { MAX_TEAM_MEMBERS, newInvite, teamFor } from "@/lib/teams";
-import { siteUrl } from "@/lib/youtube/oauth";
+import { siteUrl } from "@/lib/supabase-admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

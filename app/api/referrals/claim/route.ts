@@ -4,7 +4,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { requireUser } from "@/lib/supabase-server";
-import { adminDb } from "@/lib/youtube/oauth";
+import { adminDb } from "@/lib/supabase-admin";
 import { claimReferral, isReferralCode, REFERRAL_COOKIE } from "@/lib/referrals/referrals";
 
 export const runtime = "nodejs";

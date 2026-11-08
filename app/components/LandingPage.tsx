@@ -200,7 +200,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
               applicationCategory: "MultimediaApplication",
               operatingSystem: "Web",
               description:
-                "AI content workspace for creators: turn one idea into a researched, narrated video, an animated skit or a talking character, then publish to YouTube, TikTok and Instagram.",
+                "AI content workspace for creators: turn one idea into a researched, narrated video, an animated skit or a talking character, rendered as a finished MP4 for YouTube, TikTok and Instagram.",
               offers: { "@type": "AggregateOffer", priceCurrency: "USD", lowPrice: "12", highPrice: "89" },
             },
             {
@@ -336,8 +336,8 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
               <p className="mt-4 max-w-lg text-base text-gray-400 sm:text-lg">
                 Norveko researches your topic, writes the script, voices it, adds
                 visuals, music and a thumbnail, and renders the MP4. It also turns
-                a joke into an animated skit or makes a character talk. Then you
-                publish to YouTube, TikTok or Instagram from the same place.
+                a joke into an animated skit or makes a character talk. You get
+                a finished MP4 and thumbnail, ready to post on YouTube, TikTok or Instagram.
               </p>
 
               <ul className="mt-5 flex max-w-lg flex-wrap gap-2 text-xs text-gray-300" aria-label="What Norveko can make">
@@ -492,13 +492,13 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
         </div>
       </section>
 
-      {/* 2b'. MADE FOR PUBLISHING — what Norveko does beyond one video (7 Nov 2026) */}
+      {/* 2b'. BEYOND ONE VIDEO — what Norveko does beyond one video (7 Nov 2026) */}
       <section id="features" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6">
         <Reveal>
           <SectionTitle
-            eyebrow="Built for publishing"
+            eyebrow="Built for creators"
             title="Everything after the first video, too"
-            subtitle="Put yourself in the story, make it in other languages, cut Shorts, publish on a schedule. All in the same place."
+            subtitle="Put yourself in the story, make it in other languages, cut Shorts, make new episodes on a schedule. All in the same place."
           />
         </Reveal>
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -526,7 +526,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             {
               icon: CalendarClock,
               title: "Series on autopilot",
-              body: "Set a topic and a schedule. Norveko writes each new episode, makes it and publishes it for you: scheduled on YouTube, straight away on TikTok. Available on paid plans.",
+              body: "Set a topic and a schedule. Norveko writes each new episode, makes it and saves it to your projects, ready to download and post. Available on paid plans.",
             },
             {
               icon: SlidersHorizontal,
@@ -702,7 +702,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           {[
             ["1", "Describe your idea", "One sentence, a link to an article, or a joke with its lines. Pick the platform, length and language, or start from a template."],
             ["2", "Norveko makes the video", "It researches the topic, writes and fact-checks the script, records the narration, makes the visuals, adds music, subtitles and a thumbnail, then renders the MP4. Want a say? Review the script before anything is filmed."],
-            ["3", "Publish", "Download the MP4 or post it to YouTube, TikTok or Instagram from the project page. Translate it into another language or cut Shorts from a long video with one click."],
+            ["3", "Download and post", "Download the MP4 and thumbnail, ready for YouTube, TikTok or Instagram. Translate it into another language or cut Shorts from a long video with one click."],
           ].map(([num, title, desc], i) => (
             <Reveal key={num} delay={i * 100}>
               <div className="relative">

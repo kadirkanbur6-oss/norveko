@@ -5,7 +5,7 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { requireUser } from "@/lib/supabase-server";
-import { adminDb } from "@/lib/youtube/oauth";
+import { adminDb } from "@/lib/supabase-admin";
 
 export const dynamic = "force-dynamic";
 

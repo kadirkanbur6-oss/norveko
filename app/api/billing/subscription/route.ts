@@ -2,7 +2,7 @@
 
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/supabase-server";
-import { adminDb } from "@/lib/youtube/oauth";
+import { adminDb } from "@/lib/supabase-admin";
 import { isActive, subscriptionForUser } from "@/lib/subscriptions-server";
 import { getSubscriptionPlan } from "@/lib/subscriptions";
 

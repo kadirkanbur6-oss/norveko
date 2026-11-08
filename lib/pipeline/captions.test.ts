@@ -329,49 +329,6 @@ test("abuse: client IP comes from the first forwarded hop and is stored hashed",
   assert.ok(!JSON.stringify(m).includes("gmail"));
 });
 
-// --- YouTube direct upload (lib/youtube) ---
-import { buildVideoResource, youtubeTitle, youtubeDescription, youtubeTags, validPublishAt, categoryForStyle } from "../youtube/metadata";
-import { encryptToken, decryptToken, safeReturnTo } from "../youtube/oauth";
-
-test("youtube: metadata is always valid for videos.insert", () => {
-  const long = "Dyatlov Geçidi: ".repeat(12);
-  const t = youtubeTitle(long);
-  assert.ok(t.length <= 100 && t.endsWith("…"));
-  assert.equal(youtubeTitle("A <b>bold</b> title"), "A bbold/b title");
-  assert.ok(Buffer.byteLength(youtubeDescription("ğüşıöç".repeat(2000)), "utf8") <= 5000);
-  const tags = youtubeTags(["#mystery", "Mystery", "cold case", ...Array.from({ length: 80 }, (_, i) => `tag number ${i}`)]);
-  assert.equal(tags[0], "mystery");
-  assert.ok(!tags.includes("Mystery"));
-  const cost = tags.reduce((n, tag, i) => n + tag.length + (tag.includes(" ") ? 2 : 0) + (i ? 1 : 0), 0);
-  assert.ok(cost <= 500);
-  assert.equal(categoryForStyle("Educational"), "27");
-  assert.equal(categoryForStyle("Horror"), "24");
-});
-
-test("youtube: scheduled uploads stay private until publishAt; AI disclosure is always on", () => {
-  const now = Date.now();
-  assert.equal(validPublishAt(new Date(now + 5 * 60_000).toISOString(), now), null);
-  const later = new Date(now + 2 * 3600_000).toISOString();
-  const r = buildVideoResource({ title: "x", privacy: "public", publishAt: later });
-  assert.equal(r.status.privacyStatus, "private");
-  assert.equal((r.status as { publishAt?: string }).publishAt, later);
-  assert.equal(r.status.containsSyntheticMedia, true);
-  assert.equal(r.status.selfDeclaredMadeForKids, false);
-  assert.equal(buildVideoResource({ title: "x", privacy: "unlisted" }).status.privacyStatus, "unlisted");
-});
-
-test("youtube: refresh tokens are encrypted and return paths are same-site only", () => {
-  process.env.YOUTUBE_TOKEN_KEY = "test-key";
-  const enc = encryptToken("1//refresh-token");
-  assert.ok(!enc.includes("refresh"));
-  assert.equal(decryptToken(enc), "1//refresh-token");
-  assert.notEqual(encryptToken("same"), encryptToken("same"));
-  assert.equal(safeReturnTo("/projects/abc"), "/projects/abc");
-  assert.equal(safeReturnTo("//evil.com"), "/settings");
-  assert.equal(safeReturnTo("https://evil.com"), "/settings");
-  assert.equal(safeReturnTo(null), "/settings");
-});
-
 // --- Look presets (lib/pipeline/visual-styles.ts) ---
 import { stillPrompt, clipPrompt, captionStyle, visualStyle, VISUAL_STYLES, CAPTION_STYLES } from "./visual-styles";
 import { buildEdit } from "./timeline";
@@ -456,16 +413,12 @@ test("series: input validation", () => {
     days: [5, 1, 1, 9],
     post_time: "18:00",
     timezone: "Europe/Istanbul",
-    publish: { youtube: { enabled: true, privacy: "public" }, tiktok: { enabled: true, privacy: "SELF_ONLY", consent: false } },
   };
-  const r = validateSeries(good);
-  assert.equal(r.ok, false); // TikTok without the music-usage consent
-  const ok = validateSeries({ ...good, publish: { youtube: { enabled: true, privacy: "public" } } });
+  const ok = validateSeries(good);
   assert.ok(ok.ok);
   if (ok.ok) {
     assert.deepEqual(ok.value.days, [1, 5]);
     assert.equal(ok.value.settings.visualStyle, "dark");
-    assert.equal(ok.value.publish.tiktok, undefined);
   }
   assert.equal(validateSeries({ ...good, settings: { ...good.settings, duration: "8 minutes" } }).ok, false);
   assert.equal(validateSeries({ ...good, timezone: "Mars/Olympus" }).ok, false);

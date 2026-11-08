@@ -14,7 +14,7 @@ const el = () => import("@/lib/pipeline/elevenlabs");
 import { isGenerationEnabled, LAUNCH_LOCK_MESSAGE } from "@/lib/pipeline/features";
 import { LANGUAGES, isOneOf, languageCode } from "@/lib/pipeline/options";
 import { GEMINI_VOICES, GEMINI_VOICE_PREFIX } from "@/lib/pipeline/gemini-tts";
-import { adminDb } from "@/lib/youtube/oauth";
+import { adminDb } from "@/lib/supabase-admin";
 import { cloneOwners } from "@/lib/voice/clones";
 
 export const dynamic = "force-dynamic";

@@ -20,11 +20,8 @@ import AudioPlayer from "../../components/AudioPlayer";
 import VideoPlayer from "@/app/components/VideoPlayer";
 import VoiceoverDownloads from "../../components/VoiceoverDownloads";
 import ScriptFeedback from "../../components/ScriptFeedback";
-import YouTubePublish from "../../components/YouTubePublish";
 import VideoEditor from "../../components/VideoEditor";
 import SkitEditor from "../../components/studio/SkitEditor";
-import TikTokPublish from "../../components/TikTokPublish";
-import InstagramPublish from "../../components/InstagramPublish";
 import PageTabs, { useTabParam } from "../../components/PageTabs";
 import RetryRender from "../../components/RetryRender";
 import TranslateVideo from "../../components/TranslateVideo";
@@ -115,7 +112,7 @@ interface Project {
 
 const SECTIONS = [
   { id: "video", label: "Video" },
-  { id: "publish", label: "Publish" },
+  { id: "publish", label: "Shorts & translate" },
   { id: "content", label: "Script & assets" },
 ];
 
@@ -718,39 +715,6 @@ export default function ProjectDetailPage() {
                       className="mt-4"
                     />
                   </div>
-                )}
-                {section === "publish" && normalizedProjectContent?.finalVideoUrl && (
-                  <YouTubePublish
-                    projectId={projectId}
-                    titles={normalizedProjectContent.titles.length ? normalizedProjectContent.titles : [project.title]}
-                    description={normalizedProjectContent.description}
-                    tags={normalizedProjectContent.tags}
-                    initial={(project.content as { youtube?: Parameters<typeof YouTubePublish>[0]["initial"] } | null)?.youtube ?? null}
-                  />
-                )}
-                {section === "publish" && normalizedProjectContent?.finalVideoUrl && (
-                  <TikTokPublish
-                    projectId={projectId}
-                    defaultCaption={[
-                      normalizedProjectContent.titles[0] ?? project.title,
-                      normalizedProjectContent.tags.slice(0, 5).map((t) => `#${t.replace(/[^\p{L}\p{N}_]/gu, "")}`).filter((t) => t.length > 1).join(" "),
-                    ].filter(Boolean).join("\n\n")}
-                    initial={(project.content as { tiktok?: Parameters<typeof TikTokPublish>[0]["initial"] } | null)?.tiktok ?? null}
-                    videoUrl={normalizedProjectContent.finalVideoUrl}
-                    watermarked={(project.content as { watermarked?: boolean } | null)?.watermarked === true}
-                  />
-                )}
-                {section === "publish" && normalizedProjectContent?.finalVideoUrl && (
-                  <InstagramPublish
-                    projectId={projectId}
-                    defaultCaption={[
-                      normalizedProjectContent.titles[0] ?? project.title,
-                      normalizedProjectContent.tags.slice(0, 8).map((t) => `#${t.replace(/[^\p{L}\p{N}_]/gu, "")}`).filter((t) => t.length > 1).join(" "),
-                    ].filter(Boolean).join("\n\n")}
-                    initial={(project.content as { instagram?: Parameters<typeof InstagramPublish>[0]["initial"] } | null)?.instagram ?? null}
-                    vertical={project.platform !== "YouTube Long-form"}
-                    watermarked={(project.content as { watermarked?: boolean } | null)?.watermarked === true}
-                  />
                 )}
                 {section === "publish" && normalizedProjectContent?.finalVideoUrl && <ShortsFromVideo projectId={projectId} />}
                 {section === "publish" && normalizedProjectContent?.finalVideoUrl && <TranslateVideo projectId={projectId} />}

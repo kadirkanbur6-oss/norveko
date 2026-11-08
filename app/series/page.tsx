@@ -1,7 +1,7 @@
 "use client";
 
 // Series autopilot: a topic + look + voice + schedule; Norveko picks a new
-// subject for every episode, makes the video and publishes it.
+// subject for every episode, makes the video and saves it to Projects.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "../components/PageTabs";
@@ -12,7 +12,6 @@ import { CaptionStylePicker, VisualStylePicker } from "../components/StylePicker
 import { LANGUAGE_OPTIONS, PLATFORMS, STYLES } from "@/lib/pipeline/options";
 import { CADENCE_PRESETS } from "@/lib/series/schedule";
 
-type Privacy = "public" | "unlisted" | "private";
 
 interface Episode {
   id: string;
@@ -21,7 +20,6 @@ interface Episode {
   status: string;
   error: string | null;
   project_id: string | null;
-  publish: { youtube?: { url: string; privacy: string }; tiktok?: { status: string } } | null;
 }
 
 interface Series {
@@ -32,7 +30,6 @@ interface Series {
   days: number[];
   post_time: string;
   timezone: string;
-  publish: { youtube?: { enabled: boolean; privacy: string }; tiktok?: { enabled: boolean; privacy: string } };
   active: boolean;
   cost: number;
   nextAt: string | null;
@@ -43,19 +40,13 @@ const DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const STATUS: Record<string, { label: string; cls: string }> = {
   pending: { label: "Starting", cls: "text-gray-300" },
   generating: { label: "Making the video", cls: "text-blue-300" },
-  publishing: { label: "Publishing", cls: "text-blue-300" },
-  published: { label: "Published", cls: "text-green-300" },
+  publishing: { label: "Finishing", cls: "text-blue-300" },
+  published: { label: "Ready", cls: "text-green-300" },
   ready: { label: "Ready", cls: "text-green-300" },
-  publish_failed: { label: "Made, not published", cls: "text-yellow-300" },
+  publish_failed: { label: "Ready", cls: "text-green-300" },
   skipped: { label: "Skipped", cls: "text-yellow-300" },
   failed: { label: "Failed (refunded)", cls: "text-red-300" },
 };
-const TIKTOK_PRIVACY = [
-  { id: "PUBLIC_TO_EVERYONE", label: "Everyone" },
-  { id: "FOLLOWER_OF_CREATOR", label: "Followers" },
-  { id: "MUTUAL_FOLLOW_FRIENDS", label: "Friends" },
-  { id: "SELF_ONLY", label: "Only me" },
-];
 
 function emptyForm() {
   return {
@@ -75,14 +66,6 @@ function emptyForm() {
     research: true,
     days: [1, 3, 5] as number[],
     time: "18:00",
-    youtube: true,
-    ytPrivacy: "public" as Privacy,
-    tiktok: false,
-    ttPrivacy: "",
-    ttComment: false,
-    ttDuet: false,
-    ttStitch: false,
-    ttConsent: false,
   };
 }
 
@@ -94,7 +77,6 @@ export default function SeriesPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [voices, setVoices] = useState<Array<{ voice_id: string; name: string }>>([]);
-  const [connections, setConnections] = useState<{ youtube: boolean; tiktok: boolean }>({ youtube: false, tiktok: false });
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -112,10 +94,6 @@ export default function SeriesPage() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
-    Promise.all([
-      fetch("/api/youtube").then((r) => r.json()).catch(() => null),
-      fetch("/api/tiktok").then((r) => r.json()).catch(() => null),
-    ]).then(([yt, tt]) => setConnections({ youtube: Boolean(yt?.connection), tiktok: Boolean(tt?.connection) }));
   }, [load]);
 
   useEffect(() => {
@@ -163,17 +141,6 @@ export default function SeriesPage() {
           days: form.days,
           post_time: form.time,
           timezone,
-          publish: {
-            youtube: { enabled: form.youtube && connections.youtube, privacy: form.ytPrivacy },
-            tiktok: {
-              enabled: form.tiktok && connections.tiktok,
-              privacy: form.ttPrivacy,
-              allowComment: form.ttComment,
-              allowDuet: form.ttDuet,
-              allowStitch: form.ttStitch,
-              consent: form.ttConsent,
-            },
-          },
         }),
       });
       const data = await res.json();
@@ -206,7 +173,7 @@ export default function SeriesPage() {
               });
       const data = await res.json();
       if (!data.success) throw new Error(data.error || "Something went wrong.");
-      if (action === "run") setNotice("Episode started. It takes about 10 minutes and is published as soon as it's ready.");
+      if (action === "run") setNotice("Episode started. It takes about 10 minutes and lands in Projects as soon as it's ready.");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -223,7 +190,7 @@ export default function SeriesPage() {
       <main id="main-content" className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
         <div className="mx-auto max-w-4xl">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <PageHeader title="Series" subtitle="Autopilot: a new video on your schedule, made and published for you." />
+            <PageHeader title="Series" subtitle="Autopilot: a new video on your schedule, made for you and saved to Projects." />
             {available && !blocked && !showForm && (
               <button
                 type="button"
@@ -422,71 +389,7 @@ export default function SeriesPage() {
                     </div>
                   </div>
 
-                  {/* Publishing */}
-                  <div className="rounded-xl border border-white/10 bg-[var(--nv-panel)] p-4 space-y-3">
-                    <p className="text-xs uppercase tracking-wider text-gray-500">Publish to</p>
-                    {connections.youtube ? (
-                      <div className="flex flex-wrap items-center gap-3 text-sm">
-                        <label className="flex items-center gap-2 text-gray-300">
-                          <input type="checkbox" checked={form.youtube} onChange={(e) => set("youtube", e.target.checked)} className="h-4 w-4 accent-red-500" />
-                          YouTube (scheduled for the posting time)
-                        </label>
-                        {form.youtube && (
-                          <select value={form.ytPrivacy} onChange={(e) => set("ytPrivacy", e.target.value as Privacy)} aria-label="YouTube visibility" className="rounded-lg border border-white/10 bg-[var(--nv-field)] px-2 py-1 text-white">
-                            <option value="public">Public</option>
-                            <option value="unlisted">Unlisted</option>
-                            <option value="private">Private</option>
-                          </select>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500">
-                        YouTube not connected. <Link href="/settings" className="text-blue-300">Connect it in Settings</Link>.
-                      </p>
-                    )}
-                    {connections.tiktok ? (
-                      <div className="space-y-2 text-sm">
-                        <label className="flex items-center gap-2 text-gray-300">
-                          <input type="checkbox" checked={form.tiktok} onChange={(e) => set("tiktok", e.target.checked)} className="h-4 w-4 accent-pink-500" />
-                          TikTok (posted as soon as each video is ready)
-                        </label>
-                        {form.tiktok && (
-                          <div className="ml-6 space-y-2">
-                            <select value={form.ttPrivacy} onChange={(e) => set("ttPrivacy", e.target.value)} aria-label="Who can view the TikTok posts" className="rounded-lg border border-white/10 bg-[var(--nv-field)] px-2 py-1 text-white">
-                              <option value="" disabled>
-                                Who can view…
-                              </option>
-                              {TIKTOK_PRIVACY.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  {p.label}
-                                </option>
-                              ))}
-                            </select>
-                            <div className="flex flex-wrap gap-4 text-gray-300">
-                              <label className="flex items-center gap-2"><input type="checkbox" checked={form.ttComment} onChange={(e) => set("ttComment", e.target.checked)} className="h-4 w-4 accent-pink-500" />Comments</label>
-                              <label className="flex items-center gap-2"><input type="checkbox" checked={form.ttDuet} onChange={(e) => set("ttDuet", e.target.checked)} className="h-4 w-4 accent-pink-500" />Duet</label>
-                              <label className="flex items-center gap-2"><input type="checkbox" checked={form.ttStitch} onChange={(e) => set("ttStitch", e.target.checked)} className="h-4 w-4 accent-pink-500" />Stitch</label>
-                            </div>
-                            <label className="flex items-start gap-2 text-xs text-gray-300">
-                              <input type="checkbox" checked={form.ttConsent} onChange={(e) => set("ttConsent", e.target.checked)} className="mt-0.5 h-4 w-4 accent-pink-500" />
-                              <span>
-                                By posting, you agree to TikTok&apos;s{" "}
-                                <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noreferrer" className="text-pink-300 underline">
-                                  Music Usage Confirmation
-                                </a>
-                                . Posts are labelled as AI-generated.
-                              </span>
-                            </label>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500">
-                        TikTok not connected. <Link href="/settings" className="text-blue-300">Connect it in Settings</Link>.
-                      </p>
-                    )}
-                    <p className="text-xs text-gray-500">Nothing selected? Episodes are saved to Projects for you to post yourself.</p>
-                  </div>
+                  <p className="text-xs text-gray-500">Each episode is saved to Projects, ready to download and post.</p>
 
                   <div className="flex flex-wrap items-center gap-3">
                     <button
@@ -526,8 +429,6 @@ export default function SeriesPage() {
                         <p className="mt-1 line-clamp-2 text-sm text-gray-400">{s.topic}</p>
                         <p className="mt-2 text-xs text-gray-500">
                           {s.days.map((d) => DAY[d]).join(", ")} at {s.post_time} ({s.timezone}) · {String(s.settings.duration)} · {s.cost} credits / episode
-                          {s.publish.youtube?.enabled ? " · YouTube" : ""}
-                          {s.publish.tiktok?.enabled ? " · TikTok" : ""}
                         </p>
                         {s.nextAt && <p className="mt-1 text-xs text-blue-300">Next episode: {new Date(s.nextAt).toLocaleString("en-US")}</p>}
                       </div>
@@ -579,11 +480,6 @@ export default function SeriesPage() {
                                   <Link href={`/projects/${e.project_id}`} className="text-blue-300 hover:text-blue-200">
                                     Project
                                   </Link>
-                                )}
-                                {e.publish?.youtube?.url && (
-                                  <a href={e.publish.youtube.url} target="_blank" rel="noreferrer" className="text-red-300 hover:text-red-200">
-                                    YouTube
-                                  </a>
                                 )}
                               </div>
                             </li>

@@ -4,10 +4,8 @@ import { DURATIONS, LANGUAGES, ORIENTATIONS, PLATFORMS, STYLES, isOneOf } from "
 import { FOOTAGE_MODES, type FootageMode } from "@/lib/pipeline/steps";
 import { isCaptionStyle, isVisualStyle } from "@/lib/pipeline/visual-styles";
 import { geminiVoiceName } from "@/lib/pipeline/gemini-tts";
-import { PRIVACY_OPTIONS, type YouTubePrivacy } from "@/lib/youtube/metadata";
-import { TIKTOK_PRIVACY, type TikTokPrivacy } from "@/lib/tiktok/client";
 import { isValidTime, isValidTimeZone } from "./schedule";
-import type { SeriesPublish, SeriesSettings } from "./run";
+import type { SeriesSettings } from "./run";
 
 export const MAX_SERIES_PER_USER = 5;
 
@@ -18,7 +16,6 @@ export interface SeriesInput {
   days: number[];
   post_time: string;
   timezone: string;
-  publish: SeriesPublish;
 }
 
 export function validateSeries(body: Record<string, unknown>): { ok: true; value: SeriesInput } | { ok: false; error: string } {
@@ -47,24 +44,6 @@ export function validateSeries(body: Record<string, unknown>): { ok: true; value
   if (!isValidTime(body.post_time)) return { ok: false, error: "Pick a posting time." };
   if (!isValidTimeZone(body.timezone)) return { ok: false, error: "Unknown time zone." };
 
-  const p = (body.publish ?? {}) as Record<string, Record<string, unknown> | undefined>;
-  const publish: SeriesPublish = {};
-  if (p.youtube?.enabled === true) {
-    if (!PRIVACY_OPTIONS.includes(p.youtube.privacy as YouTubePrivacy)) return { ok: false, error: "Pick the YouTube visibility." };
-    publish.youtube = { enabled: true, privacy: p.youtube.privacy as YouTubePrivacy };
-  }
-  if (p.tiktok?.enabled === true) {
-    if (!TIKTOK_PRIVACY.includes(p.tiktok.privacy as TikTokPrivacy)) return { ok: false, error: "Pick who can view the TikTok posts." };
-    if (p.tiktok.consent !== true) return { ok: false, error: "Please confirm TikTok's Music Usage terms." };
-    publish.tiktok = {
-      enabled: true,
-      privacy: p.tiktok.privacy as TikTokPrivacy,
-      allowComment: p.tiktok.allowComment === true,
-      allowDuet: p.tiktok.allowDuet === true,
-      allowStitch: p.tiktok.allowStitch === true,
-    };
-  }
-
   return {
     ok: true,
     value: {
@@ -89,7 +68,6 @@ export function validateSeries(body: Record<string, unknown>): { ok: true; value
       days,
       post_time: body.post_time as string,
       timezone: body.timezone as string,
-      publish,
     },
   };
 }

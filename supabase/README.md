@@ -174,56 +174,24 @@ select id, status, credits_charged, credits_refunded
 from public.pipeline_jobs order by created_at desc limit 5;
 ```
 
-## YouTube publishing (`youtube_connections`, 31 Oct 2026)
+## Removed: direct publishing tables (8 Nov 2026)
 
-One row per user who connected a channel for direct uploads. Only the service
-role reads/writes it (RLS on, no policies) — the refresh token is AES-256-GCM
-encrypted by the app (`lib/youtube/oauth.ts`).
-
-```sql
-create table if not exists public.youtube_connections (
-  user_id uuid primary key references auth.users(id) on delete cascade,
-  channel_id text not null,
-  channel_title text,
-  channel_thumbnail text,
-  refresh_token_enc text not null,
-  scope text,
-  created_at timestamptz not null default now()
-);
-alter table public.youtube_connections enable row level security;
-```
-
-## TikTok posting (`tiktok_connections`, 31 Oct 2026)
+Direct publishing to YouTube / TikTok / Instagram was removed from the product
+(Google OAuth verification, the YouTube API audit, TikTok's app review and a
+Meta app were all still pending). The tables created on 31 Oct–2 Nov hold only
+encrypted platform tokens; drop them once — `lib/account.ts` still tolerates
+their absence:
 
 ```sql
-create table if not exists public.tiktok_connections (
-  user_id uuid primary key references auth.users(id) on delete cascade,
-  open_id text not null,
-  display_name text,
-  avatar_url text,
-  refresh_token_enc text not null,
-  scope text,
-  created_at timestamptz not null default now()
-);
-alter table public.tiktok_connections enable row level security;
+drop table if exists public.youtube_connections;
+drop table if exists public.tiktok_connections;
+drop table if exists public.instagram_connections;
 ```
 
-## Instagram Reels (`instagram_connections`, 2 Nov 2026)
-
-Long-lived Instagram Login token (60 days, refreshed when < 10 days left), AES-256-GCM like YouTube/TikTok. Service role only.
-
-```sql
-create table if not exists public.instagram_connections (
-  user_id uuid primary key references auth.users(id) on delete cascade,
-  ig_user_id text not null,
-  username text,
-  avatar_url text,
-  token_enc text not null,
-  expires_at timestamptz not null,
-  created_at timestamptz not null default now()
-);
-alter table public.instagram_connections enable row level security;
-```
+Also revoke the app at the platforms: Google Cloud project `norveko-publishing`
+(delete the OAuth client), TikTok developer app "Norveko", and Vercel env
+`GOOGLE_OAUTH_CLIENT_ID/SECRET`, `YOUTUBE_TOKEN_KEY`, `TIKTOK_CLIENT_KEY/SECRET`,
+`INSTAGRAM_APP_ID/SECRET` can be deleted.
 
 ## API keys (`api_keys`, 2 Nov 2026)
 

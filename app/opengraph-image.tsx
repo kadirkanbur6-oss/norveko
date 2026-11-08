@@ -44,7 +44,7 @@ export default function OpengraphImage() {
           <span style={{ color: "#a78bfa" }}>Get the video.</span>
         </div>
         <div style={{ marginTop: 36, fontSize: 30, color: "#cbd5e1" }}>
-          Research, script, voice, visuals, music and MP4, then publish to YouTube, TikTok and Instagram.
+          Research, script, voice, visuals, music and a finished MP4 for YouTube, TikTok and Instagram.
         </div>
       </div>
     ),

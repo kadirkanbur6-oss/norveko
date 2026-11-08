@@ -7,7 +7,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import sharp from "sharp";
 import { requireUser } from "@/lib/supabase-server";
-import { adminDb } from "@/lib/youtube/oauth";
+import { adminDb } from "@/lib/supabase-admin";
 import { cleanName, cleanOutro, isHexColor, LOGO_MAX_BYTES, LOGO_MAX_PX, rowToKit } from "@/lib/brand/kit";
 
 export const runtime = "nodejs";

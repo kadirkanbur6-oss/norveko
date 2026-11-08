@@ -1,7 +1,7 @@
 # CLAUDE.md — Norveko Project Context
 
 > Bu dosya, yeni bir Claude oturumu başladığında proje bağlamını geri yüklemek içindir.
-> Her büyük milestone sonrası güncellenmelidir. Son güncelleme: 2026-11-07
+> Her büyük milestone sonrası güncellenmelidir. Son güncelleme: 2026-11-08
 
 ## 1. Proje Nedir?
 
@@ -155,23 +155,7 @@ Business 5000/**$89** (kod güncel; **Paddle ürün fiyatları elle güncellenme
   billing metni yalnız `NEXT_PUBLIC_FULL_VIDEO_ENABLED=true` iken gösterilir (lansmanda
   `FULL_VIDEO_ENABLED` ile birlikte aç).
 - **Ücretsiz katman suistimal koruması (31 Ekim)**: `lib/pipeline/abuse.ts`, sadece paket almamış hesaplara uygulanır (`isFreeAccount` trial.ts), kontrol `/api/pipeline/start`'ta kredi düşmeden önce yapılır (kayıt tarayıcıdan doğrudan Supabase'e gittiği için orada engel atlatılabilir). (1) Geçici e-posta (`disposable-email-domains` ~120k alan + wildcard) → üretim yok, 403 `free_tier_blocked`. (2) Aynı IP'den 7 günde en çok 3 farklı ücretsiz hesap (`FREE_ACCOUNTS_PER_IP`). (3) Deneme videosu kişi başına bir: normalize e-posta (+etiket, Gmail noktaları) bir kez, IP 30 günde bir. IP/e-posta ham saklanmaz: tuzlu SHA-256 (`PIPELINE_WORKER_SECRET`) `pipeline_jobs.options.freeIp/freeEmail`. Arama hatasında genel kullanım açık kalır (fail open), deneme videosu kapalı kalır (fail closed). Kayıt formu `/api/signup-check` ile geçici e-postayı önceden uyarır.
-- **YouTube'a doğrudan yükleme (31 Ekim)**: Supabase'in Google girişinden AYRI bir OAuth izni
-  (`youtube.upload` + `youtube.readonly`, `lib/youtube/oauth.ts`). `GET /api/youtube/connect?returnTo=`
-  → Google → `/api/youtube/callback` (state çerezi + kullanıcı eşleşmesi) → refresh token
-  AES-256-GCM şifreli `youtube_connections` tablosuna (yalnız service role; SQL `supabase/README.md`).
-  `GET/DELETE /api/youtube` durum/bağlantıyı kes (Google'da da revoke). `POST /api/projects/[id]/youtube`
-  {title, description, tags, privacy, publishAt?, again?}: `finalVideoUrl` yalnız kendi Supabase
-  Storage'ımızdan indirilir (SSRF yok), resumable `videos.insert` (`lib/youtube/upload.ts`), sonra
-  `thumbnails/set` (doğrulanmış kanal ister, hata ölümcül değil). `lib/youtube/metadata.ts`: başlık ≤100,
-  açıklama ≤5000 bayt, `<>` temizlenir, etiketler toplam ≤500, stil→kategori, **`containsSyntheticMedia:
-  true`** (YouTube AI içerik bildirimi), zamanlama = private + `publishAt` (≥15 dk ileri). Sonuç
-  `content.youtube` (server-owned). UI: proje sayfası `YouTubePublish` (Final video altında),
-  Ayarlar `YouTubeConnectionCard`. Env yoksa özellik gizlenir. Gizlilik politikası 4.1 (Limited Use).
-  Hesap silmede grant revoke + satır silinir. **Kısıt:** denetlenmemiş Google projesinden yüklenen
-  videolar YouTube'da private'a kilitlenir (UI `privacyApplied=false` uyarısı) → canlıda herkese açık
-  yükleme için Google OAuth doğrulaması + YouTube API denetimi gerekir. Testing modundaki OAuth
-  uygulamasında refresh token 7 günde düşer. Yükleme kotası ~100 birim (Aralık 2025'ten beri), ayrı havuz.
-  **31 Ekim akşam: yükleme ayrı GCP projesine taşındı — `norveko-publishing` ("Norveko Publishing", yalnız `norveko.app` alanı; eski projede supabase.co alanı doğrulamayı engelliyordu), yeni "Norveko Web" istemcisi, In production; ayrıntı `docs/app-reviews.md` §2.** Eski kurulum: Google "Norveko Web" istemcisi (yönlendirme `/api/youtube/callback`, yeni secret), Data access'e iki kapsam + gerekçe, uygulama "In production" (doğrulanmamış: 100 kullanıcı sınırı + uyarı ekranı), Vercel `GOOGLE_OAUTH_CLIENT_ID/SECRET`, Supabase tablo. Canlı test: "Kara Delikler" private yüklendi (`REFtvoBF2FI`, thumbnail da set edildi). Google izin ekranı kutuları ayrı ayrı gösterir; "YouTube videolarınızı yönetin" işaretlenmezse bağlantı reddedilir (`missing_permission`).
+- **Doğrudan yayınlama KALDIRILDI (8 Kasım, Yağmur: "iptal edelim, yanlış yönlendirme olmasın")**: YouTube/TikTok/Instagram bağlantısı ve yükleme özelliği üründen tamamen silindi — `lib/youtube|tiktok|instagram/`, `/api/youtube|tiktok|instagram/*`, `/api/projects/[id]/youtube|tiktok|instagram`, `*ConnectionCard`/`*Publish` bileşenleri, Ayarlar "Connected channels" sekmesi, seri yayın hedefleri (`SeriesPublish`; bölümler artık `ready` olup Projects'te bekler), `docs/app-reviews.md`, TikTok site doğrulama dosyası. Neden: Google OAuth doğrulaması + YouTube API denetimi + TikTok incelemesi + Meta uygulaması bekliyordu; denetimsiz uygulamalar yalnız private yükleyebiliyordu, YouTube demo videosunu kaldırdı. Paylaşılan `adminDb()`/`siteUrl()` → `lib/supabase-admin.ts`. Proje sayfası sekmesi "Shorts & translate". Landing/meta/FAQ artık "yayınla" demez, "YouTube, TikTok ve Instagram için hazır MP4" der; gizlilik 4.1 "Video platforms" (hesap bağlanmaz). Supabase: `youtube/tiktok/instagram_connections` tabloları düşürülecek (SQL `supabase/README.md`); Vercel'den `GOOGLE_OAUTH_*`, `YOUTUBE_TOKEN_KEY`, `TIKTOK_CLIENT_*`, `INSTAGRAM_APP_*` silinebilir; Google Cloud `norveko-publishing` ve TikTok geliştirici uygulaması kapatılacak. Dashboard YouTube istatistikleri (kanal ID + `YOUTUBE_API_KEY`) duruyor — bu yayın değil, okuma.
 - **Görsel stil + altyazı stili (31 Ekim)**: `lib/pipeline/visual-styles.ts` tek kaynak. 8 görsel stil
   (cinematic varsayılan, archive, dark, anime, 3d, painting, comic, watercolor): `stillPrompt()` sahne
   görsellerinin başına stil metnini koyar (metin yasağı her zaman), `clipPrompt()` text→video ve
@@ -193,17 +177,6 @@ Business 5000/**$89** (kod güncel; **Paddle ürün fiyatları elle güncellenme
   güncellenir, render `version+1` → `final-v<n>.mp4`, bitince `refreshProjectVideo`. UI 6 sn'de bir
   `/api/pipeline/[jobId]` poll eder, bitince sayfayı yeniler. **failJob**: işin zaten projesi varsa
   (başarısız yeniden render) yeni proje AÇMAZ, eski video kalır.
-- **TikTok paylaşımı (31 Ekim)**: `lib/tiktok/client.ts` (Login Kit OAuth v2 `user.info.basic,video.publish`,
-  refresh token her yanıtta döner → saklanır; Content Posting API Direct Post: `creator_info/query` →
-  `video/init` FILE_UPLOAD tek parça (≤64 MB) → PUT Content-Range → `status/fetch`), `is_aigc:true`.
-  `tiktok_connections` tablosu (şifreli refresh token, YouTube ile aynı anahtar). Rotalar
-  `/api/tiktok/connect|callback`, `GET/DELETE /api/tiktok` (`?creator=1` canlı creator info),
-  `POST /api/projects/[id]/tiktok` (gizlilik zorunlu + müzik onayı). UI `TikTokPublish` (TikTok denetim
-  kuralları: hesap adı/avatarı, varsayılansız görünürlük, yorum/duet/stitch varsayılan kapalı ve hesapta
-  kapalıysa gri, Music Usage Confirmation onayı) + Ayarlar `TikTokConnectionCard`. Env `TIKTOK_CLIENT_KEY/
-  SECRET` yoksa gizli. **Denetimsiz uygulama:** yalnız GİZLİ TikTok hesaplarına, `SELF_ONLY`, 24 saatte ≤5
-  kullanıcı (`unaudited_client_can_only_post_to_private_accounts`). YouTube yükleme ortak modüle taşındı:
-  `lib/youtube/publish.ts` `publishProjectToYouTube()` (rota + seriler).
 - **Seriler / otomatik pilot (31 Ekim)**: `/series` sayfası (Sidebar "Series"). Tablolar `series` +
   `series_episodes` (unique series_id+scheduled_for). `lib/series/schedule.ts` saf saat hesabı (Intl ile
   saat dilimi/DST), `lib/series/validate.ts`, `lib/series/run.ts`: `runSeriesTick()` aktif serilerin
@@ -282,7 +255,6 @@ Business 5000/**$89** (kod güncel; **Paddle ürün fiyatları elle güncellenme
 - **Harita animasyonları (2 Kasım)**: senaryo yazarı sahneye isteğe bağlı `map {title, places[{name,lat,lon}], route}` koyar (1–2 sahne, `readMapSpec` maps-spec.ts doğrular). `planSlots` o sahnenin klip olmayan ilk slotuna `slot.map.spec`. Runner poll'da (1b) `renderMap` → `lib/pipeline/maps.ts` `renderMapFrames()` (d3-geo Mercator + world-atlas land-50m, modern sınır YOK, koyu deniz/kum kara, sharp ile SVG→JPEG; rota çizgisi kare kare uzar, noktalar sırayla belirir) → `videos/<user>/<job>/map-<slot>-<f>.jpg`, `slot.map.frames/labels`, slot `succeed` (hata → harita silinir, normal görsel/stok). `buildEdit`: kareler slotun %60'ında art arda, son kare tutulur (zoomInSlow); yer adları ve başlık Shotstack rich-text (sunucuda font güvenilmez), üst üste binen etiket noktanın altına. Ücret slotun normal fiyatı (still/stok).
 - **Thumbnail + logo (2 Kasım)**: marka logosu varsa thumbnail istemine "sol üst köşeyi boş bırak" eklenir (Timur kapağında logo başlığın üstüne binmişti). Altyazı düzeltmede iki satırlık cue'nun satır sonu korunur.
 - **Linkten video (2 Kasım)**: `/chat` "+ Make it from a link" → `sourceUrl`. Start route `cleanSourceUrl` + `fetchArticle` ön kontrolü (okunamıyorsa kredi düşmeden 400; fikir boşsa sayfa başlığından), araştırma zorunlu açık, `options.sourceUrl`. Runner research adımı `researchFromUrl()` (openai.ts): `lib/pipeline/source-url.ts` `fetchArticle` (yalnız http(s), DNS ile özel/loopback/link-local/CGNAT IP reddi, her yönlendirmede tekrar, ≤3 yönlendirme, 15 sn, ≤3 MB, HTML/düz metin; `extractArticle` article/main, script/nav/footer atılır, ≤14k kr) → `chatJSON` yalnız sayfadaki bilgiden 180–320 kelimelik brief, kaynak = sayfa. Sonra normal senaryo akışı (VERIFIED brief).
-- **Instagram Reels (2 Kasım)**: `lib/instagram/client.ts` ("Instagram API with Instagram Login": `instagram_business_basic,instagram_business_content_publish`; kod → kısa token → 60 günlük token, <10 gün kalınca `ig_refresh_token`; yayın `POST /{ig-user-id}/media` REELS + `video_url` (bizim public `/media/videos/…` URL'miz) → `status_code` FINISHED poll → `media_publish`, permalink). `instagram_connections` (şifreli token, SQL supabase/README.md). Rotalar `/api/instagram/connect|callback`, `GET/DELETE /api/instagram`, `POST /api/projects/[id]/instagram` {caption, shareToFeed} (`lib/instagram/publish.ts`: yalnız dikey, filigranlı değil). UI Ayarlar `InstagramConnectionCard` (yalnız profesyonel hesap) + Publish `InstagramPublish`. Env `INSTAGRAM_APP_ID/SECRET` yoksa gizli. **Kalan (Kadir):** Meta geliştirici uygulaması + Instagram ürünü + yönlendirme URI + test kullanıcısı; herkese açmak için Meta App Review (`instagram_business_content_publish`).
 - **Public API (2 Nov)**: `lib/api-keys.ts`. Keys are `nv_live_…`; only the SHA-256 hash is stored, in the `api_keys` table (SQL is in `supabase/README.md`). At most 5 keys per user, and only paid or beta users can create them (`apiAllowed`). Settings has an "API" tab (`ApiKeysCard`) that shows a new key only once.
   - **Auth:** `userFromApiKey` resolves the key; `withApiUser` (AsyncLocalStorage) makes `requireUser()` return that key's user. That is how `/api/v1/videos` POST runs the normal `/api/pipeline/start` POST, with field aliases and `review:false`.
   - **Endpoints:** `GET /api/v1/videos`, `GET /api/v1/videos/:id` (`jobView`; polling also calls `reconcileJob`), `GET /api/v1/credits`, and `GET /api/v1/options` (public).
@@ -542,11 +514,9 @@ Business 5000/**$89** (kod güncel; **Paddle ürün fiyatları elle güncellenme
 
 ## 7. Bekleyen İşler (öncelik sırasıyla)
 
-**Lansmandan önce (7 Kasım, Yağmur "sonra hatırlat"):** landing hero, "How it works" adım 3, `app/layout.tsx` meta açıklaması ve FAQ "YouTube, TikTok ve Instagram'a yayınla" diyor; Instagram bağlantısı kurulmadı (Meta uygulaması yok), YouTube/TikTok denetim bitene kadar yalnız private. Kilit açılmadan ya bağlantıları tamamla ya metni yumuşat. "Why Norveko" artık yalnız bizde olanı listeler (`WHY_NORVEKO` plans.ts; eski "Typical AI tool" sütunu kaldırıldı). Rakip isimli karşılaştırma yalnız ayrı "vs" sayfalarında, rakibin kendi fiyat sayfası + kaynak + kontrol tarihiyle.
+**Lansmandan önce:** ~~YouTube/TikTok/Instagram "yayınla" metinleri~~ (8 Kasım: özellik kaldırıldı, metinler "hazır MP4" oldu). "Why Norveko" artık yalnız bizde olanı listeler (`WHY_NORVEKO` plans.ts; eski "Typical AI tool" sütunu kaldırıldı). Rakip isimli karşılaştırma yalnız ayrı "vs" sayfalarında, rakibin kendi fiyat sayfası + kaynak + kontrol tarihiyle.
 
-Kod dışı (Kadir): **TikTok demo videosu (SONRA)** — Production formu demo video olmadan kaydedilmiyor; video çekilince
-Claude formu yeniden doldurur (değerler `docs/app-reviews.md` 1.1b), Kadir yükleyip Submit for review. Sonra Google
-doğrulaması (Branding → Data access), YouTube API audit formu, Paddle live, Vercel/Supabase Pro (rehber aynı dosyada).
+Kod dışı (Kadir): ~~TikTok demo videosu / Google doğrulaması / YouTube API audit~~ (8 Kasım: yayın özelliği kaldırıldı, gerek kalmadı; Supabase tabloları + Vercel env + Google/TikTok uygulamaları kapatılacak). Paddle live, Vercel/Supabase Pro.
 **tam video betası için Vercel env**: `SHOTSTACK_API_KEY`
 + `SHOTSTACK_ENV=stage` (test; `v1` = filigransız prod, PAYG $10),
 ~~`KLING_API_KEY`~~ ✅ 28 Ekim: Vercel'de (`norveko-prod`, deneme paketi 100
@@ -570,7 +540,7 @@ galeri~~ (29 Ekim: landing `#examples` gerçek render'lar `lib/showcase.ts`
 X video" satırı `steps.ts`'ten hesaplanır. **Paket kredileri/fiyatları 29
 Ekim'de gözden geçirildi, Kadir "şimdilik değiştirme" dedi** — Starter 500 ile
 yalnızca 1×30 sn video çıkıyor; ileride tekrar bakılacak) →
-~~YouTube'a doğrudan yükleme~~ (31 Ekim, Google kurulumu + denetim bekliyor) → ~~seri modu/zamanlama~~ + ~~TikTok~~ (31 Ekim; TikTok uygulaması + denetim bekliyor) → ~~brand kit~~ → ~~ses klonlama~~ →
+~~YouTube'a doğrudan yükleme~~ + ~~TikTok~~ (8 Kasım'da kaldırıldı) → ~~seri modu/zamanlama~~ → ~~brand kit~~ → ~~ses klonlama~~ →
 ~~affiliate~~ (kredi bazlı davet). Ertelenen: timeline editör, AI avatar, mobil app.
 
 Teknik borç: ~~sahne düzeyinde yeniden üretim + versiyon geçmişi~~ (31 Ekim: editörde sahne başına "Earlier pictures" `slot.editHistory` ≤8, `original` işareti, `restoreScene`; render sürümleri `steps.render.history` (queueRerender her yeniden render'da eskiyi saklar, filigranlı sürüm temiz videoya geri getirilmez), `useVersion` ücretsiz) +
