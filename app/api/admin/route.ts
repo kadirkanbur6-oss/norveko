@@ -296,6 +296,42 @@ export async function GET(req: NextRequest) {
   const completed = payments.filter((p) => p.status === "completed");
   const inWindow = completed.filter((p) => p.createdAt >= since);
   const sum = (list: Array<{ amountUsd: number }>) => list.reduce((t, p) => t + p.amountUsd, 0);
+
+  // ---- break-even for the calendar month (8 Nov 2026, Yağmur) -------------
+  // profit = revenue − provider cost − fixed costs. Pricing targets a 40% gross
+  // margin (provider cost ≈ 60% of revenue), so the month breaks even once
+  // gross revenue reaches fixed / 0.40. Revenue is gross (Paddle fees are not
+  // in the purchase rows). Provider cost is read for the month separately,
+  // because `usage` only covers the selected window.
+  const monthStartDate = new Date(now);
+  monthStartDate.setUTCDate(1);
+  monthStartDate.setUTCHours(0, 0, 0, 0);
+  const monthStart = monthStartDate.toISOString();
+  const monthCostRows = await all(
+    "provider_usage (month)",
+    (a, b) => db.from("provider_usage").select("estimated_cost_usd").gte("created_at", monthStart).range(a, b),
+    errors
+  );
+  const monthCostUsd = monthCostRows.reduce((t, u) => t + num(u.estimated_cost_usd), 0);
+  const monthRevenueUsd = sum(completed.filter((p) => p.createdAt >= monthStart));
+  const fixedUsd = FIXED_COSTS.reduce((t, c) => t + c.usdPerMonth, 0);
+  const daysInMonth = new Date(monthStartDate.getUTCFullYear(), monthStartDate.getUTCMonth() + 1, 0).getUTCDate();
+  const dayOfMonth = new Date(now).getUTCDate();
+  const month = {
+    start: monthStart,
+    dayOfMonth,
+    daysInMonth,
+    revenueUsd: monthRevenueUsd,
+    costUsd: monthCostUsd,
+    fixedUsd,
+    targetMargin: 0.4,
+    breakEvenRevenueUsd: fixedUsd / 0.4,
+    // Net so far, charging the whole month's fixed costs up front.
+    netUsd: monthRevenueUsd - monthCostUsd - fixedUsd,
+    // Straight-line projection of this month's revenue and cost to month end.
+    projectedRevenueUsd: (monthRevenueUsd / dayOfMonth) * daysInMonth,
+    projectedCostUsd: (monthCostUsd / dayOfMonth) * daysInMonth,
+  };
   const counts = Object.fromEntries(jobCounts);
 
   // fal.ai balance (lip-sync, swaps, image→video clips all run there). Warn at ≤ 20 % of the
@@ -376,6 +412,7 @@ export async function GET(req: NextRequest) {
       fal,
       gemini: { ...gemini, spend24hUsd: geminiSpend24h },
       stock: { slots: stockSlots, fallbacks: stockFallbacks, share: stockSlots ? stockFallbacks / stockSlots : 0 },
+      month,
       generationOpen: process.env.GENERATION_ENABLED !== "false",
       fullVideoOpen: process.env.FULL_VIDEO_ENABLED === "true",
     },

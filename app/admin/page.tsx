@@ -32,6 +32,19 @@ interface Overview {
   fal: { balanceUsd: number; topupUsd: number; low: boolean } | null;
   gemini?: { outOfCredit: boolean; jobs: number; lastAt: string | null; spend24hUsd: number };
   stock?: { slots: number; fallbacks: number; share: number };
+  month?: {
+    start: string;
+    dayOfMonth: number;
+    daysInMonth: number;
+    revenueUsd: number;
+    costUsd: number;
+    fixedUsd: number;
+    targetMargin: number;
+    breakEvenRevenueUsd: number;
+    netUsd: number;
+    projectedRevenueUsd: number;
+    projectedCostUsd: number;
+  };
 }
 interface Daily {
   day: string;
@@ -327,6 +340,28 @@ export default function AdminPage() {
                 <Stat label="Completed (all time)" value={int(o.jobs.completed)} />
                 <Stat label="Failed (all time)" value={int(o.jobs.failed)} note={`${int(o.failedWindow)} in the ${windowLabel}`} />
                 <Stat label="Unspent credits" value={int(o.creditsOutstanding)} note="Across every account" />
+                {o.month && (
+                  <div className={`${CARD} p-4 ${o.month.revenueUsd >= o.month.breakEvenRevenueUsd ? "border-emerald-400/30" : ""}`}>
+                    <p className="text-xs text-gray-400">Break-even this month</p>
+                    <p className="mt-1.5 text-2xl font-semibold tracking-tight text-white">
+                      {usd(o.month.revenueUsd)} <span className="text-base font-medium text-gray-400">/ {usd(o.month.breakEvenRevenueUsd)}</span>
+                    </p>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className={`h-full rounded-full ${o.month.revenueUsd >= o.month.breakEvenRevenueUsd ? "bg-emerald-400" : "bg-blue-400"}`}
+                        style={{ width: `${Math.min(100, (o.month.revenueUsd / Math.max(1, o.month.breakEvenRevenueUsd)) * 100)}%` }}
+                      />
+                    </div>
+                    <p className="mt-1.5 text-xs text-gray-400">
+                      Day {o.month.dayOfMonth}/{o.month.daysInMonth} · provider cost {usd(o.month.costUsd)} · fixed {usd(o.month.fixedUsd)} · net{" "}
+                      <span className={o.month.netUsd >= 0 ? "text-emerald-300" : "text-red-300"}>{o.month.netUsd < 0 ? "−" : ""}{usd(Math.abs(o.month.netUsd))}</span>
+                      {o.month.dayOfMonth >= 3 && (
+                        <> · on pace for {usd(o.month.projectedRevenueUsd)} revenue, {usd(o.month.projectedCostUsd)} cost</>
+                      )}
+                    </p>
+                    <p className="mt-1 text-[11px] text-gray-500">Gross revenue; break-even = fixed costs ÷ {Math.round(o.month.targetMargin * 100)}% target margin.</p>
+                  </div>
+                )}
                 {o.gemini && (
                   <Stat
                     label="Gemini spend, 24 h"
