@@ -29,12 +29,14 @@ const cspDirectives = [
     "script-src 'self' 'unsafe-inline'",
     isDev ? "'unsafe-eval'" : "",
     "https://cdn.paddle.com https://sandbox-cdn.paddle.com",
+    // Google Identity Services ("Continue with Google" button + One Tap).
+    "https://accounts.google.com/gsi/",
     isVercelPreview ? "https://vercel.live" : "",
   ]
     .filter(Boolean)
     .join(" "),
   // Paddle.js injects its own stylesheet (cdn/sandbox-cdn.paddle.com).
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.paddle.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.paddle.com https://accounts.google.com/gsi/style",
   "font-src 'self' https://fonts.gstatic.com data:",
   // Thumbnails, stock footage previews, voice previews and generated clips
   // come from Supabase Storage, Pixabay/Pexels, ElevenLabs and Kling CDNs.
@@ -42,7 +44,7 @@ const cspDirectives = [
   "media-src 'self' blob: https:",
   "worker-src 'self' blob:",
   [
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.paddle.com",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.paddle.com https://accounts.google.com/gsi/",
     // Sentry error reports go straight from the browser to the ingest host.
     "https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io",
     isVercelPreview ? "https://vercel.live wss://*.pusher.com" : "",
@@ -50,7 +52,7 @@ const cspDirectives = [
     .filter(Boolean)
     .join(" "),
   [
-    "frame-src https://*.paddle.com",
+    "frame-src https://*.paddle.com https://accounts.google.com/gsi/",
     isVercelPreview ? "https://vercel.live" : "",
   ]
     .filter(Boolean)

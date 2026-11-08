@@ -8,7 +8,7 @@ import { supabase } from "../lib/supabase";
 import { INTRO_FLAG } from "../components/WelcomeIntro";
 import AuthShell from "../components/auth/AuthShell";
 import AuthAlert from "../components/auth/AuthAlert";
-import GoogleButton from "../components/auth/GoogleButton";
+import GoogleSignIn from "../components/auth/GoogleSignIn";
 import PasswordField, { AUTH_INPUT_CLASS } from "../components/auth/PasswordField";
 
 const ERROR_TEXT: Record<string, string> = {
@@ -54,6 +54,11 @@ function LoginContent() {
       return;
     }
 
+    finishSignIn();
+  }
+
+  /** Shared landing after any successful sign-in (password or Google). */
+  function finishSignIn() {
     try {
       sessionStorage.setItem(INTRO_FLAG, "1");
     } catch {
@@ -80,6 +85,7 @@ function LoginContent() {
     setInfoMessage("Verification email sent. Check your inbox and spam folder.");
   }
 
+  // Fallback only (no NEXT_PUBLIC_GOOGLE_CLIENT_ID): redirect through Supabase.
   async function handleGoogleSignIn() {
     setErrorMessage("");
     setIsLoading(true);
@@ -114,7 +120,15 @@ function LoginContent() {
         </>
       }
     >
-      <GoogleButton onClick={handleGoogleSignIn} disabled={isLoading} />
+      <GoogleSignIn
+        context="signin"
+        oneTap
+        disabled={isLoading}
+        onSignedIn={finishSignIn}
+        onError={setErrorMessage}
+        onBusy={setIsLoading}
+        fallback={handleGoogleSignIn}
+      />
 
       {/* method="post": JS yüklenmeden gönderilirse e-posta/şifre URL'e düşmesin. */}
       <form className="space-y-6" method="post" onSubmit={handleSubmit}>

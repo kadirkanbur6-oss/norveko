@@ -2,15 +2,17 @@
 
 import { FormEvent, useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { callbackUrl, safeNext } from "@/lib/safe-next";
 import { supabase } from "../lib/supabase";
 import AuthShell from "../components/auth/AuthShell";
 import AuthAlert from "../components/auth/AuthAlert";
-import GoogleButton from "../components/auth/GoogleButton";
+import GoogleSignIn from "../components/auth/GoogleSignIn";
+import { INTRO_FLAG } from "../components/WelcomeIntro";
 import PasswordField, { AUTH_INPUT_CLASS } from "../components/auth/PasswordField";
 
 function SignupContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const next = safeNext(searchParams.get("next"));
   const [email, setEmail] = useState("");
@@ -65,6 +67,17 @@ function SignupContent() {
     );
   }
 
+  /** Google accounts are verified by Google, so a Google sign-up lands straight in the app. */
+  function finishGoogleSignUp() {
+    try {
+      sessionStorage.setItem(INTRO_FLAG, "1");
+    } catch {
+      // storage unavailable
+    }
+    router.push(next ?? "/dashboard");
+  }
+
+  // Fallback only (no NEXT_PUBLIC_GOOGLE_CLIENT_ID): redirect through Supabase.
   async function handleGoogleSignUp() {
     setErrorMessage("");
     setIsLoading(true);
@@ -99,7 +112,14 @@ function SignupContent() {
         </>
       }
     >
-      <GoogleButton onClick={handleGoogleSignUp} disabled={isLoading} />
+      <GoogleSignIn
+        context="signup"
+        disabled={isLoading}
+        onSignedIn={finishGoogleSignUp}
+        onError={setErrorMessage}
+        onBusy={setIsLoading}
+        fallback={handleGoogleSignUp}
+      />
 
       <form className="space-y-6" method="post" onSubmit={handleSubmit}>
         <div>
