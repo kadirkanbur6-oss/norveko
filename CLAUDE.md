@@ -516,6 +516,8 @@ Business 5000/**$89** (kod güncel; **Paddle ürün fiyatları elle güncellenme
 
 ## 7. Bekleyen İşler (öncelik sırasıyla)
 
+**Ödemeler yakında modu (9 Kasım):** `lib/payments.ts` `PAYMENTS_LIVE` (= `NEXT_PUBLIC_PAYMENTS_LIVE=true` veya `NEXT_PUBLIC_PADDLE_ENV=production`). Kapalıyken admin dışında Buy/Subscribe "Opening soon" + `PaymentsSoonCard` bekleme listesi (`POST /api/waitlist`, tablo `plan_waitlist` ✅ Supabase'de oluşturuldu, admin Users kartında sayı). Paddle live açılınca env'i production yap → mod kendiliğinden kapanır. Supabase Site URL `https://norveko.app` ✅ + redirect `https://norveko.app/**` ✅; `FULL_VIDEO_ENABLED`/`NEXT_PUBLIC_FULL_VIDEO_ENABLED=true` ✅ (redeploy yapıldı). `GENERATION_ENABLED` kilidi hâlâ açık (lansmanda kaldırılacak).
+
 **LANSMAN KONTROL LİSTESİ (8 Kasım denetimi, Yağmur "yarın lansman"):**
 1. **Paddle canlıda SANDBOX** (`NEXT_PUBLIC_PADDLE_ENV`, `Paddle.Environment.get()` = sandbox; Kadir'in hesabında sahte "Pro yearly" abonelik var). Gerçek ödeme için Paddle live doğrulaması (şirket/LEGAL_NAME) + canlı ürün/fiyatlar + Vercel'de `NEXT_PUBLIC_PADDLE_ENV=production`, `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`, `PADDLE_API_KEY`, `PADDLE_WEBHOOK_SECRET` (canlı) ve **`NEXT_PUBLIC_PADDLE_PRICE_*` 9 fiyat id'si** (yoksa kod sandbox id'lerine düşer → canlı checkout açılmaz) + webhook URL. Olmadan: kayıt + 70 ücretsiz kredi çalışır, satın alma çalışmaz.
 2. **Supabase e-posta limiti 2/saat** (yerleşik SMTP; Auth → Emails → SMTP Settings kapalı). 3. kayıttan itibaren doğrulama maili gitmez. Çözüm: Resend (ücretsiz 3k/ay) → Vercel DNS'e Resend DKIM/SPF (ImprovMX SPF'i ile birleştir: `v=spf1 include:spf.improvmx.com include:amazonses.com ~all`), Supabase Custom SMTP aç, Rate Limits → emails/h 100+.
