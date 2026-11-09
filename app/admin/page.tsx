@@ -32,6 +32,7 @@ interface Overview {
   fal: { balanceUsd: number; topupUsd: number; low: boolean } | null;
   gemini?: { outOfCredit: boolean; jobs: number; lastAt: string | null; spend24hUsd: number };
   stock?: { slots: number; fallbacks: number; share: number };
+  waitlist?: number;
   month?: {
     start: string;
     dayOfMonth: number;
@@ -332,7 +333,7 @@ export default function AdminPage() {
                 </div>
               )}
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <Stat label="Users" value={int(o.users)} note={`+${int(o.newUsers)} in the ${windowLabel} · ${int(o.activeUsers)} signed in this week`} />
+                <Stat label="Users" value={int(o.users)} note={`+${int(o.newUsers)} in the ${windowLabel} · ${int(o.activeUsers)} signed in this week${o.waitlist ? ` · ${int(o.waitlist)} on the plan waitlist` : ""}`} />
                 <Stat label="Revenue (all time)" value={usd(o.revenueUsd)} note={`${usd(o.revenueWindowUsd)} in the ${windowLabel}${o.refundedUsd ? ` · ${usd(o.refundedUsd)} refunded` : ""}`} />
                 <Stat label="Paying users" value={int(o.payingUsers)} note={`${int(o.activeSubscriptions)} active subscriptions`} />
                 <Stat label={`Provider cost, ${windowLabel}`} value={usd(o.costWindowUsd)} note={`${int(o.creditsSpentWindow)} credits spent by users`} />

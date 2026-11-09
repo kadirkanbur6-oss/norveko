@@ -17,6 +17,7 @@ import {
   type SubscriptionPlan,
 } from "@/lib/subscriptions";
 import { JOB_COSTS } from "@/lib/plans";
+import { PAYMENTS_LIVE } from "@/lib/payments";
 
 const PERIODS: SubPeriod[] = ["week", "month", "year"];
 
@@ -42,6 +43,7 @@ export default function SubscriptionPlans({
   busyPriceId,
   currentPlanId,
   disabled,
+  comingSoon = false,
 }: {
   mode: "landing" | "billing";
   onSubscribe?: (plan: SubscriptionPlan) => void;
@@ -49,6 +51,8 @@ export default function SubscriptionPlans({
   /** The user's active plan: its card says "Current plan", others are disabled. */
   currentPlanId?: string | null;
   disabled?: boolean;
+  /** Payments not live yet: buttons read "Opening soon" and do nothing. */
+  comingSoon?: boolean;
 }) {
   const [period, setPeriod] = useState<SubPeriod>("month");
   const purchasable = new Set(availablePlans().map((p) => p.id));
@@ -78,6 +82,11 @@ export default function SubscriptionPlans({
         ))}
       </div>
 
+      {mode === "landing" && !PAYMENTS_LIVE && (
+        <p className="mx-auto mt-4 max-w-xl text-center text-xs text-amber-200/90">
+          Paid plans open in a few days. Sign up now, make your first video with free credits, and get a launch bonus on your first purchase.
+        </p>
+      )}
       <div className="mx-auto mt-6 grid max-w-3xl gap-3 sm:grid-cols-2">
         {plans.map((plan) => {
           const copy = TIER_COPY[plan.tier];
@@ -134,7 +143,7 @@ export default function SubscriptionPlans({
                 <button
                   type="button"
                   onClick={() => onSubscribe?.(plan)}
-                  disabled={disabled || current || !canBuy || Boolean(currentPlanId) || busyPriceId === plan.paddlePriceId}
+                  disabled={comingSoon || disabled || current || !canBuy || Boolean(currentPlanId) || busyPriceId === plan.paddlePriceId}
                   className={`mt-4 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 ${
                     copy.featured
                       ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white"
@@ -142,7 +151,7 @@ export default function SubscriptionPlans({
                   }`}
                 >
                   {busyPriceId === plan.paddlePriceId && <Loader2 size={15} className="animate-spin" aria-hidden />}
-                  {current ? "Current plan" : !canBuy ? "Coming soon" : currentPlanId ? "You already have a plan" : `Subscribe: $${plan.priceUsd}/${PERIOD_LABEL[plan.period].per}`}
+                  {current ? "Current plan" : comingSoon || !canBuy ? "Opening soon" : currentPlanId ? "You already have a plan" : `Subscribe: $${plan.priceUsd}/${PERIOD_LABEL[plan.period].per}`}
                 </button>
               )}
             </div>

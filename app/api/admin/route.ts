@@ -313,6 +313,11 @@ export async function GET(req: NextRequest) {
     errors
   );
   const monthCostUsd = monthCostRows.reduce((t, u) => t + num(u.estimated_cost_usd), 0);
+  // Plan waitlist size (table may not exist yet → 0).
+  const waitlistCount = await db
+    .from("plan_waitlist")
+    .select("user_id", { count: "exact", head: true })
+    .then((r) => (r.error ? 0 : (r.count ?? 0)));
   const monthRevenueUsd = sum(completed.filter((p) => p.createdAt >= monthStart));
   const fixedUsd = FIXED_COSTS.reduce((t, c) => t + c.usdPerMonth, 0);
   const daysInMonth = new Date(monthStartDate.getUTCFullYear(), monthStartDate.getUTCMonth() + 1, 0).getUTCDate();
@@ -413,6 +418,7 @@ export async function GET(req: NextRequest) {
       gemini: { ...gemini, spend24hUsd: geminiSpend24h },
       stock: { slots: stockSlots, fallbacks: stockFallbacks, share: stockSlots ? stockFallbacks / stockSlots : 0 },
       month,
+      waitlist: waitlistCount,
       generationOpen: process.env.GENERATION_ENABLED !== "false",
       fullVideoOpen: process.env.FULL_VIDEO_ENABLED === "true",
     },

@@ -18,6 +18,8 @@ import { FREE_TRIAL_RULES, JOB_COSTS, PAID_INCLUDES, planDetails } from "@/lib/p
 import { CREATIVE_COSTS } from "@/lib/skit/pricing";
 import ReferralCard from "../components/ReferralCard";
 import SubscriptionPlans from "../components/SubscriptionPlans";
+import PaymentsSoonCard from "../components/PaymentsSoonCard";
+import { PAYMENTS_LIVE } from "@/lib/payments";
 import PageTabs, { PageHeader, useTabParam, type PageTab } from "../components/PageTabs";
 
 const BILLING_TABS: PageTab[] = [
@@ -74,6 +76,8 @@ export default function BillingPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [purchaseNotice, setPurchaseNotice] = useState("");
   const [freeTrial, setFreeTrial] = useState(false);
+  // Admins keep the (sandbox) checkout for testing while payments are not live.
+  const [isAdmin, setIsAdmin] = useState(false);
   const [subscription, setSubscription] = useState<{
     planId: string;
     name: string;
@@ -103,6 +107,7 @@ export default function BillingPage() {
 
       setCredits(data.credits);
       setFreeTrial(data.freeTrial === true);
+      setIsAdmin(data.admin === true);
       creditsRef.current = data.credits;
       setTransactions(data.transactions);
       return data.credits as number;
@@ -258,6 +263,12 @@ export default function BillingPage() {
                 </p>
               )}
 
+              {!PAYMENTS_LIVE && !isAdmin && (
+                <div className="mt-8">
+                  <PaymentsSoonCard />
+                </div>
+              )}
+
               {/* Free trial status */}
               {freeTrial && (
                 <div className="mt-8 flex flex-col gap-3 rounded-2xl border border-purple-400/30 bg-gradient-to-r from-purple-500/10 to-blue-500/5 p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -315,6 +326,7 @@ export default function BillingPage() {
                   onSubscribe={handleSubscribe}
                   currentPlanId={subscription?.active ? subscription.planId : null}
                   disabled={!paddle || !userId}
+                  comingSoon={!PAYMENTS_LIVE && !isAdmin}
                 />
               </div>
 
@@ -369,14 +381,14 @@ export default function BillingPage() {
 
                     <button
                       onClick={() => handlePurchase(pack.paddlePriceId)}
-                      disabled={!paddle || !userId}
+                      disabled={!paddle || !userId || (!PAYMENTS_LIVE && !isAdmin)}
                       className={`mt-6 w-full rounded-xl py-3 text-sm font-semibold disabled:opacity-60 ${
                         featured ? "bg-gradient-to-r from-blue-500 to-purple-600" : "border border-white/10 bg-white/[0.03] text-gray-300"
                       }`}
                     >
                       <span className="flex items-center justify-center gap-2">
                         <Sparkles size={16} />
-                        Buy {pack.name}
+                        {!PAYMENTS_LIVE && !isAdmin ? "Opening soon" : `Buy ${pack.name}`}
                       </span>
                     </button>
                   </div>

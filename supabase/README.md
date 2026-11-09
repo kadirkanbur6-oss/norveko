@@ -585,3 +585,21 @@ CREATE OR REPLACE FUNCTION public.handle_new_user_credits() RETURNS trigger LANG
 ```
 
 Existing accounts keep their balance. Keep this number equal to `FREE_TRIAL_CREDITS`.
+
+## Plan waitlist (`plan_waitlist`, 9 Nov 2026)
+
+While payments are not live (`lib/payments.ts` `PAYMENTS_LIVE`), /billing shows "Plans and
+packs open soon" with a Notify-me button (`POST /api/waitlist`). One row per user, service
+role only.
+
+```sql
+create table if not exists public.plan_waitlist (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  email text,
+  created_at timestamptz not null default now()
+);
+alter table public.plan_waitlist enable row level security;
+```
+
+When plans open, export the e-mails (`select email from plan_waitlist order by created_at`)
+and send the launch mail; the table can stay.
