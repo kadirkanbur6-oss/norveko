@@ -479,6 +479,7 @@ export async function POST(req: Request) {
           urlFor: (key) => signedR2Url(key, null, 6 * 3600),
           musicUrl: db.storage.from("videos").getPublicUrl(mpath).data.publicUrl,
           logoUrl: "https://norveko.app/brand/norveko-logo.png",
+          vertical: body.vertical === true,
         });
         const { submitRender } = await import("@/lib/pipeline/shotstack");
         const renderId = await submitRender(edit);

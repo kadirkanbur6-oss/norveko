@@ -95,12 +95,14 @@ export function buildPromoEdit(args: {
   urlFor: (key: string) => Promise<string>;
   musicUrl: string;
   logoUrl: string;
+  /** 9:16 story/Reels cut: the vertical clip fills the frame, text sits in the platform safe zones. */
+  vertical?: boolean;
 }): Promise<Record<string, unknown>> {
   return (async () => {
-    const { manifest, urlFor, musicUrl, logoUrl } = args;
+    const { manifest, urlFor, musicUrl, logoUrl, vertical } = args;
     for (const sc of PROMO_SCENES) if (sc.image === "AMBIENT_IMAGE") sc.image = manifest.ambientImage ?? "";
-    const W = 1920;
-    const H = 1080;
+    const W = vertical ? 1080 : 1920;
+    const H = vertical ? 1920 : 1080;
     const layers: Clip[][] = [[], [], [], [], []]; // 0 caption+title text, 1 chip, 2 media, 3 extra, 4 background media
     const voice: Clip[] = [];
     let t = 0;
@@ -111,6 +113,56 @@ export function buildPromoEdit(args: {
       const len = Math.round((seg.seconds + GAP) * 100) / 100;
       voice.push({ asset: { type: "audio", src: seg.url, volume: 1 }, start: Math.round(t * 100) / 100, length: Math.round(seg.seconds * 100) / 100 });
 
+      if (vertical) {
+        const T = Math.round(t * 100) / 100;
+        const media = sc.clip
+          ? { asset: { type: "video", src: await urlFor(sc.clip.key), volume: 0, trim: sc.clip.trim ?? 0 }, length: Math.min(len, sc.clip.seconds) }
+          : sc.wide
+            ? { asset: { type: "video", src: await urlFor(sc.wide.key), volume: 0, trim: sc.wide.trim ?? 0 }, length: len }
+            : { asset: { type: "image", src: sc.image && sc.image.startsWith("http") ? sc.image : await urlFor(sc.image ?? "") , }, length: len, effect: "zoomInSlow" };
+        layers[4].push({ ...media, start: T, fit: "cover", transition: { in: "fade", out: "fade" } });
+        layers[3].push({
+          asset: { type: "rich-text", text: " ", font: { family: "Montserrat", size: 10, color: "#000000" }, background: { color: "#000000", opacity: 0.22 } },
+          start: T, length: len, width: W, height: H, position: "center",
+        });
+        layers[0].push({
+          asset: {
+            type: "rich-text", text: sc.title.replace("\n", " "),
+            font: { family: "Montserrat ExtraBold", size: 88, color: "#FFFFFF", weight: 800 },
+            style: { lineHeight: 1.05 },
+            stroke: { color: "#000000", width: 4, opacity: 0.8 },
+            shadow: { offsetX: 0, offsetY: 4, blur: 14, color: "#000000", opacity: 0.6 },
+            align: { horizontal: "center", vertical: "middle" },
+            animation: { preset: "slideIn", style: "word", direction: "up", duration: 0.4 },
+          },
+          start: T, length: len, width: 940, height: 300, position: "center", offset: { x: 0, y: 0.24 }, transition: { out: "fade" },
+        });
+        layers[0].push({
+          asset: {
+            type: "rich-text", text: sc.text,
+            font: { family: "Montserrat Medium", size: 36, color: "#FFFFFF", weight: 500 },
+            style: { lineHeight: 1.3 },
+            background: { color: "#000000", opacity: 0.55, borderRadius: 18, wrap: true },
+            padding: 22, align: { horizontal: "center", vertical: "middle" },
+            animation: { preset: "fadeIn", duration: 0.35 },
+          },
+          start: T, length: len, width: 940, height: 300, position: "center", offset: { x: 0, y: -0.25 }, transition: { out: "fade" },
+        });
+        layers[1].push({
+          asset: {
+            type: "rich-text", text: sc.tag,
+            font: { family: "Montserrat ExtraBold", size: 30, color: "#93C5FD", weight: 800 },
+            background: { color: "#1D4ED8", opacity: 0.55, borderRadius: 999, wrap: true },
+            padding: 16, align: { horizontal: "center", vertical: "middle" },
+          },
+          start: T, length: len, width: 600, height: 70, position: "center", offset: { x: 0, y: 0.355 }, transition: { out: "fade" },
+        });
+        if (i === PROMO_SCENES.length - 1) {
+          layers[3].push({ asset: { type: "image", src: logoUrl }, start: T, length: len, fit: "contain", scale: 0.2, position: "center", offset: { x: 0, y: 0.02 }, transition: { in: "fade" } });
+        }
+        t += seg.seconds + GAP;
+        continue;
+      }
       const phone = sc.clip;
       // Text column: the side opposite the phone (or centred for full-bleed scenes).
       const textX = phone ? (phone.side === "right" ? -0.2 : 0.2) : 0;
