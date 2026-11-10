@@ -191,7 +191,7 @@ export function buildPromoEdit(args: {
           transition: { in: "fade", out: "fade" },
         });
         layers[3].push({
-          asset: { type: "rich-text", text: " ", font: { family: "Montserrat", size: 10, color: "#000000" }, background: { color: "#000000", opacity: 0.38 }, width: W, height: H },
+          asset: { type: "rich-text", text: " ", font: { family: "Montserrat", size: 10, color: "#000000" }, background: { color: "#000000", opacity: 0.38 } },
           start: Math.round(t * 100) / 100,
           length: len,
           width: W,
@@ -220,7 +220,7 @@ export function buildPromoEdit(args: {
           transition: { in: "fade", out: "fade" },
         });
         layers[3].push({
-          asset: { type: "rich-text", text: " ", font: { family: "Montserrat", size: 10, color: "#000000" }, background: { color: "#000000", opacity: 0.35 }, width: W, height: H },
+          asset: { type: "rich-text", text: " ", font: { family: "Montserrat", size: 10, color: "#000000" }, background: { color: "#000000", opacity: 0.35 } },
           start: Math.round(t * 100) / 100,
           length: len,
           width: W,
