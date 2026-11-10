@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildPlaylist, chunkPlaylist } from "./playlist";
-import { AMBIENT_MARGIN, AMBIENT_MINUTES, ambientCreditsFor, ambientTracksFor, AMBIENT_SONG_COST } from "../skit/pricing";
+import { AMBIENT_MARGIN, AMBIENT_MINUTES, ambientCreditsFor, ambientCostUsd } from "../skit/pricing";
 import { REVENUE_PER_CREDIT_USD } from "../pipeline/steps";
 
 test("playlist covers the length and never repeats a song back to back", () => {
@@ -22,7 +22,7 @@ test("chunks add up to exactly the video length", () => {
 
 test("ambient prices keep at least a 65% margin on the real cost", () => {
   for (const m of AMBIENT_MINUTES) {
-    const cost = ambientTracksFor(m) * AMBIENT_SONG_COST + 0.04 + 0.03 * (Math.ceil(m / 60) + 1);
+    const cost = ambientCostUsd(m);
     const revenue = ambientCreditsFor(m) * REVENUE_PER_CREDIT_USD;
     assert.ok(1 - cost / revenue >= AMBIENT_MARGIN, `${m} min margin ${(1 - cost / revenue).toFixed(2)}`);
   }

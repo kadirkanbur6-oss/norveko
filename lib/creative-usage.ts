@@ -127,10 +127,11 @@ export async function logSwapUsage(db: SupabaseClient, row: SwapRow, status: "ok
     const seconds = Math.ceil(Number(row.source_seconds) || 0);
     const items: Item[] = [];
     if (row.kind === "ambient") {
-      const st = (row.fal ?? {}) as { tracks?: unknown[]; cover?: string | null; fails?: number };
-      const songs = (st.tracks?.length ?? 0) + (st.fails ?? 0);
+      const st = (row.fal ?? {}) as { tracks?: unknown[]; scenes?: Array<string | null> };
+      const songs = st.tracks?.length ?? 0;
+      const pictures = (st.scenes ?? []).filter(Boolean).length;
       if (songs) items.push({ provider: "gemini", model: "lyria-3-pro-preview", unit: "calls", quantity: songs });
-      if (st.cover) items.push({ provider: "gemini", model: IMAGE_MODEL(), unit: "images", quantity: 1 });
+      if (pictures) items.push({ provider: "gemini", model: IMAGE_MODEL(), unit: "images", quantity: pictures });
     } else if (row.kind === "animate") {
       // One clip: billed on submit, so a failed run still cost the same.
       items.push({ provider: "fal", model: CLIP_MODEL(), unit: "seconds", quantity: seconds });

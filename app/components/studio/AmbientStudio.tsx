@@ -17,8 +17,10 @@ type Video = {
   minutes: number;
   songs: number;
   songsNeeded: number;
-  parts: number;
-  phase: string;
+  step: "music" | "scenes" | "segments" | "audio" | "final" | "done";
+  scenes: number;
+  segments: number;
+  scenesNeeded: number;
   credits: number;
   outputUrl: string | null;
   projectId: string | null;
@@ -111,23 +113,35 @@ export default function AmbientStudio({ text, onStarted }: { text: string; onSta
                 key={v.id}
                 title="Ambient music video"
                 createdAt={v.createdAt}
-                steps={[
-                  {
-                    id: "music",
-                    label: `Composing the music (${Math.min(v.songs, v.songsNeeded)}/${v.songsNeeded} songs)`,
-                    status: v.phase === "swap" ? "running" : "completed",
-                    startedAt: v.createdAt,
-                    expected: 240,
-                    messages: ["Writing the melodies…", "Layering the sounds…", "Painting the scene…"],
-                  },
-                  {
-                    id: "video",
-                    label: "Putting the video together",
-                    status: v.phase === "render" ? "running" : "pending",
-                    expected: Math.max(60, v.minutes * 3),
-                    messages: ["Mixing the songs into one long track…", "Encoding the video…"],
-                  },
-                ]}
+                steps={(() => {
+                  const order = ["music", "scenes", "segments", "audio", "final"];
+                  const at = order.indexOf(v.step);
+                  const st = (from: number, to: number) => (at > to ? "completed" : at >= from ? "running" : "pending");
+                  return [
+                    {
+                      id: "music",
+                      label: `Composing the music (${Math.min(v.songs, v.songsNeeded)}/${v.songsNeeded} songs)`,
+                      status: st(0, 0),
+                      startedAt: v.createdAt,
+                      expected: 240,
+                      messages: ["Writing the melodies…", "Layering the sounds…"],
+                    },
+                    {
+                      id: "scenes",
+                      label: `Painting the scenes (${v.scenes}/${v.scenesNeeded})`,
+                      status: st(1, 1),
+                      expected: 120,
+                      messages: ["Imagining the world…", "Painting the scenes…"],
+                    },
+                    {
+                      id: "video",
+                      label: `Bringing the scenes to life (${v.segments}/${v.scenesNeeded})`,
+                      status: st(2, 4),
+                      expected: v.scenesNeeded * 45 + 120,
+                      messages: ["Adding slow camera movement…", "Mixing the songs into one long track…", "Putting the video together…"],
+                    },
+                  ] as const;
+                })().map((x) => ({ ...x, messages: [...x.messages] }))}
               />
             ))}
           <p className="text-xs text-gray-500">You can leave this page: the video keeps being made and appears in Projects.</p>
@@ -148,7 +162,7 @@ export default function AmbientStudio({ text, onStarted }: { text: string; onSta
       {allowed && !anyRunning && (
         <div className={card}>
           <p className="text-sm font-semibold">How long?</p>
-          <p className="mt-1 text-xs text-gray-500">Describe the music and the scene in the box above. We compose several calm songs and play them in a loop over one picture.</p>
+          <p className="mt-1 text-xs text-gray-500">Describe the music and the scene in the box above. We compose several calm songs and paint 10–16 scenes that take turns on screen, with slow camera movement, in 1080p.</p>
           <div className="mt-3 flex flex-wrap gap-2" role="radiogroup" aria-label="Length">
             {options.map((o) => (
               <button
@@ -178,7 +192,7 @@ export default function AmbientStudio({ text, onStarted }: { text: string; onSta
               {busy ? <Loader2 size={16} className="animate-spin" /> : <Music size={16} />}
               {price ? `Make video · ${price} credits` : "Make video"}
             </button>
-            <span className="text-xs text-gray-500">takes about {minutes >= 60 ? "10–20" : "5–10"} minutes</span>
+            <span className="text-xs text-gray-500">takes about {minutes >= 60 ? "20–30" : "15–20"} minutes</span>
           </div>
         </div>
       )}

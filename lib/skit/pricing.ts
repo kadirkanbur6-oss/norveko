@@ -81,10 +81,18 @@ export function ambientTracksFor(minutes: number): number {
   return Math.min(AMBIENT_MAX_TRACKS, Math.max(2, Math.ceil((minutes * 60) / AMBIENT_SONG_SECONDS)));
 }
 
+/** Different pictures shown in turn (each about a minute, then the next; long videos cycle through them). */
+export const AMBIENT_SCENE_SECONDS = 60;
+export function ambientScenesFor(minutes: number): number {
+  return minutes <= 10 ? 10 : minutes <= 30 ? 12 : 16;
+}
+/** What one video really costs us: songs, pictures, the scene list and our own encoding + storage. */
+export function ambientCostUsd(minutes: number): number {
+  return ambientTracksFor(minutes) * AMBIENT_SONG_COST + ambientScenesFor(minutes) * SKIT_IMAGE_COST + 0.02 + 0.05 * Math.ceil(minutes / 30);
+}
 export function ambientCreditsFor(minutes: number): number {
-  const chunks = Math.ceil(minutes / AMBIENT_CHUNK_MINUTES);
-  const usd = ambientTracksFor(minutes) * AMBIENT_SONG_COST * 1.25 + SKIT_IMAGE_COST + 0.03 * (chunks + 1);
-  return creditsForCost(usd, AMBIENT_MARGIN);
+  // 15% on top for songs or pictures that have to be made twice.
+  return creditsForCost(ambientCostUsd(minutes) * 1.15, AMBIENT_MARGIN);
 }
 
 /** Character swap: fal Wan 2.2 Animate Replace bills $0.08 per 16 frames (720p), plus the render. */

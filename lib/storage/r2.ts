@@ -117,3 +117,20 @@ export async function deleteR2Prefix(prefix: string, opts: { keep?: (key: string
 export async function putR2(key: string, body: Buffer, contentType: string): Promise<void> {
   await r2().send(new PutObjectCommand({ Bucket: env("R2_BUCKET"), Key: key, Body: body, ContentType: contentType }));
 }
+
+/** Stream a file being produced (e.g. ffmpeg's output) straight into R2: multipart, nothing on disk. */
+export async function uploadStreamToR2(key: string, body: NodeJS.ReadableStream, contentType: string): Promise<void> {
+  const upload = new Upload({
+    client: r2(),
+    params: {
+      Bucket: env("R2_BUCKET"),
+      Key: key,
+      Body: body as unknown as ReadableStream,
+      ContentType: contentType,
+      CacheControl: "public, max-age=31536000, immutable",
+    },
+    partSize: 16 * 1024 * 1024,
+    queueSize: 3,
+  });
+  await upload.done();
+}
