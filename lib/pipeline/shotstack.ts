@@ -47,7 +47,8 @@ export async function submitRender(edit: Record<string, unknown>): Promise<strin
   }
   if (!res.ok || !body?.response?.id) {
     const msg = body?.response?.message ?? body?.message ?? raw.replace(/\s+/g, " ").slice(0, 200) ?? `HTTP ${res.status}`;
-    throw new Error(`Shotstack submit failed (HTTP ${res.status}, ${ENV}): ${String(msg).slice(0, 300)}`);
+    const detail = body?.response?.error ? ` ${JSON.stringify(body.response.error).slice(0, 700)}` : "";
+    throw new Error(`Shotstack submit failed (HTTP ${res.status}, ${ENV}): ${String(msg).slice(0, 300)}${detail}`);
   }
   return body.response.id;
 }
