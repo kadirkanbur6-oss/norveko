@@ -31,19 +31,6 @@ const OWNER = "92779a9c-cb1c-47a8-bcc8-e07f4de6dc56";
 // 4 Nov 2026 (Kadir: "one English video per mode, labelled, global"): the four studios.
 export const SHOWCASE_VIDEOS: ShowcaseVideo[] = [
   {
-    // 10 Nov 2026 (Yağmur): 30 s Viking ambience, Lyria music + five Nano Banana pictures.
-    id: "viking-ambience",
-    mode: "Ambient music",
-    title: "Viking Ambience: Fjord at Dawn",
-    idea: "Viking ambience: deep frame drums, bowed lyre and cold wind over an icy fjord at dawn",
-    language: "Instrumental",
-    seconds: 30,
-    orientation: "horizontal",
-    videoPath: "site/viking-ambient.mp4",
-    poster: { bucket: "videos", path: `${OWNER}/viking/still-707.jpg` },
-    made: "AI-composed music · five cinematic pictures · slow camera moves · full-length versions up to 2 hours",
-  },
-  {
     // 7 Nov 2026: the Voynich video translated to Spanish with one click (new narration, subtitles and cover).
     id: "109f14d7-c2b8-4f6f-b7b3-b13afaef73a0",
     mode: "Narrated video",
@@ -132,6 +119,19 @@ export const SHOWCASE_VIDEOS: ShowcaseVideo[] = [
     videoPath: `${OWNER}/talk/bb366887-daff-4a6b-be18-55847bdf8c74/final.mp4`,
     poster: { bucket: "videos", path: `${OWNER}/talk-bb366887-daff-4a6b-be18-55847bdf8c74/still-1.jpg` },
     made: "One character · your line · gruff voice · lip-sync",
+  },
+  {
+    // 10 Nov 2026 (Yağmur): 30 s Viking ambience, Lyria music + five Nano Banana pictures.
+    id: "viking-ambience",
+    mode: "Ambient music",
+    title: "Viking Ambience: Fjord at Dawn",
+    idea: "Viking ambience: deep frame drums, bowed lyre and cold wind over an icy fjord at dawn",
+    language: "Instrumental",
+    seconds: 30,
+    orientation: "horizontal",
+    videoPath: "site/viking-ambient.mp4",
+    poster: { bucket: "videos", path: `${OWNER}/viking/still-707.jpg` },
+    made: "AI-composed music · five cinematic pictures · slow camera moves · full-length versions up to 2 hours",
   },
 ];
 

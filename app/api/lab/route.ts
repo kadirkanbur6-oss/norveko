@@ -499,8 +499,10 @@ export async function POST(req: Request) {
         if (step === "music") {
           const { generateSong } = await import("@/lib/ambient/ambient");
           const buf = await generateSong(
-            "Nordic Viking ambience: slow deep frame drums like a distant heartbeat, low tagelharpa and nyckelharpa drones, haunting female wordless-free throat textures replaced by cold wind, distant carnyx horns over an icy fjord at dawn, sparse bowed lyre melody, long reverb, epic yet serene and meditative",
-            1
+            typeof body.idea === "string" && body.idea.trim().length > 20
+              ? body.idea.trim().slice(0, 700)
+              : "Nordic Viking ambience: slow deep frame drums like a distant heartbeat, low tagelharpa and nyckelharpa drones, cold wind, distant horns over an icy fjord at dawn, sparse bowed lyre melody, long reverb, epic yet serene and meditative",
+            Number.isFinite(Number(body.n)) ? Number(body.n) : 1
           );
           const wav = buf.subarray(0, 4).toString("ascii") === "RIFF";
           const url = await store("viking", `music-${Date.now()}`, { buffer: buf, ext: wav ? "wav" : "mp3", contentType: wav ? "audio/wav" : "audio/mpeg" } as Media);
