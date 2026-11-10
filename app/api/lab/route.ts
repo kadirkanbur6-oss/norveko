@@ -425,6 +425,47 @@ export async function POST(req: Request) {
           return NextResponse.json({ success: false, error: e instanceof Error ? e.message : String(e) });
         }
       }
+      // Homepage tour (10 Nov 2026): narrate every scene of lib/lab/promo.ts, one WAV each.
+      case "promo-tts": {
+        const { PROMO_SCENES, PROMO_VOICE, PROMO_DIRECTION, wavSeconds } = await import("@/lib/lab/promo");
+        const voice = String(body.voice ?? PROMO_VOICE);
+        const segments: { n: number; url: string; seconds: number }[] = [];
+        for (let n = 0; n < PROMO_SCENES.length; n++) {
+          const media = await labSpeech("gemini", "gemini-2.5-pro-preview-tts", PROMO_SCENES[n].text, voice, String(body.direction ?? PROMO_DIRECTION));
+          const url = await store("promo", `seg-${n}-${Date.now()}`, media);
+          segments.push({ n, url, seconds: Math.round(wavSeconds(media.buffer.length) * 100) / 100 });
+        }
+        const manifest = { voice, segments };
+        await admin().storage.from("videos").upload("lab/promo/manifest.json", Buffer.from(JSON.stringify(manifest)), { contentType: "application/json", upsert: true });
+        return NextResponse.json({ success: true, ...manifest, total: segments.reduce((a, s) => a + s.seconds, 0) });
+      }
+      // Render the tour from the narration manifest; finish with transcode-finish {renderId, name:"promo-tour"}.
+      case "promo-render": {
+        const db = admin();
+        const { data: file, error } = await db.storage.from("videos").download("lab/promo/manifest.json");
+        if (error || !file) return NextResponse.json({ success: false, error: "run promo-tts first" }, { status: 400 });
+        const manifest = JSON.parse(await file.text());
+        const { buildPromoEdit } = await import("@/lib/lab/promo");
+        const { signedR2Url } = await import("@/lib/storage/r2");
+        const { MUSIC_TRACKS } = await import("@/lib/pipeline/music");
+        const track = MUSIC_TRACKS.find((t) => t.id === String(body.musicId ?? "")) ?? MUSIC_TRACKS.find((t) => t.mood === "upbeat")!;
+        const mpath = `music/${track.id}.mp3`;
+        const { data: have } = await db.storage.from("videos").list("music", { search: `${track.id}.mp3`, limit: 1 });
+        if (!have?.some((f) => f.name === `${track.id}.mp3`)) {
+          const res = await fetch(track.sourceUrl, { cache: "no-store" });
+          if (!res.ok) return NextResponse.json({ success: false, error: `music download failed (${res.status})` }, { status: 500 });
+          await db.storage.from("videos").upload(mpath, Buffer.from(await res.arrayBuffer()), { contentType: "audio/mpeg", upsert: true });
+        }
+        const edit = await buildPromoEdit({
+          manifest,
+          urlFor: (key) => signedR2Url(key, null, 6 * 3600),
+          musicUrl: db.storage.from("videos").getPublicUrl(mpath).data.publicUrl,
+          logoUrl: "https://norveko.app/brand/norveko-logo.png",
+        });
+        const { submitRender } = await import("@/lib/pipeline/shotstack");
+        const renderId = await submitRender(edit);
+        return NextResponse.json({ success: true, renderId, music: track.title, musicId: track.id });
+      }
       // Can Shotstack / fal read files through our R2 redirect URL? (4 Nov 2026)
       case "r2-media-test": {
         const src = String(body.imageUrl ?? "");

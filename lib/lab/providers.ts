@@ -126,7 +126,7 @@ function pcmToWav(pcm: Buffer, sampleRate = 24000, channels = 1, bits = 16): Buf
   return Buffer.concat([header, pcm]);
 }
 
-export async function labSpeech(provider: TtsProvider, model: string, text: string, voice: string): Promise<Media> {
+export async function labSpeech(provider: TtsProvider, model: string, text: string, voice: string, direction?: string): Promise<Media> {
   if (provider === "elevenlabs") {
     const { generateSpeech } = await import("@/lib/pipeline/elevenlabs");
     const out = await generateSpeech(text, voice, { modelId: model });
@@ -141,7 +141,7 @@ export async function labSpeech(provider: TtsProvider, model: string, text: stri
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": need("GEMINI_API_KEY") },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: `Read this as a calm, gripping documentary narrator: ${text}` }] }],
+      contents: [{ parts: [{ text: `${direction ?? "Read this as a calm, gripping documentary narrator:"} ${text}` }] }],
       generationConfig: {
         responseModalities: ["AUDIO"],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice || "Charon" } } },
