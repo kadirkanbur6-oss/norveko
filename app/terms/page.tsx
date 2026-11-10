@@ -8,7 +8,7 @@ import {
 } from "@/app/lib/legal";
 
 export const metadata: Metadata = {
-  title: "Terms & Conditions | Norveko",
+  title: "Terms & Conditions",
 };
 
 export default function TermsPage() {
@@ -30,10 +30,13 @@ export default function TermsPage() {
         <h2>2. The Service</h2>
         <p>
           {BRAND_NAME} provides AI-assisted tools that help content creators
-          generate scripts, scene plans, video prompts, titles, descriptions,
-          tags, thumbnails, and related materials for video platforms such as
-          YouTube, TikTok, and Instagram. Features may be added, modified, or
-          removed at any time as the Service evolves.
+          generate scripts, narration, finished videos, skits, talking characters,
+          thumbnails, titles, descriptions, and related materials for video
+          platforms such as YouTube, TikTok, and Instagram. If you upload photos,
+          video, or voice recordings of a real person, you confirm you have that
+          person&apos;s permission, and you must not use the Service to impersonate
+          or mislead others about a real person. Features may be added, modified,
+          or removed at any time as the Service evolves.
         </p>
       </section>
 

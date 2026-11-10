@@ -8,7 +8,7 @@ import {
 } from "@/app/lib/legal";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Norveko",
+  title: "Privacy Policy",
 };
 
 export default function PrivacyPage() {
@@ -47,6 +47,13 @@ export default function PrivacyPage() {
             log information such as IP address, browser type, and device
             information, used for security and to operate the Service.
           </li>
+          <li>
+            <strong className="text-white">Uploaded media:</strong> photos,
+            video clips, and voice recordings you upload for characters, voice
+            cloning, or swaps. They are sent to our AI providers to produce
+            your result and can be deleted from Settings or by deleting your
+            account.
+          </li>
         </ul>
       </section>
 
@@ -81,6 +88,26 @@ export default function PrivacyPage() {
             <strong className="text-white">Google (Gemini API)</strong> and{" "}
             <strong className="text-white">OpenAI</strong>: processing of your
             prompts to generate content;
+          </li>
+          <li>
+            <strong className="text-white">ElevenLabs</strong>: voice
+            generation and voice cloning;
+          </li>
+          <li>
+            <strong className="text-white">fal.ai</strong> and{" "}
+            <strong className="text-white">Shotstack</strong>: video
+            generation and rendering;
+          </li>
+          <li>
+            <strong className="text-white">Cloudflare R2</strong>: storage of
+            finished videos;
+          </li>
+          <li>
+            <strong className="text-white">Sentry</strong>: error monitoring;
+          </li>
+          <li>
+            <strong className="text-white">Pixabay and Wikimedia Commons</strong>:
+            stock and archive footage search (only search terms are sent);
           </li>
           <li>
             <strong className="text-white">Paddle</strong>: payment processing

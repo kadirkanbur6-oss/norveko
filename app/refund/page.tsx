@@ -3,7 +3,7 @@ import LegalLayout from "@/app/components/LegalLayout";
 import { BRAND_NAME, SUPPORT_EMAIL } from "@/app/lib/legal";
 
 export const metadata: Metadata = {
-  title: "Refund Policy | Norveko",
+  title: "Refund Policy",
 };
 
 export default function RefundPage() {

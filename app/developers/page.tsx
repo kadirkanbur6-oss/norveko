@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import LegalLayout from "@/app/components/LegalLayout";
 
 export const metadata: Metadata = {
-  title: "API | Norveko",
+  title: "API",
   description: "Make videos with Norveko from your own tools: start a video, check its status, download the files.",
 };
 
@@ -47,7 +47,7 @@ export default function DevelopersPage() {
       <section>
         <h2>1. Get a key</h2>
         <p>
-          Create a key in <a href="/settings?tab=api">Settings → API</a> (available on any plan or pack) and send it with
+          Create a key in <a href="/settings?tab=api">Settings → API</a> (available once you have bought a plan or pack) and send it with
           every request as <code>Authorization: Bearer nv_live_…</code>. Keep it secret; revoke it there if it leaks.
         </p>
       </section>

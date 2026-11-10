@@ -8,7 +8,7 @@ import { SUBSCRIPTION_PLANS } from "@/lib/subscriptions";
 // re-check every competitor row on its own pricing page, update CHECKED,
 // then add "/compare" to PUBLIC_PAGES and app/sitemap.ts and link it.
 export const metadata: Metadata = {
-  title: "Norveko vs other AI video tools | Norveko",
+  title: "Norveko vs other AI video tools",
   robots: { index: false, follow: false },
 };
 
