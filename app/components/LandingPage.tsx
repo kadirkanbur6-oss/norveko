@@ -356,11 +356,9 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                   Start free with {FREE_TRIAL_CREDITS} credits
                   <ArrowRight size={18} />
                 </Link>
-                <TutorialButton
-                  label="See how it works"
-                  className="justify-center rounded-xl border border-white/10 bg-white/[0.03] px-6 py-3.5 font-semibold text-gray-300 hover:border-white/20"
-                />
               </div>
+
+              <TutorialButton variant="card" label="Watch how Norveko works" className="mt-4 max-w-md" />
 
               <p className="mt-3 text-xs text-gray-400">
                 No credit card required · {FREE_TRIAL_CREDITS} free credits{TRIAL_VIDEO_PUBLIC ? " + a free video" : ""} on signup (≈ {FREE_CREDITS_BUY.split(", or ")[0]})

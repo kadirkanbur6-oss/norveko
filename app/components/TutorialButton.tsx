@@ -48,7 +48,7 @@ export default function TutorialButton({
           onClick={() => setOpen(true)}
           className={`group flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-left transition hover:border-white/20 hover:bg-white/[0.05] ${className}`}
         >
-          <span className="nv-dark relative aspect-video w-32 shrink-0 overflow-hidden rounded-xl bg-black sm:w-40">
+          <span className="nv-dark relative aspect-video w-36 shrink-0 overflow-hidden rounded-xl bg-black ring-1 ring-white/15 sm:w-48">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={TUTORIAL_POSTER} alt="" className="h-full w-full object-cover opacity-90 transition group-hover:opacity-100" />
             <span className="absolute inset-0 flex items-center justify-center">
@@ -56,6 +56,7 @@ export default function TutorialButton({
                 <PlayCircle size={22} aria-hidden />
               </span>
             </span>
+            <span className="absolute bottom-1.5 right-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-white">1:07</span>
           </span>
           <span className="min-w-0">
             <span className="block text-sm font-semibold text-white">{label}</span>
