@@ -8,8 +8,9 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { PlayCircle, X } from "lucide-react";
 
-export const TUTORIAL_VIDEO = "/tutorial/norveko-modes.mp4";
-export const TUTORIAL_POSTER = "/tutorial/norveko-modes-poster.jpg";
+// 10 Nov 2026 (Yağmur): new narrated tour with the newer features (lib/lab/promo.ts, made from real Norveko outputs).
+export const TUTORIAL_VIDEO = "/media/videos/r2/site/promo-tour.mp4";
+export const TUTORIAL_POSTER = "/media/videos/r2/site/promo-tour.jpg";
 
 export default function TutorialButton({
   className = "",
@@ -59,7 +60,7 @@ export default function TutorialButton({
           <span className="min-w-0">
             <span className="block text-sm font-semibold text-white">{label}</span>
             <span className="mt-0.5 block text-xs text-gray-400">
-              A 52-second tour: narrated videos, skits, talking characters and character swaps.
+              A 1-minute narrated tour: videos, skits, talking characters, ambient music and Shorts, all made with Norveko.
             </span>
           </span>
         </button>
@@ -71,7 +72,7 @@ export default function TutorialButton({
         >
           <PlayCircle size={18} className="text-blue-300" aria-hidden />
           {label}
-          <span className="text-xs text-gray-500">52 s</span>
+          <span className="text-xs text-gray-500">1 min</span>
         </button>
       )}
 
@@ -105,6 +106,10 @@ export default function TutorialButton({
             >
               Your browser cannot play this video.
             </video>
+            <p className="mt-2 text-center text-[11px] text-gray-400">
+              Music: &quot;Inspired&quot; by Kevin MacLeod (incompetech.com), licensed under{" "}
+              <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" className="underline">CC BY 4.0</a>.
+            </p>
           </div>
         </div>,
         document.body

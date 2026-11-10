@@ -719,7 +719,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
         </div>
 
         <Reveal>
-          <TutorialButton variant="card" label="Watch the 52-second tour" className="mx-auto mt-8 max-w-xl" />
+          <TutorialButton variant="card" label="Watch the 1-minute tour" className="mx-auto mt-8 max-w-xl" />
         </Reveal>
       </section>
 
