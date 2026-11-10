@@ -145,7 +145,7 @@ export function songPrompt(idea: string, n: number): string {
   ].join(" ");
 }
 
-async function generateSong(idea: string, n: number): Promise<Buffer> {
+export async function generateSong(idea: string, n: number): Promise<Buffer> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY is not set.");
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(LYRIA_MODEL)}:generateContent`, {

@@ -485,6 +485,70 @@ export async function POST(req: Request) {
         const renderId = await submitRender(edit);
         return NextResponse.json({ success: true, renderId, music: track.title, musicId: track.id });
       }
+      // Showcase piece "Viking ambience" (10 Nov 2026, Yağmur): 30 s ambient clip. Run in order:
+      // viking {step:"music"} → {step:"images"} → {step:"render"} → transcode-finish {renderId, name:"viking-ambient"}.
+      case "viking": {
+        const db = admin();
+        const mpath = "lab/viking/manifest.json";
+        const read = async () => {
+          const { data: f } = await db.storage.from("videos").download(mpath);
+          return f ? (JSON.parse(await f.text()) as { musicUrl?: string; images?: string[] }) : {};
+        };
+        const save = (m: unknown) => db.storage.from("videos").upload(mpath, Buffer.from(JSON.stringify(m)), { contentType: "application/json", upsert: true });
+        const step = String(body.step ?? "");
+        if (step === "music") {
+          const { generateSong } = await import("@/lib/ambient/ambient");
+          const buf = await generateSong(
+            "Nordic Viking ambience: slow deep frame drums like a distant heartbeat, low tagelharpa and nyckelharpa drones, haunting female wordless-free throat textures replaced by cold wind, distant carnyx horns over an icy fjord at dawn, sparse bowed lyre melody, long reverb, epic yet serene and meditative",
+            1
+          );
+          const wav = buf.subarray(0, 4).toString("ascii") === "RIFF";
+          const url = await store("viking", `music-${Date.now()}`, { buffer: buf, ext: wav ? "wav" : "mp3", contentType: wav ? "audio/wav" : "audio/mpeg" } as Media);
+          const m = await read();
+          await save({ ...m, musicUrl: url });
+          return NextResponse.json({ success: true, url, bytes: buf.length });
+        }
+        if (step === "images") {
+          const { generateSceneImage } = await import("@/lib/pipeline/gemini-image");
+          const prompts = [
+            "Epic cinematic wide shot of a Viking longship with a carved dragon prow gliding through a misty Norwegian fjord at dawn, towering dark cliffs, golden sunrise breaking through clouds, photorealistic, no text",
+            "Close-up portrait of a weathered Viking warrior with a braided beard and fur cloak, calm eyes, soft snow falling, warm firelight on one side, cold blue light on the other, photorealistic, no text",
+            "A Viking longhouse village at blue hour, turf roofs, smoke rising from the chimneys, glowing warm windows, snow-dusted pine forest, mountains behind, photorealistic, no text",
+            "Hands of a Viking musician playing a bowed lyre by a campfire, sparks rising into the dark, shallow depth of field, carved wood and leather details, photorealistic, no text",
+            "A lone Viking figure seen from behind on a rocky ridge looking over a vast frozen fjord under green and violet northern lights, stars, cinematic, photorealistic, no text",
+          ];
+          const results = await Promise.all(prompts.map((p, i) => generateSceneImage(p, "viking", user.id, 700 + i * 10 + Math.floor(Math.random() * 9), "horizontal")));
+          const m = await read();
+          await save({ ...m, images: results.map((r) => r.imageUrl) });
+          return NextResponse.json({ success: true, images: results.map((r) => r.imageUrl) });
+        }
+        if (step === "render") {
+          const m = await read();
+          if (!m.musicUrl || !m.images || m.images.length < 5) return NextResponse.json({ success: false, error: "run music and images first" }, { status: 400 });
+          const effects = ["zoomInSlow", "slideLeftSlow", "zoomOutSlow", "slideRightSlow", "zoomInSlow"];
+          const clips = m.images.slice(0, 5).map((src, i) => ({
+            asset: { type: "image", src },
+            start: i * 6,
+            length: i === 4 ? 6 : 6.8,
+            fit: "cover",
+            effect: effects[i],
+            transition: { in: i === 0 ? undefined : "fade", out: i === 4 ? "fade" : "fade" },
+          }));
+          const { submitRender } = await import("@/lib/pipeline/shotstack");
+          const renderId = await submitRender({
+            timeline: {
+              background: "#000000",
+              tracks: [
+                { clips: clips as never },
+                { clips: [{ asset: { type: "audio", src: m.musicUrl, volume: 1, effect: "fadeInFadeOut", trim: Number(body.trim) || 0 }, start: 0, length: 30 }] as never },
+              ],
+            },
+            output: { format: "mp4", size: { width: 1920, height: 1080 }, fps: 30 },
+          } as never);
+          return NextResponse.json({ success: true, renderId, cover: m.images[0] });
+        }
+        return NextResponse.json({ success: false, error: "step: music | images | render" }, { status: 400 });
+      }
       // Can Shotstack / fal read files through our R2 redirect URL? (4 Nov 2026)
       case "r2-media-test": {
         const src = String(body.imageUrl ?? "");
