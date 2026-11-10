@@ -62,7 +62,8 @@ export const PROMO_SCENES: PromoScene[] = [
     tag: "AMBIENT MUSIC",
     title: "Hours of calm,\nfrom one sentence",
     text: "Want hours of calm music? Describe a world, and Norveko composes the songs, paints the scenes, and renders a two-hour ambient video.",
-    image: `${OWNER}/ambient/ac6c64b9-d9a6-4672-a50e-52fa52f60537/cover.jpg`,
+    /** Filled by the promo-image lab action (public URL). */
+    image: "AMBIENT_IMAGE",
   },
   {
     tag: "SHORTS & BRAND KIT",
@@ -82,7 +83,7 @@ export const PROMO_VOICE = "Zephyr";
 export const PROMO_DIRECTION = "Say this as an upbeat, confident narrator of a product trailer, at a lively pace:";
 export const GAP = 0.3;
 
-export type PromoManifest = { voice: string; segments: { n: number; url: string; seconds: number }[] };
+export type PromoManifest = { ambientImage?: string; voice: string; segments: { n: number; url: string; seconds: number }[] };
 
 /** Duration of a mono 16-bit WAV made by pcmToWav (44-byte header). */
 export const wavSeconds = (bytes: number, rate = 24000) => (bytes - 44) / (rate * 2);
@@ -97,6 +98,7 @@ export function buildPromoEdit(args: {
 }): Promise<Record<string, unknown>> {
   return (async () => {
     const { manifest, urlFor, musicUrl, logoUrl } = args;
+    for (const sc of PROMO_SCENES) if (sc.image === "AMBIENT_IMAGE") sc.image = manifest.ambientImage ?? "";
     const W = 1920;
     const H = 1080;
     const layers: Clip[][] = [[], [], [], [], []]; // 0 caption+title text, 1 chip, 2 media, 3 extra, 4 background media
@@ -212,7 +214,7 @@ export function buildPromoEdit(args: {
         }
       } else if (sc.image) {
         layers[4].push({
-          asset: { type: "image", src: await urlFor(sc.image) },
+          asset: { type: "image", src: sc.image.startsWith("http") ? sc.image : await urlFor(sc.image) },
           start: Math.round(t * 100) / 100,
           length: len,
           fit: "cover",

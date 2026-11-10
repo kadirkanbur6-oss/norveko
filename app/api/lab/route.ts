@@ -439,6 +439,24 @@ export async function POST(req: Request) {
         await admin().storage.from("videos").upload("lab/promo/manifest.json", Buffer.from(JSON.stringify(manifest)), { contentType: "application/json", upsert: true });
         return NextResponse.json({ success: true, ...manifest, total: segments.reduce((a, s) => a + s.seconds, 0) });
       }
+      // Ambient-scene picture for the tour; saved into the manifest.
+      case "promo-image": {
+        const { generateSceneImage } = await import("@/lib/pipeline/gemini-image");
+        const img = await generateSceneImage(
+          "Epic wide landscape of the Altai mountains at golden hour: a calm turquoise river winding through a vast autumn valley, snow-capped peaks, soft drifting mist, shaman's smoke curling from a distant yurt, cinematic, serene, highly detailed, no text",
+          "promo",
+          user.id,
+          900 + Math.floor(Math.random() * 90),
+          "horizontal"
+        );
+        const db = admin();
+        const { data: file } = await db.storage.from("videos").download("lab/promo/manifest.json");
+        if (!file) return NextResponse.json({ success: false, error: "run promo-tts first" }, { status: 400 });
+        const manifest = JSON.parse(await file.text());
+        manifest.ambientImage = img.imageUrl;
+        await db.storage.from("videos").upload("lab/promo/manifest.json", Buffer.from(JSON.stringify(manifest)), { contentType: "application/json", upsert: true });
+        return NextResponse.json({ success: true, url: img.imageUrl });
+      }
       // Render the tour from the narration manifest; finish with transcode-finish {renderId, name:"promo-tour"}.
       case "promo-render": {
         const db = admin();
