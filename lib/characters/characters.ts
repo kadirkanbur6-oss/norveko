@@ -107,7 +107,7 @@ export async function signedReferenceUrls(db: SupabaseClient, paths: string[]): 
 
 const GEMINI_TEXT = process.env.CHARACTER_CHECK_MODEL || "gemini-3.8-flash";
 
-async function geminiJson(parts: Array<Record<string, unknown>>): Promise<Record<string, unknown> | null> {
+export async function geminiJson(parts: Array<Record<string, unknown>>): Promise<Record<string, unknown> | null> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_TEXT)}:generateContent`, {

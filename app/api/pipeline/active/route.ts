@@ -10,7 +10,7 @@ import { requireUser } from "@/lib/supabase-server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export type ActiveMode = "video" | "skit" | "talk" | "swap";
+export type ActiveMode = "video" | "skit" | "talk" | "swap" | "animate";
 
 export async function GET() {
   const { user } = await requireUser();
@@ -37,7 +37,7 @@ export async function GET() {
   const candidates: Array<{ mode: ActiveMode; id: string; at: string }> = [];
   if (video.data) candidates.push({ mode: "video", id: video.data.id, at: video.data.created_at });
   if (skit.data) candidates.push({ mode: "skit", id: skit.data.id, at: skit.data.created_at });
-  if (creative.data) candidates.push({ mode: creative.data.kind === "talk" ? "talk" : "swap", id: creative.data.id, at: creative.data.created_at });
+  if (creative.data) candidates.push({ mode: creative.data.kind === "talk" ? "talk" : creative.data.kind === "animate" ? "animate" : "swap", id: creative.data.id, at: creative.data.created_at });
   candidates.sort((a, b) => (a.at < b.at ? 1 : -1));
   const top = candidates[0];
 

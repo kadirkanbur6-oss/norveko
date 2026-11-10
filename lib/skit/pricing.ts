@@ -55,6 +55,12 @@ export function talkCreditsFor(seconds: number, clipSeconds?: number | null): nu
   return creditsForCost(Math.ceil(seconds) * AVATAR_COST_PER_SECOND + SKIT_IMAGE_COST);
 }
 
+/** Image to video: Seedance 1.5 Pro, silent 720p, about $0.026 per second ($0.13 for 5 s). */
+export const ANIMATE_COST_PER_SECOND = 0.026;
+export function animateCreditsFor(seconds: number): number {
+  return creditsForCost(seconds * ANIMATE_COST_PER_SECOND);
+}
+
 /** Character swap: fal Wan 2.2 Animate Replace bills $0.08 per 16 frames (720p), plus the render. */
 export const SWAP_COST_PER_16_FRAMES = 0.08;
 export function swapCreditsFor(frames: number, seconds: number): number {
@@ -67,6 +73,8 @@ export const CREATIVE_COSTS = {
   skit20: skitCreditsFor({ characters: 3, shots: 6, speakingSeconds: 0, talkClipSeconds: 20, silentShots: 2, sfx: 2, crowd: 1, totalSeconds: 24 }),
   /** A 10 s talking character. */
   talk10: talkCreditsFor(10),
+  /** A 5 s clip made from an uploaded picture. */
+  animate5: animateCreditsFor(5),
   /** A 10 s character swap at 30 fps. */
   swap10: swapCreditsFor(300, 10),
 };

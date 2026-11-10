@@ -126,7 +126,10 @@ export async function logSwapUsage(db: SupabaseClient, row: SwapRow, status: "ok
   try {
     const seconds = Math.ceil(Number(row.source_seconds) || 0);
     const items: Item[] = [];
-    if (row.kind === "talk") {
+    if (row.kind === "animate") {
+      // One clip: billed on submit, so a failed run still cost the same.
+      items.push({ provider: "fal", model: CLIP_MODEL(), unit: "seconds", quantity: seconds });
+    } else if (row.kind === "talk") {
       if (row.image_url) items.push({ provider: "gemini", model: IMAGE_MODEL(), unit: "images", quantity: 1 });
       if (row.script) items.push({ provider: "gemini", model: TTS_MODEL(), unit: "characters", quantity: row.script.length });
       // Typed lines spoken by a Veo clip bill per clip second (4 / 6 / 8), recordings per lip-sync second.
@@ -145,7 +148,7 @@ export async function logSwapUsage(db: SupabaseClient, row: SwapRow, status: "ok
       items.push({ provider: "fal", model: SWAP_MODEL(), unit: "seconds", quantity: seconds, costUsd: Math.round(swapUsd * 1e6) / 1e6 });
       if (status === "ok") items.push({ provider: "shotstack", model: "render", unit: "seconds", quantity: seconds });
     }
-    await write(db, row.id, row.user_id, row.kind === "talk" ? "talk" : "swap", items, status);
+    await write(db, row.id, row.user_id, row.kind === "talk" ? "talk" : row.kind === "animate" ? "animate" : "swap", items, status);
   } catch (err) {
     console.error(`[usage] ${row.kind ?? "swap"} ${row.id}:`, err);
   }

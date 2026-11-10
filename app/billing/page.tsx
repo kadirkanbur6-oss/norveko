@@ -60,6 +60,7 @@ const COST_ROWS: Array<[string, string]> = [
   ["Finished 60 s video (beta)", `${JOB_COSTS.video60} credits`],
   ["20 s skit with dialogue (3 characters, 6 shots)", `≈ ${CREATIVE_COSTS.skit20} credits`],
   ["Talking character, 10 s", `≈ ${CREATIVE_COSTS.talk10} credits`],
+  ["Image to video, 5 s clip", `≈ ${CREATIVE_COSTS.animate5} credits`],
   ["Character swap, 10 s clip", `≈ ${CREATIVE_COSTS.swap10} credits`],
 ];
 

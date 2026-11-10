@@ -239,7 +239,7 @@ export async function runRetention(db: SupabaseClient, opts: { dryRun?: boolean;
       if (done >= BATCH) break;
       if (keepSafe.has(row.id)) continue;
       if (await isPaid(row.user_id)) continue;
-      const kind = row.kind === "talk" ? "talk" : "swap";
+      const kind = row.kind === "talk" ? "talk" : row.kind === "animate" ? "animate" : "swap";
       const files =
         (await removeFolder(db, `${row.user_id}/${kind}/${row.id}`, () => false, dryRun)) +
         (await removeFolder(db, `${row.user_id}/${kind}-${row.id}`, () => false, dryRun));

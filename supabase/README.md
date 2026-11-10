@@ -603,3 +603,9 @@ alter table public.plan_waitlist enable row level security;
 
 When plans open, export the e-mails (`select email from plan_waitlist order by created_at`)
 and send the launch mail; the table can stay.
+
+## Image to video (10 Nov 2026)
+
+Same `swap_jobs` table, `kind = 'animate'` (`lib/animate/animate.ts`, `/api/animate`). No SQL needed:
+`character_name` is stored as "Image to video", `character_id` is null, `source_path` is the uploaded
+picture (`videos/<user>/animate/img-<uuid>.jpg|png|webp`), finished clips are `videos/<user>/animate/<id>/final.mp4`.

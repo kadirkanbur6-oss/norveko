@@ -32,6 +32,8 @@ export async function submitImageToVideo(params: {
   imageUrl: string;
   aspectRatio: "9:16" | "16:9";
   model?: string;
+  /** Clip length; the pipeline uses 5, Image to video offers 5 or 10. */
+  seconds?: number;
 }): Promise<FalVideoHandle> {
   const model = params.model ?? FAL_VIDEO_MODEL;
   const prompt = [
@@ -50,7 +52,7 @@ export async function submitImageToVideo(params: {
       image_url: params.imageUrl,
       aspect_ratio: params.aspectRatio,
       resolution: "720p",
-      duration: "5",
+      duration: String(params.seconds ?? 5),
       // Our voiceover is the soundtrack; generated audio doubles the price.
       generate_audio: false,
     }),
