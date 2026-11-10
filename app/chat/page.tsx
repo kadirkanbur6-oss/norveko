@@ -588,6 +588,25 @@ function ChatContent() {
     const t = setTimeout(() => setModeState(suggested), 600);
     return () => clearTimeout(t);
   }, [suggested, modeLocked, jobId]);
+  // Something is being made in another mode: say so and offer a way back to its progress.
+  const [activeJob, setActiveJob] = useState<{ mode: WorkspaceMode; id: string } | null>(null);
+  useEffect(() => {
+    let stop = false;
+    const poll = () =>
+      fetch("/api/pipeline/active", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((d) => {
+          if (!stop) setActiveJob((d?.active as { mode: WorkspaceMode; id: string } | null) ?? null);
+        })
+        .catch(() => undefined);
+    poll();
+    const t = setInterval(poll, 10000);
+    return () => {
+      stop = true;
+      clearInterval(t);
+    };
+  }, []);
+  const runningElsewhere = activeJob && activeJob.mode !== mode ? activeJob : null;
   const modeInfo = MODES.find((m) => m.id === mode)!;
 
   const selectClass =
@@ -600,6 +619,25 @@ function ChatContent() {
       <main id="main-content" className="min-w-0 flex-1 px-4 pb-10 pt-20 sm:px-6 lg:p-8">
         <div className="mx-auto max-w-4xl">
           <PageHeader title="AI Workspace" subtitle="Write what you want to make: narrated videos, skits, talking characters or swaps" />
+
+          {runningElsewhere && (
+            <div role="status" className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-sky-400/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
+              <Loader2 size={15} className="animate-spin" aria-hidden />
+              <span>
+                Your {MODES.find((m) => m.id === runningElsewhere.mode)?.label.toLowerCase()} is still being made.
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode(runningElsewhere.mode);
+                  if (runningElsewhere.mode === "video" && jobId) setFormOpen(false);
+                }}
+                className="ml-auto rounded-lg bg-sky-500/20 px-3 py-1 text-xs font-semibold text-white transition hover:bg-sky-500/30"
+              >
+                Show progress
+              </button>
+            </div>
+          )}
 
           {/* While a narrated video is being made or waits for approval, only its progress shows. */}
           <div className={`mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6 ${mode === "video" && jobId && (jobRunning || !formOpen) ? "hidden" : ""}`}>
