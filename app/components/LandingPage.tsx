@@ -428,7 +428,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             <PlayCircle size={14} className="text-blue-300" />
             {TRIAL_VIDEO_PUBLIC
               ? `Your first 30-second video is on us, no credits needed. Then ${FREE_TRIAL_CREDITS} free credits for ${FREE_CREDITS_BUY}.`
-              : `Every account starts with ${FREE_TRIAL_CREDITS} free credits: ${FREE_CREDITS_BUY}. Finished-video rendering is being switched on account by account.`}
+              : `Every account starts with ${FREE_TRIAL_CREDITS} free credits: ${FREE_CREDITS_BUY}.${process.env.NEXT_PUBLIC_FULL_VIDEO_ENABLED === "true" ? "" : " Finished-video rendering is being switched on account by account."}`}
           </p>
         </Reveal>
       </section>
