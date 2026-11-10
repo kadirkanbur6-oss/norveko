@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, Suspense, useEffect, useRef, useState } from "react";
+import { Fragment, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Captions, CheckCircle2, Film, Globe, ChevronDown, ChevronUp, Clapperboard, Coins, LayoutTemplate, Palette, Loader2, Mic, Play, Search, Sparkles, Square, MessageCircle, Shuffle, Drama, Lock, ImagePlay, Music } from "lucide-react";
 import Link from "next/link";
@@ -591,25 +591,41 @@ function ChatContent() {
     const t = setTimeout(() => setModeState(suggested), 600);
     return () => clearTimeout(t);
   }, [suggested, modeLocked, jobId]);
-  // Something is being made in another mode: say so and offer a way back to its progress.
+  // While anything is being made, the workspace shows only its progress, in every mode
+  // (10 Nov 2026, Yağmur): the idea box, the mode cards and every other studio's form are hidden.
   const [activeJob, setActiveJob] = useState<{ mode: WorkspaceMode; id: string } | null>(null);
-  useEffect(() => {
-    let stop = false;
-    const poll = () =>
+  const pollActive = useCallback(
+    () =>
       fetch("/api/pipeline/active", { cache: "no-store" })
         .then((r) => r.json())
-        .then((d) => {
-          if (!stop) setActiveJob((d?.active as { mode: WorkspaceMode; id: string } | null) ?? null);
-        })
-        .catch(() => undefined);
-    poll();
-    const t = setInterval(poll, 10000);
+        .then((d) => setActiveJob((d?.active as { mode: WorkspaceMode; id: string } | null) ?? null))
+        .catch(() => undefined),
+    []
+  );
+  useEffect(() => {
+    const first = setTimeout(pollActive, 0);
+    const t = setInterval(pollActive, 5000);
     return () => {
-      stop = true;
+      clearTimeout(first);
       clearInterval(t);
     };
-  }, []);
-  const runningElsewhere = activeJob && activeJob.mode !== mode ? activeJob : null;
+  }, [pollActive]);
+  useEffect(() => {
+    if (!activeJob) return;
+    const t = setTimeout(() => {
+      if (activeJob.mode !== mode) setModeState(activeJob.mode);
+      if (activeJob.mode === "video" && jobId !== activeJob.id) {
+        setJobKnownRunning(true);
+        setJobId(activeJob.id);
+        setFormOpen(false);
+      }
+    }, 0);
+    return () => clearTimeout(t);
+  }, [activeJob, mode, jobId]);
+  const started = () => {
+    setIdea("");
+    void pollActive();
+  };
   const modeInfo = MODES.find((m) => m.id === mode)!;
 
   const selectClass =
@@ -623,27 +639,8 @@ function ChatContent() {
         <div className="mx-auto max-w-4xl">
           <PageHeader title="AI Workspace" subtitle="Write what you want to make: narrated videos, skits, talking characters or swaps" />
 
-          {runningElsewhere && (
-            <div role="status" className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-sky-400/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
-              <Loader2 size={15} className="animate-spin" aria-hidden />
-              <span>
-                Your {MODES.find((m) => m.id === runningElsewhere.mode)?.label.toLowerCase()} is still being made.
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setMode(runningElsewhere.mode);
-                  if (runningElsewhere.mode === "video" && jobId) setFormOpen(false);
-                }}
-                className="ml-auto rounded-lg bg-sky-500/20 px-3 py-1 text-xs font-semibold text-white transition hover:bg-sky-500/30"
-              >
-                Show progress
-              </button>
-            </div>
-          )}
-
           {/* While a narrated video is being made or waits for approval, only its progress shows. */}
-          <div className={`mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6 ${mode === "video" && jobId && (jobRunning || !formOpen) ? "hidden" : ""}`}>
+          <div className={`mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6 ${activeJob || (mode === "video" && jobId && (jobRunning || !formOpen)) ? "hidden" : ""}`}>
             <div className="flex items-center justify-between">
               <label htmlFor="workspace-idea" className="text-sm text-gray-400">
                 What do you want to make?
@@ -695,27 +692,27 @@ function ChatContent() {
 
           {mode === "skit" && (
             <div className="mt-5">
-              {freeAccount ? <UpgradeCard /> : <SkitStudio text={idea} onStarted={() => setIdea("")} />}
+              {freeAccount ? <UpgradeCard /> : <SkitStudio text={idea} onStarted={started} />}
             </div>
           )}
           {mode === "talk" && (
             <div className="mt-5">
-              {freeAccount ? <UpgradeCard /> : <TalkStudio text={idea} onStarted={() => setIdea("")} />}
+              {freeAccount ? <UpgradeCard /> : <TalkStudio text={idea} onStarted={started} />}
             </div>
           )}
           {mode === "animate" && (
             <div className="mt-5">
-              {freeAccount ? <UpgradeCard /> : <AnimateStudio text={idea} onStarted={() => setIdea("")} />}
+              {freeAccount ? <UpgradeCard /> : <AnimateStudio text={idea} onStarted={started} />}
             </div>
           )}
           {mode === "ambient" && (
             <div className="mt-5">
-              {freeAccount ? <UpgradeCard /> : <AmbientStudio text={idea} onStarted={() => setIdea("")} />}
+              {freeAccount ? <UpgradeCard /> : <AmbientStudio text={idea} onStarted={started} />}
             </div>
           )}
           {mode === "swap" && (
             <div className="mt-5">
-              {freeAccount ? <UpgradeCard /> : <SwapStudio />}
+              {freeAccount ? <UpgradeCard /> : <SwapStudio onStarted={started} />}
             </div>
           )}
 

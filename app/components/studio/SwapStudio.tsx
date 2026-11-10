@@ -25,7 +25,7 @@ type Swap = {
   createdAt: string;
 };
 
-export default function SwapStudio() {
+export default function SwapStudio({ onStarted }: { onStarted?: () => void } = {}) {
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [maxSeconds, setMaxSeconds] = useState(15);
   const [swaps, setSwaps] = useState<Swap[]>([]);
@@ -115,6 +115,7 @@ export default function SwapStudio() {
       setClip(null);
       setRights(false);
       setPrompt("");
+      onStarted?.();
       await load();
       setTimeout(() => stageRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
     } catch (err) {
