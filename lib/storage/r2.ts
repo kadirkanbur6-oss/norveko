@@ -12,7 +12,7 @@
 // R2_BUCKET. Without them everything falls back to Supabase Storage.
 
 import "server-only";
-import { S3Client, GetObjectCommand, DeleteObjectsCommand, ListObjectsV2Command, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand, HeadObjectCommand, DeleteObjectsCommand, ListObjectsV2Command, PutObjectCommand } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { R2_URL_PATH, r2KeyFromUrl } from "./r2-url";
@@ -133,4 +133,28 @@ export async function uploadStreamToR2(key: string, body: NodeJS.ReadableStream,
     queueSize: 3,
   });
   await upload.done();
+}
+
+/** Diagnostics for one object: size, the first MP4 boxes, and whether ranged reads work (lab only). */
+export async function inspectR2(key: string): Promise<Record<string, unknown>> {
+  const c = r2();
+  const Bucket = env("R2_BUCKET");
+  const head = await c.send(new HeadObjectCommand({ Bucket, Key: key }));
+  const size = Number(head.ContentLength ?? 0);
+  const read = async (from: number, to: number) => {
+    const res = await c.send(new GetObjectCommand({ Bucket, Key: key, Range: `bytes=${from}-${to}` }));
+    return Buffer.from(await res.Body!.transformToByteArray());
+  };
+  const boxes: string[] = [];
+  const first = await read(0, Math.min(size - 1, 65535));
+  let o = 0;
+  while (o + 8 <= first.length && boxes.length < 10) {
+    const sz = first.readUInt32BE(o);
+    boxes.push(`${first.toString("latin1", o + 4, o + 8)}:${sz}`);
+    if (sz < 8) break;
+    o += sz;
+  }
+  const mid = await read(Math.floor(size / 2), Math.floor(size / 2) + 1023);
+  const tail = await read(Math.max(0, size - 1024), size - 1);
+  return { size, contentType: head.ContentType, boxes, midBytes: mid.length, tailBytes: tail.length };
 }

@@ -416,6 +416,15 @@ export async function POST(req: Request) {
         const res = await fetch(`https://api.fal.ai/v1/models/pricing?${qs}`, { headers: { Authorization: `Key ${process.env.FAL_KEY}` } });
         return NextResponse.json({ success: res.ok, status: res.status, body: (await res.text()).slice(0, 4000) });
       }
+      // Size, MP4 boxes and ranged-read check of one R2 object. {key}
+      case "r2-inspect": {
+        const { inspectR2 } = await import("@/lib/storage/r2");
+        try {
+          return NextResponse.json({ success: true, ...(await inspectR2(String(body.key ?? ""))) });
+        } catch (e) {
+          return NextResponse.json({ success: false, error: e instanceof Error ? e.message : String(e) });
+        }
+      }
       // Can Shotstack / fal read files through our R2 redirect URL? (4 Nov 2026)
       case "r2-media-test": {
         const src = String(body.imageUrl ?? "");
