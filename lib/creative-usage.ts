@@ -126,7 +126,12 @@ export async function logSwapUsage(db: SupabaseClient, row: SwapRow, status: "ok
   try {
     const seconds = Math.ceil(Number(row.source_seconds) || 0);
     const items: Item[] = [];
-    if (row.kind === "animate") {
+    if (row.kind === "ambient") {
+      const st = (row.fal ?? {}) as { tracks?: unknown[]; cover?: string | null; fails?: number };
+      const songs = (st.tracks?.length ?? 0) + (st.fails ?? 0);
+      if (songs) items.push({ provider: "gemini", model: "lyria-3-pro-preview", unit: "calls", quantity: songs });
+      if (st.cover) items.push({ provider: "gemini", model: IMAGE_MODEL(), unit: "images", quantity: 1 });
+    } else if (row.kind === "animate") {
       // One clip: billed on submit, so a failed run still cost the same.
       items.push({ provider: "fal", model: CLIP_MODEL(), unit: "seconds", quantity: seconds });
     } else if (row.kind === "talk") {
@@ -148,7 +153,7 @@ export async function logSwapUsage(db: SupabaseClient, row: SwapRow, status: "ok
       items.push({ provider: "fal", model: SWAP_MODEL(), unit: "seconds", quantity: seconds, costUsd: Math.round(swapUsd * 1e6) / 1e6 });
       if (status === "ok") items.push({ provider: "shotstack", model: "render", unit: "seconds", quantity: seconds });
     }
-    await write(db, row.id, row.user_id, row.kind === "talk" ? "talk" : row.kind === "animate" ? "animate" : "swap", items, status);
+    await write(db, row.id, row.user_id, row.kind === "talk" ? "talk" : row.kind === "animate" ? "animate" : row.kind === "ambient" ? "ambient" : "swap", items, status);
   } catch (err) {
     console.error(`[usage] ${row.kind ?? "swap"} ${row.id}:`, err);
   }

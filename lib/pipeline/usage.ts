@@ -82,6 +82,8 @@ export const PRICE_LIST: Record<string, Price> = {
   "fal:veed/fabric-1.0": { perUnit: 0.15 },
   // Veo 3.1 Fast with audio: speaking skit shots (5 Nov 2026) — per second.
   "fal:fal-ai/veo3.1/fast/image-to-video": { perUnit: 0.15 },
+  // Google Lyria 3 Pro: flat price per generated song (ambient music videos, 10 Nov 2026).
+  "gemini:lyria-3-pro-preview": { perUnit: 0.08 },
   // Skits: ElevenLabs sound effects are logged with their own cost (lib/creative-usage.ts).
   // Shotstack — per second of rendered output (pay-as-you-go $0.20/min).
   "shotstack:render": { perUnit: 0.0034 },

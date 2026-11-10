@@ -2,7 +2,7 @@
 
 import { Fragment, Suspense, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Captions, CheckCircle2, Film, Globe, ChevronDown, ChevronUp, Clapperboard, Coins, LayoutTemplate, Palette, Loader2, Mic, Play, Search, Sparkles, Square, MessageCircle, Shuffle, Drama, Lock, ImagePlay } from "lucide-react";
+import { Captions, CheckCircle2, Film, Globe, ChevronDown, ChevronUp, Clapperboard, Coins, LayoutTemplate, Palette, Loader2, Mic, Play, Search, Sparkles, Square, MessageCircle, Shuffle, Drama, Lock, ImagePlay, Music } from "lucide-react";
 import Link from "next/link";
 import Disclosure from "../components/Disclosure";
 import { PageHeader } from "../components/PageTabs";
@@ -14,6 +14,7 @@ import SkitStudio from "../components/studio/SkitStudio";
 import TalkStudio from "../components/studio/TalkStudio";
 import SwapStudio from "../components/studio/SwapStudio";
 import AnimateStudio from "../components/studio/AnimateStudio";
+import AmbientStudio from "../components/studio/AmbientStudio";
 import { FREE_PLAN, FREE_PLAN_UPGRADE_MESSAGE, JOB_COSTS } from "@/lib/plans";
 
 /** Cheapest finished video (30 s, Stock + AI): what free credits are pointed at. */
@@ -94,12 +95,13 @@ function readDraft(): Partial<Draft> {
   }
 }
 
-type WorkspaceMode = "video" | "skit" | "talk" | "swap" | "animate";
+type WorkspaceMode = "video" | "skit" | "talk" | "swap" | "animate" | "ambient";
 
 const MODES: Array<{ id: WorkspaceMode; label: string; hint: string; placeholder: string }> = [
   { id: "video", label: "Narrated video", hint: "Story, documentary or explainer with a narrator", placeholder: "e.g. The mystery of planes lost in the Bermuda Triangle…" },
   { id: "skit", label: "Skit with dialogue", hint: "A joke or scene: characters talk to each other", placeholder: "Paste the joke with its lines, e.g.\n- Boss: In 10 years we'll land a man on the sun!\n- Reporter: But the sun is too hot?\n- Boss: We'll land at night!\nMake it like the viral cockroach videos." },
   { id: "talk", label: "Talking character", hint: "One character says your line to the camera", placeholder: "Write what the character says, e.g. \"Ladies and gentlemen, I am the best coach in this barn!\"" },
+  { id: "ambient", label: "Ambient music video", hint: "Long relaxing AI music over one picture: 10 minutes to 2 hours", placeholder: "Describe the music and the scene, e.g. calm Nordic flute and soft drums, misty fjord at dawn" },
   { id: "animate", label: "Image to video", hint: "Turn a picture you upload into a moving clip", placeholder: "Say what should happen, e.g. the camera slowly pushes in while the clouds move (optional)" },
   { id: "swap", label: "Character swap", hint: "Put a character into a clip you upload", placeholder: "Describe the clip or how the character should look (optional)" },
 ];
@@ -109,6 +111,7 @@ function suggestMode(text: string): WorkspaceMode | null {
   const t = text.trim();
   if (t.length < 8) return null;
   if (/(resimden|fotoğraftan|görselden) video|image to video|animate (this|my) (image|photo|picture)|resmi canlandır|fotoğrafı canlandır/i.test(t)) return "animate";
+  if (/\bambient\b|relaxing music|sleep music|meditation music|focus music|\blo-?fi\b|rahatlatıcı müzik|uyku müziği|saatlik müzik|hours? of (calm )?music/i.test(t)) return "ambient";
   if (/\b(swap|face ?swap|deepfake)\b|yüz(ümü|ünü)? (değiştir|koy)|yerine (beni|kendimi)|videoya (beni|kendimi)|klib(e|in)/i.test(t)) return "swap";
   const dialogue = t.split(/\n/).filter((l) => /^\s*[-–—•]\s*\S/.test(l) || /^\s*[\p{L} .]{2,25}:\s*\S/u.test(l)).length;
   const quoted = (t.match(/["“”«»„][^"“”«»„\n]{3,}["“”«»„]/g) ?? []).length;
@@ -301,7 +304,7 @@ function ChatContent() {
               setFormOpen(false);
               setModeState("video");
               router.replace(`${pathname}?job=${active.id}`, { scroll: false });
-            } else if ((active?.mode === "skit" || active?.mode === "talk" || active?.mode === "swap" || active?.mode === "animate") && !wantedMode) {
+            } else if ((active?.mode === "skit" || active?.mode === "talk" || active?.mode === "swap" || active?.mode === "animate" || active?.mode === "ambient") && !wantedMode) {
               setModeState(active.mode);
               setModeLocked(true);
             }
@@ -578,7 +581,7 @@ function ChatContent() {
   // until they pick a mode themselves (a running video keeps the video mode).
   const modeParam = searchParams.get("mode");
   useEffect(() => {
-    if (modeParam === "skit" || modeParam === "talk" || modeParam === "swap" || modeParam === "animate" || modeParam === "video") {
+    if (modeParam === "skit" || modeParam === "talk" || modeParam === "swap" || modeParam === "animate" || modeParam === "ambient" || modeParam === "video") {
       const t = setTimeout(() => setMode(modeParam), 0);
       return () => clearTimeout(t);
     }
@@ -659,10 +662,10 @@ function ChatContent() {
               rows={mode === "skit" ? 6 : 3}
               className="mt-2 w-full resize-y rounded-xl border border-white/10 bg-white/[0.03] p-4 text-white placeholder-gray-500 outline-none focus:border-blue-400/50"
             />
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" role="radiogroup" aria-label="What to make">
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6" role="radiogroup" aria-label="What to make">
               {MODES.map((m) => {
                 const on = mode === m.id;
-                const Icon = m.id === "video" ? Film : m.id === "skit" ? Drama : m.id === "talk" ? MessageCircle : m.id === "animate" ? ImagePlay : Shuffle;
+                const Icon = m.id === "video" ? Film : m.id === "skit" ? Drama : m.id === "talk" ? MessageCircle : m.id === "animate" ? ImagePlay : m.id === "ambient" ? Music : Shuffle;
                 return (
                   <button
                     key={m.id}
@@ -687,7 +690,7 @@ function ChatContent() {
                 );
               })}
             </div>
-            {mode !== "animate" && <ModeGuide mode={mode} onSelectMode={setMode} />}
+            {mode !== "animate" && mode !== "ambient" && <ModeGuide mode={mode} onSelectMode={setMode} />}
           </div>
 
           {mode === "skit" && (
@@ -703,6 +706,11 @@ function ChatContent() {
           {mode === "animate" && (
             <div className="mt-5">
               {freeAccount ? <UpgradeCard /> : <AnimateStudio text={idea} onStarted={() => setIdea("")} />}
+            </div>
+          )}
+          {mode === "ambient" && (
+            <div className="mt-5">
+              {freeAccount ? <UpgradeCard /> : <AmbientStudio text={idea} onStarted={() => setIdea("")} />}
             </div>
           )}
           {mode === "swap" && (

@@ -222,7 +222,7 @@ export async function GET(req: NextRequest) {
       id: str(j.id),
       table: "swap" as const,
       canRetryRender: false,
-      kind: j.kind === "talk" ? "Talking character" : j.kind === "animate" ? "Image to video" : "Character swap",
+      kind: j.kind === "talk" ? "Talking character" : j.kind === "animate" ? "Image to video" : j.kind === "ambient" ? "Ambient music video" : "Character swap",
       userId: str(j.user_id),
       title: str(j.character_name).slice(0, 140),
       status: str(j.status),

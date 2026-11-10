@@ -66,6 +66,14 @@ const cspHeaderKey =
     : "Content-Security-Policy";
 
 const nextConfig: NextConfig = {
+  // ffmpeg (ambient music videos) is a native binary: keep it out of the bundle and ship it with the routes that run it.
+  serverExternalPackages: ["ffmpeg-static"],
+  outputFileTracingIncludes: {
+    "/api/ambient": ["./node_modules/ffmpeg-static/**/*"],
+    "/api/pipeline/reap": ["./node_modules/ffmpeg-static/**/*"],
+    "/api/series/tick": ["./node_modules/ffmpeg-static/**/*"],
+    "/api/admin/actions": ["./node_modules/ffmpeg-static/**/*"],
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "i.ytimg.com" },

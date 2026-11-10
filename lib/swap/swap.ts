@@ -32,7 +32,7 @@ export function swapCredits(info: Pick<Mp4Info, "frames" | "seconds">): number {
 export interface SwapRow {
   id: string;
   /** "swap" = character swap, "talk" = talking character (lib/talk/talk.ts). */
-  kind?: "swap" | "talk" | "animate" | null;
+  kind?: "swap" | "talk" | "animate" | "ambient" | null;
   /** Talk: the spoken line (when typed). */
   script?: string | null;
   /** Talk: the scene picture that was animated. */
@@ -185,7 +185,7 @@ async function fail(db: SupabaseClient, row: SwapRow, message: string) {
       p_user_id: row.billed_to ?? row.user_id,
       p_amount: row.credits,
       p_type: "refund",
-      p_reason: row.kind === "talk" ? "Refund: talking character failed" : row.kind === "animate" ? "Refund: image to video failed" : "Refund: character swap failed",
+      p_reason: row.kind === "talk" ? "Refund: talking character failed" : row.kind === "animate" ? "Refund: image to video failed" : row.kind === "ambient" ? "Refund: ambient music video failed" : "Refund: character swap failed",
     });
   }
   // What this run cost us, even though it failed (lib/creative-usage.ts).
@@ -260,6 +260,10 @@ async function finish(db: SupabaseClient, row: SwapRow, sourceUrl: string): Prom
 /** Move one swap along: fal → Shotstack (keep the clip's sound) → stored MP4 → project. */
 export async function advanceSwapJob(db: SupabaseClient, row: SwapRow): Promise<SwapRow> {
   if (row.status !== "running") return row;
+  if (row.kind === "ambient") {
+    const { advanceAmbientJob } = await import("@/lib/ambient/ambient");
+    return advanceAmbientJob(db, row, (m) => fail(db, row, m));
+  }
   const age = Date.now() - Date.parse(row.updated_at || row.created_at);
   try {
     if (row.phase === "swap" && row.fal) {
@@ -322,6 +326,8 @@ export async function advanceSwapJob(db: SupabaseClient, row: SwapRow): Promise<
 export async function advanceSwapJobs(db: SupabaseClient): Promise<number> {
   const { data, error } = await db.from("swap_jobs").select("*").eq("status", "running").limit(50);
   if (error) return 0;
-  for (const row of (data ?? []) as SwapRow[]) await advanceSwapJob(db, row);
+  // Long ambient encodes go last so they never hold up the quick jobs.
+  const rows = ((data ?? []) as SwapRow[]).sort((a, b) => Number(a.kind === "ambient") - Number(b.kind === "ambient"));
+  for (const row of rows) await advanceSwapJob(db, row);
   return data?.length ?? 0;
 }

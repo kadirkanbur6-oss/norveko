@@ -61,6 +61,32 @@ export function animateCreditsFor(seconds: number): number {
   return creditsForCost(seconds * ANIMATE_COST_PER_SECOND);
 }
 
+/**
+ * Ambient music video (10 Nov 2026, Yağmur): hours of calm AI music over one still picture.
+ * Music = Google Lyria 3 Pro (flat $0.08 per ~3 min song); the picture = one Nano Banana
+ * image; the MP4 is assembled with ffmpeg on our own server (no Shotstack, ~$0.03 of
+ * compute per hour of video). Long videos play a few songs (at most AMBIENT_MAX_TRACKS)
+ * in a shuffled loop, which is how channels in this genre do it. No re-render exists.
+ * Sold at a 65 % gross margin; 25 % headroom on songs covers regenerations.
+ */
+export const AMBIENT_MARGIN = 0.65;
+export const AMBIENT_SONG_COST = 0.08;
+export const AMBIENT_SONG_SECONDS = 180;
+export const AMBIENT_MAX_TRACKS = 12;
+export const AMBIENT_MINUTES = [10, 30, 60, 120] as const;
+export const AMBIENT_CHUNK_MINUTES = 60;
+
+/** Different songs made for a video of this length. */
+export function ambientTracksFor(minutes: number): number {
+  return Math.min(AMBIENT_MAX_TRACKS, Math.max(2, Math.ceil((minutes * 60) / AMBIENT_SONG_SECONDS)));
+}
+
+export function ambientCreditsFor(minutes: number): number {
+  const chunks = Math.ceil(minutes / AMBIENT_CHUNK_MINUTES);
+  const usd = ambientTracksFor(minutes) * AMBIENT_SONG_COST * 1.25 + SKIT_IMAGE_COST + 0.03 * (chunks + 1);
+  return creditsForCost(usd, AMBIENT_MARGIN);
+}
+
 /** Character swap: fal Wan 2.2 Animate Replace bills $0.08 per 16 frames (720p), plus the render. */
 export const SWAP_COST_PER_16_FRAMES = 0.08;
 export function swapCreditsFor(frames: number, seconds: number): number {
@@ -73,6 +99,8 @@ export const CREATIVE_COSTS = {
   skit20: skitCreditsFor({ characters: 3, shots: 6, speakingSeconds: 0, talkClipSeconds: 20, silentShots: 2, sfx: 2, crowd: 1, totalSeconds: 24 }),
   /** A 10 s talking character. */
   talk10: talkCreditsFor(10),
+  /** A one-hour ambient music video. */
+  ambient60: ambientCreditsFor(60),
   /** A 5 s clip made from an uploaded picture. */
   animate5: animateCreditsFor(5),
   /** A 10 s character swap at 30 fps. */
