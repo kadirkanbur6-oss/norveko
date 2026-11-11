@@ -70,6 +70,19 @@ export const SHOWCASE_VIDEOS: ShowcaseVideo[] = [
     made: "One character · your line · gruff voice · lip-sync",
   },
   {
+    // 11 Nov 2026 (Yağmur): the cockroach church joke, English, no music.
+    id: "ccd00e0c-0420-4904-be8f-e3a4f330b0ea",
+    mode: "Skit",
+    title: "Two Steps Away",
+    idea: "Priest: Are you secretly drinking the holy wine? Sexton: Nothing can be heard from here, sir! ... Let's switch places. You'll see.",
+    language: "English",
+    seconds: 36,
+    orientation: "vertical",
+    videoPath: `${OWNER}/skit/ccd00e0c-0420-4904-be8f-e3a4f330b0ea/final-v4.mp4`,
+    poster: { bucket: "videos", path: `${OWNER}/skit-ccd00e0c-0420-4904-be8f-e3a4f330b0ea/still-2.jpg` },
+    made: "Realistic cockroach cast · characters speak their own lines · AI video shots",
+  },
+  {
     // 10 Nov 2026 (Yağmur): 30 s Viking ambience, Lyria music + five Nano Banana pictures.
     id: "viking-ambience",
     mode: "Ambient music",
