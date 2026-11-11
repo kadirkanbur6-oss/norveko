@@ -9,6 +9,6 @@ import { isPaddleProduction } from "@/lib/paddle-env";
 
 export const PAYMENTS_LIVE = process.env.NEXT_PUBLIC_PAYMENTS_LIVE === "true" || isPaddleProduction;
 
-export const PAYMENTS_SOON_TITLE = "Plans and packs open soon";
+export const PAYMENTS_SOON_TITLE = "Plans and packs are opening soon";
 export const PAYMENTS_SOON_BODY =
-  "Payments go live in a few days. Your free credits work now; join the list and we'll e-mail you the moment plans open.";
+  "We're finishing payment setup. Your free credits work right now, so you can make a video today. Join the list and we'll e-mail you the moment plans and packs open.";

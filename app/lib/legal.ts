@@ -1,9 +1,8 @@
 // Legal constants used across Terms, Privacy, and Refund pages.
-// LEGAL_NAME: the brand until the company is incorporated — replace it with
-// the registered legal entity name BEFORE applying for the Paddle live account.
-// (5 Nov 2026: the "[LEGAL NAME]" placeholder was showing on the live Terms page.)
-export const LEGAL_NAME = "Norveko";
+// LEGAL_NAME: the registered operator of the Service. (11 Nov 2026: sole
+// proprietorship, owner's name; must match the Paddle live account.)
+export const LEGAL_NAME = "Abdulkadir Kanbur (sole proprietor), trading as Norveko";
 export const BRAND_NAME = "Norveko";
 export const SUPPORT_EMAIL = "support@norveko.app";
 export const WEBSITE_URL = "https://norveko.app";
-export const LEGAL_LAST_UPDATED = "November 8, 2026";
+export const LEGAL_LAST_UPDATED = "November 11, 2026";
