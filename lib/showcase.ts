@@ -83,16 +83,17 @@ export const SHOWCASE_VIDEOS: ShowcaseVideo[] = [
     made: "Realistic cockroach cast · characters speak their own lines · AI video shots",
   },
   {
-    // 11 Nov 2026 (Yağmur): an earlier image-to-video clip (Seedance) from the Dyatlov run.
-    id: "c52fd94e-f62a-4db2-baf5-1083ae0c57bb",
+    // 11 Nov 2026 (Yağmur): her own image-to-video project replaces the Dyatlov glove clip.
+    id: "93ebb741-b223-4a3f-b3b7-dd637b9318e4",
     mode: "Image to video",
-    title: "The Glove in the Snow",
-    idea: "A frozen glove rising from the snow beside a half-frozen river, cold grey light.",
+    title: "A Photo Comes to Life",
+    idea: "Slowly pushes in toward the camera until the face is clear, then smiles faintly and blinks.",
     language: "No speech",
-    seconds: 5,
+    seconds: 10,
     orientation: "vertical",
-    videoPath: `${OWNER}/c52fd94e-f62a-4db2-baf5-1083ae0c57bb/slot-8.mp4`,
-    made: "One AI picture · brought to life with motion · 720p clip",
+    videoPath: `${OWNER}/animate/93ebb741-b223-4a3f-b3b7-dd637b9318e4/final.mp4`,
+    poster: { bucket: "videos", path: `${OWNER}/animate/img-a54bb502-3a6e-439b-98e0-5548668d5e7b.jpg` },
+    made: "One uploaded photo · your motion prompt · 10-second clip",
   },
   {
     // 10 Nov 2026 (Yağmur): 30 s Viking ambience, Lyria music + five Nano Banana pictures.
