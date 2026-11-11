@@ -6,7 +6,7 @@ import { friendlyErrorLine } from "@/lib/user-error";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ImagePlay, Loader2, Mic, Upload, Volume2 } from "lucide-react";
+import { ImagePlay, Loader2, Mic, Pause, Play, Upload, Volume2 } from "lucide-react";
 import FinishedVideo from "./FinishedVideo";
 import GenerationStage from "../GenerationStage";
 
@@ -125,6 +125,28 @@ export default function AnimateStudio({ text, onStarted }: { text: string; onSta
     const d = await fetch("/api/talk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
     if (!d.success) throw new Error(d.error || "Something went wrong.");
     return d;
+  }
+
+  const demoAudio = useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState("");
+  const [sampleBusy, setSampleBusy] = useState("");
+  async function playSample(id: string) {
+    demoAudio.current?.pause();
+    if (playing === id) { setPlaying(""); return; }
+    setSampleBusy(id);
+    setError("");
+    try {
+      const d = await talkPost({ action: "sample", voiceId: id });
+      const a = new Audio(d.url);
+      demoAudio.current = a;
+      a.onended = () => setPlaying("");
+      await a.play();
+      setPlaying(id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The demo couldn't be played.");
+    } finally {
+      setSampleBusy("");
+    }
   }
 
   async function makeVoice() {
@@ -309,17 +331,32 @@ export default function AnimateStudio({ text, onStarted }: { text: string; onSta
             </label>
             {speak && (
               <div className="mt-3 space-y-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <select value={voiceId} onChange={(e) => { setVoiceId(e.target.value); setVoice(null); }} aria-label="Voice" className="rounded-lg border border-white/10 bg-[var(--nv-field)] px-3 py-2 text-sm">
-                    <optgroup label="Natural human voices">
-                      {natural.map((v) => <option key={v.id} value={v.id}>{v.name} — {v.style}</option>)}
-                    </optgroup>
-                    <optgroup label="Character voices">
-                      {voices.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
-                    </optgroup>
-                  </select>
-                  <span className="text-xs text-gray-500">Pick &ldquo;Your voice&rdquo; to use your cloned voice (create it in Settings).</span>
+                <div className="max-h-64 overflow-y-auto rounded-xl border border-white/10 bg-[var(--nv-panel)] p-1" role="radiogroup" aria-label="Voice">
+                  {[
+                    { label: "Natural human voices", list: natural.map((v) => ({ ...v, sample: true })) },
+                    { label: "Character voices", list: voices.map((v) => ({ id: v.id, name: v.name, style: "", sample: v.id.startsWith("style:") })) },
+                  ].map((g) => (
+                    <div key={g.label}>
+                      <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">{g.label}</p>
+                      {g.list.map((v) => (
+                        <div key={v.id} role="radio" aria-checked={voiceId === v.id} tabIndex={0}
+                          onClick={() => { setVoiceId(v.id); setVoice(null); }}
+                          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setVoiceId(v.id); setVoice(null); } }}
+                          className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition ${voiceId === v.id ? "bg-sky-500/15 text-white" : "text-gray-300 hover:bg-white/5"}`}>
+                          {v.sample ? (
+                            <button type="button" aria-label={`Listen to ${v.name}`} onClick={(e) => { e.stopPropagation(); void playSample(v.id); }}
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/15 hover:border-sky-400/60">
+                              {sampleBusy === v.id ? <Loader2 size={13} className="animate-spin" /> : playing === v.id ? <Pause size={13} /> : <Play size={13} />}
+                            </button>
+                          ) : <span className="h-7 w-7 shrink-0" />}
+                          <span className="font-medium">{v.name}</span>
+                          {v.style && <span className="truncate text-xs text-gray-500">{v.style}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
                 </div>
+                <p className="text-xs text-gray-500">Press ▶ to hear a short demo of each voice. Your cloned voice (Settings) appears under Character voices.</p>
                 <textarea value={line} onChange={(e) => { setLine(e.target.value); setVoice(null); }} maxLength={450} rows={3} placeholder="What should they say?" className="w-full rounded-lg border border-white/10 bg-[var(--nv-field)] px-3 py-2 text-sm" />
                 <div className="flex flex-wrap items-center gap-3">
                   <button type="button" onClick={makeVoice} disabled={voiceBusy !== "" || line.trim().length < 2} className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-sm disabled:opacity-40">

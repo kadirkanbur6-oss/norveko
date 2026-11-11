@@ -110,6 +110,37 @@ export async function POST(req: Request) {
   if (!(await allowedFor(db, user.id))) return bad("Talking characters are available on any plan or pack.", 403);
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
+  if (body.action === "sample") {
+    // A short cached demo of a voice so people can listen before choosing (natural + character voices).
+    const voiceId = typeof body.voiceId === "string" ? body.voiceId : "";
+    const { isVoiceStyle, voiceFor, styleDirection, applyVoiceStyle } = await import("@/lib/skit/voice-styles");
+    const { GEMINI_VOICES } = await import("@/lib/pipeline/gemini-tts");
+    const [, styleId, gender] = voiceId.split(":");
+    const style = voiceId.startsWith("style:") && isVoiceStyle(styleId) && (gender === "male" || gender === "female") ? styleId : null;
+    const natural = voiceId.startsWith("gemini:") && GEMINI_VOICES.some((v) => `gemini:${v.name}` === voiceId);
+    if (!style && !natural) return bad("No demo for this voice. Type a line and press Make the voice.");
+    const path = `previews/talk/${voiceId.replace(/[^a-zA-Z0-9]/g, "-")}.wav`;
+    const publicUrl = db.storage.from("videos").getPublicUrl(path).data.publicUrl;
+    const file = path.split("/").pop()!;
+    const { data: existing } = await db.storage.from("videos").list("previews/talk", { search: file, limit: 1 });
+    if (!existing?.some((f) => f.name === file)) {
+      try {
+        const { synthesizeNarration } = await import("@/lib/pipeline/tts");
+        const text = "Hey, you won't believe what just happened. Stay with me, I'll tell you everything.";
+        const speech = natural
+          ? await synthesizeNarration(text, voiceId, { align: false, direction: "Say this naturally, like a real person talking to a camera: relaxed, expressive, human — not like a narrator" })
+          : await synthesizeNarration(text, `gemini:${voiceFor(style as never, gender as "male" | "female")}`, { align: false, direction: styleDirection(style as never, "the character", "talking straight to the camera") });
+        if (style && speech.ext === "wav") speech.audio = applyVoiceStyle(speech.audio, style as never);
+        const { error } = await db.storage.from("videos").upload(path, speech.audio, { contentType: speech.contentType, upsert: true });
+        if (error) throw new Error(error.message);
+      } catch (err) {
+        console.error("[talk] sample failed:", err);
+        return bad("The demo couldn't be made. Try again.", 502);
+      }
+    }
+    return NextResponse.json({ success: true, url: publicUrl });
+  }
+
   if (body.action === "voice") {
     const text = typeof body.text === "string" ? body.text.replace(/\s+/g, " ").trim() : "";
     if (text.length < 2) return bad("Write what they should say.");
