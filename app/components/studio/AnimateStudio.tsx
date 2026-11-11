@@ -41,6 +41,7 @@ export default function AnimateStudio({ text, onStarted }: { text: string; onSta
   // Optional voice: a typed line in a character voice, or an uploaded recording.
   const [speak, setSpeak] = useState(false);
   const [voices, setVoices] = useState<Array<{ id: string; name: string }>>([]);
+  const [natural, setNatural] = useState<Array<{ id: string; name: string; style: string }>>([]);
   const [voiceId, setVoiceId] = useState("");
   const [line, setLine] = useState("");
   const [voice, setVoice] = useState<{ path: string; seconds: number; url: string; credits: number } | null>(null);
@@ -57,8 +58,9 @@ export default function AnimateStudio({ text, onStarted }: { text: string; onSta
     setClips(d.clips ?? []);
     const tv = await fetch("/api/talk").then((r) => r.json()).catch(() => null);
     if (tv?.success) {
+      setNatural(tv.naturalVoices ?? []);
       setVoices(tv.voices ?? []);
-      setVoiceId((v) => v || tv.voices?.[0]?.id || "");
+      setVoiceId((v) => v || tv.naturalVoices?.[0]?.id || tv.voices?.[0]?.id || "");
     }
     for (const x of (d.clips ?? []) as Clip[]) {
       if (x.status === "running") seenRunning.current.add(x.id);
@@ -309,7 +311,12 @@ export default function AnimateStudio({ text, onStarted }: { text: string; onSta
               <div className="mt-3 space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <select value={voiceId} onChange={(e) => { setVoiceId(e.target.value); setVoice(null); }} aria-label="Voice" className="rounded-lg border border-white/10 bg-[var(--nv-field)] px-3 py-2 text-sm">
-                    {voices.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+                    <optgroup label="Natural human voices">
+                      {natural.map((v) => <option key={v.id} value={v.id}>{v.name} — {v.style}</option>)}
+                    </optgroup>
+                    <optgroup label="Character voices">
+                      {voices.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+                    </optgroup>
                   </select>
                   <span className="text-xs text-gray-500">Pick &ldquo;Your voice&rdquo; to use your cloned voice (create it in Settings).</span>
                 </div>

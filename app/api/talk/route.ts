@@ -92,6 +92,7 @@ export async function GET(req: Request) {
     maxSeconds: TALK_MAX_SECONDS,
     maxChars: TALK_MAX_CHARS,
     looks: TALK_LOOKS,
+    naturalVoices: (await import("@/lib/pipeline/gemini-tts")).GEMINI_VOICES.map((v) => ({ id: `gemini:${v.name}`, name: `${v.name} · ${v.gender}`, style: v.style })),
     voices: [
       // Only the 3 character voices (cartoon / comic / gruff), male or female.
       ...VOICE_STYLES.flatMap((v) => (["male", "female"] as const).map((g) => ({ id: `style:${v.id}:${g}`, name: `${v.label} · ${g}`, style: v.hint }))),
@@ -119,14 +120,18 @@ export async function POST(req: Request) {
     const ownClone = (await userClone(db, user.id).catch(() => null))?.voice_id;
     const [, styleId, gender] = voiceId.split(":");
     const style = voiceId.startsWith("style:") && isVoiceStyle(styleId) && (gender === "male" || gender === "female") ? styleId : null;
-    if (!style && voiceId !== ownClone) return bad("Pick a voice.");
+    const { GEMINI_VOICES } = await import("@/lib/pipeline/gemini-tts");
+    const natural = voiceId.startsWith("gemini:") && GEMINI_VOICES.some((v) => `gemini:${v.name}` === voiceId);
+    if (!style && !natural && voiceId !== ownClone) return bad("Pick a voice.");
     const now = Date.now();
     const recent = (voiceCalls.get(user.id) ?? []).filter((t) => now - t < 3600_000);
     if (recent.length >= VOICE_PREVIEWS_PER_HOUR) return bad("That's a lot of tries. Wait a little and try again.", 429);
     voiceCalls.set(user.id, [...recent, now]);
     try {
       const { synthesizeNarration } = await import("@/lib/pipeline/tts");
-      const speech = style
+      const speech = natural
+        ? await synthesizeNarration(text, voiceId, { align: false, direction: "Say this naturally, like a real person talking to a camera: relaxed, expressive, human — not like a narrator" })
+        : style
         ? await synthesizeNarration(text, `gemini:${voiceFor(style, gender as "male" | "female")}`, { align: false,
             direction: styleDirection(style, "the character", "talking straight to the camera"),
           })
