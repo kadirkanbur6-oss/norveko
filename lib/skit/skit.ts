@@ -560,7 +560,11 @@ export function skitLayout(plan: SkitPlan): Array<{ start: number; length: numbe
   return plan.shots.map((s) => {
     const silentLength = Math.max(s.seconds, s.crowdUrls?.length && s.crowdSeconds ? s.crowdSeconds + 0.6 : 0);
     const ownVoice = hasOwnVoice(s);
-    const length = Math.round((ownVoice ? ownVoice : s.line ? (s.audioSeconds ?? 2) + 0.3 : silentLength) * 100) / 100;
+    // A talking clip is 4/6/8 s long but the line is usually shorter: cut the quiet tail so the
+    // dialogue flows (11 Nov 2026, Yağmur: "diyaloglar arası boşluk fazla"). The TTS take of the
+    // same line tells how long the speech is; 15% + 0.7 s keeps the last word safe.
+    const trimmedVoice = ownVoice && s.audioSeconds ? Math.min(ownVoice, Math.max(1.8, s.audioSeconds * 1.15 + 0.7)) : ownVoice;
+    const length = Math.round((ownVoice ? trimmedVoice : s.line ? (s.audioSeconds ?? 2) + 0.3 : silentLength) * 100) / 100;
     const start = Math.round(t * 100) / 100;
     t += length;
     return { start, length };
