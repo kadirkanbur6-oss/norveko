@@ -334,7 +334,7 @@ export default function AnimateStudio({ text, onStarted }: { text: string; onSta
                 {voice && (
                   <div className="flex flex-wrap items-center gap-3">
                     <audio controls src={voice.url} className="h-9" />
-                    <span className="text-xs text-gray-400">{voice.seconds} s · {speakPrice} credits</span>
+                    <span className="text-xs text-gray-400">{voice.seconds} s · voice add-on {speakPrice} credits</span>
                   </div>
                 )}
               </div>

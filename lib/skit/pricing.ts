@@ -62,8 +62,10 @@ export function animateCreditsFor(seconds: number): number {
 }
 
 /** Image to video with a voice (11 Nov 2026): the uploaded picture lip-synced to a voice, billed per started second. */
+export const ANIMATE_SPEECH_MARGIN = 0.5;
+/** Voice add-on: lip-sync per started second + ~$0.02 for a typed line's speech, at a 50 % margin. */
 export function animateSpeechCreditsFor(seconds: number): number {
-  return creditsForCost(Math.ceil(seconds) * AVATAR_COST_PER_SECOND);
+  return creditsForCost(Math.ceil(seconds) * AVATAR_COST_PER_SECOND + 0.02, ANIMATE_SPEECH_MARGIN);
 }
 
 /**
