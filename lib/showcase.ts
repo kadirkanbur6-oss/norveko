@@ -6,7 +6,7 @@
 // is deleted. URLs are built from NEXT_PUBLIC_SUPABASE_URL so the list works
 // against any Supabase project that holds the same objects.
 
-export type ShowcaseMode = "Narrated video" | "Skit" | "Talking character" | "Character swap" | "Ambient music";
+export type ShowcaseMode = "Narrated video" | "Skit" | "Talking character" | "Character swap" | "Ambient music" | "Image to video";
 
 export interface ShowcaseVideo {
   id: string;
@@ -81,6 +81,18 @@ export const SHOWCASE_VIDEOS: ShowcaseVideo[] = [
     videoPath: `${OWNER}/skit/ccd00e0c-0420-4904-be8f-e3a4f330b0ea/final-v4.mp4`,
     poster: { bucket: "videos", path: `${OWNER}/skit-ccd00e0c-0420-4904-be8f-e3a4f330b0ea/still-2.jpg` },
     made: "Realistic cockroach cast · characters speak their own lines · AI video shots",
+  },
+  {
+    // 11 Nov 2026 (Yağmur): an earlier image-to-video clip (Seedance) from the Dyatlov run.
+    id: "c52fd94e-f62a-4db2-baf5-1083ae0c57bb",
+    mode: "Image to video",
+    title: "The Glove in the Snow",
+    idea: "A frozen glove rising from the snow beside a half-frozen river, cold grey light.",
+    language: "No speech",
+    seconds: 5,
+    orientation: "vertical",
+    videoPath: `${OWNER}/c52fd94e-f62a-4db2-baf5-1083ae0c57bb/slot-8.mp4`,
+    made: "One AI picture · brought to life with motion · 720p clip",
   },
   {
     // 10 Nov 2026 (Yağmur): 30 s Viking ambience, Lyria music + five Nano Banana pictures.
