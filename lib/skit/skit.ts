@@ -23,7 +23,7 @@ import { TALK_VIDEO_ENABLED, talkClipSeconds } from "@/lib/pipeline/fal-video";
 import { LANGUAGE_OPTIONS } from "@/lib/pipeline/options";
 import { splitLongLines } from "./split";
 import { applyVoiceStyle, isVoiceStyle, styleDirection, voiceFor, type VoiceGender, type VoiceStyle } from "@/lib/skit/voice-styles";
-import { musicCredit } from "@/lib/pipeline/music";
+import { musicCredit, skitMusicChoices } from "@/lib/pipeline/music";
 import { storeMedia } from "@/lib/storage/media";
 
 export const SKIT_MAX_SHOTS = 8;
@@ -621,7 +621,10 @@ async function renderExtras(db: SupabaseClient, row: SkitRow): Promise<{ musicUr
     if (plan.music && plan.music.url) musicUrl = plan.music.url;
     else {
       const { comedyTracksFor } = await import("@/lib/pipeline/music");
-      for (const t of comedyTracksFor(row.id)) {
+      const chosenId = plan.music ? plan.music.id : "";
+      const wanted = chosenId ? skitMusicChoices().find((t) => t.id === chosenId) : undefined;
+      const order = wanted ? [wanted, ...comedyTracksFor(row.id)] : comedyTracksFor(row.id);
+      for (const t of order) {
         try {
           const path = `music/${t.id}.mp3`;
           const { data: existing } = await db.storage.from("videos").list("music", { search: `${t.id}.mp3`, limit: 1 });
@@ -832,11 +835,16 @@ export function recutCredits(plan: SkitPlan): number {
   return RENDER_CREDITS_PER_30S * Math.max(1, Math.ceil(estimateSeconds(plan).total / 30));
 }
 
-export function prepareRecut(row: SkitRow, opts: { music?: boolean }): SkitRow["plan"] {
+export function prepareRecut(row: SkitRow, opts: { music?: boolean; trackId?: string }): SkitRow["plan"] {
   const plan = row.plan;
   (plan as SkitPlan & { recuts?: number }).recuts = ((plan as SkitPlan & { recuts?: number }).recuts ?? 0) + 1;
   (plan as SkitPlan & { pendingEdit?: unknown }).pendingEdit = { kind: "recut" };
   if (typeof opts.music === "boolean") plan.music = opts.music ? null : false;
+  if (opts.trackId) {
+    // A chosen piece: renderExtras downloads it on this render (url stays empty until then).
+    const t = skitMusicChoices().find((x) => x.id === opts.trackId);
+    if (t) plan.music = { id: t.id, title: t.title, url: "" };
+  }
   plan.renderVersion = (plan.renderVersion ?? 0) + 1;
   (plan as SkitPlan & { edits?: number }).edits = ((plan as SkitPlan & { edits?: number }).edits ?? 0) + 1;
   return plan;

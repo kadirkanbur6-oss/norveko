@@ -164,3 +164,8 @@ export function comedyTracksFor(seed: string): MusicTrack[] {
   const start = hash(seed) % COMEDY_TRACKS.length;
   return COMEDY_TRACKS.map((_, i) => COMEDY_TRACKS[(start + i) % COMEDY_TRACKS.length]);
 }
+
+/** Pieces a skit's music can be switched to: the comedy set plus a few mysterious ones (10 Nov 2026). */
+export function skitMusicChoices(): MusicTrack[] {
+  return [...COMEDY_TRACKS, ...MUSIC_TRACKS.filter((t) => t.mood === "mysterious").slice(0, 3)];
+}

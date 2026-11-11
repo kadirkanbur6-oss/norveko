@@ -61,6 +61,7 @@ function view(r: SkitRow) {
     })),
     phaseAt: plan?.phaseAt ?? {},
     music: plan?.music !== false,
+    musicTitle: plan?.music ? plan.music.title : null,
     editsLeft: Math.max(0, MAX_SKIT_EDITS - editsUsed(plan)),
     recutCredits: plan ? recutCredits(plan) : 0,
     updatedAt: r.updated_at,
@@ -177,7 +178,7 @@ export async function POST(req: Request) {
       phase = "animate";
     } else {
       credits = recutCredits(row.plan); // before prepareRecut counts this one
-      plan = prepareRecut(row, { music: body.music as boolean | undefined });
+      plan = prepareRecut(row, { music: body.music as boolean | undefined, trackId: typeof body.trackId === "string" ? body.trackId : undefined });
     }
     const { payerFor } = await import("@/lib/teams");
     const payer = await payerFor(db, user.id);

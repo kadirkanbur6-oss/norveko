@@ -6,6 +6,7 @@ import { friendlyErrorLine } from "@/lib/user-error";
 // cut replaces the video in the same project.
 
 import { useCallback, useEffect, useState } from "react";
+import { skitMusicChoices } from "@/lib/pipeline/music";
 import { Loader2, Music, RefreshCw, Scissors, Sparkles } from "lucide-react";
 import GenerationStage from "../GenerationStage";
 
@@ -17,6 +18,7 @@ type Skit = {
   title: string;
   vertical: boolean;
   music: boolean;
+  musicTitle?: string | null;
   editsLeft: number;
   recutCredits?: number;
   shots: Shot[];
@@ -111,6 +113,20 @@ export default function SkitEditor({ projectId }: { projectId: string }) {
               <Sparkles size={13} /> Animate still shots · free
             </button>
           )}
+          <select
+            aria-label="Change the music"
+            value=""
+            disabled={busy || skit.editsLeft < 1}
+            onChange={(e) => e.target.value && post({ action: "recut", id: skit.id, trackId: e.target.value })}
+            className="rounded-full border border-white/10 bg-transparent px-3 py-1.5 text-xs text-gray-200 hover:border-white/25 disabled:opacity-40"
+          >
+            <option value="">Change music{skit.musicTitle ? ` (now: ${skit.musicTitle})` : ""} · {skit.recutCredits ? `${skit.recutCredits} credits` : "free"}</option>
+            {skitMusicChoices().map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.title}
+              </option>
+            ))}
+          </select>
           <button
             type="button"
             disabled={busy || skit.editsLeft < 1}
