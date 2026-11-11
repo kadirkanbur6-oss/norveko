@@ -196,6 +196,11 @@ async function fail(db: SupabaseClient, row: SwapRow, message: string) {
 }
 
 /** Talk: a failed lip-sync gets one more try on the fallback model. */
+/** An image-to-video clip with a voice keeps its audio in source_path (…/talk/aud|rec-…). */
+function speaksLikeTalk(row: SwapRow): boolean {
+  return row.kind === "talk" || (row.kind === "animate" && /\/talk\/(aud|rec)-/.test(row.source_path));
+}
+
 async function retryTalk(db: SupabaseClient, row: SwapRow): Promise<boolean> {
   const fv = await import("@/lib/pipeline/fal-video");
   if (!row.image_url || fv.isFallbackAvatar(row.fal)) return false;
@@ -204,7 +209,7 @@ async function retryTalk(db: SupabaseClient, row: SwapRow): Promise<boolean> {
     const fal = await fv.submitAvatar({
       imageUrl: row.image_url,
       audioUrl: db.storage.from("videos").getPublicUrl(row.source_path).data.publicUrl,
-      prompt: TALK_AVATAR_PROMPT,
+      prompt: row.kind === "animate" ? (await import("@/lib/animate/animate")).animateSpeechPrompt(row.prompt ?? "") : TALK_AVATAR_PROMPT,
       model: fv.FAL_AVATAR_FALLBACK_MODEL,
     });
     await patch(db, row, { fal });
@@ -230,7 +235,7 @@ async function finish(db: SupabaseClient, row: SwapRow, sourceUrl: string): Prom
     if (error) throw new Error(error.message);
     url = db.storage.from("videos").getPublicUrl(key).data.publicUrl;
   }
-  const title = animate ? (row.prompt ? row.prompt.slice(0, 60) : "Image to video") : talk ? `${row.character_name} talks` : `${row.character_name} (character swap)`;
+  const title = animate ? (row.script ? row.script.slice(0, 60) : row.prompt ? row.prompt.slice(0, 60) : "Image to video") : talk ? `${row.character_name} talks` : `${row.character_name} (character swap)`;
   const { data: project } = await db
     .from("projects")
     .insert({
@@ -242,7 +247,7 @@ async function finish(db: SupabaseClient, row: SwapRow, sourceUrl: string): Prom
       idea: (talk ? row.script : row.prompt) || title,
       status: "draft",
       content: animate
-        ? { titles: [title], description: row.prompt ?? "", tags: [], finalVideoUrl: url, thumbnailUrl: row.image_url ?? undefined, animate: true }
+        ? { titles: [title], description: row.script ?? row.prompt ?? "", tags: [], finalVideoUrl: url, thumbnailUrl: row.image_url ?? undefined, animate: true }
         : talk
         ? { titles: [title], description: row.script ?? "", tags: [], finalVideoUrl: url, thumbnailUrl: row.image_url ?? undefined, talk: { characterName: row.character_name } }
         : { titles: [title], description: "", tags: [], finalVideoUrl: url, swap: { characterName: row.character_name } },
@@ -270,7 +275,7 @@ export async function advanceSwapJob(db: SupabaseClient, row: SwapRow): Promise<
       const st = await fetch(row.fal.statusUrl, { headers: { Authorization: `Key ${falKey()}` }, cache: "no-store" });
       const s = (await st.json().catch(() => ({}))) as { status?: string; error?: string };
       if (s.status === "FAILED" || s.status === "ERROR") {
-        if (row.kind === "talk" && (await retryTalk(db, row))) return row;
+        if (speaksLikeTalk(row) && (await retryTalk(db, row))) return row;
         return (await fail(db, row, row.kind === "talk" || row.kind === "animate" ? "The video model couldn't animate this picture." : "The swap model couldn't process this clip."), row);
       }
       if (s.status !== "COMPLETED") {
@@ -280,7 +285,7 @@ export async function advanceSwapJob(db: SupabaseClient, row: SwapRow): Promise<
       const rr = await fetch(row.fal.responseUrl, { headers: { Authorization: `Key ${falKey()}` }, cache: "no-store" });
       const out = (await rr.json().catch(() => ({}))) as { video?: { url?: string } };
       if (!rr.ok || !out.video?.url) {
-        if (row.kind === "talk" && (await retryTalk(db, row))) return row;
+        if (speaksLikeTalk(row) && (await retryTalk(db, row))) return row;
         return (await fail(db, row, row.kind === "talk" || row.kind === "animate" ? "The video model couldn't animate this picture." : "The swap model couldn't process this clip."), row);
       }
       // A talking character already has its voice: keep the lip-synced video as it is.

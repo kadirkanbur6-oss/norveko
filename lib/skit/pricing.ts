@@ -61,6 +61,11 @@ export function animateCreditsFor(seconds: number): number {
   return creditsForCost(seconds * ANIMATE_COST_PER_SECOND);
 }
 
+/** Image to video with a voice (11 Nov 2026): the uploaded picture lip-synced to a voice, billed per started second. */
+export function animateSpeechCreditsFor(seconds: number): number {
+  return creditsForCost(Math.ceil(seconds) * AVATAR_COST_PER_SECOND);
+}
+
 /**
  * Ambient music video (10 Nov 2026, Yağmur): hours of calm AI music over one still picture.
  * Music = Google Lyria 3 Pro (flat $0.08 per ~3 min song); the picture = one Nano Banana

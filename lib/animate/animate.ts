@@ -20,7 +20,10 @@ export const IMAGE_TYPES: Record<string, "jpg" | "png" | "webp"> = {
 };
 export const IMAGE_CONTENT_TYPES = { jpg: "image/jpeg", png: "image/png", webp: "image/webp" } as const;
 
-export { animateCreditsFor as animateCredits } from "@/lib/skit/pricing";
+export { animateCreditsFor as animateCredits, animateSpeechCreditsFor as animateSpeechCredits } from "@/lib/skit/pricing";
+
+/** A voice track for the picture (typed line or recording) can be this long. */
+export const ANIMATE_SPEECH_MAX_SECONDS = 30;
 
 export function isAnimateSeconds(n: unknown): n is (typeof ANIMATE_SECONDS)[number] {
   return ANIMATE_SECONDS.includes(n as 5 | 10);
@@ -41,4 +44,11 @@ export async function checkAnimateImage(bytes: Buffer, mimeType: string): Promis
 export function animatePrompt(text: string): string {
   const t = text.replace(/\s+/g, " ").trim();
   return t || "Bring this picture to life with subtle, natural motion and a gentle camera move.";
+}
+
+/** Lip-sync prompt: the user's motion note first, then the speaking behaviour. */
+export function animateSpeechPrompt(text: string): string {
+  const t = text.replace(/\s+/g, " ").trim();
+  const base = "The person in the picture speaks to the camera with natural lip movement, lively expressions and small head and hand movements that match the voice. Keep the person's look exactly the same.";
+  return t ? `${t}. ${base}` : base;
 }

@@ -6,7 +6,7 @@ import { friendlyErrorLine } from "@/lib/user-error";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ImagePlay, Loader2, Upload } from "lucide-react";
+import { ImagePlay, Loader2, Mic, Upload, Volume2 } from "lucide-react";
 import FinishedVideo from "./FinishedVideo";
 import GenerationStage from "../GenerationStage";
 
@@ -37,6 +37,15 @@ export default function AnimateStudio({ text, onStarted }: { text: string; onSta
   const seenRunning = useRef<Set<string>>(new Set());
   const [finished, setFinished] = useState<{ title: string; url: string; projectId: string | null; vertical: boolean } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLInputElement>(null);
+  // Optional voice: a typed line in a character voice, or an uploaded recording.
+  const [speak, setSpeak] = useState(false);
+  const [voices, setVoices] = useState<Array<{ id: string; name: string }>>([]);
+  const [voiceId, setVoiceId] = useState("");
+  const [line, setLine] = useState("");
+  const [voice, setVoice] = useState<{ path: string; seconds: number; url: string; credits: number } | null>(null);
+  const [speechTable, setSpeechTable] = useState<number[]>([]);
+  const [voiceBusy, setVoiceBusy] = useState<"" | "make" | "upload">("");
   const stageRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
@@ -44,7 +53,13 @@ export default function AnimateStudio({ text, onStarted }: { text: string; onSta
     if (!d?.success) return;
     setAllowed(Boolean(d.allowed));
     setOptions(d.options ?? []);
+    setSpeechTable(d.speechCredits ?? []);
     setClips(d.clips ?? []);
+    const tv = await fetch("/api/talk").then((r) => r.json()).catch(() => null);
+    if (tv?.success) {
+      setVoices(tv.voices ?? []);
+      setVoiceId((v) => v || tv.voices?.[0]?.id || "");
+    }
     for (const x of (d.clips ?? []) as Clip[]) {
       if (x.status === "running") seenRunning.current.add(x.id);
       else if (seenRunning.current.has(x.id)) {
@@ -104,12 +119,53 @@ export default function AnimateStudio({ text, onStarted }: { text: string; onSta
     }
   }
 
+  async function talkPost(body: Record<string, unknown>) {
+    const d = await fetch("/api/talk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
+    if (!d.success) throw new Error(d.error || "Something went wrong.");
+    return d;
+  }
+
+  async function makeVoice() {
+    setVoiceBusy("make");
+    setError("");
+    setVoice(null);
+    try {
+      const d = await talkPost({ action: "voice", text: line, voiceId });
+      setVoice({ path: d.path, seconds: d.seconds, url: d.url, credits: 0 });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The voice couldn't be made.");
+    } finally {
+      setVoiceBusy("");
+    }
+  }
+
+  async function uploadVoice(file: File) {
+    setVoiceBusy("upload");
+    setError("");
+    setVoice(null);
+    try {
+      const prep = await talkPost({ action: "uploadUrl", type: file.type, size: file.size });
+      const { supabase } = await import("@/app/lib/supabase");
+      const { error: upErr } = await supabase.storage.from("videos").uploadToSignedUrl(prep.path, prep.token, file, { contentType: prep.contentType });
+      if (upErr) throw new Error("The upload failed. Please try again.");
+      const q = await talkPost({ action: "quote", path: prep.path });
+      setVoice({ path: prep.path, seconds: q.seconds, url: q.url, credits: 0 });
+      setLine("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The upload failed.");
+    } finally {
+      setVoiceBusy("");
+    }
+  }
+
   async function start() {
     if (!image) return;
     setBusy("start");
     setError("");
     try {
-      await post({ action: "start", path: image.path, prompt: text, seconds, orientation: vertical ? "vertical" : "horizontal", rights });
+      await post({ action: "start", path: image.path, prompt: text, seconds, orientation: vertical ? "vertical" : "horizontal", rights, ...(speak && voice ? { audioPath: voice.path, script: line } : {}) });
+      setVoice(null);
+      setLine("");
       setImage(null);
       setRights(false);
       onStarted();
@@ -122,7 +178,8 @@ export default function AnimateStudio({ text, onStarted }: { text: string; onSta
     }
   }
 
-  const price = options.find((o) => o.seconds === seconds)?.credits;
+  const speakPrice = speak && voice ? speechTable[Math.min(speechTable.length, Math.max(1, Math.ceil(voice.seconds))) - 1] ?? 0 : 0;
+  const price = speak && voice ? undefined : options.find((o) => o.seconds === seconds)?.credits;
   const card = "rounded-2xl border border-white/10 bg-white/[0.03] p-5 sm:p-6";
   const anyRunning = clips.some((c) => c.status === "running");
 
@@ -237,8 +294,44 @@ export default function AnimateStudio({ text, onStarted }: { text: string; onSta
                   </button>
                 ))}
               </div>
-              <p className="mt-3 text-xs text-gray-500">The video is silent. If the picture doesn&apos;t match the shape, the edges are cropped.</p>
+              <p className="mt-3 text-xs text-gray-500">
+                {speak ? "The picture will speak the voice below; the length follows the voice." : "The video is silent unless you add a voice below."} If the picture doesn&apos;t match the shape, the edges are cropped.
+              </p>
             </div>
+          </div>
+
+          <div className="mt-5 border-t border-white/10 pt-4">
+            <label className="flex items-center gap-2 text-sm font-semibold">
+              <input type="checkbox" checked={speak} onChange={(e) => { setSpeak(e.target.checked); setVoice(null); }} />
+              3. Make it speak <span className="text-xs font-normal text-gray-500">(optional, up to 30 seconds)</span>
+            </label>
+            {speak && (
+              <div className="mt-3 space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <select value={voiceId} onChange={(e) => { setVoiceId(e.target.value); setVoice(null); }} aria-label="Voice" className="rounded-lg border border-white/10 bg-[var(--nv-field)] px-3 py-2 text-sm">
+                    {voices.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+                  </select>
+                  <span className="text-xs text-gray-500">Pick &ldquo;Your voice&rdquo; to use your cloned voice (create it in Settings).</span>
+                </div>
+                <textarea value={line} onChange={(e) => { setLine(e.target.value); setVoice(null); }} maxLength={450} rows={3} placeholder="What should they say?" className="w-full rounded-lg border border-white/10 bg-[var(--nv-field)] px-3 py-2 text-sm" />
+                <div className="flex flex-wrap items-center gap-3">
+                  <button type="button" onClick={makeVoice} disabled={voiceBusy !== "" || line.trim().length < 2} className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-sm disabled:opacity-40">
+                    {voiceBusy === "make" ? <Loader2 size={14} className="animate-spin" /> : <Volume2 size={14} />} Make the voice
+                  </button>
+                  <span className="text-xs text-gray-500">or</span>
+                  <input ref={audioRef} type="file" accept="audio/mpeg,audio/wav,audio/mp4,audio/x-m4a,audio/x-wav" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void uploadVoice(f); }} />
+                  <button type="button" onClick={() => audioRef.current?.click()} disabled={voiceBusy !== ""} className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-sm disabled:opacity-40">
+                    {voiceBusy === "upload" ? <Loader2 size={14} className="animate-spin" /> : <Mic size={14} />} Upload a recording
+                  </button>
+                </div>
+                {voice && (
+                  <div className="flex flex-wrap items-center gap-3">
+                    <audio controls src={voice.url} className="h-9" />
+                    <span className="text-xs text-gray-400">{voice.seconds} s · {speakPrice} credits</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <label className="mt-5 flex items-start gap-2 text-xs text-gray-300">
@@ -250,11 +343,11 @@ export default function AnimateStudio({ text, onStarted }: { text: string; onSta
             <button
               type="button"
               onClick={start}
-              disabled={busy !== "" || !image || !rights}
+              disabled={busy !== "" || !image || !rights || (speak && !voice)}
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 px-5 py-2.5 text-sm font-semibold disabled:opacity-40"
             >
               {busy === "start" ? <Loader2 size={16} className="animate-spin" /> : <ImagePlay size={16} />}
-              {busy === "start" ? "Checking the picture…" : price ? `Make video · ${price} credits` : "Make video"}
+              {busy === "start" ? "Checking the picture…" : speak && voice ? `Make video · ${speakPrice} credits` : price ? `Make video · ${price} credits` : "Make video"}
             </button>
             <span className="text-xs text-gray-500">takes about 1–3 minutes</span>
           </div>

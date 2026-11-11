@@ -16,8 +16,11 @@ import {
   ANIMATE_SECONDS,
   IMAGE_CONTENT_TYPES,
   IMAGE_TYPES,
+  ANIMATE_SPEECH_MAX_SECONDS,
   animateCredits,
   animatePrompt,
+  animateSpeechCredits,
+  animateSpeechPrompt,
   checkAnimateImage,
   isAnimateSeconds,
 } from "@/lib/animate/animate";
@@ -45,6 +48,7 @@ function view(r: SwapRow) {
   };
 }
 
+const AUDIO_RE = (userId: string) => new RegExp(`^${userId}/talk/(aud|rec)-[0-9a-f-]{36}\\.(mp3|wav|m4a)$`);
 const PATH_RE = (userId: string) => new RegExp(`^${userId}/animate/img-[0-9a-f-]{36}\\.(jpg|png|webp)$`);
 
 async function allowedFor(db: ReturnType<typeof adminDb>, userId: string) {
@@ -66,6 +70,7 @@ export async function GET(req: Request) {
     success: true,
     allowed: await allowedFor(db, user.id),
     maxChars: ANIMATE_MAX_CHARS,
+    speechCredits: Array.from({ length: ANIMATE_SPEECH_MAX_SECONDS }, (_, i) => animateSpeechCredits(i + 1)),
     options: ANIMATE_SECONDS.map((s) => ({ seconds: s, credits: animateCredits(s) })),
     clips: ((data ?? []) as SwapRow[]).map(view),
   });
@@ -93,8 +98,22 @@ export async function POST(req: Request) {
     if (body.rights !== true) return bad("Confirm the checkbox first.");
     const path = typeof body.path === "string" ? body.path : "";
     if (!PATH_RE(user.id).test(path)) return bad("Add a picture first.");
-    if (!isAnimateSeconds(Number(body.seconds))) return bad("Pick 5 or 10 seconds.");
-    const seconds = Number(body.seconds) as 5 | 10;
+    const audioPath = typeof body.audioPath === "string" && body.audioPath ? body.audioPath : "";
+    if (audioPath && !AUDIO_RE(user.id).test(audioPath)) return bad("Add the voice first.");
+    if (!audioPath && !isAnimateSeconds(Number(body.seconds))) return bad("Pick 5 or 10 seconds.");
+    let seconds = Number(body.seconds) as number;
+    if (audioPath) {
+      const { audioSeconds } = await import("@/lib/talk/talk");
+      const { data: af, error: aErr } = await db.storage.from("videos").download(audioPath);
+      if (aErr || !af) return bad("The voice wasn't found. Add it again.");
+      if (af.size > 8 * 1024 * 1024) return bad("Recordings can be up to 8 MB.");
+      const aext = audioPath.slice(audioPath.lastIndexOf(".") + 1) as "mp3" | "wav" | "m4a";
+      const len = audioSeconds(Buffer.from(await af.arrayBuffer()), aext);
+      if (!(len >= 1)) return bad("The recording is too short.");
+      if (len > ANIMATE_SPEECH_MAX_SECONDS + 0.5) return bad(`Up to ${ANIMATE_SPEECH_MAX_SECONDS} seconds. Shorten the line or trim the recording.`);
+      seconds = Math.round(len * 10) / 10;
+    }
+    const script = audioPath && typeof body.script === "string" ? body.script.replace(/\s+/g, " ").trim().slice(0, 450) : "";
     const vertical = body.orientation !== "horizontal";
     const prompt = typeof body.prompt === "string" ? body.prompt.replace(/[<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, ANIMATE_MAX_CHARS) : "";
 
@@ -114,13 +133,13 @@ export async function POST(req: Request) {
     const check = await checkAnimateImage(Buffer.from(await file.arrayBuffer()), IMAGE_CONTENT_TYPES[ext]);
     if (!check.ok) return bad(check.reason);
 
-    const credits = animateCredits(seconds);
+    const credits = audioPath ? animateSpeechCredits(seconds) : animateCredits(seconds as 5 | 10);
     const { payerFor } = await import("@/lib/teams");
     const payer = await payerFor(db, user.id);
     const { data: paid, error: payErr } = await db.rpc("deduct_credits", {
       p_user_id: payer,
       p_amount: credits,
-      p_reason: `Image to video (${seconds} s)`,
+      p_reason: audioPath ? `Image to video with voice (${seconds} s)` : `Image to video (${seconds} s)`,
     });
     if (payErr) return bad(payErr.message, 500);
     if (!paid) return bad(`Not enough credits. This costs ${credits}.`, 402, { code: "insufficient_credits" });
@@ -129,7 +148,10 @@ export async function POST(req: Request) {
     try {
       const fv = await import("@/lib/pipeline/fal-video");
       const imageUrl = db.storage.from("videos").getPublicUrl(path).data.publicUrl;
-      const fal = await fv.submitImageToVideo({ prompt: animatePrompt(prompt), imageUrl, aspectRatio: vertical ? "9:16" : "16:9", seconds });
+      const audioUrl = audioPath ? db.storage.from("videos").getPublicUrl(audioPath).data.publicUrl : "";
+      const fal = audioPath
+        ? await fv.submitAvatar({ imageUrl, audioUrl, prompt: animateSpeechPrompt(prompt) })
+        : await fv.submitImageToVideo({ prompt: animatePrompt(prompt), imageUrl, aspectRatio: vertical ? "9:16" : "16:9", seconds: seconds as 5 | 10 });
       const { error } = await db.from("swap_jobs").insert({
         id,
         kind: "animate",
@@ -137,12 +159,13 @@ export async function POST(req: Request) {
         billed_to: payer !== user.id ? payer : null,
         status: "running",
         phase: "swap",
-        source_path: path,
+        source_path: audioPath || path,
         source_seconds: seconds,
         vertical,
         character_id: null,
         character_name: "Image to video",
         prompt: prompt || null,
+        script: script || null,
         image_url: imageUrl,
         fal,
         credits,
