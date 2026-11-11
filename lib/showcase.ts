@@ -57,18 +57,6 @@ export const SHOWCASE_VIDEOS: ShowcaseVideo[] = [
     made: "Researched script · AI narrator · cinematic visuals + AI clips · music · subtitles",
   },
   {
-    id: "fd43ddfc-4b45-486d-8b0f-b9b1dfe43f91",
-    mode: "Narrated video",
-    title: "The Three Lighthouse Keepers Who Vanished",
-    idea: "The three lighthouse keepers who vanished from the Flannan Isles in 1900",
-    language: "English",
-    seconds: 31,
-    orientation: "vertical",
-    videoPath: `${OWNER}/fd43ddfc-4b45-486d-8b0f-b9b1dfe43f91/final.mp4`,
-    poster: { bucket: "thumbnails", path: "fd43ddfc-4b45-486d-8b0f-b9b1dfe43f91.jpg" },
-    made: "Researched script · AI narrator · visuals · music · subtitles",
-  },
-  {
     // Bigfoot vlog (viral AI format), 5 Nov 2026.
     id: "bb366887-daff-4a6b-be18-55847bdf8c74",
     mode: "Talking character",
