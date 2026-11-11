@@ -5,9 +5,9 @@ import { friendlyErrorLine } from "@/lib/user-error";
 // an optional note), or re-cut it with the music on or off. The new
 // cut replaces the video in the same project.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { skitMusicChoices } from "@/lib/pipeline/music";
-import { Loader2, Music, RefreshCw, Scissors, Sparkles } from "lucide-react";
+import { Check, Loader2, Music, Pause, Play, RefreshCw, Scissors, Sparkles } from "lucide-react";
 import GenerationStage from "../GenerationStage";
 
 type Shot = { id: string; camera: string; speaker: string | null; line: string; action: string; imageUrl: string | null; animated?: boolean; redoCredits: number };
@@ -30,6 +30,7 @@ type Skit = {
 export default function SkitEditor({ projectId }: { projectId: string }) {
   const [skit, setSkit] = useState<Skit | null>(null);
   const [open, setOpen] = useState<number | null>(null);
+  const [musicOpen, setMusicOpen] = useState(false);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -113,30 +114,33 @@ export default function SkitEditor({ projectId }: { projectId: string }) {
               <Sparkles size={13} /> Animate still shots · free
             </button>
           )}
-          <select
-            aria-label="Change the music"
-            value=""
-            disabled={busy || skit.editsLeft < 1}
-            onChange={(e) => e.target.value && post({ action: "recut", id: skit.id, trackId: e.target.value })}
-            className="rounded-full border border-white/10 bg-transparent px-3 py-1.5 text-xs text-gray-200 hover:border-white/25 disabled:opacity-40"
-          >
-            <option value="">Change music{skit.musicTitle ? ` (now: ${skit.musicTitle})` : ""} · {skit.recutCredits ? `${skit.recutCredits} credits` : "free"}</option>
-            {skitMusicChoices().map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.title}
-              </option>
-            ))}
-          </select>
           <button
             type="button"
             disabled={busy || skit.editsLeft < 1}
-            onClick={() => post({ action: "recut", id: skit.id, music: !skit.music })}
+            onClick={() => setMusicOpen((o) => !o)}
+            aria-expanded={musicOpen}
             className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs text-gray-200 hover:border-white/25 disabled:opacity-40"
           >
-            <Music size={13} /> {skit.music ? "Remove music" : "Add music"} · {skit.recutCredits ? `${skit.recutCredits} credits` : "free"}
+            <Music size={13} /> Music{skit.music && skit.musicTitle ? `: ${skit.musicTitle}` : skit.music ? "" : ": off"}
           </button>
         </div>
       </div>
+
+      {musicOpen && (
+        <MusicPanel
+          current={skit.music ? skit.musicTitle ?? null : null}
+          cost={skit.recutCredits ?? 0}
+          busy={busy}
+          onUse={(id) => {
+            setMusicOpen(false);
+            void post({ action: "recut", id: skit.id, trackId: id });
+          }}
+          onOff={() => {
+            setMusicOpen(false);
+            void post({ action: "recut", id: skit.id, music: false });
+          }}
+        />
+      )}
 
       <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
         {skit.shots.map((s, i) => (
@@ -192,6 +196,93 @@ export default function SkitEditor({ projectId }: { projectId: string }) {
       )}
       {skit.status === "failed" && skit.error && <p className="mt-3 text-xs text-red-300">Last edit failed: {friendlyErrorLine(skit.error)} · refunded</p>}
       {error && <p className="mt-3 text-sm text-red-300">{error}</p>}
+    </div>
+  );
+}
+
+
+/** Listen first, then pick: the video is only cut again when "Use" is pressed (11 Nov 2026). */
+function MusicPanel({ current, cost, busy, onUse, onOff }: { current: string | null; cost: number; busy: boolean; onUse: (id: string) => void; onOff: () => void }) {
+  const audio = useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState<string | null>(null);
+  const [chosen, setChosen] = useState<string | null>(null);
+  const tracks = skitMusicChoices();
+
+  function preview(id: string, url: string) {
+    const a = audio.current;
+    if (!a) return;
+    if (playing === id) {
+      a.pause();
+      setPlaying(null);
+      return;
+    }
+    a.src = url;
+    a.currentTime = 20; // skip the intro: the middle tells more about the piece
+    a.volume = 0.8;
+    void a.play().then(() => setPlaying(id)).catch(() => setPlaying(null));
+  }
+  useEffect(() => {
+    const a = audio.current;
+    return () => a?.pause();
+  }, []);
+
+  return (
+    <div className="mt-4 rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.02] p-4">
+      <audio ref={audio} onEnded={() => setPlaying(null)} preload="none" />
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-sm font-semibold text-white">Pick the music</p>
+        <p className="text-xs text-gray-500">Press play to listen. Nothing changes until you press “Use this music”.</p>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        {tracks.map((t) => {
+          const isOn = playing === t.id;
+          const isChosen = chosen === t.id;
+          return (
+            <div
+              key={t.id}
+              className={`flex items-center gap-3 rounded-xl border px-3 py-2 transition ${isChosen ? "border-sky-400/60 bg-sky-500/10" : "border-white/10 hover:border-white/25"}`}
+            >
+              <button
+                type="button"
+                onClick={() => preview(t.id, t.sourceUrl)}
+                aria-label={isOn ? `Pause ${t.title}` : `Listen to ${t.title}`}
+                className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-white text-black transition hover:scale-105"
+              >
+                {isOn ? <Pause size={15} fill="currentColor" /> : <Play size={15} fill="currentColor" className="ml-0.5" />}
+              </button>
+              <button type="button" onClick={() => setChosen(t.id)} className="min-w-0 flex-1 text-left">
+                <span className="block truncate text-sm text-white">{t.title}</span>
+                <span className="block text-[11px] text-gray-500">{t.mood === "upbeat" ? "Playful" : "Mysterious"}{current === t.title ? " · in the video now" : ""}</span>
+              </button>
+              {isChosen && <Check size={16} className="flex-none text-sky-300" />}
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={busy || !chosen}
+          onClick={() => {
+            audio.current?.pause();
+            if (chosen) onUse(chosen);
+          }}
+          className="rounded-full bg-white px-4 py-1.5 text-xs font-semibold text-[var(--nv-page)] disabled:opacity-40"
+        >
+          Use this music · {cost ? `${cost} credits` : "free"}
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            audio.current?.pause();
+            onOff();
+          }}
+          className="rounded-full border border-white/10 px-4 py-1.5 text-xs text-gray-200 hover:border-white/25 disabled:opacity-40"
+        >
+          No music · {cost ? `${cost} credits` : "free"}
+        </button>
+      </div>
     </div>
   );
 }

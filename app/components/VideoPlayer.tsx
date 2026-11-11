@@ -43,6 +43,7 @@ export default function VideoPlayer({
   const [duration, setDuration] = useState(0);
   const [buffered, setBuffered] = useState(0);
   const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(1);
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(1);
   const [fullscreen, setFullscreen] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -112,6 +113,9 @@ export default function VideoPlayer({
   useEffect(() => {
     if (videoRef.current) videoRef.current.muted = muted;
   }, [muted]);
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.volume = volume;
+  }, [volume]);
 
   // Auto-hide the control bar while playing.
   const poke = useCallback(() => {
@@ -298,9 +302,35 @@ export default function VideoPlayer({
           <button type="button" onClick={() => seekBy(5)} aria-label="Forward 5 seconds" className={`${btn} hidden @[420px]:flex`}>
             <RotateCw size={16} />
           </button>
-          <button type="button" onClick={() => setMuted((m) => !m)} aria-label={muted ? "Unmute" : "Mute"} className={btn}>
-            {muted ? <VolumeX size={17} /> : <Volume2 size={17} />}
-          </button>
+          <div className="group/vol flex items-center">
+            <button
+              type="button"
+              onClick={() => {
+                if (muted || volume === 0) {
+                  setMuted(false);
+                  if (volume === 0) setVolume(0.6);
+                } else setMuted(true);
+              }}
+              aria-label={muted || volume === 0 ? "Unmute" : "Mute"}
+              className={btn}
+            >
+              {muted || volume === 0 ? <VolumeX size={17} /> : <Volume2 size={17} />}
+            </button>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.02}
+              value={muted ? 0 : volume}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                setVolume(val);
+                setMuted(val === 0);
+              }}
+              aria-label="Volume"
+              className="h-1 w-0 cursor-pointer appearance-none overflow-hidden rounded-full bg-white/25 accent-white opacity-0 transition-all duration-200 group-hover/vol:ml-1 group-hover/vol:w-16 group-hover/vol:opacity-100 group-focus-within/vol:ml-1 group-focus-within/vol:w-16 group-focus-within/vol:opacity-100"
+            />
+          </div>
           <span className="ml-1 whitespace-nowrap font-mono text-xs tabular-nums text-gray-300">
             <span className="text-white">{fmt(time)}</span> / {fmt(duration)}
           </span>
