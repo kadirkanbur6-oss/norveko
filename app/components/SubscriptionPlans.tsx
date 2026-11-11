@@ -84,7 +84,7 @@ export default function SubscriptionPlans({
 
       {mode === "landing" && !PAYMENTS_LIVE && (
         <p className="mx-auto mt-4 max-w-xl text-center text-xs text-amber-200/90">
-          Paid plans open in a few days. Sign up now and make your first video with free credits.
+          Paid plans and packs are opening soon. Sign up now and make your first video with free credits.
         </p>
       )}
       <div className="mx-auto mt-6 grid max-w-3xl gap-3 sm:grid-cols-2">
