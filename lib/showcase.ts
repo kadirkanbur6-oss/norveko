@@ -31,19 +31,6 @@ const OWNER = "92779a9c-cb1c-47a8-bcc8-e07f4de6dc56";
 // 4 Nov 2026 (Kadir: "one English video per mode, labelled, global"): the four studios.
 export const SHOWCASE_VIDEOS: ShowcaseVideo[] = [
   {
-    // 7 Nov 2026: the Voynich video translated to Spanish with one click (new narration, subtitles and cover).
-    id: "109f14d7-c2b8-4f6f-b7b3-b13afaef73a0",
-    mode: "Narrated video",
-    title: "El libro que Yale aún no puede leer",
-    idea: "One click translation of the Voynich video: new Spanish script, narration, subtitles and cover",
-    language: "Español",
-    seconds: 61,
-    orientation: "vertical",
-    videoPath: `${OWNER}/109f14d7-c2b8-4f6f-b7b3-b13afaef73a0/final.mp4`,
-    poster: { bucket: "thumbnails", path: "109f14d7-c2b8-4f6f-b7b3-b13afaef73a0.jpg" },
-    made: "One-click translation · new narration, subtitles and cover · same visuals",
-  },
-  {
     // 7 Nov 2026: ad-quality 60 s narrated short (hybrid, image to video, brand kit).
     id: "93ad4e8c-9e77-4f4b-8fad-b548186f0198",
     mode: "Narrated video",
@@ -80,32 +67,6 @@ export const SHOWCASE_VIDEOS: ShowcaseVideo[] = [
     videoPath: `${OWNER}/fd43ddfc-4b45-486d-8b0f-b9b1dfe43f91/final.mp4`,
     poster: { bucket: "thumbnails", path: "fd43ddfc-4b45-486d-8b0f-b9b1dfe43f91.jpg" },
     made: "Researched script · AI narrator · visuals · music · subtitles",
-  },
-  {
-    // First skit whose speaking shots say their lines themselves (Veo 3.1 Fast), 5 Nov 2026 — Kadir: "iyi bu".
-    id: "41afe86b-079f-4127-ae59-ec40b8f61f54",
-    mode: "Skit",
-    title: "The Whole Sofa",
-    idea: "Puppy: Grandpa! I ate the whole sofa. Am I in trouble? Cat: The sofa? The whole sofa? Puppy: Well... and the remote. Cat: Kid, I've been planning that for nine years.",
-    language: "English",
-    seconds: 22,
-    orientation: "vertical",
-    videoPath: `${OWNER}/skit/41afe86b-079f-4127-ae59-ec40b8f61f54/final.mp4`,
-    poster: { bucket: "videos", path: `${OWNER}/skit-41afe86b-079f-4127-ae59-ec40b8f61f54/still-2.jpg` },
-    made: "3D animated cast · characters speak their own lines · AI video shots",
-  },
-  {
-    // Kadir as a mafia boss, typed line spoken by Veo 3.1 Fast (Talk), 5 Nov 2026.
-    id: "3327ef3a-6a10-4100-bdd7-9a8c588845b9",
-    mode: "Talking character",
-    title: "The Boss Has a Message",
-    idea: "Listen, user. Other people wait for videos. I make them happen.",
-    language: "English",
-    seconds: 8,
-    orientation: "vertical",
-    videoPath: `${OWNER}/talk/3327ef3a-6a10-4100-bdd7-9a8c588845b9/final.mp4`,
-    poster: { bucket: "videos", path: `${OWNER}/talk-3327ef3a-6a10-4100-bdd7-9a8c588845b9/still-1.jpg` },
-    made: "Your photo · your line · cinematic scene · speaks it on camera",
   },
   {
     // Bigfoot vlog (viral AI format), 5 Nov 2026.
