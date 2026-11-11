@@ -324,10 +324,14 @@ export default function AnimateStudio({ text, onStarted }: { text: string; onSta
             </div>
           </div>
 
-          <div className="mt-5 border-t border-white/10 pt-4">
-            <label className="flex items-center gap-2 text-sm font-semibold">
-              <input type="checkbox" checked={speak} onChange={(e) => { setSpeak(e.target.checked); setVoice(null); }} />
-              3. Make it speak <span className="text-xs font-normal text-gray-500">(optional, up to 30 seconds)</span>
+          <div className={`mt-5 rounded-2xl border p-4 transition ${speak ? "border-violet-400/50 bg-violet-500/10" : "border-violet-400/25 bg-gradient-to-r from-violet-500/10 to-sky-500/10"}`}>
+            <label className="flex cursor-pointer flex-wrap items-center gap-3">
+              <input type="checkbox" checked={speak} onChange={(e) => { setSpeak(e.target.checked); setVoice(null); }} className="h-5 w-5 accent-violet-500" />
+              <span className="flex items-center gap-2 text-base font-semibold"><Mic size={18} className="text-violet-300" /> 3. Make it speak</span>
+              <span className="rounded-full bg-violet-500/20 px-2.5 py-0.5 text-xs font-semibold text-violet-200">
+                {voice && speak ? `+${speakPrice} credits` : speechTable[4] ? `+ from ${speechTable[4]} credits · about ${speechTable[9] ? Math.max(1, Math.round((speechTable[9] - speechTable[4]) / 5)) : 1} per extra second` : "extra credits"}
+              </span>
+              <span className="text-xs text-gray-400">Your picture talks with a human voice or your own recording (up to 30 s)</span>
             </label>
             {speak && (
               <div className="mt-3 space-y-3">
