@@ -148,11 +148,11 @@ const FAQS = [
   },
   {
     q: "How does the credit system work?",
-    a: `Everything is priced in credits and the exact total is shown before you click Generate. A 60-second content package with research, narration and subtitles is ${JOB_COSTS.package60} credits; a finished 60-second video is about ${JOB_COSTS.video60} (${JOB_COSTS.video30} for 30 seconds); web research adds ${RESEARCH_CREDITS}, a thumbnail ${THUMBNAIL_CREDITS}, a Norveko narrator ${VOICE_CREDITS_PER_MIN.gemini} per minute (native voice artists ${VOICE_CREDITS_PER_MIN.elevenlabs}), subtitles ${SUBTITLES_CREDITS_PER_MIN} per minute and a 60-second script ${scriptCredits("60 seconds")}. Pack credits never expire; plan credits refresh every period.`,
+    a: `Everything is priced in credits and the exact total is shown before you click Generate. A 60-second content package with research, narration and subtitles is ${JOB_COSTS.package60} credits; a finished 60-second video is about ${JOB_COSTS.video60} (${JOB_COSTS.video30} for 30 seconds); web research adds ${RESEARCH_CREDITS}, a thumbnail ${THUMBNAIL_CREDITS}, a Norveko narrator ${VOICE_CREDITS_PER_MIN.gemini} per minute (native voice artists ${VOICE_CREDITS_PER_MIN.elevenlabs}), subtitles ${SUBTITLES_CREDITS_PER_MIN} per minute and a 60-second script ${scriptCredits("60 seconds")}. Pack credits don't expire while your account is active; plan credits refresh every period.`,
   },
   {
     q: "What if something fails?",
-    a: "You only pay for what was delivered. If a step fails, the credits for everything that didn't finish come back automatically, and the parts that did finish (script, voiceover, thumbnail) are kept in your project. A failed final render can be retried for free.",
+    a: "You only pay for what was delivered. If a step fails, the credits for everything that didn't finish come back automatically, and the parts that did finish (script, voiceover, thumbnail) are kept in your project. A failed final render can be retried from the project page; the visuals are kept, so you only pay the render price again.",
   },
   {
     q: "How long does a video take?",
@@ -160,7 +160,7 @@ const FAQS = [
   },
   {
     q: "Can I use the videos commercially?",
-    a: "Yes. Everything you generate on a paid plan or pack is yours to publish and monetise on YouTube, TikTok, Instagram or anywhere else. Background music is licensed; its credit line is added to the description for you.",
+    a: "Yes, on a paid plan or pack: everything you generate is yours to publish and monetise on YouTube, TikTok, Instagram or anywhere else, and that also covers what you made earlier on free credits. Free accounts are for personal, non-commercial use and carry a small watermark. Background music is licensed; its credit line is added to the description for you.",
   },
   {
     q: "Can I review or edit before publishing?",
@@ -172,7 +172,7 @@ const FAQS = [
   },
   {
     q: "Which AI models does Norveko use?",
-    a: "The best model for each step, swapped as better ones appear: OpenAI and Google models for research and writing, Google and ElevenLabs voices, Google image models for scenes and thumbnails, Kling and Seedance for motion, and a cloud render farm for the final cut. You never need your own API keys.",
+    a: "The best model for each step, swapped as better ones appear: OpenAI and Google models for research and writing, Google and ElevenLabs voices, Google image models for scenes and thumbnails, Seedance and Veo for motion, Google Lyria for ambient music, and a cloud render farm for the final cut. You never need your own API keys.",
   },
   {
     q: "Can I get a refund?",
@@ -380,7 +380,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
         <Reveal>
           <div className="mx-auto grid max-w-6xl gap-3 px-4 sm:grid-cols-3 sm:px-6">
             {[
-              ["Pack credits never expire", "Buy once, use whenever. No monthly reset."],
+              ["Pack credits don't reset", "Buy once, use whenever while your account is active. No monthly reset."],
               ["Failed = refunded", "If a step fails, its credits come back automatically and the finished parts are kept."],
               ["See the cost first", "The exact credit price is shown before you click Generate."],
             ].map(([title, desc]) => (
@@ -549,7 +549,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           <SectionTitle
             eyebrow="Pricing"
             title="Start free. Scale when you're ready."
-            subtitle={`Every account starts with ${FREE_TRIAL_CREDITS} free credits (≈ ${FREE_CREDITS_BUY})${TRIAL_VIDEO_PUBLIC ? " plus one free 30-second video" : ""}. Then pick a weekly, monthly or yearly plan, or pay as you go with packs that never expire.`}
+            subtitle={`Every account starts with ${FREE_TRIAL_CREDITS} free credits (≈ ${FREE_CREDITS_BUY})${TRIAL_VIDEO_PUBLIC ? " plus one free 30-second video" : ""}. Then pick a weekly, monthly or yearly plan, or pay as you go with packs that don't expire while your account is active.`}
           />
         </Reveal>
 
@@ -561,7 +561,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
 
         <Reveal>
           <h3 className="mt-12 text-center text-lg font-bold text-white">Or pay as you go</h3>
-          <p className="mt-1 text-center text-sm text-gray-400">One-time credit packs, no subscription.</p>
+          <p className="mt-1 text-center text-sm text-gray-400">One-time credit packs, no subscription. Prices are in USD, excluding tax.</p>
         </Reveal>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

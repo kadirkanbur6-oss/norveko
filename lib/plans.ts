@@ -83,7 +83,7 @@ export const PAID_INCLUDES = [
   "Web research with sources + automatic fact check",
   "29 languages, Norveko narrators and native voice artists",
   "Word-timed subtitles (.srt / .vtt) and story-matched music",
-  "Pack credits never expire, and failed steps are refunded automatically",
+  "Pack credits don't expire while your account is active, and failed steps are refunded automatically",
   "Your finished videos are kept as long as your account exists",
 ];
 
@@ -113,6 +113,7 @@ export const FREE_TRIAL_RULES = [
   "Free credits make one fixed setup (30-second Stock + AI video, Norveko narrator); any pack or plan unlocks every length, style, voice and studio",
   "One free trial per person; temporary emails aren't eligible",
   "Thumbnails and videos carry a small Norveko watermark",
+  "Free accounts are for personal, non-commercial use; any plan or pack unlocks commercial use, also for what you already made",
   "Finished videos are kept for 7 days, so download what you want to keep",
   "Subscribe or buy any pack and the watermark disappears, also from what you already made",
 ];
@@ -148,7 +149,7 @@ export const WHY_NORVEKO: Array<{ title: string; items: Array<{ feature: string;
     items: [
       { feature: "Everything is yours to download", detail: "MP4, thumbnail, voice-over and subtitle files" },
       { feature: "Automatic refunds on failed steps", detail: "You only pay for what was delivered" },
-      { feature: "Pack credits never expire", detail: "Or a weekly, monthly or yearly plan, cancel anytime" },
+      { feature: "Pack credits don't expire while your account is active", detail: "Or a weekly, monthly or yearly plan, cancel anytime" },
     ],
   },
 ];

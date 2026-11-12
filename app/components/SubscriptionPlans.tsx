@@ -158,6 +158,7 @@ export default function SubscriptionPlans({
           );
         })}
       </div>
+      <p className="mt-3 text-center text-xs text-gray-400">Prices are in USD, excluding tax. Any VAT or sales tax is added at checkout.</p>
     </div>
   );
 }

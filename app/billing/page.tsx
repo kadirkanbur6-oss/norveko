@@ -338,7 +338,7 @@ export default function BillingPage() {
               {tab === "topup" && (
               <>
               <p className="mt-6 text-sm text-gray-400">
-                One-time purchases for when you need extra, with or without a plan. Pack credits never expire.
+                One-time purchases for when you need extra, with or without a plan. Pack credits don&apos;t expire while your account is active. Prices are in USD, excluding tax; any VAT or sales tax is added at checkout.
               </p>
 
               <div className="mt-6 grid gap-4 lg:grid-cols-3">

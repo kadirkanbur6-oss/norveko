@@ -68,7 +68,7 @@ export default function TermsPage() {
           they were added for (one week, or one month, also on yearly plans)
           and are used before any pack credits; plan credits left unused at
           the end of that period expire and do not roll over. Credits from
-          one-time packages do not expire.
+          one-time packages do not expire while your account remains active.
         </p>
         <p>
           Payments are processed by our merchant of record, Paddle.com Market
@@ -125,8 +125,11 @@ export default function TermsPage() {
         <h2>6. AI-Generated Content</h2>
         <p>
           Subject to these Terms and applicable third-party terms, you own the
-          content you generate through the Service and may use it for personal
-          or commercial purposes. AI-generated output may be inaccurate,
+          content you generate through the Service. Commercial use (for example
+          monetising videos on a channel) is available to accounts that have
+          bought a plan or a credit pack, and then also covers content you
+          made earlier on free credits. Free accounts may use their content
+          for personal, non-commercial purposes only. AI-generated output may be inaccurate,
           incomplete, or similar to output generated for other users. You are
           responsible for reviewing generated content before publishing it and
           for ensuring your use complies with the policies of the platforms

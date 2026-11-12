@@ -5,4 +5,4 @@ export const LEGAL_NAME = "Abdulkadir Kanbur (sole proprietor), trading as Norve
 export const BRAND_NAME = "Norveko";
 export const SUPPORT_EMAIL = "support@norveko.app";
 export const WEBSITE_URL = "https://norveko.app";
-export const LEGAL_LAST_UPDATED = "November 11, 2026";
+export const LEGAL_LAST_UPDATED = "November 12, 2026";

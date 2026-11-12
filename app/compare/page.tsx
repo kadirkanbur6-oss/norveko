@@ -99,7 +99,7 @@ export default function ComparePage() {
           </li>
           <li>
             Subscription credits are valid for their own period and do not roll
-            over; one-time pack credits never expire.
+            over; one-time pack credits don&apos;t expire while your account is active.
           </li>
         </ul>
       </section>
