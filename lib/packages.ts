@@ -30,7 +30,7 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     credits: 500,
     priceUsd: 12,
     paddlePriceId:
-      process.env.NEXT_PUBLIC_PADDLE_PRICE_STARTER ?? SANDBOX_PRICE_IDS.starter,
+      process.env.NEXT_PUBLIC_PADDLE_PRICE_STARTER ?? (process.env.NEXT_PUBLIC_PADDLE_ENV === "production" ? "" : SANDBOX_PRICE_IDS.starter),
   },
   {
     id: "pro",
@@ -40,7 +40,7 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     credits: 2000,
     priceUsd: 39,
     paddlePriceId:
-      process.env.NEXT_PUBLIC_PADDLE_PRICE_PRO ?? SANDBOX_PRICE_IDS.pro,
+      process.env.NEXT_PUBLIC_PADDLE_PRICE_PRO ?? (process.env.NEXT_PUBLIC_PADDLE_ENV === "production" ? "" : SANDBOX_PRICE_IDS.pro),
   },
   {
     id: "business",
@@ -48,7 +48,7 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     credits: 5000,
     priceUsd: 89,
     paddlePriceId:
-      process.env.NEXT_PUBLIC_PADDLE_PRICE_BUSINESS ?? SANDBOX_PRICE_IDS.business,
+      process.env.NEXT_PUBLIC_PADDLE_PRICE_BUSINESS ?? (process.env.NEXT_PUBLIC_PADDLE_ENV === "production" ? "" : SANDBOX_PRICE_IDS.business),
   },
 ];
 

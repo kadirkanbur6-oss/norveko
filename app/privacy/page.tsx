@@ -21,6 +21,19 @@ export default function PrivacyPage() {
           &quot;us&quot;) collects, uses, and protects your personal data when
           you use {BRAND_NAME} at {WEBSITE_URL}{" "}(the &quot;Service&quot;).
         </p>
+        <p>
+          {LEGAL_NAME} is the data controller for personal data processed
+          through the Service. You can reach us at{" "}
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="text-blue-300 underline">
+            {SUPPORT_EMAIL}
+          </a>
+          . Where the GDPR or UK GDPR applies, we process your data to provide
+          the Service you asked for (contract), to keep it secure and prevent
+          abuse (legitimate interests) and to meet legal obligations such as
+          tax records. You can ask us for access, correction, export or
+          deletion at any time, and you can complain to your local data
+          protection authority.
+        </p>
       </section>
 
       <section>

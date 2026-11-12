@@ -13,7 +13,7 @@ import ThemeToggle from "./ThemeToggle";
 import TutorialButton from "./TutorialButton";
 import SignOutButton from "./SignOutButton";
 import BrandMark from "./BrandMark";
-import { SUPPORT_EMAIL } from "@/app/lib/legal";
+import { LEGAL_NAME, SUPPORT_EMAIL } from "@/app/lib/legal";
 import { FREE_CREDITS_BUY, FREE_TRIAL_CREDITS, TRIAL_VIDEO_PUBLIC, WHY_NORVEKO, planDetails } from "@/lib/plans";
 import SubscriptionPlans from "./SubscriptionPlans";
 import { CREATIVE_COSTS } from "@/lib/skit/pricing";
@@ -459,7 +459,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             {
               icon: Drama,
               title: "Skits with dialogue",
-              body: "Paste a joke or a scene with its lines and say how it should look: talking cockroaches, cats, anime. Every character gets a voice, lip-synced shots, crowd shouts, subtitles and music.",
+              body: "Paste a joke or a scene with its lines and say how it should look: talking cockroaches, cats, anime. Every character gets a voice, lip-synced shots, crowd shouts and music.",
               cost: `≈ ${CREATIVE_COSTS.skit20} credits for a 20 s skit`,
               href: "/chat?mode=skit",
             },
@@ -816,7 +816,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             <Link href="/login" className="transition hover:text-gray-300">Log in</Link>
           </nav>
           <p className="text-xs text-gray-400">
-            © {new Date().getFullYear()} Norveko. All rights reserved. · <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-gray-300">{SUPPORT_EMAIL}</a>
+            © {new Date().getFullYear()} {LEGAL_NAME}. All rights reserved. · <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-gray-300">{SUPPORT_EMAIL}</a>
           </p>
         </div>
       </footer>

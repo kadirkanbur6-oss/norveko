@@ -56,7 +56,7 @@ const ENV: Record<SubscriptionPlan["id"], string | undefined> = {
   "pro-year": process.env.NEXT_PUBLIC_PADDLE_PRICE_PRO_YEAR,
 };
 
-const priceId = (id: SubscriptionPlan["id"]) => (ENV[id] ?? "").trim() || SANDBOX[id];
+const priceId = (id: SubscriptionPlan["id"]) => (ENV[id] ?? "").trim() || (process.env.NEXT_PUBLIC_PADDLE_ENV === "production" ? "" : SANDBOX[id]);
 
 const plan = (
   tier: SubTier,

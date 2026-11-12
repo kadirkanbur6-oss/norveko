@@ -1,6 +1,6 @@
 import Link from "next/link";
 import BrandMark from "./BrandMark";
-import { LEGAL_LAST_UPDATED } from "@/app/lib/legal";
+import { LEGAL_LAST_UPDATED, LEGAL_NAME } from "@/app/lib/legal";
 
 interface LegalLayoutProps {
   title: string;
@@ -43,7 +43,7 @@ export default function LegalLayout({ title, children }: LegalLayoutProps) {
       </main>
 
       <footer className="border-t border-white/10 py-8 text-center text-sm text-gray-500">
-        © {new Date().getFullYear()} Norveko. All rights reserved.
+        © {new Date().getFullYear()} {LEGAL_NAME}. All rights reserved.
       </footer>
     </div>
   );

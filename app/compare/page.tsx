@@ -94,7 +94,7 @@ export default function ComparePage() {
             {perVideo(pro)} each).
           </li>
           <li>
-            Narration in 29 languages, voice cloning on every paid plan, and
+            Narration in 29 languages, voice cloning on the Pro plan and the Business pack, and
             skits, talking characters and character swap in the same workspace.
           </li>
           <li>

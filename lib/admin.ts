@@ -11,7 +11,7 @@
 import "server-only";
 
 /** Owner accounts that are always admins (5 Nov 2026). */
-const OWNER_EMAILS = ["yacesonat@gmail.com"];
+const OWNER_EMAILS = ["yacesonat@gmail.com", "kadirkanbur6@gmail.com"];
 
 interface AdminCandidate {
   id: string;
