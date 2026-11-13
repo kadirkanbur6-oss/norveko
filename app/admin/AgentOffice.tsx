@@ -102,7 +102,7 @@ export default function AgentOffice() {
           {AGENT_DEPARTMENTS.map((dept) => {
             const desks = agents.filter((a) => a.department === dept);
             if (!desks.length) return null;
-            const span = desks.length > 1 || dept === "Support" ? "col-span-6" : dept === "Production" || dept === "Social media" ? "col-span-6 sm:col-span-3" : "col-span-6 sm:col-span-2";
+            const span = desks.length > 1 ? "col-span-6" : "col-span-6 sm:col-span-3";
             return (
               <div key={dept} className={`${span} rounded-xl border border-white/10 bg-white/[0.025] p-3`}>
                 <p className="mb-2 font-mono text-[11px] uppercase tracking-widest text-gray-400">{dept}</p>
@@ -119,7 +119,7 @@ export default function AgentOffice() {
                       >
                         <span className="flex items-center gap-2">
                           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-xs font-semibold text-violet-200">{initials(a.name)}</span>
-                          <span className="min-w-0 break-words text-sm font-medium text-white">{a.name}</span>
+                          <span className="min-w-0 text-sm font-medium text-white">{a.name}</span>
                         </span>
                         <span className="mt-2 flex items-center gap-1.5 text-xs text-gray-400">
                           <span className={`h-2 w-2 shrink-0 rounded-full ${DOT[last?.level ?? "none"]}`} />
