@@ -21,6 +21,9 @@ export function siteLanguage(code: string | null | undefined) {
 export const I18N_MAX_STRING = 1500;
 export const I18N_MAX_BATCH = 60;
 export const I18N_MAX_BATCH_CHARS = 14000;
+/** What the browser actually sends per request: small batches come back faster and line up reliably. */
+export const I18N_CLIENT_BATCH = 24;
+export const I18N_CLIENT_BATCH_CHARS = 3500;
 
 /** Public address of a language's dictionary (JSON object: English text → translation). */
 export function dictionaryPath(code: string): string {

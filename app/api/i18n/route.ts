@@ -59,12 +59,12 @@ async function saveDictionary(code: string, dict: Dictionary) {
   if (error) throw new Error(error.message);
 }
 
-async function translate(code: string, strings: string[]): Promise<Dictionary> {
+async function translateOnce(code: string, strings: string[]): Promise<Dictionary> {
   const { chatJSON } = await import("@/lib/pipeline/llm");
   const language = siteLanguage(code);
   const { data } = await chatJSON<{ translations?: unknown }>({
     model: process.env.UI_TRANSLATE_MODEL || "gemini-3.8-flash",
-    timeoutMs: 90_000,
+    timeoutMs: 50_000,
     system: `You translate the interface text of Norveko, a web app that turns an idea into a finished video, from English into ${language.english} (${language.label}).
 Rules:
 - Return JSON: {"translations": [...]} with exactly one translation per input string, in the same order.
@@ -86,6 +86,18 @@ Rules:
     out[source] = text;
   });
   return out;
+}
+
+/** A long batch sometimes comes back with a different number of items; halves usually line up. */
+async function translate(code: string, strings: string[]): Promise<Dictionary> {
+  const first = await translateOnce(code, strings).catch(() => ({}) as Dictionary);
+  if (Object.keys(first).length || strings.length < 2) return first;
+  const mid = Math.ceil(strings.length / 2);
+  const [a, b] = await Promise.all([
+    translateOnce(code, strings.slice(0, mid)).catch(() => ({}) as Dictionary),
+    translateOnce(code, strings.slice(mid)).catch(() => ({}) as Dictionary),
+  ]);
+  return { ...a, ...b };
 }
 
 export async function POST(request: Request) {

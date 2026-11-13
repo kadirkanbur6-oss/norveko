@@ -15,7 +15,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { DEFAULT_SITE_LANGUAGE, I18N_MAX_BATCH, I18N_MAX_BATCH_CHARS, dictionaryPath, translatable } from "@/lib/i18n/languages";
+import { DEFAULT_SITE_LANGUAGE, I18N_CLIENT_BATCH, I18N_CLIENT_BATCH_CHARS, dictionaryPath, translatable } from "@/lib/i18n/languages";
 import { useInlineMenuCount, useSiteLanguage } from "@/lib/i18n/store";
 import LanguageMenu from "./LanguageMenu";
 
@@ -87,6 +87,7 @@ function startTranslating(code: string, maxLength: number): () => void {
   const dict: Dictionary = cachedDictionary(code);
   const waiting = new Map<string, Set<Text | HTMLElement>>();
   const failed = new Set<string>();
+  const tries = new Map<string, number>();
   const queue = new Set<string>();
   let inFlight = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -155,7 +156,14 @@ function startTranslating(code: string, maxLength: number): () => void {
     const targets = waiting.get(core);
     waiting.delete(core);
     if (!translation) {
-      failed.add(core);
+      // One more try in a later batch, then leave the English text for this visit.
+      const n = (tries.get(core) ?? 0) + 1;
+      tries.set(core, n);
+      if (n >= 2) failed.add(core);
+      else {
+        if (targets) waiting.set(core, targets);
+        queue.add(core);
+      }
       return;
     }
     dict[core] = translation;
@@ -172,11 +180,11 @@ function startTranslating(code: string, maxLength: number): () => void {
 
   async function flush() {
     timer = null;
-    while (!stopped && queue.size && inFlight < 3) {
+    while (!stopped && queue.size && inFlight < 4) {
       const batch: string[] = [];
       let chars = 0;
       for (const core of queue) {
-        if (batch.length >= I18N_MAX_BATCH || chars + core.length > I18N_MAX_BATCH_CHARS) break;
+        if (batch.length && (batch.length >= I18N_CLIENT_BATCH || chars + core.length > I18N_CLIENT_BATCH_CHARS)) break;
         batch.push(core);
         chars += core.length;
       }
