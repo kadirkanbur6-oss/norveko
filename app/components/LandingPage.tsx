@@ -345,7 +345,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
               </p>
 
               <ul className="mt-5 flex max-w-lg flex-wrap gap-2 text-xs text-gray-300" aria-label="What Norveko can make">
-                {["Narrated videos up to 10 min", "Animated skits", "Talking characters", "You as a character", "29 languages"].map((t) => (
+                {["Narrated videos up to 10 min", "Animated skits", "Talking characters", "Recurring characters", "29 languages"].map((t) => (
                   <li key={t} className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">
                     {t}
                   </li>
