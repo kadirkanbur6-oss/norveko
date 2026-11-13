@@ -164,7 +164,7 @@ const FAQS = [
   },
   {
     q: "Can I review or edit before publishing?",
-    a: "Yes. Turn on \"Review the script first\" and nothing is filmed until you approve the script and scenes. After rendering, the timeline editor lets you swap a scene's picture or clip, re-time cuts, fix subtitle lines and re-render.",
+    a: "Yes. Turn on \"Review the script first\" and nothing is filmed until you approve the script and scenes. After rendering, the timeline editor lets you replace a scene's picture or clip, re-time cuts, fix subtitle lines and re-render.",
   },
   {
     q: "Who are the characters in my videos?",
@@ -176,7 +176,7 @@ const FAQS = [
   },
   {
     q: "Which AI models does Norveko use?",
-    a: "The best model for each step, swapped as better ones appear: OpenAI and Google models for research and writing, Google and ElevenLabs voices, Google image models for scenes and thumbnails, Seedance and Veo for motion, Google Lyria for ambient music, and a cloud render farm for the final cut. You never need your own API keys.",
+    a: "The best model for each step, updated as better ones appear: OpenAI and Google models for research and writing, Google and ElevenLabs voices, Google image models for scenes and thumbnails, Seedance and Veo for motion, Google Lyria for ambient music, and a cloud render farm for the final cut. You never need your own API keys.",
   },
   {
     q: "Can I get a refund?",
@@ -533,7 +533,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             {
               icon: SlidersHorizontal,
               title: "Edit after it renders",
-              body: "A timeline lets you re-time scenes, swap a picture, upload your own clip or fix a subtitle without starting over, and your brand kit keeps logo and colors consistent.",
+              body: "A timeline lets you re-time scenes, replace a picture, upload your own clip or fix a subtitle without starting over, and your brand kit keeps logo and colors consistent.",
             },
           ].map((f, i) => (
             <Reveal key={f.title} delay={80 + (i % 3) * 80}>
