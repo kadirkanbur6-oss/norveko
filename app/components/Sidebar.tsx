@@ -7,6 +7,7 @@ import SignOutButton from "./SignOutButton";
 import BrandMark from "./BrandMark";
 import { supabase } from "../lib/supabase";
 import { ThemeSwitch } from "./ThemeToggle";
+import LanguageMenu from "./LanguageMenu";
 import {
   BarChart3,
   Coins,
@@ -243,6 +244,7 @@ export default function Sidebar() {
             />
           </div>
           <ThemeSwitch className="mt-2" />
+          <LanguageMenu placement="up" align="left" className="mt-1" />
         </div>
       </aside>
     </>

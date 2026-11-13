@@ -10,6 +10,7 @@ import ShortsDemo from "./ShortsDemo";
 import HeroBackground from "./HeroBackground";
 import { NICHE_TEMPLATES } from "@/lib/pipeline/templates";
 import ThemeToggle from "./ThemeToggle";
+import LanguageMenu from "./LanguageMenu";
 import TutorialButton from "./TutorialButton";
 import SignOutButton from "./SignOutButton";
 import BrandMark from "./BrandMark";
@@ -236,6 +237,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <LanguageMenu />
             <ThemeToggle labelClass="hidden sm:inline" />
             {isLoggedIn ? (
               <>
@@ -297,6 +299,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
                   {label}
                 </a>
               ))}
+              <LanguageMenu align="left" className="px-0.5" />
               <ThemeToggle className="justify-start rounded-lg px-3 py-2.5 text-gray-300" />
               {!isLoggedIn && (
                 <Link
@@ -736,6 +739,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             {LANGUAGES.map((lang) => (
               <span
                 key={lang}
+                translate="no"
                 className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-gray-300 sm:text-sm"
               >
                 {lang}

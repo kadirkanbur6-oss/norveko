@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import SiteTranslator from "./components/SiteTranslator";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -70,6 +71,8 @@ export default function RootLayout({
           Skip to main content
         </a>
         {children}
+        {/* Site language (LanguageMenu): translates the page text when a language other than English is picked. */}
+        <SiteTranslator />
       </body>
     </html>
   );
