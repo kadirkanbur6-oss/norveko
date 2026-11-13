@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Loader2, RefreshCw, Search, X } from "lucide-react";
 import Sidebar from "../components/Sidebar";
+import AgentOffice from "./AgentOffice";
 import PageTabs, { PageHeader, useTabParam, type PageTab } from "../components/PageTabs";
 import ProviderCosts, { type ProviderRow, type StepRow, type FixedRow } from "./ProviderCosts";
 import { JobActions, ManageUserDialog, type ManagedUser } from "./AdminActions";
@@ -134,6 +135,7 @@ const TABS: PageTab[] = [
   { id: "generations", label: "Generations" },
   { id: "payments", label: "Payments" },
   { id: "costs", label: "Provider costs" },
+  { id: "agents", label: "Agents" },
   { id: "log", label: "Admin log" },
 ];
 
@@ -632,6 +634,7 @@ export default function AdminPage() {
               onChanged={() => load(days)}
             />
           )}
+          {tab === "agents" && <AgentOffice />}
           {data && tab === "log" && (
             data.adminLog.length === 0 ? (
               <Empty>No admin actions yet. Credits, access changes, suspensions, deletions and job controls are recorded here.</Empty>

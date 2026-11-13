@@ -559,6 +559,27 @@ Credit adjustments call `add_credits(..., p_type => 'admin', ...)`; if
 `credit_transactions.type` has a CHECK constraint, add `'admin'` to it.
 Suspension uses Supabase Auth's ban (`auth.users.banned_until`), nothing extra.
 
+## Agent office (`agent_reports`, 13 Nov 2026)
+
+Reports written by the Claude agents (`.claude/agents/*.md`, roster in `lib/agents.ts`)
+and shown on `/admin` → Agents. Read and written only with the service role through
+`/api/admin/agents`. Scheduled agents post with `Authorization: Bearer <AGENT_REPORT_TOKEN>`
+(Vercel env, at least 24 characters; the token can only add reports).
+
+```sql
+create table if not exists public.agent_reports (
+  id uuid primary key default gen_random_uuid(),
+  agent text not null,
+  level text not null default 'ok',
+  title text not null,
+  summary text not null default '',
+  items jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now()
+);
+create index if not exists agent_reports_agent_idx on public.agent_reports (agent, created_at desc);
+alter table public.agent_reports enable row level security;
+```
+
 ## Sign-up credits → 70 (6 Nov 2026)
 
 New accounts start with `FREE_TRIAL_CREDITS` (lib/plans.ts, now 70) instead of the free
