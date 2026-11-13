@@ -140,7 +140,7 @@ const PRICING = planDetails().map(({ pack, tagline, buys, featured }) => ({
 const FAQS = [
   {
     q: "Does Norveko make the actual video file?",
-    a: "Yes. Type the idea and you get a finished MP4 with a researched script, narration, AI visuals or stock footage, music, word-timed subtitles and a thumbnail, as a 30 or 60-second Short or a 3 or 10-minute long-form video. You can also turn a joke into an animated skit, make a character say your line, or swap a character into a clip. If you only want the script, voiceover and thumbnail, turn the video off and pay less.",
+    a: "Yes. Type the idea and you get a finished MP4 with a researched script, narration, AI visuals or stock footage, music, word-timed subtitles and a thumbnail, as a 30 or 60-second Short or a 3 or 10-minute long-form video. You can also turn a joke into an animated skit or make an invented character say your line. If you only want the script, voiceover and thumbnail, turn the video off and pay less.",
   },
   {
     q: "What do my free credits get me?",
