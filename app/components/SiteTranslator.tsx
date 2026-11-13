@@ -16,7 +16,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { DEFAULT_SITE_LANGUAGE, I18N_MAX_BATCH, I18N_MAX_BATCH_CHARS, dictionaryPath, translatable } from "@/lib/i18n/languages";
-import { useSiteLanguage } from "@/lib/i18n/store";
+import { useInlineMenuCount, useSiteLanguage } from "@/lib/i18n/store";
 import LanguageMenu from "./LanguageMenu";
 
 const SKIP = 'script,style,noscript,textarea,code,pre,svg,[translate="no"],[data-nt],[contenteditable="true"]';
@@ -238,7 +238,9 @@ export default function SiteTranslator() {
   const lang = useSiteLanguage();
   const pathname = usePathname();
   const isPublic = PUBLIC_PATHS.includes(pathname ?? "/");
-  const [needsFloating, setNeedsFloating] = useState(false);
+  const inlineMenus = useInlineMenuCount();
+  // Wait a moment after load so the floating menu does not flash before a page mounts its own.
+  const [settled, setSettled] = useState(false);
 
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -248,11 +250,11 @@ export default function SiteTranslator() {
 
   // Every page gets a language menu: pages without one in their own header get a small floating one.
   useEffect(() => {
-    const t = setTimeout(() => setNeedsFloating(!document.querySelector("[data-lang-menu]:not([data-lang-floating])")), 400);
+    const t = setTimeout(() => setSettled(true), 1200);
     return () => clearTimeout(t);
-  }, [pathname]);
+  }, []);
 
-  if (!needsFloating) return null;
+  if (!settled || inlineMenus > 0) return null;
   return (
     <div className="fixed bottom-4 right-4 z-40" data-lang-floating>
       <LanguageMenu placement="up" floating />

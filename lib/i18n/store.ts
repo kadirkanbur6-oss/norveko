@@ -40,3 +40,26 @@ export function useSiteLanguage(): string {
   return useSyncExternalStore(subscribe, readLanguage, () => DEFAULT_SITE_LANGUAGE);
 }
 
+
+// Pages with a language menu in their own header register it here, so SiteTranslator
+// knows whether it has to show the floating one.
+let inlineMenus = 0;
+const MENU_EVENT = "nv-lang-menus";
+
+export function registerInlineMenu(): () => void {
+  inlineMenus += 1;
+  window.dispatchEvent(new Event(MENU_EVENT));
+  return () => {
+    inlineMenus -= 1;
+    window.dispatchEvent(new Event(MENU_EVENT));
+  };
+}
+
+function subscribeMenus(onChange: () => void) {
+  window.addEventListener(MENU_EVENT, onChange);
+  return () => window.removeEventListener(MENU_EVENT, onChange);
+}
+
+export function useInlineMenuCount(): number {
+  return useSyncExternalStore(subscribeMenus, () => inlineMenus, () => 1);
+}

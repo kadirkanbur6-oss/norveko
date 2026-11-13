@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Globe } from "lucide-react";
 import { SITE_LANGUAGES, siteLanguage } from "@/lib/i18n/languages";
-import { setSiteLanguage, useSiteLanguage } from "@/lib/i18n/store";
+import { registerInlineMenu, setSiteLanguage, useSiteLanguage } from "@/lib/i18n/store";
 
 export default function LanguageMenu({
   className = "",
@@ -26,6 +26,11 @@ export default function LanguageMenu({
   const current = siteLanguage(lang);
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (floating) return;
+    return registerInlineMenu();
+  }, [floating]);
 
   useEffect(() => {
     if (!open) return;
@@ -83,8 +88,8 @@ export default function LanguageMenu({
                     selected ? "text-white" : "text-gray-300"
                   }`}
                 >
-                  <span aria-hidden>{l.flag}</span>
                   <span className="flex-1">{l.label}</span>
+                  <span aria-hidden className="text-[11px] uppercase text-gray-500">{l.code}</span>
                   {selected && <Check size={14} aria-hidden className="text-blue-400" />}
                 </button>
               </li>
