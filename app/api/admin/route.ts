@@ -105,7 +105,7 @@ export async function GET(req: NextRequest) {
     ),
     all("skit_jobs", (a, b) => db.from("skit_jobs").select("id, user_id, status, phase, script, credits, refunded, error, created_at").neq("status", "draft").order("created_at", { ascending: false }).range(a, Math.min(b, JOB_LIST - 1)), errors),
     all("swap_jobs", (a, b) => db.from("swap_jobs").select("id, user_id, kind, status, phase, character_name, credits, refunded, error, created_at").order("created_at", { ascending: false }).range(a, Math.min(b, JOB_LIST - 1)), errors),
-    all("provider_usage", (a, b) => db.from("provider_usage").select("created_at, user_id, step, provider, model, quantity, estimated_cost_usd, status").gte("created_at", since).order("created_at", { ascending: false }).range(a, b), errors),
+    all("provider_usage", (a, b) => db.from("provider_usage").select("created_at, job_id, user_id, step, provider, model, quantity, estimated_cost_usd, status").gte("created_at", since).order("created_at", { ascending: false }).range(a, b), errors),
     all("credit_transactions", (a, b) => db.from("credit_transactions").select("user_id, type, amount, created_at").gte("created_at", since).order("created_at", { ascending: false }).range(a, b), errors),
     // Narrated videos, skits, talking characters and swaps all count.
     Promise.all(
@@ -314,6 +314,23 @@ export async function GET(req: NextRequest) {
   );
   const monthCostUsd = monthCostRows.reduce((t, u) => t + num(u.estimated_cost_usd), 0);
   // Plan waitlist size (table may not exist yet → 0).
+  // ElevenLabs narration characters this month vs the plan's allowance (13 Nov 2026, Yağmur):
+  // past it every character is billed as overage ($0.22–0.30 / 1K). Counts only our logged TTS calls.
+  const elevenRows = await all(
+    "provider_usage (elevenlabs month)",
+    (a, b) => db.from("provider_usage").select("quantity").eq("provider", "elevenlabs").eq("model", "eleven_multilingual_v2").eq("status", "ok").gte("created_at", monthStart).range(a, b),
+    errors
+  );
+  const elevenChars = elevenRows.reduce((t, u) => t + num(u.quantity), 0);
+  const elevenLimit = Number(process.env.ELEVENLABS_MONTHLY_CHARS) > 0 ? Number(process.env.ELEVENLABS_MONTHLY_CHARS) : 121000;
+  const elevenlabs = { chars: elevenChars, limit: elevenLimit, pct: elevenChars / elevenLimit, warn: elevenChars / elevenLimit >= 0.8 };
+  // Provider cost sunk in jobs that failed (refunded to the user, but the providers were paid).
+  const failedIds = new Set<string>();
+  for (const j of [...jobs, ...skits, ...swaps]) if (str(j.status) === "failed") failedIds.add(str(j.id));
+  let failedCostUsd = 0;
+  for (const u of usage) if (u.job_id && failedIds.has(str(u.job_id))) failedCostUsd += num(u.estimated_cost_usd);
+  const windowCostUsd = usage.reduce((t, u) => t + num(u.estimated_cost_usd), 0);
+  const failedCost = { usd: failedCostUsd, jobs: failedIds.size, share: windowCostUsd ? failedCostUsd / windowCostUsd : 0 };
   const waitlistCount = await db
     .from("plan_waitlist")
     .select("user_id", { count: "exact", head: true })
@@ -418,6 +435,8 @@ export async function GET(req: NextRequest) {
       gemini: { ...gemini, spend24hUsd: geminiSpend24h },
       stock: { slots: stockSlots, fallbacks: stockFallbacks, share: stockSlots ? stockFallbacks / stockSlots : 0 },
       month,
+      elevenlabs,
+      failedCost,
       waitlist: waitlistCount,
       generationOpen: process.env.GENERATION_ENABLED !== "false",
       fullVideoOpen: process.env.FULL_VIDEO_ENABLED === "true",

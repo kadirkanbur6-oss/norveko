@@ -18,6 +18,8 @@ export interface NarrationResult {
   ext: "mp3" | "wav";
   /** "provider:model" for the cost log. */
   usageKey: string;
+  /** Seconds of audio sent to the paid forced alignment (cost log), when it ran and succeeded. */
+  alignedSeconds?: number;
 }
 
 export async function synthesizeNarration(
@@ -50,9 +52,11 @@ export async function synthesizeNarration(
       speech = { audio: pcmToWav(pcm, rate), contentType: "audio/wav", seconds: pcm.length / (rate * 2) };
     }
     let alignment: CharacterAlignment | null = null;
+    let aligned = false;
     if (options.align !== false) try {
       const { forceAlign } = await import("./elevenlabs");
       alignment = await forceAlign(speech.audio, text, speech.contentType);
+      aligned = Boolean(alignment);
     } catch (err) {
       console.warn("[tts] forced alignment failed:", err instanceof Error ? err.message : err);
     }
@@ -60,7 +64,7 @@ export async function synthesizeNarration(
     // real audio length (pauses at punctuation), so captions, the duration
     // check and the timeline still work if alignment is unavailable.
     if (!alignment) alignment = estimateAlignment(text, speech.seconds);
-    return { audio: speech.audio, alignment, contentType: speech.contentType, ext: "wav", usageKey: `gemini:${GEMINI_TTS_MODEL}` };
+    return { audio: speech.audio, alignment, contentType: speech.contentType, ext: "wav", usageKey: `gemini:${GEMINI_TTS_MODEL}`, ...(aligned ? { alignedSeconds: speech.seconds } : {}) };
   }
   const { generateSpeech } = await import("./elevenlabs");
   // ElevenLabs tops out at 1.2 (clamped in generateSpeech); the duration fix multiplies on top.

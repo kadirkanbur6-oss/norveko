@@ -309,6 +309,8 @@ Business 5000/**$89** (kod güncel; **Paddle ürün fiyatları elle güncellenme
   Text klip modu (Kling 3.0 Standard) artık fal üzerinden (`FAL_TEXT_VIDEO_MODEL`, $0,084/sn sessiz); canlıda test edildi
   (30 sn hybrid, 2 klip ✅) ama `OFFERED_CLIP_MODES` hâlâ yalnız `["image"]` → arayüzde/API'de text modu kapalı.
 
+- **Maliyet analizi sonrası değişiklikler (13 Kasım 2026, Yağmur)**: kâr/maliyet analizi `Norveko_maliyet_analizi.xlsx` (Kadir ile paylaşılabilir). (1) Skeç marjı %35 → **%40** (`SKIT_MARGIN`), skeç kredisi ~%8 arttı. (2) Haftalık plan fiyatları Creator $9 → **$10**, Pro $21 → **$23** (kredi aynı; **Paddle'da haftalık fiyatlar elle $10/$23 yapılmalı**, kod ile Paddle uyuşmazsa ödeme ekranı Paddle'ın fiyatını gösterir). (3) Admin Overview: **ElevenLabs aylık kullanım** kartı + %80'de sarı uyarı (env `ELEVENLABS_MONTHLY_CHARS`, varsayılan 121000) ve **başarısız işlerin sağlayıcı maliyeti** kartı. (4) `provider_usage`'a artık web search (`openai:web_search`, $0,01/çağrı) ve forced alignment (`elevenlabs:forced-alignment`, sn başına) ayrı satır olarak yazılır. (5) Terms §11: 12 ay giriş yoksa pasif hesap, 30 gün önce e-postayla bildirim (otomatik silme kodu YOK, yalnız metin). Not: `REVENUE_PER_CREDIT_USD` hâlâ $59 Business bazında (gerçek net gelir/kredi $0,0150–0,0218 → gerçek marjlar %55–70).
+
 ## 4. Feature gate'ler (env)
 
 - `GENERATION_ENABLED=false` → **lansman kilidi**: `BETA_USER_IDS` dışındakiler

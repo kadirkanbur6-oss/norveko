@@ -723,6 +723,8 @@ export interface ResearchResult {
   brief: string;
   sources: ResearchSource[];
   usage?: { inputTokens: number; outputTokens: number };
+  /** Web search tool calls the model made (billed $10 per 1K, not in the token usage). */
+  searchCalls?: number;
 }
 
 interface ResearchParams {
@@ -801,6 +803,7 @@ Write the brief in ${language}. Rules:
   const sources: ResearchSource[] = [];
   const seen = new Set<string>();
   const output = Array.isArray(data?.output) ? data.output : [];
+  const searchCalls = output.filter((item: { type?: string }) => item?.type === "web_search_call").length;
   for (const item of output) {
     if (item?.type !== "message" || !Array.isArray(item.content)) continue;
     for (const part of item.content) {
@@ -825,5 +828,5 @@ Write the brief in ${language}. Rules:
     data?.usage && typeof data.usage === "object"
       ? { inputTokens: Number(data.usage.input_tokens ?? 0), outputTokens: Number(data.usage.output_tokens ?? 0) }
       : undefined;
-  return { brief: brief.trim().slice(0, 4000), sources: sources.slice(0, 10), usage };
+  return { brief: brief.trim().slice(0, 4000), sources: sources.slice(0, 10), usage, searchCalls };
 }

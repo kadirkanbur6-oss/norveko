@@ -68,7 +68,8 @@ export default function TermsPage() {
           they were added for (one week, or one month, also on yearly plans)
           and are used before any pack credits; plan credits left unused at
           the end of that period expire and do not roll over. Credits from
-          one-time packages do not expire while your account remains active.
+          one-time packages do not expire while your account remains active (see
+          section 11 for when an account counts as inactive).
         </p>
         <p>
           Payments are processed by our merchant of record, Paddle.com Market
@@ -206,6 +207,13 @@ export default function TermsPage() {
           Upon termination, your right to use the Service ceases immediately;
           unused credits are handled in accordance with our Refund Policy and
           applicable law.
+        </p>
+        <p>
+          An account is inactive when nobody has signed in to it for 12
+          consecutive months. Before we close an inactive account we email the
+          address on the account at least 30 days ahead; signing in during that
+          time keeps the account active. Credits you bought in a pack stay
+          available for as long as the account is active.
         </p>
       </section>
 

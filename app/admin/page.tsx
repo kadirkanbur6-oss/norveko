@@ -32,6 +32,8 @@ interface Overview {
   fal: { balanceUsd: number; topupUsd: number; low: boolean } | null;
   gemini?: { outOfCredit: boolean; jobs: number; lastAt: string | null; spend24hUsd: number };
   stock?: { slots: number; fallbacks: number; share: number };
+  elevenlabs?: { chars: number; limit: number; pct: number; warn: boolean };
+  failedCost?: { usd: number; jobs: number; share: number };
   waitlist?: number;
   month?: {
     start: string;
@@ -323,6 +325,16 @@ export default function AdminPage() {
                   </a>
                 </div>
               )}
+              {o.elevenlabs?.warn && (
+                <div role="alert" className="rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                  <strong>ElevenLabs usage is at {Math.round(o.elevenlabs.pct * 100)}% of the monthly allowance</strong> ({int(o.elevenlabs.chars)} of{" "}
+                  {int(o.elevenlabs.limit)} characters). Past 100% every character is billed as overage (about $0.22–0.30 per 1,000), which cuts the margin
+                  of ElevenLabs-voice videos. Consider the Pro plan or steering users to the Norveko narrators.{" "}
+                  <a href="https://elevenlabs.io/app/subscription" target="_blank" rel="noreferrer" className="underline">
+                    Open ElevenLabs subscription
+                  </a>
+                </div>
+              )}
               {o.fal?.low && (
                 <div role="alert" className="rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-100">
                   <strong>fal.ai balance is low: {usd(o.fal.balanceUsd)}</strong>, under 20% of a {usd(o.fal.topupUsd)} top-up. Lip-sync, swaps and
@@ -371,6 +383,20 @@ export default function AdminPage() {
                   />
                 )}
                 {o.fal && <Stat label="fal.ai balance" value={usd(o.fal.balanceUsd)} note={o.fal.low ? "Low, add credits" : `Warns at ${usd(o.fal.topupUsd * 0.2)}`} />}
+                {o.elevenlabs && (
+                  <Stat
+                    label="ElevenLabs, this month"
+                    value={`${Math.round(o.elevenlabs.pct * 100)}%`}
+                    note={`${int(o.elevenlabs.chars)} of ${int(o.elevenlabs.limit)} characters; warns at 80%`}
+                  />
+                )}
+                {o.failedCost && (
+                  <Stat
+                    label="Cost of failed jobs"
+                    value={usd(o.failedCost.usd)}
+                    note={`${int(o.failedCost.jobs)} failed job${o.failedCost.jobs === 1 ? "" : "s"}, ${Math.round(o.failedCost.share * 100)}% of provider cost in this window (users are refunded)`}
+                  />
+                )}
                 {o.stock && o.stock.slots > 0 && (
                   <Stat
                     label="Stock fallbacks"

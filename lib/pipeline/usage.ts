@@ -84,6 +84,10 @@ export const PRICE_LIST: Record<string, Price> = {
   "fal:fal-ai/veo3.1/fast/image-to-video": { perUnit: 0.15 },
   // Google Lyria 3 Pro: flat price per generated song (ambient music videos, 10 Nov 2026).
   "gemini:lyria-3-pro-preview": { perUnit: 0.08 },
+  // OpenAI web search tool calls ($10 per 1K), logged per call (13 Nov 2026).
+  "openai:web_search": { perUnit: 0.01 },
+  // ElevenLabs forced alignment (captions for Gemini narration), per second of audio ≈ $0.005 / min.
+  "elevenlabs:forced-alignment": { perUnit: 0.005 / 60 },
   // Skits: ElevenLabs sound effects are logged with their own cost (lib/creative-usage.ts).
   // Shotstack — per second of rendered output (pay-as-you-go $0.20/min).
   "shotstack:render": { perUnit: 0.0034 },

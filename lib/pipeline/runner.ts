@@ -318,6 +318,12 @@ export function createPipelineRunner(deps: RunnerDeps) {
     }
   }
 
+  /** Forced alignment (captions for Gemini narration) is billed per second of audio; log it. */
+  async function logAlignment(job: Pick<JobRow, "id" | "user_id">, speech: { alignedSeconds?: number }): Promise<void> {
+    if (!speech.alignedSeconds) return;
+    await logUsage(job, "voiceover", { usageKey: "elevenlabs:forced-alignment", unit: "seconds", quantity: speech.alignedSeconds, durationMs: 0, status: "ok" });
+  }
+
   async function loadJob(jobId: string): Promise<JobRow | null> {
     const { data } = await db
       .from("pipeline_jobs")
@@ -1565,6 +1571,9 @@ export function createPipelineRunner(deps: RunnerDeps) {
         durationMs: now() - startedAt,
         status: "ok",
       });
+      if (result.searchCalls) {
+        await logUsage(job, "research", { usageKey: "openai:web_search", unit: "calls", quantity: result.searchCalls, durationMs: 0, status: "ok" });
+      }
       await patchStep(job, "research", {
         status: "completed",
         brief: result.brief,
@@ -1758,6 +1767,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
         durationMs: now() - startedAt,
         status: "ok",
       });
+      await logAlignment(job, speech);
 
       // Full videos must hit the chosen duration. Speaking rate varies ±20%
       // with the text, so measure the first take and, if it misses the target
@@ -1793,6 +1803,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
             if (fixed?.script?.trim()) {
               const retake = await providers.generateSpeech(fixed.script, voiceId);
               await logUsage(job, "voiceover", { usageKey: voiceUsageKey, unit: "characters", quantity: fixed.script.length, durationMs: now() - rewriteAt, status: "ok" });
+              await logAlignment(job, retake);
               if (retake.alignment) {
                 script = fixed.script;
                 speech = retake;
@@ -1824,6 +1835,7 @@ export function createPipelineRunner(deps: RunnerDeps) {
               durationMs: now() - retryAt,
               status: "ok",
             });
+            await logAlignment(job, retake);
           } catch (err) {
             console.warn(`[pipeline] ${job.id} speed retake failed, keeping first take:`, err);
           }

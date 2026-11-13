@@ -78,10 +78,10 @@ const plan = (
 };
 
 export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
-  plan("creator", "week", 9, 380),
+  plan("creator", "week", 10, 380),
   plan("creator", "month", 29, 1500),
   plan("creator", "year", 319, 1500),
-  plan("pro", "week", 21, 1000),
+  plan("pro", "week", 23, 1000),
   plan("pro", "month", 69, 4000),
   plan("pro", "year", 759, 4000),
 ];
