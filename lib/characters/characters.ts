@@ -8,17 +8,19 @@
 // Rules (shown in the UI and enforced here):
 //   • photos: only the creator or a person who gave permission (checkbox,
 //     stored as consent_at); no children (vision check on every photo);
-//   • no living or recently deceased real people (13 Nov 2026, lib/likeness.ts:
-//     our payment provider does not allow impersonating real people); photo
-//     characters can only be the creator ("person" is closed for new ones);
-//   • "historical" = a real person who died 50+ years ago (portrait from Commons);
+//   • 13 Nov 2026 (lib/likeness.ts): only INVENTED characters are on. Photo
+//     characters ("self", "person") and historical figures are switched off, and
+//     an invented character may not be a real person (our payment provider does
+//     not allow generating real people); rows of the other types are hidden;
 //   • no children, nothing explicit.
 // Reference images live in the PRIVATE "characters" bucket; the pipeline
 // reads them with the service role. Server-only.
 
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { HISTORICAL_MIN_YEARS_DEAD, REAL_PERSON_MESSAGE } from "@/lib/likeness";
+import { HISTORICAL_CHARACTERS_ENABLED, REAL_PERSON_MESSAGE, characterKindAllowed } from "@/lib/likeness";
+
+const HISTORICAL_MIN_YEARS_DEAD = 50;
 
 export type CharacterKind = "self" | "person" | "historical" | "fictional";
 export const CHARACTER_KINDS: CharacterKind[] = ["self", "person", "historical", "fictional"];
@@ -65,7 +67,8 @@ export async function ensureBucket(db: SupabaseClient): Promise<void> {
 export async function listCharacters(db: SupabaseClient, userId: string): Promise<CharacterRow[]> {
   const { data, error } = await db.from("characters").select("*").eq("user_id", userId).order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
-  return (data ?? []) as CharacterRow[];
+  // Types that are switched off (lib/likeness.ts) are neither listed nor usable.
+  return ((data ?? []) as CharacterRow[]).filter((c) => characterKindAllowed(c.kind));
 }
 
 /** Snapshot of the chosen characters for a job (only the user's own, max MAX_CAST). */
@@ -73,7 +76,7 @@ export async function castSnapshot(db: SupabaseClient, userId: string, ids: unkn
   const wanted = Array.isArray(ids) ? ids.filter((x): x is string => typeof x === "string").slice(0, MAX_CAST) : [];
   if (!wanted.length) return [];
   const { data } = await db.from("characters").select("*").eq("user_id", userId).in("id", wanted);
-  return ((data ?? []) as CharacterRow[]).map((c) => ({
+  return ((data ?? []) as CharacterRow[]).filter((c) => characterKindAllowed(c.kind)).map((c) => ({
     id: c.id,
     name: c.name,
     kind: c.kind,
@@ -149,7 +152,7 @@ Answer as JSON: {"realPerson": boolean (does the name or the description clearly
   if (r.minor === true) return { ok: false, reason: "Characters can't be children." };
   const died = typeof r.diedYear === "number" ? r.diedYear : undefined;
   const recent = r.living === true || (died !== undefined && new Date().getFullYear() - died < HISTORICAL_MIN_YEARS_DEAD);
-  if (r.realPerson === true && recent) return { ok: false, reason: REAL_PERSON_MESSAGE };
+  if (r.realPerson === true && (recent || !HISTORICAL_CHARACTERS_ENABLED)) return { ok: false, reason: REAL_PERSON_MESSAGE };
   if (kind === "historical") {
     if (r.realPerson !== true) return { ok: false, reason: "We couldn't find this person. Check the spelling, or create an invented character instead." };
     if (died === undefined && r.living !== false) return { ok: false, reason: REAL_PERSON_MESSAGE };
@@ -177,6 +180,7 @@ export async function checkPhoto(bytes: Buffer, mimeType: string): Promise<{ ok:
  * characters in one click.
  */
 export async function suggestHistoricalCast(idea: string): Promise<string[]> {
+  if (!HISTORICAL_CHARACTERS_ENABLED) return [];
   const r = await geminiJson([
     {
       text: `Video idea: "${idea.slice(0, 600)}"

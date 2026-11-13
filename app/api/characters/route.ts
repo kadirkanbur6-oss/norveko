@@ -3,7 +3,7 @@
 // POST (multipart): kind, name, description, consent, photos[] → checks, references, row.
 // DELETE ?id=… removes a character and its reference images.
 
-import { PERSON_CHARACTERS_ENABLED, PERSON_KIND_MESSAGE } from "@/lib/likeness";
+import { CHARACTER_KIND_MESSAGE, characterKindAllowed } from "@/lib/likeness";
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import sharp from "sharp";
@@ -79,7 +79,7 @@ export async function POST(req: Request) {
   if (!form) return bad("Invalid request.");
   const kind = String(form.get("kind") ?? "") as CharacterKind;
   if (!CHARACTER_KINDS.includes(kind)) return bad("Pick a character type.");
-  if (kind === "person" && !PERSON_CHARACTERS_ENABLED) return bad(PERSON_KIND_MESSAGE);
+  if (!characterKindAllowed(kind)) return bad(CHARACTER_KIND_MESSAGE);
   const name = cleanName(form.get("name"));
   if (name.length < 2) return bad("Give the character a name.");
   const description = cleanDescription(form.get("description"));

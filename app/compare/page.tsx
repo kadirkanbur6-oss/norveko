@@ -34,7 +34,7 @@ const ROWS: Array<{
     price: "€39 / month (page showed euros; currency follows location)",
     allowance: "2,000 AI credits / month",
     notes:
-      "Publishes to TikTok, Instagram, YouTube and X; 70+ language voiceovers. Creating and cloning your own voices is listed only on Ultra (€199, 12,000 credits).",
+      "Publishes to TikTok, Instagram, YouTube and X; 70+ language voiceovers.",
     source: "revid.ai/pricing",
     url: "https://www.revid.ai/pricing",
   },
@@ -53,7 +53,7 @@ const ROWS: Array<{
     plan: "Professional",
     price: "$35 / month billed annually (listed as previously $59)",
     allowance: "72,000 credits granted upfront; up to 1,080 min / year",
-    notes: "Includes voice clones, cloned avatars and 5 brand kits. Annual plans grant all credits upfront.",
+    notes: "Includes 5 brand kits. Annual plans grant all credits upfront.",
     source: "pictory.ai/pricing",
     url: "https://pictory.ai/pricing",
   },
@@ -63,7 +63,7 @@ const ROWS: Array<{
     price: "Shown in local currency (yearly billing is 25% off)",
     allowance: "180 credits / month (Premium: 600)",
     notes:
-      "1,000 voices, 1080p, videos up to 15 minutes, 80+ languages, one voice clone, YouTube publishing.",
+      "1,000 voices, 1080p, videos up to 15 minutes, 80+ languages, YouTube publishing.",
     source: "fliki.ai/pricing",
     url: "https://fliki.ai/pricing",
   },
@@ -94,8 +94,7 @@ export default function ComparePage() {
             {perVideo(pro)} each).
           </li>
           <li>
-            Narration in 29 languages, a clone of your own voice on the Pro plan and the Business pack,
-            and skits and talking characters in the same workspace.
+            Narration in 29 languages, and skits and talking characters in the same workspace.
           </li>
           <li>
             Subscription credits are valid for their own period and do not roll

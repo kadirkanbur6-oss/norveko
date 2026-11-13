@@ -1,4 +1,5 @@
 "use client";
+import { VOICE_UPLOAD_ENABLED } from "@/lib/likeness";
 import { friendlyErrorLine } from "@/lib/user-error";
 
 // Talking character studio (used on /talk and in the AI Workspace): pick a character, give them a line (typed or your own
@@ -287,9 +288,11 @@ export default function TalkStudio({ text: outerText, onStarted }: { text?: stri
                     <button type="button" role="tab" aria-selected={mode === "type"} onClick={() => setMode("type")} className={chip(mode === "type")}>
                       Type it
                     </button>
-                    <button type="button" role="tab" aria-selected={mode === "upload"} onClick={() => setMode("upload")} className={chip(mode === "upload")}>
-                      Upload a recording
-                    </button>
+                    {VOICE_UPLOAD_ENABLED && (
+                      <button type="button" role="tab" aria-selected={mode === "upload"} onClick={() => setMode("upload")} className={chip(mode === "upload")}>
+                        Upload a recording
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -393,7 +396,7 @@ export default function TalkStudio({ text: outerText, onStarted }: { text?: stri
 
               <label className="flex items-start gap-2 text-xs text-gray-300">
                 <input type="checkbox" checked={rights} onChange={(e) => setRights(e.target.checked)} className="mt-0.5" />
-                <span>Any recording I upload is my own voice, and I won&apos;t present the result as something a real person actually said or did.</span>
+                <span>This character is invented, and I won&apos;t present the result as something a real person said or did.</span>
               </label>
 
               <div className="flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">

@@ -360,7 +360,7 @@ export default function AnimateStudio({ text, onStarted }: { text: string; onSta
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-gray-500">Press ▶ to hear a short demo of each voice. Your cloned voice (Settings) appears under Character voices.</p>
+                <p className="text-xs text-gray-500">Press ▶ to hear a short demo of each voice.</p>
                 <textarea value={line} onChange={(e) => { setLine(e.target.value); setVoice(null); }} maxLength={450} rows={3} placeholder="What should they say?" className="w-full rounded-lg border border-white/10 bg-[var(--nv-field)] px-3 py-2 text-sm" />
                 <div className="flex flex-wrap items-center gap-3">
                   <button type="button" onClick={makeVoice} disabled={voiceBusy !== "" || line.trim().length < 2} className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-sm disabled:opacity-40">
@@ -384,7 +384,7 @@ export default function AnimateStudio({ text, onStarted }: { text: string; onSta
 
           <label className="mt-5 flex items-start gap-2 text-xs text-gray-300">
             <input type="checkbox" checked={rights} onChange={(e) => setRights(e.target.checked)} className="mt-0.5" />
-            <span>I own this picture or have the right to use it (and permission from anyone recognisable in it), and I won&apos;t use the result to deceive anyone.</span>
+            <span>I own this picture or have the right to use it, it does not show a real person, and I won&apos;t use the result to deceive anyone.</span>
           </label>
 
           <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">

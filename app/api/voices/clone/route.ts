@@ -3,6 +3,7 @@
 // POST multipart {name, consent:"true", files[] (≤3, total ≤4 MB)}: create/replace it.
 // DELETE: remove it (also at ElevenLabs).
 
+import { VOICE_CLONE_ENABLED, VOICE_CLONE_MESSAGE } from "@/lib/likeness";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/supabase-server";
 import { adminDb } from "@/lib/supabase-admin";
@@ -16,7 +17,7 @@ export const maxDuration = 120;
 const unauthorized = () => NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
 
 async function allowed(db: ReturnType<typeof adminDb>, userId: string): Promise<boolean> {
-  if (!process.env.ELEVENLABS_API_KEY) return false;
+  if (!VOICE_CLONE_ENABLED || !process.env.ELEVENLABS_API_KEY) return false;
   return isWatermarkExempt(userId) || (await cloneEntitled(db, userId));
 }
 
@@ -29,7 +30,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       available: ok,
-      clone: clone ? { voiceId: clone.voice_id, name: clone.name, createdAt: clone.created_at } : null,
+      clone: clone && VOICE_CLONE_ENABLED ? { voiceId: clone.voice_id, name: clone.name, createdAt: clone.created_at } : null,
       readingScript: READING_SCRIPT,
     });
   } catch (err) {
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
   if (!user) return unauthorized();
   const db = adminDb();
   if (!(await allowed(db, user.id))) {
-    return NextResponse.json({ success: false, error: "Cloning your own voice is available on the Pro plan or with a Business pack." }, { status: 403 });
+    return NextResponse.json({ success: false, error: VOICE_CLONE_ENABLED ? "Cloning your own voice is available on the Pro plan or with a Business pack." : VOICE_CLONE_MESSAGE }, { status: 403 });
   }
   const form = await req.formData().catch(() => null);
   if (!form) return NextResponse.json({ success: false, error: "Upload failed. Please try again." }, { status: 400 });

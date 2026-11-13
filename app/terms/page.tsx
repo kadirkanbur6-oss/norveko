@@ -32,12 +32,11 @@ export default function TermsPage() {
           {BRAND_NAME} provides AI-assisted tools that help content creators
           generate scripts, narration, finished videos, skits, talking characters,
           thumbnails, titles, descriptions, and related materials for video
-          platforms such as YouTube, TikTok, and Instagram. Photos and voice
-          recordings you upload for a character or a voice clone must be your own.
-          You must not use the Service to create images, video, or audio that
-          impersonate celebrities or other real people, or that mislead others
-          about a real person. Characters may only be you, an invented character,
-          or a historical figure who died more than 50 years ago. Features may be added, modified,
+          platforms such as YouTube, TikTok, and Instagram. Characters and
+          voices in the Service are invented or licensed; the Service has no face
+          swap, voice cloning, or likeness features. You must not use the Service
+          to depict real individuals or to mislead others about anyone, and you
+          must own or have the right to use any picture or clip you upload. Features may be added, modified,
           or removed at any time as the Service evolves.
         </p>
       </section>

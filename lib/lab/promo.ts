@@ -53,12 +53,6 @@ export const PROMO_SCENES: PromoScene[] = [
     clip: { key: `${OWNER}/talk/bb366887-daff-4a6b-be18-55847bdf8c74/final.mp4`, seconds: 12, side: "left" },
   },
   {
-    tag: "YOU IN THE STORY",
-    title: "Put yourself\nin the scene",
-    text: "Put yourself in the story, or bring a single picture to life.",
-    clip: { key: `${OWNER}/talk/3327ef3a-6a10-4100-bdd7-9a8c588845b9/final.mp4`, seconds: 8, side: "right" },
-  },
-  {
     tag: "AMBIENT MUSIC",
     title: "Hours of calm,\nfrom one sentence",
     text: "Want hours of calm music? Describe a world, and Norveko composes the songs, paints the scenes, and renders a two-hour ambient video.",

@@ -136,9 +136,9 @@ export const WHY_NORVEKO: Array<{ title: string; items: Array<{ feature: string;
   {
     title: "A video that sounds and looks right",
     items: [
-      { feature: "Narrators and native voices in 29 languages", detail: "Or your own cloned voice (Pro plan or Business pack)" },
+      { feature: "Narrators and native voices in 29 languages", detail: "Norveko narrators and native voice artists" },
       { feature: "Visuals made from each scene", detail: "AI clips, stills, stock and archive photos" },
-      { feature: "You can be in the video", detail: "Your own photos, historical figures or cartoon characters" },
+      { feature: "Recurring characters", detail: "Invented characters that keep the same look in every scene" },
       { feature: "Skits and talking characters", detail: "Dialogue, lip-synced shots and crowd voices in one workspace" },
       { feature: "Music chosen by the story's tone", detail: "Licensed tracks, credit added for you" },
       { feature: "Word-timed subtitles", detail: "Correct casing in every language, .srt and .vtt" },

@@ -3,6 +3,7 @@
 // Settings: the creator's own cloned voice (ElevenLabs Instant Voice Clone).
 // Record in the browser (reading a short script) or upload audio files.
 
+import { VOICE_CLONE_ENABLED } from "@/lib/likeness";
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Mic, Square, Trash2, Upload } from "lucide-react";
 
@@ -45,7 +46,7 @@ export default function VoiceCloneCard() {
     };
   }, []);
 
-  if (available === null || (!available && !clone)) return null;
+  if (!VOICE_CLONE_ENABLED || available === null || (!available && !clone)) return null;
 
   const totalBytes = files.reduce((n, f) => n + f.size, 0);
 

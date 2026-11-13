@@ -4,6 +4,7 @@
 //   POST {language, voiceId} → new job: translated script, new voice-over,
 //        subtitles and cover over the ORIGINAL scene visuals, rendered as a new project.
 
+import { VOICE_CLONE_ENABLED } from "@/lib/likeness";
 import { NextResponse, after, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireUser } from "@/lib/supabase-server";
@@ -126,8 +127,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   } else {
     const { cloneOwners } = await import("@/lib/voice/clones");
     const owners = await cloneOwners(db).catch(() => new Map<string, string>());
-    if (!voiceId || owners.get(voiceId) !== user.id) {
-      return NextResponse.json({ success: false, error: "Pick one of the narrators or your own voice." }, { status: 400 });
+    if (!VOICE_CLONE_ENABLED || !voiceId || owners.get(voiceId) !== user.id) {
+      return NextResponse.json({ success: false, error: "Pick one of the narrators." }, { status: 400 });
     }
     voiceEngine = "elevenlabs";
   }

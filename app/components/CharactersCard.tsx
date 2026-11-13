@@ -4,6 +4,7 @@
 // Four ways to add one: yourself (photos), someone who agreed (photos), a
 // historical figure (portrait found for you) or an invented character.
 
+import { characterKindAllowed } from "@/lib/likeness";
 import { useEffect, useRef, useState } from "react";
 import { Crown, ImagePlus, Loader2, Sparkles, Trash2, User, Users } from "lucide-react";
 
@@ -15,11 +16,13 @@ export interface CharacterItem {
   previews: string[];
 }
 
-const KINDS = [
+const ALL_KINDS = [
   { id: "self", label: "Me", hint: "Upload 1–4 clear photos of your face.", icon: User },
   { id: "historical", label: "Historical figure", hint: "Someone who died more than 50 years ago. We find their portrait.", icon: Crown },
   { id: "fictional", label: "Invented", hint: "Describe a character and we draw them.", icon: Sparkles },
 ] as const;
+// Only invented characters are on (lib/likeness.ts, 13 Nov 2026).
+const KINDS = ALL_KINDS.filter((k) => characterKindAllowed(k.id));
 
 const KIND_LABEL: Record<CharacterItem["kind"], string> = {
   self: "You",
@@ -45,7 +48,7 @@ export function CharacterCreator({
   initialName?: string;
   className?: string;
 }) {
-  const [kind, setKind] = useState<CharacterItem["kind"]>(initialKind);
+  const [kind, setKind] = useState<CharacterItem["kind"]>(characterKindAllowed(initialKind) ? initialKind : "fictional");
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -248,7 +251,7 @@ export default function CharactersCard() {
         <h2 className="font-semibold">Characters</h2>
       </div>
       <p className="mt-2 text-sm text-gray-400">
-        People who appear in your videos with the same face in every scene: you, a historical figure or an invented character. Living people other than you can&apos;t be used.
+        Invented characters that appear in your videos with the same look in every scene. Describe one and Norveko draws it.
       </p>
 
       {items.length > 0 && (

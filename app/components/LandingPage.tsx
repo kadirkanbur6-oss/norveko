@@ -29,7 +29,7 @@ import {
   ArrowRight,
   Drama,
   MessageCircle,
-  ImagePlay,
+  Music,
   Check,
   CheckCircle2,
   CalendarClock,
@@ -167,12 +167,12 @@ const FAQS = [
     a: "Yes. Turn on \"Review the script first\" and nothing is filmed until you approve the script and scenes. After rendering, the timeline editor lets you swap a scene's picture or clip, re-time cuts, fix subtitle lines and re-render.",
   },
   {
-    q: "Can I make videos of celebrities or other real people?",
-    a: "No. Norveko does not generate images, video or audio that impersonate celebrities or other real people. Characters can be you (from your own photos), an invented character, or a historical figure who died more than 50 years ago, and a voice clone can only be your own voice.",
+    q: "Who are the characters in my videos?",
+    a: "Invented ones. You describe a character, such as a cartoon chick, a talking dog or a grumpy Bigfoot, and Norveko draws it and keeps the same look in every scene. Norveko has no face swap, no voice cloning and no likeness features: characters and voices are created by Norveko, not taken from real individuals.",
   },
   {
     q: "Which languages and voices?",
-    a: `Scripts and narration in ${LANGUAGE_OPTIONS.length} languages. Norveko narrators speak all of them; native voice artists are available per language, and you can narrate in a clone of your own voice on the Pro plan or a Business pack. Cloning anyone else's voice is not allowed.`,
+    a: `Scripts and narration in ${LANGUAGE_OPTIONS.length} languages. Norveko narrators speak all of them; native voice artists are available per language, and every voice is a licensed Norveko or studio voice.`,
   },
   {
     q: "Which AI models does Norveko use?",
@@ -449,7 +449,7 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
         </Reveal>
       </section>
 
-      {/* 2b. MORE THAN NARRATION — skits, talking characters, image to video (swap removed 13 Nov 2026) */}
+      {/* 2b. MORE THAN NARRATION — skits, talking characters, ambient music (swap removed 13 Nov 2026) */}
       <section id="studios" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6">
         <Reveal>
           <SectionTitle
@@ -470,16 +470,16 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             {
               icon: MessageCircle,
               title: "Talking characters",
-              body: "An invented character, like a cartoon chick or a grumpy Bigfoot, says your line to the camera in a Norveko voice or in your own voice.",
+              body: "An invented character, like a cartoon chick or a grumpy Bigfoot, says your line to the camera in a Norveko character voice.",
               cost: `≈ ${CREATIVE_COSTS.talk10} credits for 10 s`,
               href: "/chat?mode=talk",
             },
             {
-              icon: ImagePlay,
-              title: "Image to video",
-              body: "Upload a picture and say what should happen. Norveko turns it into a moving 5 or 10-second clip, vertical or horizontal.",
-              cost: `≈ ${CREATIVE_COSTS.animate5} credits for 5 s`,
-              href: "/chat?mode=animate",
+              icon: Music,
+              title: "Ambient music videos",
+              body: "Describe a mood and a place. Norveko composes original music, paints the scenes and renders a calm video from 10 minutes to 2 hours.",
+              cost: `≈ ${CREATIVE_COSTS.ambient60} credits for 60 min`,
+              href: "/chat?mode=ambient",
             },
           ].map((c, i) => (
             <Reveal key={c.title} delay={100 + i * 80}>
@@ -500,15 +500,15 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
           <SectionTitle
             eyebrow="Built for creators"
             title="Everything after the first video, too"
-            subtitle="Put yourself in the story, make it in other languages, cut Shorts, make new episodes on a schedule. All in the same place."
+            subtitle="Keep the same characters, make it in other languages, cut Shorts, make new episodes on a schedule. All in the same place."
           />
         </Reveal>
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[
             {
               icon: UserRound,
-              title: "You in the video",
-              body: "Upload photos of yourself or add a historical figure or a cartoon character. They appear in the scenes, on screen as a presenter, or in a skit.",
+              title: "Recurring characters",
+              body: "Describe an invented character once, like a cartoon fox or a robot host. It keeps the same look in every scene, as a presenter or in a skit.",
             },
             {
               icon: Film,

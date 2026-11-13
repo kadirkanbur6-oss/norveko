@@ -70,19 +70,8 @@ export const SHOWCASE_VIDEOS: ShowcaseVideo[] = [
     poster: { bucket: "videos", path: `${OWNER}/skit-ccd00e0c-0420-4904-be8f-e3a4f330b0ea/still-2.jpg` },
     made: "Realistic cockroach cast · characters speak their own lines · AI video shots",
   },
-  {
-    // 11 Nov 2026 (Yağmur): her own image-to-video project replaces the Dyatlov glove clip.
-    id: "93ebb741-b223-4a3f-b3b7-dd637b9318e4",
-    mode: "Image to video",
-    title: "A Photo Comes to Life",
-    idea: "Slowly pushes in toward the camera until the face is clear, then smiles faintly and blinks.",
-    language: "No speech",
-    seconds: 10,
-    orientation: "vertical",
-    videoPath: `${OWNER}/animate/93ebb741-b223-4a3f-b3b7-dd637b9318e4/final.mp4`,
-    poster: { bucket: "videos", path: `${OWNER}/animate/img-a54bb502-3a6e-439b-98e0-5548668d5e7b.jpg` },
-    made: "One uploaded photo · your motion prompt · 10-second clip",
-  },
+  // 13 Nov 2026: the "A Photo Comes to Life" card (an animated photo of a person) was removed
+  // with the real-people policy (lib/likeness.ts); image to video now refuses such photos.
   {
     // 10 Nov 2026 (Yağmur): 30 s Viking ambience, Lyria music + five Nano Banana pictures.
     id: "viking-ambience",

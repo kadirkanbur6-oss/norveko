@@ -3,6 +3,7 @@
 // and hands it to the background worker. Returns immediately with the jobId;
 // the UI polls /api/pipeline/[id] for progress.
 
+import { VOICE_CLONE_ENABLED } from "@/lib/likeness";
 import { NextRequest, NextResponse, after } from "next/server";
 import { requireUser } from "@/lib/supabase-server";
 import { createClient } from "@supabase/supabase-js";
@@ -219,7 +220,7 @@ export async function POST(req: NextRequest) {
         const { cloneOwners } = await import("@/lib/voice/clones");
         const owners = await cloneOwners(supabaseAdmin).catch(() => new Map<string, string>());
         const cloneOwner = owners.get(voiceId);
-        if (cloneOwner && cloneOwner !== user.id) {
+        if (cloneOwner && (cloneOwner !== user.id || !VOICE_CLONE_ENABLED)) {
           return NextResponse.json({ success: false, error: "Selected voice is not available." }, { status: 400 });
         }
         if (voicePublicOwnerId && !cloneOwner) {

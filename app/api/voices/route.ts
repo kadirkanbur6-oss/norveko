@@ -6,6 +6,7 @@
 //   library — Voice Library voices for that language, usable once picked
 //             (they are added to the account on demand by /api/pipeline/start)
 
+import { VOICE_CLONE_ENABLED } from "@/lib/likeness";
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/supabase-server";
 // Lazy: the ElevenLabs module throws at import without its key, and the Gemini voices should still load.
@@ -82,7 +83,7 @@ export async function GET(req: NextRequest) {
     // the owner's own clone comes back separately as "mine".
     const owners = await cloneOwners(adminDb()).catch(() => new Map<string, string>());
     const everyAccount = await getAccountVoices();
-    const mineId = [...owners].find(([, owner]) => owner === user.id)?.[0] ?? null;
+    const mineId = VOICE_CLONE_ENABLED ? ([...owners].find(([, owner]) => owner === user.id)?.[0] ?? null) : null;
     const allAccount = everyAccount.filter((v) => !owners.has(v.voice_id) && !v.name.startsWith("Norveko · "));
     const account = libraryAllowed ? allAccount : allAccount.filter((v) => v.category === "premade");
     const tagged = account.filter((v) => v.languages.includes(code));

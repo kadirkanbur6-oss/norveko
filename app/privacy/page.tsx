@@ -62,8 +62,8 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong className="text-white">Uploaded media:</strong> photos,
-            video clips, and voice recordings you upload for your own character or
-            your own voice clone. They are sent to our AI providers to produce
+            pictures and clips you upload to use in a video (for example a picture
+            to animate or your own clip in the editor). They are sent to our AI providers to produce
             your result and can be deleted from Settings or by deleting your
             account.
           </li>
@@ -104,7 +104,7 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong className="text-white">ElevenLabs</strong>: voice
-            generation and voice cloning;
+            generation;
           </li>
           <li>
             <strong className="text-white">fal.ai</strong> and{" "}

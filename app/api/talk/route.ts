@@ -5,6 +5,7 @@
 //   POST {action:"quote", path} → length and price of an uploaded recording
 //   POST {action:"start", path, characterId, scene?, look?, orientation, script?, rights:true}
 
+import { VOICE_CLONE_ENABLED, VOICE_UPLOAD_ENABLED, VOICE_UPLOAD_MESSAGE, characterKindAllowed } from "@/lib/likeness";
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { requireUser } from "@/lib/supabase-server";
@@ -58,6 +59,7 @@ const PATH_RE = (userId: string) => new RegExp(`^${userId}/talk/(aud|rec)-[0-9a-
 
 async function audioInfo(db: ReturnType<typeof adminDb>, userId: string, path: unknown) {
   if (typeof path !== "string" || !PATH_RE(userId).test(path)) throw new Error("Add the voice first.");
+  if (!VOICE_UPLOAD_ENABLED && path.includes("/talk/rec-")) throw new Error(VOICE_UPLOAD_MESSAGE);
   const { data, error } = await db.storage.from("videos").download(path);
   if (error || !data) throw new Error("The recording wasn't found. Add it again.");
   if (data.size > TALK_MAX_BYTES) throw new Error("Recordings can be up to 8 MB.");
@@ -84,7 +86,7 @@ export async function GET(req: Request) {
   }
   const { VOICE_STYLES } = await import("@/lib/skit/voice-styles");
   const { userClone } = await import("@/lib/voice/clones");
-  const clone = await userClone(db, user.id).catch(() => null);
+  const clone = VOICE_CLONE_ENABLED ? await userClone(db, user.id).catch(() => null) : null;
   const { data } = await db.from("swap_jobs").select("*").eq("user_id", user.id).eq("kind", "talk").order("created_at", { ascending: false }).limit(20);
   return NextResponse.json({
     success: true,
@@ -148,7 +150,7 @@ export async function POST(req: Request) {
     const voiceId = typeof body.voiceId === "string" ? body.voiceId : "";
     const { isVoiceStyle, voiceFor, styleDirection, applyVoiceStyle } = await import("@/lib/skit/voice-styles");
     const { userClone } = await import("@/lib/voice/clones");
-    const ownClone = (await userClone(db, user.id).catch(() => null))?.voice_id;
+    const ownClone = VOICE_CLONE_ENABLED ? (await userClone(db, user.id).catch(() => null))?.voice_id : undefined;
     const [, styleId, gender] = voiceId.split(":");
     const style = voiceId.startsWith("style:") && isVoiceStyle(styleId) && (gender === "male" || gender === "female") ? styleId : null;
     const { GEMINI_VOICES } = await import("@/lib/pipeline/gemini-tts");
@@ -188,6 +190,7 @@ export async function POST(req: Request) {
   }
 
   if (body.action === "uploadUrl") {
+    if (!VOICE_UPLOAD_ENABLED) return bad(VOICE_UPLOAD_MESSAGE, 403);
     const ext = AUDIO_TYPES[String(body.type ?? "")];
     if (!ext) return bad("Use an MP3, WAV or M4A recording.");
     if (Number(body.size) > TALK_MAX_BYTES) return bad("Recordings can be up to 8 MB.");
@@ -211,11 +214,11 @@ export async function POST(req: Request) {
     const characterId = typeof body.characterId === "string" ? body.characterId : "";
     const { data: character } = await db
       .from("characters")
-      .select("id, name, description, reference_paths")
+      .select("id, name, kind, description, reference_paths")
       .eq("id", characterId)
       .eq("user_id", user.id)
       .maybeSingle();
-    if (!character || !(character.reference_paths as string[] | undefined)?.length) return bad("Pick one of your characters.");
+    if (!character || !characterKindAllowed(String(character.kind)) || !(character.reference_paths as string[] | undefined)?.length) return bad("Pick one of your characters.");
     const { count } = await db.from("swap_jobs").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "running").eq("kind", "talk");
     if ((count ?? 0) >= MAX_RUNNING) return bad(`Up to ${MAX_RUNNING} are made at a time. Try again when one finishes.`, 429);
 

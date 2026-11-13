@@ -118,7 +118,7 @@ export default function CastPicker({
       <Disclosure
         title="Characters"
         icon={<Users size={16} />}
-        summary={chosen.length ? chosen.map((c) => c.name).join(", ") : "Put yourself, a historical figure or an invented character in the video"}
+        summary={chosen.length ? chosen.map((c) => c.name).join(", ") : "Add an invented character that keeps the same look in every scene"}
       >
         {characters.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
