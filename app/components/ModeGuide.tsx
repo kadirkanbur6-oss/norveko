@@ -6,15 +6,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, PlayCircle } from "lucide-react";
+import { SWAP_ENABLED } from "@/lib/likeness";
 
 export type GuideMode = "video" | "skit" | "talk" | "swap";
 
-const CHAPTERS: Array<{ mode: GuideMode; label: string; at: number }> = [
+const ALL_CHAPTERS: Array<{ mode: GuideMode; label: string; at: number }> = [
   { mode: "video", label: "Narrated video", at: 4 },
   { mode: "skit", label: "Skit", at: 16 },
   { mode: "talk", label: "Talking character", at: 28 },
   { mode: "swap", label: "Character swap", at: 40 },
 ];
+// Character swap is switched off (lib/likeness.ts): no chapter button, and playback stops before that part.
+const CHAPTERS = ALL_CHAPTERS.filter((c) => SWAP_ENABLED || c.mode !== "swap");
+const SWAP_PART_AT = 40;
 
 const SEEN_KEY = "nv_mode_guide_seen";
 
@@ -95,6 +99,13 @@ export default function ModeGuide({
             preload="none"
             controls
             playsInline
+            onTimeUpdate={(e) => {
+              // The last part of the recording shows character swap, which is switched off.
+              if (!SWAP_ENABLED && e.currentTarget.currentTime >= SWAP_PART_AT) {
+                e.currentTarget.pause();
+                e.currentTarget.currentTime = 0;
+              }
+            }}
             className="aspect-video w-full rounded-lg bg-black"
           >
             Your browser cannot play this video.

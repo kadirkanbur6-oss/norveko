@@ -228,7 +228,7 @@ export default function VoiceCloneCard() {
             <label className="flex items-start gap-2 pt-5 text-xs text-gray-300">
               <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 h-4 w-4 accent-emerald-500" />
               <span>
-                This is my own voice, or I have the speaker&apos;s permission to clone it. I won&apos;t use it to impersonate anyone or mislead people.
+                This is my own voice. I won&apos;t use it to impersonate anyone or mislead people.
               </span>
             </label>
           </div>

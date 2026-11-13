@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { PlayCircle, X } from "lucide-react";
+import { TOUR_VIDEO_READY } from "@/lib/likeness";
 
 // 10 Nov 2026 (Yağmur): new narrated tour with the newer features (lib/lab/promo.ts, made from real Norveko outputs).
 export const TUTORIAL_VIDEO = "/media/videos/r2/site/promo-tour.mp4";
@@ -40,6 +41,9 @@ export default function TutorialButton({
     };
   }, [open]);
 
+
+  // Hidden until the tour is re-made without the character swap scene (lib/likeness.ts).
+  if (!TOUR_VIDEO_READY) return null;
   return (
     <>
       {variant === "card" ? (

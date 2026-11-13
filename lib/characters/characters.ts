@@ -8,14 +8,17 @@
 // Rules (shown in the UI and enforced here):
 //   • photos: only the creator or a person who gave permission (checkbox,
 //     stored as consent_at); no children (vision check on every photo);
-//   • any real or invented person may be used (3 Nov 2026, Kadir: the creator
-//     decides and takes responsibility) — no children, nothing explicit;
-//   • "historical" = any real, well-known person (portrait from Commons).
+//   • no living or recently deceased real people (13 Nov 2026, lib/likeness.ts:
+//     our payment provider does not allow impersonating real people); photo
+//     characters can only be the creator ("person" is closed for new ones);
+//   • "historical" = a real person who died 50+ years ago (portrait from Commons);
+//   • no children, nothing explicit.
 // Reference images live in the PRIVATE "characters" bucket; the pipeline
 // reads them with the service role. Server-only.
 
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { HISTORICAL_MIN_YEARS_DEAD, REAL_PERSON_MESSAGE } from "@/lib/likeness";
 
 export type CharacterKind = "self" | "person" | "historical" | "fictional";
 export const CHARACTER_KINDS: CharacterKind[] = ["self", "person", "historical", "fictional"];
@@ -126,9 +129,11 @@ export async function geminiJson(parts: Array<Record<string, unknown>>): Promise
 }
 
 /**
- * Only children are refused (3 Nov 2026: living public figures are allowed —
- * the creator's responsibility). For real/historical people the check also
- * finds the portrait to start from; a check error there refuses.
+ * Who a character may be (13 Nov 2026, lib/likeness.ts): never a child, never a living
+ * or recently deceased real person — whatever type was picked, so "invented" can't be
+ * used to smuggle in a celebrity. Historical figures must have died at least
+ * HISTORICAL_MIN_YEARS_DEAD years ago; the check also finds the portrait to start from.
+ * A check error refuses (fail closed).
  */
 export async function checkIdentity(name: string, description: string, kind: CharacterKind): Promise<{ ok: true; portraitQuery?: string; diedYear?: number } | { ok: false; reason: string }> {
   const r = await geminiJson([
@@ -137,14 +142,18 @@ export async function checkIdentity(name: string, description: string, kind: Cha
 Name: "${name}"
 Description: "${description}"
 Type: ${kind === "historical" ? "a historical figure" : kind === "fictional" ? "an invented character" : kind === "self" ? "the creator themself (photos)" : "a person who gave the creator permission (photos)"}
-Answer as JSON: {"realPerson": boolean (does the name/description clearly refer to a specific real, well-known person?), "living": boolean (is that real person alive, or died less than 50 years ago?), "publicFigure": boolean (politician, athlete, coach, celebrity, influencer, business leader, royalty…), "minor": boolean (described as a child/teen), "diedYear": number|null, "portraitQuery": string (for historical figures: the English title of their best-known portrait as it would be named on Wikimedia Commons, else "")}`,
+Answer as JSON: {"realPerson": boolean (does the name or the description clearly refer to, or ask to look like, a specific real, well-known person?), "living": boolean (is that real person alive, or died less than ${HISTORICAL_MIN_YEARS_DEAD} years ago?), "publicFigure": boolean (politician, athlete, coach, celebrity, influencer, business leader, royalty…), "minor": boolean (described as a child/teen), "diedYear": number|null, "portraitQuery": string (for historical figures: the English title of their best-known portrait as it would be named on Wikimedia Commons, else "")}`,
     },
   ]);
-  if (!r) return kind === "historical" ? { ok: false, reason: "We couldn't verify this historical figure right now. Please try again." } : { ok: true };
+  if (!r) return { ok: false, reason: "We couldn't check this character right now. Please try again." };
   if (r.minor === true) return { ok: false, reason: "Characters can't be children." };
+  const died = typeof r.diedYear === "number" ? r.diedYear : undefined;
+  const recent = r.living === true || (died !== undefined && new Date().getFullYear() - died < HISTORICAL_MIN_YEARS_DEAD);
+  if (r.realPerson === true && recent) return { ok: false, reason: REAL_PERSON_MESSAGE };
   if (kind === "historical") {
     if (r.realPerson !== true) return { ok: false, reason: "We couldn't find this person. Check the spelling, or create an invented character instead." };
-    return { ok: true, portraitQuery: typeof r.portraitQuery === "string" ? r.portraitQuery : name, diedYear: typeof r.diedYear === "number" ? r.diedYear : undefined };
+    if (died === undefined && r.living !== false) return { ok: false, reason: REAL_PERSON_MESSAGE };
+    return { ok: true, portraitQuery: typeof r.portraitQuery === "string" ? r.portraitQuery : name, diedYear: died };
   }
   return { ok: true };
 }
@@ -171,7 +180,7 @@ export async function suggestHistoricalCast(idea: string): Promise<string[]> {
   const r = await geminiJson([
     {
       text: `Video idea: "${idea.slice(0, 600)}"
-List the real, well-known PEOPLE who are central characters of this idea (living or dead; at most 3; none for places, events, objects or groups). Use the name the way the idea writes it, or the usual name in the idea's language. Answer as JSON: {"people": ["..."]}`,
+List the real HISTORICAL people who are central characters of this idea: only people who died more than ${HISTORICAL_MIN_YEARS_DEAD} years ago, never anyone living or recently deceased (at most 3; none for places, events, objects or groups). Use the name the way the idea writes it, or the usual name in the idea's language. Answer as JSON: {"people": ["..."]}`,
     },
   ]).catch(() => null);
   const people = Array.isArray(r?.people) ? (r!.people as unknown[]) : [];

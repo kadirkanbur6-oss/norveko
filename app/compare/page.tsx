@@ -94,8 +94,8 @@ export default function ComparePage() {
             {perVideo(pro)} each).
           </li>
           <li>
-            Narration in 29 languages, voice cloning on the Pro plan and the Business pack, and
-            skits, talking characters and character swap in the same workspace.
+            Narration in 29 languages, a clone of your own voice on the Pro plan and the Business pack,
+            and skits and talking characters in the same workspace.
           </li>
           <li>
             Subscription credits are valid for their own period and do not roll

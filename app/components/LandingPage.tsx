@@ -29,7 +29,7 @@ import {
   ArrowRight,
   Drama,
   MessageCircle,
-  Shuffle,
+  ImagePlay,
   Check,
   CheckCircle2,
   CalendarClock,
@@ -167,8 +167,12 @@ const FAQS = [
     a: "Yes. Turn on \"Review the script first\" and nothing is filmed until you approve the script and scenes. After rendering, the timeline editor lets you swap a scene's picture or clip, re-time cuts, fix subtitle lines and re-render.",
   },
   {
+    q: "Can I make videos of celebrities or other real people?",
+    a: "No. Norveko does not generate images, video or audio that impersonate celebrities or other real people. Characters can be you (from your own photos), an invented character, or a historical figure who died more than 50 years ago, and a voice clone can only be your own voice.",
+  },
+  {
     q: "Which languages and voices?",
-    a: `Scripts and narration in ${LANGUAGE_OPTIONS.length} languages. Norveko narrators speak all of them; native voice artists are available per language, and you can clone your own voice on the Pro plan or a Business pack.`,
+    a: `Scripts and narration in ${LANGUAGE_OPTIONS.length} languages. Norveko narrators speak all of them; native voice artists are available per language, and you can narrate in a clone of your own voice on the Pro plan or a Business pack. Cloning anyone else's voice is not allowed.`,
   },
   {
     q: "Which AI models does Norveko use?",
@@ -445,12 +449,12 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
         </Reveal>
       </section>
 
-      {/* 2b. MORE THAN NARRATION — skits, talking characters, swaps (3–4 Nov 2026) */}
+      {/* 2b. MORE THAN NARRATION — skits, talking characters, image to video (swap removed 13 Nov 2026) */}
       <section id="studios" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12 sm:px-6">
         <Reveal>
           <SectionTitle
             eyebrow="Beyond narration"
-            title="Skits, talking characters and swaps"
+            title="Skits, talking characters and more"
             subtitle="The formats behind today's viral Shorts. Write it once and Norveko casts, voices and animates it."
           />
         </Reveal>
@@ -466,16 +470,16 @@ export default function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boole
             {
               icon: MessageCircle,
               title: "Talking characters",
-              body: "Any character, whether you, a historical figure or a cartoon chick, says your line to the camera, in a Norveko voice, your cloned voice or a recording you upload.",
+              body: "An invented character, like a cartoon chick or a grumpy Bigfoot, says your line to the camera in a Norveko voice or in your own voice.",
               cost: `≈ ${CREATIVE_COSTS.talk10} credits for 10 s`,
               href: "/chat?mode=talk",
             },
             {
-              icon: Shuffle,
-              title: "Character swap",
-              body: "Upload a short clip and put one of your characters in place of the person in it, with the same moves, expressions and original sound.",
-              cost: `≈ ${CREATIVE_COSTS.swap10} credits for 10 s`,
-              href: "/chat?mode=swap",
+              icon: ImagePlay,
+              title: "Image to video",
+              body: "Upload a picture and say what should happen. Norveko turns it into a moving 5 or 10-second clip, vertical or horizontal.",
+              cost: `≈ ${CREATIVE_COSTS.animate5} credits for 5 s`,
+              href: "/chat?mode=animate",
             },
           ].map((c, i) => (
             <Reveal key={c.title} delay={100 + i * 80}>

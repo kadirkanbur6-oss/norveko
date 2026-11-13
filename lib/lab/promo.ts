@@ -48,14 +48,14 @@ export const PROMO_SCENES: PromoScene[] = [
   },
   {
     tag: "TALKING CHARACTERS",
-    title: "Make any\ncharacter talk",
-    text: "Make any character talk. Add a photo, type a line, and they say it on camera.",
+    title: "Make a character\ntalk",
+    text: "Invent a character, type a line, and they say it on camera.",
     clip: { key: `${OWNER}/talk/bb366887-daff-4a6b-be18-55847bdf8c74/final.mp4`, seconds: 12, side: "left" },
   },
   {
     tag: "YOU IN THE STORY",
     title: "Put yourself\nin the scene",
-    text: "Put yourself in the story, swap a character into any clip, or bring a single picture to life.",
+    text: "Put yourself in the story, or bring a single picture to life.",
     clip: { key: `${OWNER}/talk/3327ef3a-6a10-4100-bdd7-9a8c588845b9/final.mp4`, seconds: 8, side: "right" },
   },
   {

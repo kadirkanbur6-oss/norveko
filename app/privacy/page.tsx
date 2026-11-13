@@ -62,8 +62,8 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong className="text-white">Uploaded media:</strong> photos,
-            video clips, and voice recordings you upload for characters, voice
-            cloning, or swaps. They are sent to our AI providers to produce
+            video clips, and voice recordings you upload for your own character or
+            your own voice clone. They are sent to our AI providers to produce
             your result and can be deleted from Settings or by deleting your
             account.
           </li>

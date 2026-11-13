@@ -4,6 +4,7 @@
 //   POST {action:"quote", path} → length, orientation and price of an uploaded clip
 //   POST {action:"start", path, characterId, prompt?, rights:true} → check, charge, start
 
+import { SWAP_DISABLED_MESSAGE, SWAP_ENABLED } from "@/lib/likeness";
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { requireUser } from "@/lib/supabase-server";
@@ -69,6 +70,8 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const { user } = await requireUser();
   if (!user) return bad("Not authenticated", 401);
+  // Switched off on 13 Nov 2026 (lib/likeness.ts). GET still serves finished swaps.
+  if (!SWAP_ENABLED) return bad(SWAP_DISABLED_MESSAGE, 403, { code: "swap_disabled" });
   if (!isGenerationEnabled(user.id) || !isFullVideoEnabled(user.id)) return bad(LAUNCH_LOCK_MESSAGE, 403);
   const db = adminDb();
   if (!(isWatermarkExempt(user.id) || (await hasPurchased(db, user.id)))) return bad("Character swaps are available on any plan or pack.", 403);

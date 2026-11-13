@@ -10,6 +10,7 @@ import Sidebar from "../components/Sidebar";
 import PipelineProgress from "../components/PipelineProgress";
 import CastPicker from "../components/CastPicker";
 import ModeGuide from "../components/ModeGuide";
+import { SWAP_ENABLED } from "@/lib/likeness";
 import SkitStudio from "../components/studio/SkitStudio";
 import TalkStudio from "../components/studio/TalkStudio";
 import SwapStudio from "../components/studio/SwapStudio";
@@ -97,7 +98,7 @@ function readDraft(): Partial<Draft> {
 
 type WorkspaceMode = "video" | "skit" | "talk" | "swap" | "animate" | "ambient";
 
-const MODES: Array<{ id: WorkspaceMode; label: string; hint: string; placeholder: string }> = [
+const ALL_MODES: Array<{ id: WorkspaceMode; label: string; hint: string; placeholder: string }> = [
   { id: "video", label: "Narrated video", hint: "Story, documentary or explainer with a narrator", placeholder: "e.g. The mystery of planes lost in the Bermuda Triangle…" },
   { id: "skit", label: "Skit with dialogue", hint: "A joke or scene: characters talk to each other", placeholder: "Paste the joke with its lines, e.g.\n- Boss: In 10 years we'll land a man on the sun!\n- Reporter: But the sun is too hot?\n- Boss: We'll land at night!\nMake it like the viral cockroach videos." },
   { id: "talk", label: "Talking character", hint: "One character says your line to the camera", placeholder: "Write what the character says, e.g. \"Ladies and gentlemen, I am the best coach in this barn!\"" },
@@ -105,6 +106,8 @@ const MODES: Array<{ id: WorkspaceMode; label: string; hint: string; placeholder
   { id: "animate", label: "Image to video", hint: "Turn a picture you upload into a moving clip", placeholder: "Say what should happen, e.g. the camera slowly pushes in while the clouds move (optional)" },
   { id: "swap", label: "Character swap", hint: "Put a character into a clip you upload", placeholder: "Describe the clip or how the character should look (optional)" },
 ];
+// Character swap is switched off (lib/likeness.ts, 13 Nov 2026).
+const MODES = ALL_MODES.filter((m) => SWAP_ENABLED || m.id !== "swap");
 
 /** Best guess of what the creator wants to make, from what they wrote. */
 function suggestMode(text: string): WorkspaceMode | null {
@@ -112,7 +115,7 @@ function suggestMode(text: string): WorkspaceMode | null {
   if (t.length < 8) return null;
   if (/(resimden|fotoğraftan|görselden) video|image to video|animate (this|my) (image|photo|picture)|resmi canlandır|fotoğrafı canlandır/i.test(t)) return "animate";
   if (/\bambient\b|relaxing music|sleep music|meditation music|focus music|\blo-?fi\b|rahatlatıcı müzik|uyku müziği|saatlik müzik|hours? of (calm )?music/i.test(t)) return "ambient";
-  if (/\b(swap|face ?swap|deepfake)\b|yüz(ümü|ünü)? (değiştir|koy)|yerine (beni|kendimi)|videoya (beni|kendimi)|klib(e|in)/i.test(t)) return "swap";
+  if (SWAP_ENABLED && /\b(swap|face ?swap|deepfake)\b|yüz(ümü|ünü)? (değiştir|koy)|yerine (beni|kendimi)|videoya (beni|kendimi)|klib(e|in)/i.test(t)) return "swap";
   const dialogue = t.split(/\n/).filter((l) => /^\s*[-–—•]\s*\S/.test(l) || /^\s*[\p{L} .]{2,25}:\s*\S/u.test(l)).length;
   const quoted = (t.match(/["“”«»„][^"“”«»„\n]{3,}["“”«»„]/g) ?? []).length;
   if (dialogue >= 2 || quoted >= 2 || /skeç|skit|diyalog|dialogue|sketch|videolarına uyarla|videolarına benzet|videosu gibi|videoları gibi|şaka|fıkra|joke/i.test(t)) return "skit";
@@ -581,7 +584,7 @@ function ChatContent() {
   // until they pick a mode themselves (a running video keeps the video mode).
   const modeParam = searchParams.get("mode");
   useEffect(() => {
-    if (modeParam === "skit" || modeParam === "talk" || modeParam === "swap" || modeParam === "animate" || modeParam === "ambient" || modeParam === "video") {
+    if (modeParam === "skit" || modeParam === "talk" || (modeParam === "swap" && SWAP_ENABLED) || modeParam === "animate" || modeParam === "ambient" || modeParam === "video") {
       const t = setTimeout(() => setMode(modeParam), 0);
       return () => clearTimeout(t);
     }
@@ -659,7 +662,7 @@ function ChatContent() {
               rows={mode === "skit" ? 6 : 3}
               className="mt-2 w-full resize-y rounded-xl border border-white/10 bg-white/[0.03] p-4 text-white placeholder-gray-500 outline-none focus:border-blue-400/50"
             />
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6" role="radiogroup" aria-label="What to make">
+            <div className={`mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 ${MODES.length >= 6 ? "lg:grid-cols-6" : "lg:grid-cols-5"}`} role="radiogroup" aria-label="What to make">
               {MODES.map((m) => {
                 const on = mode === m.id;
                 const Icon = m.id === "video" ? Film : m.id === "skit" ? Drama : m.id === "talk" ? MessageCircle : m.id === "animate" ? ImagePlay : m.id === "ambient" ? Music : Shuffle;
@@ -710,7 +713,7 @@ function ChatContent() {
               {freeAccount ? <UpgradeCard /> : <AmbientStudio text={idea} onStarted={started} />}
             </div>
           )}
-          {mode === "swap" && (
+          {mode === "swap" && SWAP_ENABLED && (
             <div className="mt-5">
               {freeAccount ? <UpgradeCard /> : <SwapStudio onStarted={started} />}
             </div>

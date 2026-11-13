@@ -3,6 +3,7 @@
 // POST (multipart): kind, name, description, consent, photos[] → checks, references, row.
 // DELETE ?id=… removes a character and its reference images.
 
+import { PERSON_CHARACTERS_ENABLED, PERSON_KIND_MESSAGE } from "@/lib/likeness";
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import sharp from "sharp";
@@ -78,6 +79,7 @@ export async function POST(req: Request) {
   if (!form) return bad("Invalid request.");
   const kind = String(form.get("kind") ?? "") as CharacterKind;
   if (!CHARACTER_KINDS.includes(kind)) return bad("Pick a character type.");
+  if (kind === "person" && !PERSON_CHARACTERS_ENABLED) return bad(PERSON_KIND_MESSAGE);
   const name = cleanName(form.get("name"));
   if (name.length < 2) return bad("Give the character a name.");
   const description = cleanDescription(form.get("description"));
@@ -100,13 +102,13 @@ export async function POST(req: Request) {
   if (existing.length >= MAX_CHARACTERS) return bad(`You can keep up to ${MAX_CHARACTERS} characters. Delete one first.`);
   if (existing.some((c) => c.name.toLowerCase() === name.toLowerCase())) return bad("You already have a character with this name.");
 
-  // Children are refused; any real person is allowed (creator's responsibility).
+  // Children and living / recently deceased real people are refused (lib/likeness.ts).
   let identity: Awaited<ReturnType<typeof checkIdentity>>;
   try {
     identity = await checkIdentity(name, description, kind);
   } catch (err) {
     console.error("[characters] identity check failed:", err);
-    identity = kind === "historical" ? { ok: false, reason: "We couldn't verify this historical figure right now. Please try again." } : { ok: true };
+    identity = { ok: false, reason: "We couldn't check this character right now. Please try again." };
   }
   if (!identity.ok) return bad(identity.reason);
 

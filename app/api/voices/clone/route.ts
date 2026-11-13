@@ -48,7 +48,7 @@ export async function POST(req: Request) {
   const form = await req.formData().catch(() => null);
   if (!form) return NextResponse.json({ success: false, error: "Upload failed. Please try again." }, { status: 400 });
   if (form.get("consent") !== "true") {
-    return NextResponse.json({ success: false, error: "Please confirm this is your voice or that you have permission to use it." }, { status: 400 });
+    return NextResponse.json({ success: false, error: "Please confirm this is your own voice." }, { status: 400 });
   }
   const files = form.getAll("files").filter((f): f is File => f instanceof Blob && f.size > 0) as File[];
   if (!files.length) return NextResponse.json({ success: false, error: "Add a recording first." }, { status: 400 });

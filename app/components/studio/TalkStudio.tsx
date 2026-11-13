@@ -393,7 +393,7 @@ export default function TalkStudio({ text: outerText, onStarted }: { text?: stri
 
               <label className="flex items-start gap-2 text-xs text-gray-300">
                 <input type="checkbox" checked={rights} onChange={(e) => setRights(e.target.checked)} className="mt-0.5" />
-                <span>I may use this voice and recording, and I won&apos;t present the result as something a real person actually said or did.</span>
+                <span>Any recording I upload is my own voice, and I won&apos;t present the result as something a real person actually said or did.</span>
               </label>
 
               <div className="flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">

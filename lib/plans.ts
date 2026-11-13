@@ -139,7 +139,7 @@ export const WHY_NORVEKO: Array<{ title: string; items: Array<{ feature: string;
       { feature: "Narrators and native voices in 29 languages", detail: "Or your own cloned voice (Pro plan or Business pack)" },
       { feature: "Visuals made from each scene", detail: "AI clips, stills, stock and archive photos" },
       { feature: "You can be in the video", detail: "Your own photos, historical figures or cartoon characters" },
-      { feature: "Skits, talking characters and swaps", detail: "Dialogue, lip-synced shots and crowd voices in one workspace" },
+      { feature: "Skits and talking characters", detail: "Dialogue, lip-synced shots and crowd voices in one workspace" },
       { feature: "Music chosen by the story's tone", detail: "Licensed tracks, credit added for you" },
       { feature: "Word-timed subtitles", detail: "Correct casing in every language, .srt and .vtt" },
     ],
@@ -157,7 +157,7 @@ export const WHY_NORVEKO: Array<{ title: string; items: Array<{ feature: string;
 /**
  * What an account that never paid may make with its sign-up credits (7 Nov 2026, Yağmur:
  * "settings stay locked, everything else leads to buying"). Checked in /api/pipeline/start
- * and mirrored in /chat; skits, talking characters and swaps need a purchase.
+ * and mirrored in /chat; skits and talking characters need a purchase.
  */
 export const FREE_PLAN = {
   /** Finished video: one fixed setup (≈ 67 credits). */

@@ -62,7 +62,6 @@ const COST_ROWS: Array<[string, string]> = [
   ["Talking character, 10 s", `≈ ${CREATIVE_COSTS.talk10} credits`],
   ["Image to video, 5 s clip", `≈ ${CREATIVE_COSTS.animate5} credits`],
   ["Ambient music video, 60 min", `≈ ${CREATIVE_COSTS.ambient60} credits`],
-  ["Character swap, 10 s clip", `≈ ${CREATIVE_COSTS.swap10} credits`],
 ];
 
 function fmtDate(d: string): string {

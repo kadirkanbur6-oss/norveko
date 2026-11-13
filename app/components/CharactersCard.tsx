@@ -17,8 +17,7 @@ export interface CharacterItem {
 
 const KINDS = [
   { id: "self", label: "Me", hint: "Upload 1–4 clear photos of your face.", icon: User },
-  { id: "person", label: "Someone who agreed", hint: "A friend or family member who said yes.", icon: Users },
-  { id: "historical", label: "Real or historical person", hint: "Sultans, kings, famous people. We find their portrait.", icon: Crown },
+  { id: "historical", label: "Historical figure", hint: "Someone who died more than 50 years ago. We find their portrait.", icon: Crown },
   { id: "fictional", label: "Invented", hint: "Describe a character and we draw them.", icon: Sparkles },
 ] as const;
 
@@ -183,7 +182,7 @@ export function CharacterCreator({
                   ? "These photos are of me, and I'm 18 or older."
                   : kind === "historical"
                     ? "I have the right to use these pictures (for example a public-domain painting or my own photo of it)."
-                    : "This person is 18 or older and agreed to appear in my videos. I have the right to use their likeness."}
+                    : "These photos are of me, and I'm 18 or older."}
               </span>
             </label>
           )}
@@ -249,7 +248,7 @@ export default function CharactersCard() {
         <h2 className="font-semibold">Characters</h2>
       </div>
       <p className="mt-2 text-sm text-gray-400">
-        People who appear in your videos with the same face in every scene: you, someone who agreed, a real or historical person or an invented character.
+        People who appear in your videos with the same face in every scene: you, a historical figure or an invented character. Living people other than you can&apos;t be used.
       </p>
 
       {items.length > 0 && (
